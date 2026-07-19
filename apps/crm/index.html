@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0f1f3d" />
+<title>CRMAI IQ — Appliance IQ CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0f1f3d; --navy-2:#16294e; --paper:#f6f8fb; --card:#ffffff;
+    --ink:#0f1f3d; --steel:#5b6b85; --line:#e3e8f0;
+    --verified:#1a9e56; --amber:#e8590c; --focus:#2f6fed; --danger:#c02d1e;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5}
+  button{font:inherit;cursor:pointer}
+  input,select,textarea{font:inherit}
+  :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .num{font-variant-numeric:tabular-nums}
+
+  #auth{min-height:100%;display:flex;align-items:center;justify-content:center;background:
+    linear-gradient(160deg,var(--navy) 0%, #132b57 60%, #0c1830 100%)}
+  .auth-card{background:var(--card);border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
+  .mark{display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
+  .iq{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:9px;background:var(--navy);color:#fff;font-weight:800;font-size:15px}
+  .wordmark{font-weight:800;font-size:19px;letter-spacing:-.02em}
+  .wordmark small{display:block;font-weight:500;font-size:11px;color:var(--steel);letter-spacing:.06em;text-transform:uppercase}
+  .tagline{color:var(--steel);margin:2px 0 22px;font-size:13px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px}
+  .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe}
+  .btn{border:0;border-radius:8px;padding:10px 16px;font-weight:600}
+  .btn-primary{background:var(--navy);color:#fff}
+  .btn-primary:hover{background:var(--navy-2)}
+  .btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--line)}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid #f0c9c4}
+  .btn-block{width:100%}
+  .auth-alt{margin-top:14px;text-align:center;font-size:13px;color:var(--steel)}
+  .auth-alt a{color:var(--navy);font-weight:600;cursor:pointer;text-decoration:underline}
+  .notice{margin-top:12px;font-size:13px;border-radius:8px;padding:10px 12px;display:none}
+  .notice.err{display:block;background:#fdecea;color:#8c2f22}
+  .notice.ok{display:block;background:#e8f6ee;color:#14663a}
+
+  #app{display:none;min-height:100vh}
+  .shell{display:grid;grid-template-columns:224px 1fr;min-height:100vh}
+  aside{background:var(--navy);color:#cdd8ec;padding:18px 14px;display:flex;flex-direction:column;gap:4px}
+  aside .mark{margin-bottom:16px}
+  aside .iq{background:#fff;color:var(--navy)}
+  aside .wordmark{color:#fff}
+  aside .wordmark small{color:#8fa3c8}
+  .nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;color:#cdd8ec;padding:9px 12px;border-radius:8px;font-weight:500}
+  .nav-btn:hover{background:rgba(255,255,255,.07)}
+  .nav-btn.active{background:rgba(255,255,255,.13);color:#fff;font-weight:600}
+  .spacer{flex:1}
+  .org-pick{margin-bottom:10px}
+  .org-pick select{width:100%;background:var(--navy-2);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px}
+  .signout{background:none;border:1px solid rgba(255,255,255,.2);color:#cdd8ec;border-radius:8px;padding:8px 12px}
+
+  main{padding:22px 26px;min-width:0}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
+  .sub{color:var(--steel);font-size:13px}
+  .head-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+  .board{display:grid;grid-auto-flow:column;grid-auto-columns:242px;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:start}
+  .col{background:#eef2f8;border-radius:var(--radius);padding:10px}
+  .col h3{margin:2px 4px 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);display:flex;justify-content:space-between}
+  .deal{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:pointer;width:100%;text-align:left}
+  .deal:hover{border-color:var(--navy)}
+  .deal .t{font-weight:600;font-size:13px;margin-bottom:3px}
+  .deal .v{color:var(--verified);font-weight:700}
+  .deal .m{color:var(--steel);font-size:12px}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  th{background:#f0f3f9;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);padding:9px 12px}
+  td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+  tr.rowbtn{cursor:pointer}
+  tr.rowbtn:hover td{background:#f7f9fd}
+  .chip{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px}
+  .chip.g{background:#e8f6ee;color:#14663a}
+  .chip.a{background:#fdeee3;color:#9a3d09}
+  .chip.n{background:#e9eef7;color:#33518a}
+
+  .assistant-wrap{display:grid;grid-template-columns:250px 1fr;gap:16px;align-items:start}
+  .assist-list{display:flex;flex-direction:column;gap:8px}
+  .assist-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;text-align:left}
+  .assist-card.active{border-color:var(--navy);box-shadow:0 0 0 1px var(--navy)}
+  .assist-card .t{font-weight:700;font-size:13px}
+  .assist-card .d{color:var(--steel);font-size:12px;margin-top:3px}
+  .chat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-height:440px}
+  .msgs{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+  .msg{max-width:85%;border-radius:10px;padding:10px 13px;white-space:pre-wrap}
+  .msg.user{align-self:flex-end;background:var(--navy);color:#fff}
+  .msg.ai{align-self:flex-start;background:#f0f3f9}
+  .msg .grounded{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--verified);margin-top:8px}
+  .msg .approval{display:block;font-size:11px;color:var(--amber);font-weight:600;margin-top:4px}
+  .composer{display:flex;gap:8px;border-top:1px solid var(--line);padding:12px}
+  .composer textarea{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;resize:none;height:44px}
+  .empty{color:var(--steel);padding:30px;text-align:center}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(9,17,35,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0}
+  @media(min-width:640px){ .overlay{align-items:center;padding:20px} }
+  .sheet{background:var(--card);width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:20px;max-height:88vh;overflow-y:auto}
+  @media(min-width:640px){ .sheet{border-radius:14px} }
+  .sheet h2{margin:0 0 14px;font-size:16px;font-weight:800}
+  .sheet-actions{display:flex;gap:8px;margin-top:16px}
+  .sheet-actions .btn{flex:1}
+  .stage-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+  .stage-row input{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+  .icon-btn{border:1px solid var(--line);background:#fff;border-radius:8px;width:34px;height:34px;font-weight:700}
+  .icon-btn:disabled{opacity:.35;cursor:default}
+  .form-err{color:var(--danger);font-size:12px;margin-top:8px;display:none}
+  .form-err.show{display:block}
+
+  /* Recorder */
+  .rec-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);margin-right:8px;animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .rec-timer{font-size:30px;font-weight:800;letter-spacing:.02em;text-align:center;margin:16px 0;font-variant-numeric:tabular-nums}
+  .rec-status{display:flex;align-items:center;gap:8px;justify-content:center;color:var(--steel);font-size:13px;margin:12px 0}
+  .spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .consent-row{display:flex;gap:10px;align-items:flex-start;background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0;font-size:13px}
+  .consent-row input{margin-top:2px}
+  .legal-note{font-size:12px;color:var(--steel);margin-top:8px}
+  .attach-note{font-size:13px;color:var(--steel);margin:0 0 6px}
+  .attach-note b{color:var(--ink)}
+  .chip.r{background:#fdecea;color:#8c2f22}
+  .sheet audio{width:100%;margin-top:10px}
+  .rec-link-sel{max-width:180px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe}
+
+  @media (max-width: 860px){
+    .shell{grid-template-columns:1fr}
+    aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5}
+    aside .mark{margin:0 8px 0 0}
+    .spacer{display:none}
+    .assistant-wrap{grid-template-columns:1fr}
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+
+<div id="auth">
+  <div class="auth-card">
+    <div class="mark"><span class="iq">IQ</span>
+      <span class="wordmark">CRMAI&nbsp;IQ<small>Appliance IQ · CRM</small></span></div>
+    <p class="tagline">The pipeline is real. We checked.</p>
+    <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="email"></div>
+    <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password"></div>
+    <button class="btn btn-primary btn-block" id="signinBtn">Sign in</button>
+    <div class="auth-alt">New here? <a id="signupLink">Create an account</a></div>
+    <div class="notice" id="authNotice"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="shell">
+    <aside>
+      <div class="mark"><span class="iq">IQ</span>
+        <span class="wordmark">CRMAI&nbsp;IQ<small>Appliance IQ</small></span></div>
+      <div class="org-pick"><select id="orgSelect" aria-label="Organization"></select></div>
+      <button class="nav-btn active" data-view="pipeline">Pipeline</button>
+      <button class="nav-btn" data-view="contacts">Contacts</button>
+      <button class="nav-btn" data-view="products">Products</button>
+      <button class="nav-btn" data-view="tasks">Tasks</button>
+      <button class="nav-btn" data-view="recordings">Recordings</button>
+      <button class="nav-btn" data-view="assistant">AI Assistant</button>
+      <div class="spacer"></div>
+      <button class="signout" id="signoutBtn">Sign out</button>
+    </aside>
+    <main id="main"></main>
+  </div>
+</div>
+
+<div id="modalRoot"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = (s)=>document.querySelector(s);
+const authEl = $('#auth'), appEl = $('#app'), mainEl = $('#main'), modalRoot = $('#modalRoot');
+const money = (n)=> n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
+const esc = (s)=> String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let orgs=[], currentOrg=null, currentView='pipeline';
+let assistants=[], currentAssistant=null, chatLog=[];
+let cache={stages:[],deals:[],contacts:[],companies:[]};
+
+function note(msg, ok=false){ const n=$('#authNotice'); n.textContent=msg; n.className='notice '+(ok?'ok':'err'); }
+$('#signinBtn').onclick = async ()=>{
+  const { error } = await sb.auth.signInWithPassword({ email:$('#email').value.trim(), password:$('#password').value });
+  if(error) return note(error.message);
+  boot();
+};
+$('#signupLink').onclick = async ()=>{
+  const email=$('#email').value.trim(), password=$('#password').value;
+  if(!email||!password) return note('Enter an email and password, then tap Create an account again.');
+  const { error } = await sb.auth.signUp({ email, password });
+  if(error) return note(error.message);
+  note('Account created. Signing you in…', true);
+  const { error: e2 } = await sb.auth.signInWithPassword({ email, password });
+  if(e2) return note('Account created — check your email to confirm, then sign in.', true);
+  boot();
+};
+$('#signoutBtn').onclick = async ()=>{ await sb.auth.signOut(); location.reload(); };
+
+async function boot(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session){ authEl.style.display='flex'; appEl.style.display='none'; return; }
+  authEl.style.display='none'; appEl.style.display='block';
+
+  const { data: memberships } = await sb.from('organization_members')
+    .select('organization_id, role, organizations(id,name,slug)').eq('status','active');
+  orgs = (memberships??[]).map(m=>m.organizations).filter(Boolean);
+
+  if(orgs.length===0){
+    const { data, error } = await sb.rpc('join_demo_org');
+    if(!error && data?.organization_id){
+      const { data: m2 } = await sb.from('organization_members')
+        .select('organizations(id,name,slug)').eq('status','active');
+      orgs = (m2??[]).map(m=>m.organizations).filter(Boolean);
+    }
+  }
+  if(orgs.length===0){ mainEl.innerHTML = `<div class="empty">Your account isn't in an organization yet. Ask your administrator for an invite.</div>`; return; }
+
+  currentOrg = orgs[0];
+  const sel = $('#orgSelect');
+  sel.innerHTML = orgs.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  sel.onchange = ()=>{ currentOrg = orgs.find(o=>o.id===sel.value); chatLog=[]; assistants=[]; render(); };
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.onclick = ()=>{ document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); currentView=b.dataset.view; render(); };
+  });
+  render();
+}
+
+// ---------- Modal helpers ----------
+function openModal(html){ modalRoot.innerHTML = `<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`;
+  $('#ovl').addEventListener('click', e=>{ if(e.target.id==='ovl') closeModal(); }); }
+function closeModal(){ modalRoot.innerHTML=''; }
+function formErr(msg){ const el=$('#formErr'); if(el){ el.textContent=msg; el.classList.add('show'); } }
+
+// ---------- Data loads ----------
+async function loadCore(){
+  const [st, dl, ct, co] = await Promise.all([
+    sb.from('pipeline_stages').select('*').eq('organization_id',currentOrg.id).order('sort_order'),
+    sb.from('crm_deals').select('*, contacts(id,first_name,last_name)').eq('organization_id',currentOrg.id).order('created_at'),
+    sb.from('contacts').select('*, companies(id,name)').eq('organization_id',currentOrg.id).order('created_at'),
+    sb.from('companies').select('id,name').eq('organization_id',currentOrg.id).order('name')
+  ]);
+  cache = { stages: st.data??[], deals: dl.data??[], contacts: ct.data??[], companies: co.data??[] };
+}
+
+async function render(){
+  mainEl.innerHTML = `<div class="empty">Loading…</div>`;
+  if(['pipeline','contacts','tasks','recordings'].includes(currentView)) await loadCore();
+  if(currentView==='pipeline') return renderPipeline();
+  if(currentView==='contacts') return renderContacts();
+  if(currentView==='products') return renderProducts();
+  if(currentView==='tasks') return renderTasks();
+  if(currentView==='recordings') return renderRecordings();
+  if(currentView==='assistant') return renderAssistant();
+}
+
+// ================= PIPELINE =================
+function renderPipeline(){
+  const total = cache.deals.filter(d=>!d.closed_at).reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const cols = cache.stages.map(st=>{
+    const items = cache.deals.filter(d=>d.stage===st.name);
+    return `<div class="col"><h3><span>${esc(st.name)}</span><span class="num">${items.length}</span></h3>
+      ${items.map(d=>`<button class="deal" data-deal="${d.id}"><div class="t">${esc(d.title)}</div>
+        <div class="v num">${money(d.value_amount)}</div>
+        <div class="m">${esc(d.contacts? (d.contacts.first_name+' '+(d.contacts.last_name??'')) : '')}${d.expected_close_date? ' · '+esc(d.expected_close_date):''}</div>
+      </button>`).join('') || `<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>`}
+    </div>`;
+  }).join('');
+  mainEl.innerHTML = `<div class="page-head"><div><h1>Pipeline</h1>
+      <div class="sub">${esc(currentOrg.name)} · open pipeline <b class="num">${money(total)}</b> · tap a card to move or edit it</div></div>
+      <div class="head-actions">
+        <button class="btn btn-ghost" id="recPitchBtn">🎙 Record pitch</button>
+        <button class="btn btn-ghost" id="editStagesBtn">Edit stages</button>
+        <button class="btn btn-primary" id="newDealBtn">+ New deal</button>
+      </div></div>
+    <div class="board">${cols}</div>`;
+  $('#newDealBtn').onclick = ()=>openDealModal(null);
+  $('#editStagesBtn').onclick = openStagesEditor;
+  $('#recPitchBtn').onclick = ()=>openRecorderModal(null);
+  document.querySelectorAll('[data-deal]').forEach(b=>{
+    b.onclick = ()=>openDealModal(cache.deals.find(d=>d.id===b.dataset.deal));
+  });
+}
+
+function openDealModal(deal){
+  const isNew = !deal;
+  openModal(`<h2>${isNew?'New deal':'Edit deal'}</h2>
+    ${isNew?'':`<button class="btn btn-ghost btn-block" id="f_record" style="margin-bottom:12px">🎙 Record sales pitch for this deal</button>`}
+    <div class="field"><label>Deal title</label><input id="f_title" value="${esc(deal?.title??'')}" placeholder="e.g. Chen — Kitchen Package"></div>
+    <div class="field"><label>Stage</label><select id="f_stage">
+      ${cache.stages.map(s=>`<option ${((deal?.stage??cache.stages[0]?.name)===s.name)?'selected':''}>${esc(s.name)}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Contact</label><select id="f_contact">
+      <option value="">— none —</option>
+      ${cache.contacts.map(c=>`<option value="${c.id}" ${deal?.contact_id===c.id?'selected':''}>${esc(c.first_name+' '+(c.last_name??''))}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Value (CAD)</label><input id="f_value" type="number" step="0.01" value="${deal?.value_amount??''}"></div>
+    <div class="field"><label>Expected close date</label><input id="f_close" type="date" value="${deal?.expected_close_date??''}"></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">
+      ${isNew?'':'<button class="btn btn-danger" id="f_delete">Delete</button>'}
+      <button class="btn btn-ghost" id="f_cancel">Cancel</button>
+      <button class="btn btn-primary" id="f_save">${isNew?'Create deal':'Save changes'}</button>
+    </div>`);
+  $('#f_cancel').onclick = closeModal;
+  if(!isNew) $('#f_record').onclick = ()=>openRecorderModal({ type:'deal', id: deal.id, label: deal.title });
+  if(!isNew) $('#f_delete').onclick = async ()=>{
+    const { error } = await sb.from('crm_deals').delete().eq('id', deal.id);
+    if(error) return formErr(error.message.includes('policy')?'Only org admins can delete deals.':error.message);
+    closeModal(); render();
+  };
+  $('#f_save').onclick = async ()=>{
+    const title = $('#f_title').value.trim();
+    if(!title) return formErr('Give the deal a title.');
+    const stage = $('#f_stage').value;
+    const terminal = cache.stages.find(s=>s.name===stage)?.is_terminal;
+    const row = {
+      organization_id: currentOrg.id,
+      title, stage,
+      contact_id: $('#f_contact').value || null,
+      company_id: cache.contacts.find(c=>c.id===$('#f_contact').value)?.company_id ?? deal?.company_id ?? null,
+      value_amount: $('#f_value').value===''?null:Number($('#f_value').value),
+      value_currency: 'CAD',
+      expected_close_date: $('#f_close').value || null,
+      closed_at: terminal ? (deal?.closed_at ?? new Date().toISOString()) : null,
+    };
+    const q = isNew ? sb.from('crm_deals').insert(row)
+                    : sb.from('crm_deals').update(row).eq('id', deal.id);
+    const { error } = await q;
+    if(error) return formErr(error.message);
+    closeModal(); render();
+  };
+}
+
+function openStagesEditor(){
+  const rows = cache.stages.map((s,i)=>{
+    const inUse = cache.deals.some(d=>d.stage===s.name);
+    return `<div class="stage-row" data-sid="${s.id}">
+      <input value="${esc(s.name)}" data-rename="${s.id}">
+      <button class="icon-btn" data-up="${i}" ${i===0?'disabled':''} aria-label="Move up">↑</button>
+      <button class="icon-btn" data-down="${i}" ${i===cache.stages.length-1?'disabled':''} aria-label="Move down">↓</button>
+      <button class="icon-btn" data-del="${s.id}" ${inUse?'disabled title="Move its deals first"':''} aria-label="Delete stage">✕</button>
+    </div>`;
+  }).join('');
+  openModal(`<h2>Edit pipeline stages</h2>
+    <div class="sub" style="margin-bottom:12px">Rename inline, reorder with arrows. A stage with deals in it can't be deleted — move its deals first.</div>
+    ${rows}
+    <div class="stage-row"><input id="newStageName" placeholder="Add a stage…"><button class="icon-btn" id="addStageBtn" aria-label="Add stage">+</button></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="st_cancel">Close</button>
+      <button class="btn btn-primary" id="st_save">Save changes</button>
+    </div>`);
+  $('#st_cancel').onclick = ()=>{ closeModal(); render(); };
+  let order = cache.stages.map(s=>s.id);
+  const swap=(i,j)=>{ [order[i],order[j]]=[order[j],order[i]];
+    const parent = $('#st_save').closest('.sheet');
+    const rows = [...parent.querySelectorAll('.stage-row[data-sid]')];
+    const a=rows.find(r=>r.dataset.sid===order[j]), b=rows.find(r=>r.dataset.sid===order[i]);
+    a.parentNode.insertBefore(b, a);
+    refreshArrowStates(parent);
+  };
+  function refreshArrowStates(parent){
+    const rows=[...parent.querySelectorAll('.stage-row[data-sid]')];
+    rows.forEach((r,idx)=>{
+      const up=r.querySelector('[data-up]'), dn=r.querySelector('[data-down]');
+      if(up){ up.disabled = idx===0; up.dataset.up = idx; }
+      if(dn){ dn.disabled = idx===rows.length-1; dn.dataset.down = idx; }
+    });
+  }
+  modalRoot.addEventListener('click', async (e)=>{
+    const t=e.target;
+    if(t.dataset.up!==undefined && !t.disabled){ const i=+t.dataset.up; swap(i,i-1); }
+    if(t.dataset.down!==undefined && !t.disabled){ const i=+t.dataset.down; swap(i,i+1); }
+    if(t.dataset.del){
+      const { error } = await sb.from('pipeline_stages').delete().eq('id', t.dataset.del);
+      if(error) return formErr(error.message.includes('policy')?'Only org admins can delete stages.':error.message);
+      order = order.filter(id=>id!==t.dataset.del);
+      t.closest('.stage-row').remove();
+      refreshArrowStates(t.closest('.sheet'));
+    }
+    if(t.id==='addStageBtn'){
+      const name=$('#newStageName').value.trim();
+      if(!name) return formErr('Type a stage name first.');
+      const { data, error } = await sb.from('pipeline_stages')
+        .insert({ organization_id: currentOrg.id, name, sort_order: order.length+1 }).select().single();
+      if(error) return formErr(error.message);
+      order.push(data.id);
+      const row=document.createElement('div');
+      row.className='stage-row'; row.dataset.sid=data.id;
+      row.innerHTML=`<input value="${esc(name)}" data-rename="${data.id}">
+        <button class="icon-btn" data-up="">↑</button><button class="icon-btn" data-down="">↓</button>
+        <button class="icon-btn" data-del="${data.id}">✕</button>`;
+      $('#newStageName').closest('.stage-row').before(row);
+      $('#newStageName').value='';
+      refreshArrowStates(row.closest('.sheet'));
+    }
+  });
+  $('#st_save').onclick = async ()=>{
+    const sheet=$('#st_save').closest('.sheet');
+    const rows=[...sheet.querySelectorAll('.stage-row[data-sid]')];
+    for(let i=0;i<rows.length;i++){
+      const sid=rows[i].dataset.sid;
+      const newName=rows[i].querySelector('input').value.trim();
+      const orig=cache.stages.find(s=>s.id===sid);
+      const updates={ sort_order:i+1 };
+      if(orig && newName && newName!==orig.name){
+        updates.name=newName;
+        await sb.from('crm_deals').update({stage:newName}).eq('organization_id',currentOrg.id).eq('stage',orig.name);
+      }
+      const { error } = await sb.from('pipeline_stages').update(updates).eq('id',sid);
+      if(error) return formErr(error.message);
+    }
+    closeModal(); render();
+  };
+}
+
+// ================= CONTACTS =================
+function renderContacts(){
+  mainEl.innerHTML = `<div class="page-head"><div><h1>Contacts</h1><div class="sub num">${cache.contacts.length} people · tap a row to edit</div></div>
+      <div class="head-actions"><button class="btn btn-ghost" id="recConvBtn">🎙 Record</button><button class="btn btn-primary" id="newContactBtn">+ Add contact</button></div></div>
+    <table><thead><tr><th>Name</th><th>Company</th><th>Stage</th><th>Email</th><th>Phone</th></tr></thead><tbody>
+    ${cache.contacts.map(c=>`<tr class="rowbtn" data-ct="${c.id}"><td><b>${esc(c.first_name)} ${esc(c.last_name??'')}</b>${c.title?`<div class="sub">${esc(c.title)}</div>`:''}</td>
+      <td>${esc(c.companies?.name??'—')}</td>
+      <td><span class="chip n">${esc(c.lifecycle_stage)}</span></td>
+      <td>${esc(c.email??'—')}</td><td class="num">${esc(c.phone??'—')}</td></tr>`).join('')
+      || `<tr><td colspan="5" class="empty">No contacts yet — add your first one.</td></tr>`}
+    </tbody></table>`;
+  $('#newContactBtn').onclick = ()=>openContactModal(null);
+  $('#recConvBtn').onclick = ()=>openRecorderModal(null);
+  document.querySelectorAll('[data-ct]').forEach(r=>{
+    r.onclick = ()=>openContactModal(cache.contacts.find(c=>c.id===r.dataset.ct));
+  });
+}
+
+function openContactModal(ct){
+  const isNew = !ct;
+  openModal(`<h2>${isNew?'Add contact':'Edit contact'}</h2>
+    ${isNew?'':`<button class="btn btn-ghost btn-block" id="c_record" style="margin-bottom:12px">🎙 Record conversation with this contact</button>`}
+    <div class="field"><label>First name</label><input id="c_first" value="${esc(ct?.first_name??'')}"></div>
+    <div class="field"><label>Last name</label><input id="c_last" value="${esc(ct?.last_name??'')}"></div>
+    <div class="field"><label>Title / role</label><input id="c_title" value="${esc(ct?.title??'')}" placeholder="optional"></div>
+    <div class="field"><label>Company</label><select id="c_company">
+      <option value="">— none / consumer —</option>
+      ${cache.companies.map(co=>`<option value="${co.id}" ${ct?.company_id===co.id?'selected':''}>${esc(co.name)}</option>`).join('')}
+      <option value="__new__">+ New company…</option>
+    </select></div>
+    <div class="field" id="newCoWrap" style="display:none"><label>New company name</label><input id="c_newco"></div>
+    <div class="field"><label>Email</label><input id="c_email" type="email" value="${esc(ct?.email??'')}"></div>
+    <div class="field"><label>Phone</label><input id="c_phone" value="${esc(ct?.phone??'')}"></div>
+    <div class="field"><label>Note</label><textarea id="c_note" rows="2">${esc(ct?.metadata?.note??'')}</textarea></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="c_cancel">Cancel</button>
+      <button class="btn btn-primary" id="c_save">${isNew?'Add contact':'Save changes'}</button>
+    </div>`);
+  $('#c_company').onchange = ()=>{ $('#newCoWrap').style.display = $('#c_company').value==='__new__'?'block':'none'; };
+  $('#c_cancel').onclick = closeModal;
+  if(!isNew) $('#c_record').onclick = ()=>openRecorderModal({ type:'contact', id: ct.id, label: `${ct.first_name} ${ct.last_name??''}`.trim() });
+  $('#c_save').onclick = async ()=>{
+    const first=$('#c_first').value.trim();
+    if(!first) return formErr('First name is required.');
+    let companyId = $('#c_company').value || null;
+    if(companyId==='__new__'){
+      const coName=$('#c_newco').value.trim();
+      if(!coName) return formErr('Type the new company name.');
+      const { data: co, error: coErr } = await sb.from('companies')
+        .insert({ organization_id: currentOrg.id, name: coName, display_name: coName, source: 'crmaiiq_app' })
+        .select('id').single();
+      if(coErr) return formErr(coErr.message);
+      companyId = co.id;
+    }
+    const row = {
+      organization_id: currentOrg.id,
+      first_name: first,
+      last_name: $('#c_last').value.trim() || null,
+      title: $('#c_title').value.trim() || null,
+      company_id: companyId,
+      email: $('#c_email').value.trim() || null,
+      phone: $('#c_phone').value.trim() || null,
+      source: ct?.source ?? 'crmaiiq_app',
+      metadata: { ...(ct?.metadata??{}), note: $('#c_note').value.trim() || undefined },
+    };
+    const q = isNew ? sb.from('contacts').insert(row)
+                    : sb.from('contacts').update(row).eq('id', ct.id);
+    const { error } = await q;
+    if(error) return formErr(error.message);
+    closeModal(); render();
+  };
+}
+
+// ================= PRODUCTS / TASKS =================
+async function renderProducts(){
+  const { data } = await sb.from('products').select('*').eq('organization_id',currentOrg.id).order('category');
+  mainEl.innerHTML = `<div class="page-head"><h1>Products</h1><div class="sub num">${(data??[]).length} models</div></div>
+    <table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Warranty</th><th>Stock</th></tr></thead><tbody>
+    ${(data??[]).map(p=>`<tr><td><b>${esc(p.brand)} ${esc(p.model)}</b><div class="sub">${esc(p.name)}</div></td>
+      <td>${esc(p.category??'—')}</td><td class="num">${money(p.msrp)}</td>
+      <td class="num">${p.margin_pct?p.margin_pct+'%':'—'}</td>
+      <td class="num">${p.warranty_months?p.warranty_months+' mo':'—'}</td>
+      <td>${p.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Special order</span>'}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+function renderTasks(){
+  sb.from('crm_tasks').select('*, crm_deals(title)').eq('organization_id',currentOrg.id)
+    .is('completed_at', null).order('due_at').then(({data})=>{
+    mainEl.innerHTML = `<div class="page-head"><h1>Tasks</h1><div class="sub num">${(data??[]).length} open</div></div>
+      <table><thead><tr><th>Task</th><th>Deal</th><th>Due</th><th>Priority</th><th></th></tr></thead><tbody>
+      ${(data??[]).map(t=>`<tr><td><b>${esc(t.title)}</b><div class="sub">${esc(t.description??'')}</div></td>
+        <td>${esc(t.crm_deals?.title??'—')}</td>
+        <td class="num">${t.due_at? new Date(t.due_at).toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—'}</td>
+        <td><span class="chip ${t.priority==='urgent'||t.priority==='high'?'a':'n'}">${esc(t.priority)}</span></td>
+        <td><button class="btn btn-ghost" data-done="${t.id}">Done</button></td></tr>`).join('')
+        || `<tr><td colspan="5" class="empty">No open tasks. An empty list is a finished list.</td></tr>`}
+      </tbody></table>`;
+    document.querySelectorAll('[data-done]').forEach(b=>{
+      b.onclick = async ()=>{ await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done); render(); };
+    });
+  });
+}
+
+// ================= RECORDINGS =================
+const REC_MAX_SECONDS = 900;              // 15 min
+const REC_MAX_BYTES = 25 * 1024 * 1024;   // 25 MB (transcription provider limit)
+const STATUS_CHIP = { uploaded:['n','Uploaded'], transcribing:['a','Transcribing…'], transcribed:['n','Transcribed'], analyzing:['a','Analyzing…'], complete:['g','Complete'], failed:['r','Failed'] };
+
+function recSupported(){ return !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder); }
+function fmtTime(s){ return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+function fmtBytes(b){ return b==null?'—':(b>1048576? (b/1048576).toFixed(1)+' MB' : Math.round(b/1024)+' KB'); }
+
+async function renderRecordings(){
+  const [{ data: recs }, ] = await Promise.all([
+    sb.from('sales_recordings').select('*').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}),
+  ]);
+  const reviewIds = (recs??[]).map(r=>r.coaching_review_id).filter(Boolean);
+  let reviews = {};
+  if(reviewIds.length){
+    const { data: rv } = await sb.from('ai_coaching_reviews').select('id, overall_score').in('id', reviewIds);
+    (rv??[]).forEach(r=>reviews[r.id]=r);
+  }
+  const attachLabel = (r)=>{
+    if(r.crm_record_type==='deal') return 'Deal: '+esc(cache.deals.find(d=>d.id===r.crm_record_id)?.title ?? '—');
+    if(r.crm_record_type==='contact'){ const c=cache.contacts.find(c=>c.id===r.crm_record_id); return 'Contact: '+esc(c? c.first_name+' '+(c.last_name??'') : '—'); }
+    return '';
+  };
+  mainEl.innerHTML = `<div class="page-head"><div><h1>Recordings</h1>
+      <div class="sub num">${(recs??[]).length} recording${(recs??[]).length===1?'':'s'} · training use only</div></div>
+      <div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 Record conversation</button></div></div>
+    <table><thead><tr><th>Recording</th><th>Attached to</th><th>Status</th><th>Coach score</th><th></th></tr></thead><tbody>
+    ${(recs??[]).map(r=>{
+      const [cls,label] = STATUS_CHIP[r.status] ?? ['n',esc(r.status)];
+      const score = r.coaching_review_id && reviews[r.coaching_review_id]?.overall_score!=null
+        ? `<b class="num">${Number(reviews[r.coaching_review_id].overall_score).toFixed(1)}</b>/10` : '—';
+      const linkSel = r.crm_record_id ? attachLabel(r) :
+        `<select class="rec-link-sel" data-link="${r.id}"><option value="">Link to record…</option>
+          ${cache.deals.map(d=>`<option value="deal:${d.id}">Deal: ${esc(d.title)}</option>`).join('')}
+          ${cache.contacts.map(c=>`<option value="contact:${c.id}">Contact: ${esc(c.first_name+' '+(c.last_name??''))}</option>`).join('')}
+        </select>`;
+      return `<tr><td><b>${esc(r.file_name ?? 'Recording')}</b>
+          <div class="sub num">${new Date(r.created_at).toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}${r.duration_seconds? ' · '+fmtTime(r.duration_seconds):''} · ${fmtBytes(r.file_size_bytes)}</div></td>
+        <td>${linkSel}</td>
+        <td><span class="chip ${cls}">${label}</span>${r.status==='failed'&&r.metadata?.last_error?`<div class="sub" style="max-width:200px">${esc(String(r.metadata.last_error).slice(0,120))}</div>`:''}</td>
+        <td>${score}</td>
+        <td style="white-space:nowrap"><button class="btn btn-ghost" data-play="${r.id}">Play</button>
+          ${r.status==='failed'||r.status==='uploaded'?`<button class="btn btn-ghost" data-retry="${r.id}">Analyze</button>`:''}</td></tr>`;
+    }).join('') || `<tr><td colspan="5" class="empty">No recordings yet — tap Record conversation to capture your first pitch.</td></tr>`}
+    </tbody></table>
+    <div id="recPlayer"></div>`;
+  $('#recNewBtn').onclick = ()=>openRecorderModal(null);
+  document.querySelectorAll('[data-play]').forEach(b=>{
+    b.onclick = async ()=>{
+      const r = (recs??[]).find(x=>x.id===b.dataset.play);
+      const { data, error } = await sb.storage.from('crm-media').createSignedUrl(r.file_path, 300);
+      if(error || !data?.signedUrl) return;
+      $('#recPlayer').innerHTML = `<audio controls autoplay src="${data.signedUrl}"></audio>`;
+    };
+  });
+  document.querySelectorAll('[data-link]').forEach(sel=>{
+    sel.onchange = async ()=>{
+      if(!sel.value) return;
+      const [type,id] = sel.value.split(':');
+      await sb.from('sales_recordings').update({ crm_record_type:type, crm_record_id:id }).eq('id', sel.dataset.link);
+      await sb.from('activities').update({ entity_type:type, entity_id:id })
+        .eq('related_recording_id', sel.dataset.link).eq('organization_id', currentOrg.id);
+      render();
+    };
+  });
+  document.querySelectorAll('[data-retry]').forEach(b=>{
+    b.onclick = async ()=>{
+      b.disabled = true; b.textContent = 'Working…';
+      const { data: act } = await sb.from('activities').select('id')
+        .eq('related_recording_id', b.dataset.retry).eq('organization_id', currentOrg.id)
+        .order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(act) await processRecording(act.id, null);
+      render();
+    };
+  });
+}
+
+async function processRecording(activityId, onStatus){
+  const { data:{ session } } = await sb.auth.getSession();
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/activity-analyzer`, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+    body: JSON.stringify({ mode:'process', activity_id: activityId }),
+  }).catch(()=>null);
+  if(!res) return { error:'network_error', detail:'Network error — the recording is saved; retry from the Recordings tab.' };
+  return await res.json().catch(()=>({ error:'bad_response' }));
+}
+
+function openRecorderModal(attach){ // attach = {type:'deal'|'contact', id, label} | null
+  if(!recSupported()){
+    openModal(`<h2>Recording not supported</h2>
+      <p class="sub">This browser doesn't support in-browser audio recording. Try the latest Chrome, Edge, Safari, or Firefox over HTTPS.</p>
+      <div class="sheet-actions"><button class="btn btn-primary" id="rs_ok">OK</button></div>`);
+    $('#rs_ok').onclick = closeModal;
+    return;
+  }
+  let mediaStream=null, recorder=null, chunks=[], blob=null, mime='', elapsed=0, tick=null, poll=null;
+  const attachLine = attach
+    ? `<p class="attach-note">Will attach to <b>${esc(attach.label)}</b>.</p>`
+    : `<p class="attach-note">Not attached to a record — you can link it later from the Recordings tab.</p>`;
+  const cleanup = ()=>{ clearInterval(tick); clearInterval(poll); mediaStream?.getTracks().forEach(t=>t.stop()); };
+
+  const stepConsent = ()=>{
+    openModal(`<h2>${attach?.type==='contact'?'Record conversation':'Record sales pitch'}</h2>
+      ${attachLine}
+      <label class="consent-row"><input type="checkbox" id="rc_consent">
+        <span>I confirm I have permission to record this conversation for training purposes.</span></label>
+      <p class="legal-note">Reminder: you are responsible for complying with recording-consent laws in your region and with company policy. This app does not provide legal advice.</p>
+      <div class="sub num">Limits: up to ${REC_MAX_SECONDS/60} minutes / 25 MB per recording.</div>
+      <div class="form-err" id="formErr"></div>
+      <div class="sheet-actions">
+        <button class="btn btn-ghost" id="rc_cancel">Cancel</button>
+        <button class="btn btn-primary" id="rc_start" disabled>Start recording</button>
+      </div>`);
+    $('#ovl').addEventListener('click', e=>{ if(e.target.id==='ovl') cleanup(); });
+    $('#rc_cancel').onclick = ()=>{ cleanup(); closeModal(); };
+    $('#rc_consent').onchange = ()=>{ $('#rc_start').disabled = !$('#rc_consent').checked; };
+    $('#rc_start').onclick = startRecording;
+  };
+
+  const startRecording = async ()=>{
+    try{ mediaStream = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+    catch{ return formErr('Microphone access was blocked. Allow the mic in your browser settings and try again.'); }
+    mime = ['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t)) ?? '';
+    recorder = new MediaRecorder(mediaStream, mime? { mimeType:mime } : undefined);
+    chunks=[]; elapsed=0;
+    recorder.ondataavailable = e=>{ if(e.data.size) chunks.push(e.data); };
+    recorder.onstop = ()=>{ blob = new Blob(chunks, { type: mime || 'audio/webm' }); stepPreview(); };
+    recorder.start(1000);
+    openModal(`<h2>Recording…</h2>
+      ${attachLine}
+      <div class="rec-timer"><span class="rec-dot"></span><span id="rc_time">0:00</span></div>
+      <div class="sub" style="text-align:center">Auto-stops at ${REC_MAX_SECONDS/60}:00</div>
+      <div class="sheet-actions"><button class="btn btn-primary" id="rc_stop">⏹ Stop recording</button></div>`);
+    $('#ovl').addEventListener('click', e=>{ if(e.target.id==='ovl') stopRecording(); }); // outside click stops safely -> preview, no lost audio
+    tick = setInterval(()=>{ elapsed++; const t=$('#rc_time'); if(t) t.textContent=fmtTime(elapsed);
+      if(elapsed>=REC_MAX_SECONDS) stopRecording(); }, 1000);
+    $('#rc_stop').onclick = stopRecording;
+  };
+  const stopRecording = ()=>{ clearInterval(tick); if(recorder?.state!=='inactive') recorder.stop(); mediaStream?.getTracks().forEach(t=>t.stop()); };
+
+  const stepPreview = ()=>{
+    const tooBig = blob.size > REC_MAX_BYTES;
+    openModal(`<h2>Preview recording</h2>
+      ${attachLine}
+      <div class="sub num">${fmtTime(elapsed)} · ${fmtBytes(blob.size)}</div>
+      <audio controls src="${URL.createObjectURL(blob)}"></audio>
+      ${tooBig? `<div class="form-err show">This recording is over 25 MB and can't be uploaded. Record a shorter take.</div>`:'<div class="form-err" id="formErr"></div>'}
+      <div class="sheet-actions">
+        <button class="btn btn-ghost" id="rp_discard">Discard</button>
+        <button class="btn btn-ghost" id="rp_redo">Re-record</button>
+        <button class="btn btn-primary" id="rp_upload" ${tooBig?'disabled':''}>Upload &amp; analyze</button>
+      </div>`);
+    $('#rp_discard').onclick = ()=>{ cleanup(); closeModal(); };
+    $('#rp_redo').onclick = stepConsent;
+    $('#rp_upload').onclick = stepUpload;
+  };
+
+  const setStatus = (label)=>{ const el=$('#ru_status'); if(el) el.innerHTML = `<span class="spin"></span> ${label}`; };
+
+  const stepUpload = async ()=>{
+    openModal(`<h2>Processing recording</h2>${attachLine}
+      <div class="rec-status" id="ru_status"><span class="spin"></span> Uploading…</div>
+      <div class="form-err" id="formErr"></div>
+      <div class="sheet-actions"><button class="btn btn-ghost" id="ru_close">Close — continue in background</button></div>`);
+    $('#ru_close').onclick = ()=>{ clearInterval(poll); closeModal(); if(currentView==='recordings') render(); };
+    $('#ovl').addEventListener('click', e=>{ if(e.target.id==='ovl') clearInterval(poll); });
+
+    const { data:{ session } } = await sb.auth.getSession();
+    const recId = crypto.randomUUID();
+    const ext = (mime||'').includes('mp4') ? 'm4a' : 'webm';
+    const fileName = `pitch-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.${ext}`;
+    const path = `${currentOrg.id}/recordings/${recId}.${ext}`;
+    const consentAt = new Date().toISOString();
+
+    // 1. Metadata row (status: uploaded)
+    const { error: insErr } = await sb.from('sales_recordings').insert({
+      id: recId, organization_id: currentOrg.id, user_id: session.user.id,
+      kind: 'sales_pitch', recording_source: 'browser',
+      crm_record_type: attach?.type ?? null, crm_record_id: attach?.id ?? null,
+      file_path: path, file_name: fileName, mime_type: mime || 'audio/webm',
+      duration_seconds: elapsed, file_size_bytes: blob.size,
+      consent_confirmed: true, consent_confirmed_at: consentAt,
+      status: 'uploaded', metadata: { captured_via: 'crmaiiq_web' },
+    });
+    if(insErr) return formErr(`Couldn't save the recording record: ${insErr.message}`);
+
+    // 2. Audio to secure storage
+    const { error: upErr } = await sb.storage.from('crm-media').upload(path, blob, { contentType: mime || 'audio/webm' });
+    if(upErr){
+      await sb.from('sales_recordings').update({ status:'failed', metadata:{ captured_via:'crmaiiq_web', last_error:'upload_failed: '+upErr.message } }).eq('id', recId);
+      return formErr(`Upload failed: ${upErr.message}`);
+    }
+
+    // 3. Activity row (the CRM timeline entry the analyzer authorizes against)
+    const { data: act, error: actErr } = await sb.from('activities').insert({
+      organization_id: currentOrg.id, user_id: session.user.id, actor_user_id: session.user.id,
+      entity_type: attach?.type ?? 'unattached', entity_id: attach?.id ?? null,
+      activity_type: 'recording', source: 'manual',
+      title: attach? `Sales pitch — ${attach.label}` : 'Sales pitch recording',
+      related_recording_id: recId, related_file_path: path, metadata: {},
+    }).select('id').single();
+    if(actErr) return formErr(`Recording uploaded, but the activity couldn't be created: ${actErr.message}`);
+
+    // 4. Transcription + coaching (server-side; keys never touch the browser)
+    setStatus('Transcribing…');
+    poll = setInterval(async ()=>{
+      const { data: r } = await sb.from('sales_recordings').select('status').eq('id', recId).single();
+      if(r?.status==='transcribing') setStatus('Transcribing…');
+      if(r?.status==='analyzing') setStatus('Analyzing with AI coach…');
+    }, 2500);
+    const result = await processRecording(act.id, setStatus);
+    clearInterval(poll);
+
+    if(result?.ok){
+      const score = result.review?.overall_score;
+      openModal(`<h2>Analysis complete</h2>${attachLine}
+        <div class="rec-status" style="color:var(--verified);font-weight:700">✓ Uploaded, transcribed, and coached${score!=null?` — overall <span class="num">${Number(score).toFixed(1)}</span>/10`:''}</div>
+        <div class="sheet-actions">
+          <button class="btn btn-ghost" id="rd_close">Close</button>
+          <button class="btn btn-primary" id="rd_view">View in Recordings</button>
+        </div>`);
+      $('#rd_close').onclick = ()=>{ closeModal(); if(currentView==='recordings') render(); };
+      $('#rd_view').onclick = ()=>{ closeModal(); currentView='recordings';
+        document.querySelectorAll('.nav-btn').forEach(x=>x.classList.toggle('active', x.dataset.view==='recordings')); render(); };
+    } else {
+      openModal(`<h2>Recording saved — processing incomplete</h2>${attachLine}
+        <p class="sub">The audio is uploaded safely. ${esc(result?.detail ?? result?.error ?? 'Processing failed.')}</p>
+        <p class="sub">You can retry from the Recordings tab with the Analyze button.</p>
+        <div class="sheet-actions"><button class="btn btn-primary" id="rf_ok">OK</button></div>`);
+      $('#rf_ok').onclick = ()=>{ closeModal(); if(currentView==='recordings') render(); };
+    }
+  };
+
+  stepConsent();
+}
+
+// ================= ASSISTANT =================
+async function renderAssistant(){
+  if(assistants.length===0){
+    const { data, error } = await sb.rpc('list_available_assistants', { p_organization_id: currentOrg.id });
+    assistants = data ?? [];
+    if(error){ mainEl.innerHTML = `<div class="empty">Couldn't load assistants: ${esc(error.message)}</div>`; return; }
+  }
+  if(!currentAssistant && assistants.length) currentAssistant = assistants[0];
+  mainEl.innerHTML = `<div class="page-head"><div><h1>AI Assistant</h1>
+      <div class="sub">Advisory only · grounded in ${esc(currentOrg.name)}'s data · consequential actions await human approval</div></div></div>
+    <div class="assistant-wrap">
+      <div class="assist-list">${assistants.map(a=>`
+        <button class="assist-card ${a.assistant_key===currentAssistant?.assistant_key?'active':''}" data-key="${a.assistant_key}">
+          <div class="t">${esc(a.label)}</div><div class="d">${esc((a.description??'').slice(0,110))}…</div>
+        </button>`).join('')}</div>
+      <div class="chat">
+        <div class="msgs" id="msgs">${chatLog.map(renderMsg).join('') ||
+          `<div class="empty">Ask the ${esc(currentAssistant?.label??'assistant')} anything about this tenant's pipeline, products, or playbook.</div>`}</div>
+        <div class="composer">
+          <textarea id="promptBox" placeholder="e.g. Draft a follow-up for Sarah Chen's kitchen quote"></textarea>
+          <button class="btn btn-primary" id="sendBtn">Ask</button>
+        </div>
+      </div>
+    </div>`;
+  document.querySelectorAll('.assist-card').forEach(b=>{
+    b.onclick = ()=>{ currentAssistant = assistants.find(a=>a.assistant_key===b.dataset.key); chatLog=[]; renderAssistant(); };
+  });
+  $('#sendBtn').onclick = sendPrompt;
+  $('#promptBox').addEventListener('keydown', e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendPrompt(); }});
+}
+
+function renderMsg(m){
+  if(m.role==='user') return `<div class="msg user">${esc(m.text)}</div>`;
+  return `<div class="msg ai">${esc(m.text)}
+    ${m.grounded?`<span class="grounded">✓ grounded in tenant data${m.cites?` · ${m.cites} citation${m.cites>1?'s':''}`:''}</span>`:''}
+    ${m.approval?`<span class="approval">Recommendation queued for human approval</span>`:''}</div>`;
+}
+
+async function sendPrompt(){
+  const box = $('#promptBox'); const text = box.value.trim();
+  if(!text || !currentAssistant) return;
+  box.value=''; chatLog.push({role:'user', text});
+  chatLog.push({role:'ai', text:'Thinking…'});
+  paintMsgs();
+  const { data:{ session } } = await sb.auth.getSession();
+  try{
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/ai-request-processor`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+      body: JSON.stringify({ assistant_key: currentAssistant.assistant_key, prompt: text, organization_id: currentOrg.id })
+    });
+    const data = await res.json();
+    chatLog.pop();
+    if(data.answer){
+      chatLog.push({role:'ai', text:data.answer, grounded:true, cites:(data.knowledge_citations??[]).length, approval:data.approval_required});
+    } else if(data.error==='anthropic_api_key_not_configured'){
+      chatLog.push({role:'ai', text:'The request was recorded and governed, but the AI model key isn\'t configured yet. Add ANTHROPIC_API_KEY in Supabase → Edge Functions → Secrets to turn on answers.'});
+    } else {
+      chatLog.push({role:'ai', text:`That didn't go through: ${data.detail ?? data.error ?? res.status}`});
+    }
+  }catch(e){
+    chatLog.pop(); chatLog.push({role:'ai', text:'Network error — try again.'});
+  }
+  paintMsgs();
+}
+function paintMsgs(){ const el=$('#msgs'); if(!el) return; el.innerHTML = chatLog.map(renderMsg).join(''); el.scrollTop = el.scrollHeight; }
+
+boot();
+</script>
+</body>
+</html>
