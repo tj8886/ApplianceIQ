@@ -7,8 +7,8 @@ The Appliance Sales Operating System — CRM, AI Academy, and governed AI layer 
 | App | URL | Netlify project | Source in this repo |
 |---|---|---|---|
 | CRMAI IQ (CRM) | https://crmaiiq.netlify.app | `crmaiiq` | `apps/crm/` |
-| ApplianceIQ Academy | https://applianceiq-aiacademy.netlify.app | (separate Netlify account) | `apps/academy-aiacademy/` |
-| Academy (trainingiq variant) | https://trainingiq-academy.netlify.app | `trainingiq-academy` | `apps/academy-trainingiq/` |
+| ApplianceIQ Academy | https://applianceiq-aiacademy.netlify.app | (separate Netlify account, same content) | `apps/academy/` |
+| Academy (team mirror) | https://trainingiq-academy.netlify.app | `trainingiq-academy` | `apps/academy/` |
 
 Backend: Supabase project **ApplianceIQ** (`fumwwhyozeouoqscolke`, ca-central-1).
 
@@ -17,8 +17,7 @@ Backend: Supabase project **ApplianceIQ** (`fumwwhyozeouoqscolke`, ca-central-1)
 ```
 apps/
   crm/                      Single-file CRM app (index.html) + netlify.toml
-  academy-aiacademy/        Academy site (applianceiq-aiacademy.netlify.app)
-  academy-trainingiq/       Academy site (trainingiq-academy.netlify.app)
+  academy/                  Academy site (single source; deployed to both academy URLs)
 supabase/
   migrations/               All applied migrations, exported from supabase_migrations.schema_migrations
   functions/
