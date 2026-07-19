@@ -1,5 +1,9 @@
 # ApplianceIQ
 
+![CI & Deploy](https://github.com/tj8886/ApplianceIQ/actions/workflows/ci.yml/badge.svg)
+![CRM](https://img.shields.io/website?url=https%3A%2F%2Fcrmaiiq.netlify.app&label=CRM)
+![Academy](https://img.shields.io/website?url=https%3A%2F%2Ftrainingiq-academy.netlify.app&label=Academy)
+
 The Appliance Sales Operating System — CRM, AI Academy, and governed AI layer for appliance and specialty retail.
 
 ## Live deployments
@@ -33,6 +37,12 @@ supabase/
 - **Sales pitch recording**: browser MediaRecorder → private `crm-media` bucket (`{org_id}/recordings/{id}.webm`) → `sales_recordings` row (consent fields required) → `activities` row → `activity-analyzer` `process` mode runs Whisper transcription + Claude coaching. Status lifecycle: `uploaded → transcribing → transcribed → analyzing → complete | failed`. `recording_source` supports future `wearable`, `phone_system`, `uploaded_file`, `meeting_platform`.
 - **AI governance**: every assistant call goes through `ai_submit_request` (SQL, as the user) before any model call; requests, audit events, and token usage land in `ai_requests`, `ai_audit_events`, `ai_usage_meter`.
 - **Secrets** live only in Supabase Edge Function secrets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (transcription), optional `VOYAGE_API_KEY`, `AI_MODEL`, `EMBEDDING_MODEL`. Nothing sensitive ships to the frontend; the Supabase publishable key in the apps is public by design.
+
+## Docs
+
+- [DEPLOYMENT.md](DEPLOYMENT.md) — how each piece ships, CI setup, rollback
+- [CONTRIBUTING.md](CONTRIBUTING.md) — ground rules and conventions
+- [.env.example](.env.example) — reference for server-side secrets
 
 ## Deploying
 

@@ -1,0 +1,72 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check CRM inline JS syntax
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'fs';
+          const html = readFileSync('apps/crm/index.html','utf8');
+          const m = html.match(/<script type=\"module\">([\s\S]*?)<\/script>/);
+          if(!m) { console.error('no module script found'); process.exit(1); }
+          const js = m[1].replace(/^import .*$/m, 'const createClient = () => ({});');
+          new Function(js);
+          console.log('CRM JS syntax OK');
+          "
+
+      - name: Check academy HTML is well-formed
+        run: |
+          # Guard against the corrupted-tag regression (<di<div) that shipped once
+          if grep -q '<di<' apps/academy/index.html; then
+            echo 'Corrupted tag found in academy HTML'; exit 1
+          fi
+          echo 'Academy HTML OK'
+
+      - name: Check migrations are timestamp-ordered
+        run: |
+          ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
+
+  deploy-crm:
+    name: Deploy CRM to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/crm -> crmaiiq.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/crm --site 38f8f64f-c674-4e14-8639-37ebb40ac939
+
+  deploy-academy:
+    name: Deploy Academy to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/academy -> trainingiq-academy.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/academy --site 840dd2f5-21c6-410c-9491-e4887fa9be38
