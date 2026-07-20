@@ -4,7 +4,17 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const DEFAULT_MODEL = Deno.env.get("AI_MODEL") ?? "claude-sonnet-4-6";
+// Tiered model routing. Assistants opt into a tier via ai_assistants.config.model_tier
+// ('light' | 'standard' | 'heavy'); default is standard. Env overrides per tier.
+const MODEL_TIERS: Record<string, string> = {
+  light: Deno.env.get("AI_MODEL_LIGHT") ?? "claude-haiku-4-5",
+  standard: Deno.env.get("AI_MODEL") ?? "claude-sonnet-4-6",
+  heavy: Deno.env.get("AI_MODEL_HEAVY") ?? "claude-opus-4-8",
+};
+function pickAssistantModel(assistantConfig: unknown): string {
+  const tier = String((assistantConfig as Record<string, unknown> | null)?.["model_tier"] ?? "standard");
+  return MODEL_TIERS[tier] ?? MODEL_TIERS.standard;
+}
 const MAX_KNOWLEDGE_CHUNKS = 12;
 
 Deno.serve(async (req: Request) => {
@@ -134,6 +144,7 @@ Deno.serve(async (req: Request) => {
     knowledge: rankedChunks, groundedContext: reqRow?.grounded_context ?? null,
   });
 
+  const chosenModel = pickAssistantModel(assistant?.config);
   const startedAt = Date.now();
   let modelAnswer = "";
   let usage: { input_tokens?: number; output_tokens?: number } = {};
@@ -146,7 +157,7 @@ Deno.serve(async (req: Request) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: DEFAULT_MODEL, max_tokens: maxTokens,
+        model: chosenModel, max_tokens: maxTokens,
         system: systemPrompt,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -167,7 +178,7 @@ Deno.serve(async (req: Request) => {
     await admin.from("ai_audit_events").insert({
       organization_id: orgId, request_id: requestId, assistant_key: assistantKey,
       event_type: "ai.model.call_failed", event_status: "error",
-      event_payload: { error: errMsg, model: DEFAULT_MODEL },
+      event_payload: { error: errMsg, model: chosenModel },
     });
     return json({
       request_id: requestId, session_id: sessionId,
@@ -181,7 +192,7 @@ Deno.serve(async (req: Request) => {
   // 4. BOOKKEEPING
   const modelOutput = {
     mode: "model", assistant_key: assistantKey, answer: modelAnswer,
-    model: { provider: "anthropic", name: DEFAULT_MODEL, latency_ms: latencyMs },
+    model: { provider: "anthropic", name: chosenModel, latency_ms: latencyMs },
     usage,
     knowledge_citations: rankedChunks.filter((c) => c.score > 0)
       .map((c) => ({ chunk_key: c.chunk_key, title: c.title, citation: c.citation })),
@@ -195,7 +206,7 @@ Deno.serve(async (req: Request) => {
   await admin.from("ai_requests").update({
     output: modelOutput,
     explanation: "Model response generated over the Appliance IQ governance envelope. Grounded in tenant-scoped context and knowledge. No operational records were modified.",
-    model_provider: "anthropic", model_name: DEFAULT_MODEL,
+    model_provider: "anthropic", model_name: chosenModel,
     token_estimate: totalTokens > 0 ? totalTokens : undefined,
     completed_at: new Date().toISOString(),
   }).eq("id", requestId);
@@ -204,7 +215,7 @@ Deno.serve(async (req: Request) => {
     organization_id: orgId, request_id: requestId, assistant_key: assistantKey,
     event_type: "ai.model.response_generated", event_status: "recorded",
     event_payload: {
-      model: DEFAULT_MODEL, latency_ms: latencyMs,
+      model: chosenModel, latency_ms: latencyMs,
       input_tokens: usage.input_tokens ?? 0, output_tokens: usage.output_tokens ?? 0,
       knowledge_chunks_used: rankedChunks.filter((c) => c.score > 0).length,
       template_key: templateKey,
@@ -223,7 +234,7 @@ Deno.serve(async (req: Request) => {
     request_id: requestId, session_id: sessionId, organization_id: orgId,
     assistant_key: assistantKey, approval_required: approvalRequired,
     proposed_action_id: proposedActionId, answer: modelAnswer,
-    model: DEFAULT_MODEL, usage, knowledge_citations: modelOutput.knowledge_citations,
+    model: chosenModel, usage, knowledge_citations: modelOutput.knowledge_citations,
   });
 });
 

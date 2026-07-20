@@ -10,6 +10,17 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SEVEN_STEPS = ["prospecting","preparation","needs_discovery","presentation","objection_handling","closing","follow_up"];
+
+// Tiered model routing — cheapest model that does the job well.
+//   light    (Haiku): summaries, short-transcript coaching
+//   standard (Sonnet): full coaching analysis
+// Override via edge secrets AI_MODEL_LIGHT / AI_MODEL.
+const MODEL_LIGHT = Deno.env.get("AI_MODEL_LIGHT") ?? "claude-haiku-4-5";
+const MODEL_STANDARD = Deno.env.get("AI_MODEL") ?? "claude-sonnet-4-6";
+const SHORT_TRANSCRIPT_CHARS = 1200; // below this, coaching runs on the light model
+function pickCoachModel(text: string): string {
+  return text.length < SHORT_TRANSCRIPT_CHARS ? MODEL_LIGHT : MODEL_STANDARD;
+}
 const MAX_FILE_BYTES = 26_214_400; // 25 MB (STT provider limit)
 const MAX_DURATION_SECONDS = 1800; // 30 min
 
@@ -112,7 +123,7 @@ Deno.serve(async (req: Request) => {
     }
     await admin.from("sales_recordings").update({ status: "analyzing" }).eq("id", rec.id);
 
-    const model = Deno.env.get("AI_MODEL") ?? "claude-sonnet-4-6";
+    const model = pickCoachModel(content);
     const coachResult = await coachText(anthropicKey, model, content.slice(0, 24000));
     if ("error" in coachResult) {
       await fail(admin, rec.id, coachResult.error);
@@ -190,7 +201,7 @@ Deno.serve(async (req: Request) => {
 
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
   if (!anthropicKey) return json({ error: "anthropic_api_key_not_configured", detail: "Add ANTHROPIC_API_KEY to Edge Function secrets." }, 503);
-  const model = Deno.env.get("AI_MODEL") ?? "claude-sonnet-4-6";
+  const model = mode === "summarize" ? MODEL_LIGHT : pickCoachModel(sourceText);
 
   if (mode === "coach") {
     const coachResult = await coachText(anthropicKey, model, sourceText);

@@ -42,9 +42,20 @@ Set in Supabase dashboard → Edge Functions → Secrets:
 | `ANTHROPIC_API_KEY` | ai-request-processor, activity-analyzer | Claude model calls |
 | `OPENAI_API_KEY` | activity-analyzer, embedding-worker | Whisper transcription / fallback embeddings |
 | `VOYAGE_API_KEY` (optional) | embedding-worker | Preferred embedding provider |
-| `AI_MODEL` (optional) | both AI functions | Defaults to `claude-sonnet-4-6` |
+| `AI_MODEL` (optional) | both AI functions | Standard tier, defaults to `claude-sonnet-4-6` |
+| `AI_MODEL_LIGHT` (optional) | both AI functions | Light tier, defaults to `claude-haiku-4-5` |
+| `AI_MODEL_HEAVY` (optional) | ai-request-processor | Heavy tier, defaults to `claude-opus-4-8` |
 | `EMBEDDING_MODEL` (optional) | embedding-worker | Defaults per provider |
 
 ## Rollback
 
 Netlify keeps every deploy. Dashboard → site → Deploys → pick a previous deploy → **Publish deploy**. For the database, migrations are forward-only; write a new corrective migration rather than editing an applied one.
+
+## Model cost tiers
+
+AI calls route to the cheapest model that does the job well:
+
+- **Summaries** (`activity-analyzer` summarize) → light (Haiku)
+- **Coaching** → standard (Sonnet); transcripts under ~1200 chars drop to light automatically
+- **Assistants** (`ai-request-processor`) → standard by default; set `ai_assistants.config.model_tier` to `light`, `standard`, or `heavy` per assistant to tune quality vs cost
+- Every response records which model ran (`ai_requests.model_name`, `ai_coaching_reviews.model`), so cost auditing is built in.
