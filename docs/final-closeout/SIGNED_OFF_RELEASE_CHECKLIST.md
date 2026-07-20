@@ -28,7 +28,7 @@ Statuses: VERIFIED_COMPLETE (VC) · INTENTIONALLY_EXCLUDED (IE) · BLOCKED_EXTER
 | Call recordings / roleplays | IE | recording_source supports phone_system/wearable/meeting_platform (schema-ready); capture integrations not approved/built |
 | Transcription | VC | F: activity-analyzer v3 (Whisper); requires OPENAI_API_KEY secret (see env row) |
 | Coaching + seven-step scoring | VC | F: activity-analyzer v3 coach mode; kpi_scores 7 steps + overall; stored in ai_coaching_reviews |
-| KPI events / trends | IE | ai_coaching_reviews retains full history (no overwrite); dedicated kpi_events table + dashboard not approved/built |
+| KPI events / trends | VC | M: 20260720003822 kpi_events + auto-capture triggers + backfill; L: Dashboard view live (latest score, 30d avg, trend, 7-step averages); history append-only |
 | Notifications (push) | IE | Not approved/built; no dependency |
 | Turnstile | IE | Not approved/built; Supabase Auth handles abuse basics |
 | Stripe / billing | IE | Not approved/built; no billing UI or entitlement dependency exists |

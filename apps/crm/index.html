@@ -118,6 +118,22 @@
   .form-err{color:var(--danger);font-size:12px;margin-top:8px;display:none}
   .form-err.show{display:block}
 
+  /* Dashboard */
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .stat-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+  .stat-card .val{font-size:26px;font-weight:800;margin-top:4px}
+  .stat-card .lbl{font-size:12px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
+  .trend-bars{display:flex;align-items:flex-end;gap:6px;height:90px;padding:12px 0}
+  .trend-bars .tb{flex:1;background:var(--navy);border-radius:4px 4px 0 0;min-height:4px;position:relative;opacity:.85}
+  .trend-bars .tb span{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--steel)}
+  .step-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+  .step-row .sn{width:150px;font-size:13px;color:var(--ink)}
+  .step-row .sbar{flex:1;height:10px;background:#eef1f7;border-radius:5px;overflow:hidden}
+  .step-row .sbar i{display:block;height:100%;background:var(--navy);border-radius:5px}
+  .step-row .sv{width:36px;text-align:right;font-size:13px;font-weight:700}
+  .dash-panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .dash-panel h3{margin:0 0 6px;font-size:15px}
+
   /* Recorder */
   .rec-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);margin-right:8px;animation:pulse 1.2s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -170,6 +186,7 @@
       <button class="nav-btn" data-view="products">Products</button>
       <button class="nav-btn" data-view="tasks">Tasks</button>
       <button class="nav-btn" data-view="recordings">Recordings</button>
+      <button class="nav-btn" data-view="dashboard">Dashboard</button>
       <button class="nav-btn" data-view="assistant">AI Assistant</button>
       <div class="spacer"></div>
       <button class="signout" id="signoutBtn">Sign out</button>
@@ -269,6 +286,7 @@ async function render(){
   if(currentView==='products') return renderProducts();
   if(currentView==='tasks') return renderTasks();
   if(currentView==='recordings') return renderRecordings();
+  if(currentView==='dashboard') return renderDashboard();
   if(currentView==='assistant') return renderAssistant();
 }
 
@@ -536,6 +554,53 @@ function renderTasks(){
       b.onclick = async ()=>{ await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done); render(); };
     });
   });
+}
+
+// ================= DASHBOARD =================
+const SEVEN_STEP_LABELS = { prospecting:'Prospecting', preparation:'Preparation', needs_discovery:'Needs discovery', presentation:'Presentation', objection_handling:'Objection handling', closing:'Closing', follow_up:'Follow-up' };
+
+async function renderDashboard(){
+  const since30 = new Date(Date.now() - 30*86400000).toISOString();
+  const [{ data: reviews }, { data: events }] = await Promise.all([
+    sb.from('ai_coaching_reviews').select('overall_score, kpi_scores, created_at')
+      .eq('organization_id', currentOrg.id).eq('review_kind','coaching')
+      .order('created_at', {ascending:true}).limit(200),
+    sb.from('kpi_events').select('event_type, created_at')
+      .eq('organization_id', currentOrg.id).gte('created_at', since30),
+  ]);
+  const rv = (reviews??[]).filter(r=>r.overall_score!=null);
+  const latest = rv.length ? rv[rv.length-1] : null;
+  const avg30 = (()=>{ const w = rv.filter(r=>r.created_at>=since30); return w.length ? w.reduce((s,r)=>s+Number(r.overall_score),0)/w.length : null; })();
+  const count = (type)=> (events??[]).filter(e=>e.event_type===type).length;
+  // 7-step averages across all coaching reviews
+  const stepAvg = {};
+  Object.keys(SEVEN_STEP_LABELS).forEach(k=>{
+    const vals = rv.map(r=>Number(r.kpi_scores?.[k])).filter(v=>!isNaN(v));
+    stepAvg[k] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  });
+  const last10 = rv.slice(-10);
+  mainEl.innerHTML = `<div class="page-head"><div><h1>Coaching Dashboard</h1>
+      <div class="sub num">Last 30 days · ${rv.length} coaching review${rv.length===1?'':'s'} total</div></div>
+      <div class="head-actions"><button class="btn btn-primary" id="dashRecBtn">🎙 Record pitch</button></div></div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="lbl">Latest coach score</div><div class="val num">${latest? Number(latest.overall_score).toFixed(1)+'<span style="font-size:14px;color:var(--steel)">/10</span>' : '—'}</div></div>
+      <div class="stat-card"><div class="lbl">30-day average</div><div class="val num">${avg30!=null? avg30.toFixed(1)+'<span style="font-size:14px;color:var(--steel)">/10</span>' : '—'}</div></div>
+      <div class="stat-card"><div class="lbl">Recordings (30d)</div><div class="val num">${count('recording_uploaded')}</div></div>
+      <div class="stat-card"><div class="lbl">Coaching sessions (30d)</div><div class="val num">${count('coaching_generated')}</div></div>
+    </div>
+    <div class="dash-panel"><h3>Score trend</h3><div class="sub">Last ${last10.length||0} coached recordings</div>
+      ${last10.length? `<div class="trend-bars">${last10.map(r=>{
+        const s=Number(r.overall_score); return `<div class="tb" style="height:${Math.max(4, s*10)}%" title="${s.toFixed(1)}"><span class="num">${s.toFixed(1)}</span></div>`;
+      }).join('')}</div>` : '<div class="empty">Record and analyze a pitch to start your trend.</div>'}
+    </div>
+    <div class="dash-panel"><h3>Seven steps of sales — averages</h3>
+      ${rv.length? Object.entries(SEVEN_STEP_LABELS).map(([k,label])=>{
+        const v = stepAvg[k];
+        return `<div class="step-row"><div class="sn">${label}</div><div class="sbar"><i style="width:${v!=null? v*10 : 0}%"></i></div><div class="sv num">${v!=null? v.toFixed(1) : '—'}</div></div>`;
+      }).join('') : '<div class="empty">Step scores appear after your first coached recording.</div>'}
+      ${rv.length? `<div class="sub" style="margin-top:10px">Lowest step is your biggest opportunity — coaching notes for each recording live in the Recordings tab.</div>`:''}
+    </div>`;
+  $('#dashRecBtn').onclick = ()=>openRecorderModal(null);
 }
 
 // ================= RECORDINGS =================

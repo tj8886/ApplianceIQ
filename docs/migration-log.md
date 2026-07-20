@@ -19,4 +19,6 @@
 | Jul 19 | 20260719232101 | closeout_security_fixes | **Security fix**: match_products caller-membership guard (cross-tenant vector query defect) |
 | Jul 19 | 20260719232401 | closeout_index_tuning | Drop duplicate index; add recording-pipeline FK indexes |
 
-Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (16/16).
+| Jul 20 | 20260720003822 | kpi_events_v1 | KPI event stream, lifecycle/coaching triggers, backfill, Dashboard support |
+
+Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (17/17).
