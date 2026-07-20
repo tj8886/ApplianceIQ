@@ -1,26 +1,55 @@
-# Migration log
+# Migration Log
 
-| Date (2026) | Version | Name | Purpose |
-|---|---|---|---|
-| Jul 18 | 20260718131521 | academy_seed_v1 | Academy schema + curriculum seed |
-| Jul 18 | 20260718131629 | foundation_schema_v1 | Foundation objects/facts/relationships |
-| Jul 18 | 20260718131647 | memory_schema_v1 | Memory events/facts/subjects |
-| Jul 18 | 20260718131708 | privacy_schema_v1 | Consent ledger, DSR requests, purge log |
-| Jul 18 | 20260718131846 | security_hardening_v1 | RLS + helper hardening pass 1 |
-| Jul 18 | 20260718140815 | daily_metrics_v1 | Academy daily metrics |
-| Jul 18 | 20260718141148 | metrics_import_v1 | academy_api_keys + metric imports |
-| Jul 18 | 20260718230316 | aiq_kernel_foundations_crm | Organizations, members, CRM core (companies, contacts, deals, tasks, products) |
-| Jul 18 | 20260718230510 | aiq_kernel_ai_layer | ai_assistants/requests/sessions/knowledge/audit/usage + governance RPCs |
-| Jul 19 | 20260719011509 | aiq_seeds_branding_assistants | Org seeds, brand tokens, assistant seeds |
-| Jul 19 | 20260719011720 | aiq_security_hardening | Hardening pass 2 |
-| Jul 19 | 20260719012140 | aiq_join_demo_org | join_demo_org RPC |
-| Jul 19 | 20260719115706 | aiq_activity_capture_layer | activities, sales_recordings, transcripts, coaching reviews, crm_emails/presentations scaffolding, crm-media bucket policies |
-| Jul 19 | 20260719123219 | sales_recording_capture_fields | Recording consent/source/attachment fields, status lifecycle, bucket size cap |
-| Jul 19 | 20260719232101 | closeout_security_fixes | **Security fix**: match_products caller-membership guard (cross-tenant vector query defect) |
-| Jul 19 | 20260719232401 | closeout_index_tuning | Drop duplicate index; add recording-pipeline FK indexes |
+This file records every future change made while reconstructing and governing the ApplianceIQ codebase.
 
-| Jul 20 | 20260720003822 | kpi_events_v1 | KPI event stream, lifecycle/coaching triggers, backfill, Dashboard support |
+## Required record format
 
-| Jul 20 | 20260720011501 | email_dispatch_v1 | crm_emails status/from/provider_message_id for Resend dispatch |
+| Date | Branch | Commit | Scope | Files changed | Database objects changed | Edge Functions changed | Environment variables introduced | Reason | Risks | Tests | Rollback method |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 
-Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (18/18).
+## Baseline entry
+
+| Date | Branch | Commit | Scope | Files changed | Database objects changed | Edge Functions changed | Environment variables introduced | Reason | Risks | Tests | Rollback method |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-19 | `chore/reconstruct-applianceiq-source` | `49b7022` | Repository inventory and source-of-truth setup | `AGENTS.md`, `.env.example`, `docs/source-reconstruction/*`, `docs/migration-log.md` | None | None | None | Establish the reconstruction baseline without changing production behavior | Live ApplianceIQ source still not fully recovered; deployed edge function sources are missing | `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅, `npm install` attempted twice and interrupted after no progress in the sandbox | Revert the reconstruction docs commit |
+
+## Validation notes
+
+- `npm --prefix apps/applianceiq run typecheck`
+  - Result: passed
+  - Pre-existing failures: none observed
+  - New failures: none
+- `npm --prefix apps/applianceiq run build`
+  - Result: passed
+  - Warnings: `@tailwind` at-rules reported by Lightning CSS; Vite chunk-size warning for the main bundle
+  - Pre-existing failures: none observed
+  - New failures: none
+- `npm install`
+  - Result: attempted twice at repo root and interrupted after long no-output periods in the sandbox
+  - Pre-existing failures: sandbox/environment latency
+  - New failures: none introduced
+
+## Current in-progress work
+
+| Date | Branch | Commit | Scope | Files changed | Database objects changed | Edge Functions changed | Environment variables introduced | Reason | Risks | Tests | Rollback method |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-19 | `feature/applianceiq-billing-webhooks` | `a013598` | ApplianceIQ billing and Stripe webhook migration | `supabase/functions/_shared/stripe-billing.js`, `supabase/functions/stripe-webhooks/index.ts`, `supabase/migrations/20260719163127_applianceiq_billing_webhooks.sql`, `.env.example`, `docs/billing/*`, `docs/elev8-migration/MIGRATION_MANIFEST.md` | `aicrm_billing_customers`, `aicrm_billing_webhook_events`, `aicrm_subscription_plans` (Stripe mapping columns), `aicrm_subscriptions` (Stripe mapping columns), `aicrm_billing_invoices` (Stripe mapping columns), `aicrm_billing_events` (Stripe mapping columns) | `stripe-webhooks` | `STRIPE_API_VERSION` | Adapt Elev8 Stripe webhook handling to ApplianceIQ commercial billing tables without copying Elev8 subscription or customer identifiers | Stripe rollout still requires dashboard test-mode confirmation; Deno execution is not available in the local sandbox | `npm test` ✅, `npm run lint` ✅, `npm run validate:migrations` ✅, `npm run validate:env -- --example` ✅, `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅, local Deno check unavailable | Revert the billing webhook commit and remove the migration |
+
+## Audit log
+
+| Date | Branch | Commit | Scope | Files changed | Database objects changed | Edge Functions changed | Environment variables introduced | Reason | Risks | Tests | Rollback method |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-07-19 | `audit/final-migration-completeness` | `cd18afa` | Final forensic migration audit | `docs/final-audit/*`, `docs/elev8-migration/MIGRATION_MANIFEST.md` | None | None | None | Prove whether the approved shared CRM and AI functionality is actually complete end to end | Live target Supabase introspection was blocked in this workspace; deployed-only ApplianceIQ function sources remain missing | `npm test` ✅, `npm run lint` ✅, `npm run validate:migrations` ✅, `npm run test:integration` ✅, `npm run validate:env -- --example` ✅, `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅, live HTTP probes to `applianceiq.ai` and target function endpoints ✅/mixed | Revert the audit docs commit |
+| 2026-07-19 | `release/applianceiq-platform-completion` | `a6ede7b` | Final ApplianceIQ integration and release readiness review | `AGENTS.md`, `README.md`, `docs/release/*` | None | None | None | Record source-of-truth verification, deployment readiness, and rollback guidance without changing production behavior | Live Supabase and production Netlify deployment still not directly verified in this workspace | `npm test` ✅, `npm run lint` ✅, `npm run validate:migrations` ✅, `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅ | Revert commit `a6ede7b` |
+| 2026-07-19 | `feature/applianceiq-search-indexing` | `dd1969f` | ApplianceIQ search indexing infrastructure | `apps/applianceiq/public/robots.txt`, `apps/applianceiq/public/sitemap.xml`, `apps/applianceiq/package.json`, `apps/applianceiq/netlify.toml`, `scripts/generate-applianceiq-search-indexing.mjs`, `tests/unit/applianceiq-search-indexing.test.mjs`, `docs/search/*`, `docs/elev8-migration/MIGRATION_MANIFEST.md` | None | None | None | Provide ApplianceIQ-native sitemap and robots delivery without indexing protected CRM routes | Public route inventory is still limited to the confirmed live storefront pages recorded in reconstruction docs | `npm test` ✅, `npm run lint` ✅, `npm run validate:migrations` ✅, `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅ | Remove app public files, revert prebuild hook, and restore prior indexing files |
+| 2026-07-19 | `feature/reconcile-applianceiq-ai-runtime` | `1c2a05d` | ApplianceIQ AI runtime reconciliation | `supabase/functions/_shared/ai-prompts.js`, `supabase/functions/aicrm-ai-enrichment-runner/index.ts`, `supabase/migrations/20260719180000_applianceiq_ai_prompt_templates.sql`, `tests/unit/ai-prompts.test.mjs`, `docs/ai/*`, `docs/elev8-migration/MIGRATION_MANIFEST.md` | `public.ai_prompt_templates` | `aicrm-ai-enrichment-runner` | None | Add durable prompt-template storage and org-specific prompt precedence without disturbing protected AI runtime behavior | Edge runtime still depends on the existing protected runner source and available Supabase permissions | `npm test` ✅, `npm run validate:migrations` ✅, `npm run lint` ✅, `npm run validate:env` ❌ without local vars then ✅ with placeholders, `npm run typecheck:applianceiq` ✅, `npm run build:applianceiq` ✅, `npm run test:integration` ✅ | Remove the prompt template migration and revert the runner/helper import |
+| 2026-07-19 | `audit/elev8-applianceiq-platform-diff` | `5ba1eeb` | Elev8 vs ApplianceIQ platform comparison | `docs/elev8-migration/*` | None | None | None | Record reusable platform boundaries, missing sources, and migration order without changing production systems | Comparison is incomplete wherever deployed-only source could not be recovered | Not run; docs-only audit | Revert the docs audit commit |
+| 2026-07-19 | `feature/elev8-migration-foundation` | `629285b` | ApplianceIQ migration foundation scaffolding | `.env.example`, `package.json`, `apps/applianceiq/package.json`, `supabase/config.toml`, `supabase/.gitignore`, `supabase/functions/_shared/*`, `scripts/*`, `tests/*`, `shared/applianceiq-supabase/README.md`, `docs/elev8-migration/*` | None | None | Added `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `OPENAI_API_KEY`, `SITE_ORIGIN`, `SB_URL`, `SB_ANON_KEY` names; kept all values blank | Establish local validation, shared helpers, and a documented type-generation path without changing production behavior | Generated ApplianceIQ types remain pending because Docker is unavailable locally and the remote project requires `SUPABASE_ACCESS_TOKEN` | `npm run lint` ✅, `npm test` ✅, `npm run test:integration` ✅, `npm run validate:env -- --example` ✅, `npm run validate:migrations` ✅, `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅, `supabase start` ❌ (Docker unavailable), `supabase gen types typescript --project-id fumwwhyozeouoqscolke --schema public,storage,auth` ❌ (access token missing) | Revert commit `629285b` |
+| 2026-07-19 | `feature/shared-communications-files-security` | `60a814c` | Shared communications, files, push, and Turnstile security package for ApplianceIQ | `supabase/functions/_shared/communications.js`, `supabase/functions/_shared/file-governance.js`, `supabase/functions/_shared/push.js`, `supabase/functions/_shared/turnstile.js`, `supabase/functions/email-dispatcher/index.ts`, `supabase/functions/email-webhook/index.ts`, `supabase/functions/file-scanner/index.ts`, `supabase/functions/file-url-mint/index.ts`, `supabase/functions/turnstile-verify/index.ts`, `supabase/functions/send-push-notification/index.ts`, `supabase/functions/storage-deletion-worker/index.ts`, `supabase/migrations/20260719155535_communications_files_security_foundation.sql` | `public.file_assets`, `public.file_access_events`, `public.storage_deletion_jobs`, `public.file_signed_url_nonces`, `public.request_signed_url`, `public.consume_signed_url_nonce`, `public.log_file_access`, `public.request_storage_deletion`, `public.v_files_pending_scan`, `public.aicrm_outreach_messages` claim columns | Email storage and outbound/inbound metadata now routed through tenant-scoped communication tables; new file inventory and deletion queues added; push notifications and Turnstile remain tenant-scoped | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `APPLIANCEIQ_EMAIL_FROM_NAME`, `APPLIANCEIQ_EMAIL_FROM_ADDRESS`, `WEB_PUSH_VAPID_SUBJECT`, `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY`, `TURNSTILE_SECRET_KEY`, `TURNSTILE_RATE_LIMIT_WINDOW_MINUTES`, `TURNSTILE_RATE_LIMIT_MAX_FAILURES` | Adapt shared communications and file security primitives into ApplianceIQ without changing production behavior | Storage and webhook flows must remain tenant-scoped; Deno syntax could not be checked locally because `deno` is unavailable in the environment | `npm test` ✅, `npm run test:integration` ✅, `npm run lint` ✅, `npm run validate:migrations` ✅, `npm run validate:env -- --example` ✅, `npm --prefix apps/applianceiq run typecheck` ✅, `npm --prefix apps/applianceiq run build` ✅, `npm run validate:env` ❌ (local Supabase env variables missing), `deno check ...` ❌ (`deno` unavailable) | Revert commit `60a814c` |
+| 2026-07-19 | `feature/elev8-migration-foundation` | `d40df5e` | ApplianceIQ PR validation workflow | `.github/workflows/ci.yml` | None | None | None | Add PR checks for lint, tests, migration validation, type-check, and build | Workflow only; no production behavior change | Not executed locally; workflow syntax changed only | Revert commit `d40df5e` |
+
+## Usage
+
+- Append a new row for every future repository, database, or deployment change.
+- Record the exact commit hash after each commit lands.
+- Include rollback guidance for any schema, edge function, or deployment change.
