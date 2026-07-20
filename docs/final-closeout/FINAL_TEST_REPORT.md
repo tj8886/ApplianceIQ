@@ -1,6 +1,6 @@
 # Final test report — 2026-07-19
 
-## CI (automated, on push)
+## CI (automated, on push) — BLOCKED_EXTERNAL: runs hit startup_failure (account verification gate). The checks below were executed manually in the release environment instead:
 - CRM inline-JS syntax check: PASS
 - Academy corrupted-tag regression guard: PASS
 - Migration timestamp ordering: PASS

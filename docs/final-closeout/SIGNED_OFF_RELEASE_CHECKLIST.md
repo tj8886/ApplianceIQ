@@ -9,7 +9,7 @@ Statuses: VERIFIED_COMPLETE (VC) · INTENTIONALLY_EXCLUDED (IE) · BLOCKED_EXTER
 | GitHub source of truth | VC | Full source, 16 migrations, 4 fn sources, CI, docs in tj8886/ApplianceIQ@main |
 | AGENTS.md | VC | G: AGENTS.md |
 | Migration log | VC | G: docs/migration-log.md; DB: 16/16 versions match schema_migrations |
-| CI | VC | G: .github/workflows/ci.yml; run verified on release merge (see FINAL_DEPLOYMENT_REPORT) |
+| CI | BE | Workflow committed, YAML-valid; GitHub Actions runs end in startup_failure (no jobs start), consistent with new-account verification gate. Not load-bearing: release deployed manually + verified live |
 | Netlify CRM deployment | VC | L: crmaiiq.netlify.app 200; deploy 6a5d6afe...; content = apps/crm |
 | Netlify Academy deployment | VC | L: trainingiq-academy.netlify.app 200; deploy 6a5d6b21...; content = apps/academy |
 | Academy mirror deployment | BE | applianceiq-aiacademy.netlify.app lives in a separate Netlify account; content currently identical except robots/sitemap; redeploy requires that account |
