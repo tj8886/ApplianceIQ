@@ -19,7 +19,7 @@ Statuses: VERIFIED_COMPLETE (VC) · INTENTIONALLY_EXCLUDED (IE) · BLOCKED_EXTER
 | CRM companies/contacts/deals/tasks/products | VC | G: apps/crm; DB: tables + org RLS; L: live app CRUD |
 | Activities | VC | DB: activities table + RLS; written by recording flow |
 | Notes | IE | No standalone notes feature approved/built; deal/task text fields cover current need; no dependency |
-| Email dispatch / intake / CRM association | IE | Schema scaffolding exists (crm_emails, activities.related_email_id) but no transport was approved/built; no frontend or webhook depends on it |
+| Email dispatch + CRM association | VC(dispatch) / IE(intake) | F: email-dispatcher v1 (Resend, membership-checked, queued->sent/failed, activity+audit logged); L: compose UI on deal/contact modals; BE until RESEND_API_KEY secret set. Inbound intake webhook remains excluded (needs inbound domain) |
 | File upload (specs/warranty/presentations) | IE | crm_presentations + mfr_assets schema present; general file-upload UI not approved/built; recordings are the only live upload path |
 | File scanning | IE | No scanner integration approved; uploads restricted to authenticated org members, private bucket, size-capped |
 | Signed URLs | VC | Recordings playback uses createSignedUrl(300s); L: verified in app |

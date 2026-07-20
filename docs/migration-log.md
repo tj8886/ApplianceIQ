@@ -21,4 +21,6 @@
 
 | Jul 20 | 20260720003822 | kpi_events_v1 | KPI event stream, lifecycle/coaching triggers, backfill, Dashboard support |
 
-Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (17/17).
+| Jul 20 | 20260720011501 | email_dispatch_v1 | crm_emails status/from/provider_message_id for Resend dispatch |
+
+Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (18/18).

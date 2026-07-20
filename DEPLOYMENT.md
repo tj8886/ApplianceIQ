@@ -46,6 +46,8 @@ Set in Supabase dashboard → Edge Functions → Secrets:
 | `AI_MODEL_LIGHT` (optional) | both AI functions | Light tier, defaults to `claude-haiku-4-5` |
 | `AI_MODEL_HEAVY` (optional) | ai-request-processor | Heavy tier, defaults to `claude-opus-4-8` |
 | `EMBEDDING_MODEL` (optional) | embedding-worker | Defaults per provider |
+| `RESEND_API_KEY` | email-dispatcher | Outbound email (resend.com -> API Keys) |
+| `EMAIL_FROM` (optional) | email-dispatcher | Verified sender; defaults to Resend onboarding sender |
 
 ## Rollback
 

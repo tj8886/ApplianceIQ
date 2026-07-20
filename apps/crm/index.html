@@ -321,7 +321,7 @@ function renderPipeline(){
 function openDealModal(deal){
   const isNew = !deal;
   openModal(`<h2>${isNew?'New deal':'Edit deal'}</h2>
-    ${isNew?'':`<button class="btn btn-ghost btn-block" id="f_record" style="margin-bottom:12px">🎙 Record sales pitch for this deal</button>`}
+    ${isNew?'':`<button class="btn btn-ghost btn-block" id="f_record" style="margin-bottom:8px">🎙 Record sales pitch for this deal</button><button class="btn btn-ghost btn-block" id="f_email" style="margin-bottom:12px">✉️ Email about this deal</button>`}
     <div class="field"><label>Deal title</label><input id="f_title" value="${esc(deal?.title??'')}" placeholder="e.g. Chen — Kitchen Package"></div>
     <div class="field"><label>Stage</label><select id="f_stage">
       ${cache.stages.map(s=>`<option ${((deal?.stage??cache.stages[0]?.name)===s.name)?'selected':''}>${esc(s.name)}</option>`).join('')}
@@ -340,6 +340,10 @@ function openDealModal(deal){
     </div>`);
   $('#f_cancel').onclick = closeModal;
   if(!isNew) $('#f_record').onclick = ()=>openRecorderModal({ type:'deal', id: deal.id, label: deal.title });
+  if(!isNew) $('#f_email').onclick = ()=>{
+    const c = cache.contacts.find(x=>x.id===deal.contact_id);
+    openEmailModal({ to: c?.email ?? '', attach: { type:'deal', id: deal.id, label: deal.title } });
+  };
   if(!isNew) $('#f_delete').onclick = async ()=>{
     const { error } = await sb.from('crm_deals').delete().eq('id', deal.id);
     if(error) return formErr(error.message.includes('policy')?'Only org admins can delete deals.':error.message);
@@ -472,7 +476,7 @@ function renderContacts(){
 function openContactModal(ct){
   const isNew = !ct;
   openModal(`<h2>${isNew?'Add contact':'Edit contact'}</h2>
-    ${isNew?'':`<button class="btn btn-ghost btn-block" id="c_record" style="margin-bottom:12px">🎙 Record conversation with this contact</button>`}
+    ${isNew?'':`<button class="btn btn-ghost btn-block" id="c_record" style="margin-bottom:8px">🎙 Record conversation with this contact</button><button class="btn btn-ghost btn-block" id="c_email" style="margin-bottom:12px">✉️ Email this contact</button>`}
     <div class="field"><label>First name</label><input id="c_first" value="${esc(ct?.first_name??'')}"></div>
     <div class="field"><label>Last name</label><input id="c_last" value="${esc(ct?.last_name??'')}"></div>
     <div class="field"><label>Title / role</label><input id="c_title" value="${esc(ct?.title??'')}" placeholder="optional"></div>
@@ -493,6 +497,7 @@ function openContactModal(ct){
   $('#c_company').onchange = ()=>{ $('#newCoWrap').style.display = $('#c_company').value==='__new__'?'block':'none'; };
   $('#c_cancel').onclick = closeModal;
   if(!isNew) $('#c_record').onclick = ()=>openRecorderModal({ type:'contact', id: ct.id, label: `${ct.first_name} ${ct.last_name??''}`.trim() });
+  if(!isNew) $('#c_email').onclick = ()=>openEmailModal({ to: ct.email ?? '', attach: { type:'contact', id: ct.id, label: `${ct.first_name} ${ct.last_name??''}`.trim() } });
   $('#c_save').onclick = async ()=>{
     const first=$('#c_first').value.trim();
     if(!first) return formErr('First name is required.');
@@ -554,6 +559,44 @@ function renderTasks(){
       b.onclick = async ()=>{ await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done); render(); };
     });
   });
+}
+
+// ================= EMAIL =================
+function openEmailModal(opts){ // opts = { to, attach: {type,id,label} | null }
+  const attach = opts?.attach ?? null;
+  openModal(`<h2>Send email</h2>
+    ${attach? `<p class="attach-note">Will log to <b>${esc(attach.label)}</b>.</p>` : ''}
+    <div class="field"><label>To</label><input id="em_to" type="email" value="${esc(opts?.to ?? '')}" placeholder="client@example.com"></div>
+    <div class="field"><label>Subject</label><input id="em_subject" placeholder="Following up on your kitchen package"></div>
+    <div class="field"><label>Message</label><textarea id="em_body" rows="7" placeholder="Hi ..."></textarea></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="em_cancel">Cancel</button>
+      <button class="btn btn-primary" id="em_send">Send email</button>
+    </div>`);
+  $('#em_cancel').onclick = closeModal;
+  $('#em_send').onclick = async ()=>{
+    const to = $('#em_to').value.trim(), subject = $('#em_subject').value.trim(), bodyTxt = $('#em_body').value.trim();
+    if(!to || !subject || !bodyTxt) return formErr('To, subject, and message are all required.');
+    $('#em_send').disabled = true; $('#em_send').textContent = 'Sending…';
+    const { data:{ session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/email-dispatcher`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` },
+      body: JSON.stringify({ organization_id: currentOrg.id, to_email: to, subject, body: bodyTxt,
+        crm_record_type: attach?.type ?? null, crm_record_id: attach?.id ?? null, record_label: attach?.label ?? null }),
+    }).catch(()=>null);
+    const out = res ? await res.json().catch(()=>({})) : { error:'network_error' };
+    if(out?.ok){
+      openModal(`<h2>Email sent</h2>
+        <div class="rec-status" style="color:var(--verified);font-weight:700">✓ Delivered to Resend and logged${attach? ' to '+esc(attach.label):''}.</div>
+        <div class="sheet-actions"><button class="btn btn-primary" id="em_ok">Done</button></div>`);
+      $('#em_ok').onclick = closeModal;
+    } else {
+      $('#em_send').disabled = false; $('#em_send').textContent = 'Send email';
+      formErr(esc(out?.detail ?? out?.error ?? 'Send failed.') + (String(out?.error??'').includes('resend_api_key')? '' : ' The email was logged with status failed; fix and resend.'));
+    }
+  };
 }
 
 // ================= DASHBOARD =================
