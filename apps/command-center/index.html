@@ -351,101 +351,230 @@ async function renderCC(){
   if(currentView==='warranty') return renderWarranty();
   if(currentView==='stores') return renderStores();
   if(currentView==='reps') return renderReps();
-  m.innerHTML=`<div style="padding:40px"><h2 class="cc-page-title">${esc(currentView)}</h2><p class="cc-page-sub">Coming soon — this view will pull live data from the ${esc(currentView)} system.</p></div>`;
+  if(currentView==='coaching') return renderCoaching();
+  if(currentView==='training') return renderTraining();
+  if(currentView==='floor') return renderFloor();
+  if(currentView==='settings') return renderSettings();
+}
+
+// Helper: load all snapshots for the period
+async function loadAll(period='2026-06'){
+  const [corpR, storeR, repR, locR] = await Promise.all([
+    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).is('location_id',null).is('user_id',null).eq('period_type','monthly').eq('period_key',period),
+    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).is('user_id',null).not('location_id','is',null),
+    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).not('user_id','is',null),
+    sb.from('org_locations').select('id,name,location_type,code,city,parent_id,is_active').eq('organization_id',currentOrg.id).eq('is_active',true),
+  ]);
+  const corp=corpR.data??[], stores=storeR.data??[], reps=repR.data??[], locs=locR.data??[];
+  const g=(arr,key)=>(arr).find(r=>r.metric_key===key)||{};
+  const gl=(arr,lid,key)=>(arr).find(r=>r.location_id===lid&&r.metric_key===key)||{};
+  const gu=(arr,uid,key)=>(arr).find(r=>r.user_id===uid&&r.metric_key===key)||{};
+  const storeList=locs.filter(l=>l.location_type==='store');
+  const regionList=locs.filter(l=>l.location_type==='region');
+  const userIds=[...new Set(reps.map(r=>r.user_id))];
+  return {corp,stores,reps,locs,storeList,regionList,userIds,g:(k)=>g(corp,k),gl,gu};
 }
 
 async function renderOverview(){
-  const{data:corp}=await sb.from('metric_snapshots').select('metric_key,actual_value,target_value,variance_pct').eq('organization_id',currentOrg.id).is('location_id',null).is('user_id',null).eq('period_type','monthly').eq('period_key','2026-06');
-  const get=(key)=>(corp??[]).find(r=>r.metric_key===key)||{};
-  const rev=get('revenue'),war=get('warranty_value'),warA=get('warranty_attach'),units=get('units_sold');
-  const{data:stores}=await sb.from('metric_snapshots').select('location_id,metric_key,actual_value,target_value,variance_pct').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').is('user_id',null).not('location_id','is',null);
-  const{data:locs}=await sb.from('org_locations').select('id,name,location_type,code').eq('organization_id',currentOrg.id).eq('is_active',true);
-  const storeList=(locs??[]).filter(l=>l.location_type==='store');
-  const m=$('#ccMain');
+  const d=await loadAll();const m=$('#ccMain');
+  const rev=d.g('revenue'),war=d.g('warranty_value'),warA=d.g('warranty_attach'),units=d.g('units_sold');
+  const avgO=d.g('avg_order'),ipo=d.g('ipo'),itemV=d.g('item_value'),coach=d.g('coaching_avg'),train=d.g('training_completion'),conv=d.g('floor_conversion'),walks=d.g('walk_ins'),greet=d.g('greeting_time'),warOpp=d.g('warranty_opps');
   m.innerHTML=`<h2 class="cc-page-title">Operations Overview</h2>
     <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · All Stores</p>
     <div class="cc-stat-grid">
-      ${statCard('Revenue',money(rev.actual_value),rev.target_value?'vs '+money(rev.target_value)+' budget':'',rev.variance_pct)}
-      ${statCard('Warranty Revenue',money(war.actual_value),war.target_value?'vs '+money(war.target_value)+' budget':'',war.variance_pct)}
-      ${statCard('Warranty Attach',warA.actual_value?warA.actual_value.toFixed(1)+'%':'—','Target: 45%',warA.variance_pct)}
-      ${statCard('Units Sold',units.actual_value??'—','Target: '+(units.target_value??'—'),units.variance_pct)}
+      ${statCard('Revenue',money(rev.actual_value),'Budget: '+money(rev.target_value),rev.variance_pct)}
+      ${statCard('Avg Order',money(avgO.actual_value),'Target: '+money(avgO.target_value),avgO.variance_pct)}
+      ${statCard('IPO',fmtN(ipo.actual_value,2),'Target: '+fmtN(ipo.target_value,1),ipo.variance_pct)}
+      ${statCard('Item Value',money(itemV.actual_value),'Target: '+money(itemV.target_value),itemV.variance_pct)}
+      ${statCard('Units Sold',fmtN(units.actual_value,0),'Target: '+fmtN(units.target_value,0),units.variance_pct)}
+      ${statCard('Warranty $',money(war.actual_value),'Budget: '+money(war.target_value),war.variance_pct)}
+      ${statCard('Warranty Attach',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('Warranty Opps',fmtN(warOpp.actual_value,0),'Target: '+fmtN(warOpp.target_value,0),warOpp.variance_pct)}
+      ${statCard('Coaching Score',fmtN(coach.actual_value,1)+'/10','Target: '+fmtN(coach.target_value,1),coach.variance_pct)}
+      ${statCard('Training',fmtP(train.actual_value),'Target: 100%',train.variance_pct)}
+      ${statCard('Walk-Ins',fmtN(walks.actual_value,0),'This month',null)}
+      ${statCard('Floor Conversion',fmtP(conv.actual_value),'Target: '+fmtP(conv.target_value),conv.variance_pct)}
+      ${statCard('Avg Greeting',fmtN(greet.actual_value,0)+'s','Target: '+fmtN(greet.target_value,0)+'s',greet.variance_pct)}
     </div>
-    <div class="cc-panel"><h3>Store Performance — Revenue</h3>
-    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Actual</th><th class="num">Budget</th><th class="num">Variance</th><th>Status</th></tr></thead><tbody>
-    ${storeList.map(s=>{
-      const sr=(stores??[]).find(x=>x.location_id===s.id&&x.metric_key==='revenue')||{};
-      const v=sr.variance_pct??0;
-      return `<tr><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
-        <td class="num">${money(sr.actual_value)}</td><td class="num">${money(sr.target_value)}</td>
-        <td class="num">${pct(v)}</td><td><span class="cc-badge ${v>2?'up':v<-2?'dn':'flat'}">${v>2?'Above':v<-2?'Below':'On'} budget</span></td></tr>`;
-    }).join('')}
-    </tbody></table></div>
-    <div class="cc-panel"><h3>Warranty Attach by Store</h3>
-    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Attach Rate</th><th class="num">Target</th><th class="num">Warranty $</th><th>Status</th></tr></thead><tbody>
-    ${storeList.map(s=>{
-      const wa=(stores??[]).find(x=>x.location_id===s.id&&x.metric_key==='warranty_attach')||{};
-      const wv=(stores??[]).find(x=>x.location_id===s.id&&x.metric_key==='warranty_value')||{};
-      const v=wa.variance_pct??0;
-      return `<tr><td><b>${esc(s.name)}</b></td>
-        <td class="num">${wa.actual_value?wa.actual_value.toFixed(1)+'%':'—'}</td><td class="num">${wa.target_value?wa.target_value+'%':'—'}</td>
-        <td class="num">${money(wv.actual_value)}</td>
-        <td><span class="cc-badge ${v>0?'up':v<-5?'dn':'flat'}">${v>0?'Above':v<-5?'Below':'Near'} target</span></td></tr>`;
-    }).join('')}
-    </tbody></table></div>`;
+    ${storeTable('Store Revenue',d,'revenue',money)}
+    ${storeTable('Warranty Attach by Store',d,'warranty_attach',fmtP)}`;
 }
+
+function storeTable(title,d,key,fmt){
+  return `<div class="cc-panel"><h3>${title}</h3>
+  <table class="cc-table"><thead><tr><th>Store</th><th class="num">Actual</th><th class="num">Target</th><th class="num">Variance</th><th>Status</th></tr></thead><tbody>
+  ${d.storeList.map(s=>{const r=d.gl(d.stores,s.id,key)||{};const v=r.variance_pct??0;
+    return `<tr><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
+    <td class="num">${fmt(r.actual_value)}</td><td class="num">${fmt(r.target_value)}</td>
+    <td class="num">${pct(v)}</td><td>${badge(v)}</td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
 async function renderRevenue(){
+  const d=await loadAll();const m=$('#ccMain');
   const{data:plan}=await sb.from('budget_plans').select('*').eq('organization_id',currentOrg.id).eq('status','active').maybeSingle();
-  const{data:nodes}=await sb.from('budget_nodes').select('*').eq('organization_id',currentOrg.id).eq('metric_type','revenue').eq('period_type','annual');
-  const m=$('#ccMain');
+  const{data:nodes}=await sb.from('budget_nodes').select('location_id,metric_type,target_value,pct_of_parent').eq('budget_plan_id',plan?.id).eq('period_type','annual');
   m.innerHTML=`<h2 class="cc-page-title">Revenue & Budget</h2>
-    <p class="cc-page-sub">${plan?esc(plan.plan_name)+' · $'+Number(plan.total_revenue_target).toLocaleString()+' target'+(plan.growth_pct?' · '+plan.growth_pct+'% growth':''):'No active budget plan'}</p>
-    <div class="cc-panel"><h3>Annual Budget by Location</h3>
-    <table class="cc-table"><thead><tr><th>Location</th><th class="num">Annual Target</th><th class="num">% of Corporate</th></tr></thead><tbody>
-    ${(nodes??[]).map(n=>`<tr><td>${n.location_id?esc(n.location_id.slice(0,8)):'Corporate'}</td><td class="num">${money(n.target_value)}</td><td class="num">${n.pct_of_parent?n.pct_of_parent.toFixed(1)+'%':'100%'}</td></tr>`).join('')}
-    </tbody></table></div>`;
+    <p class="cc-page-sub">${plan?esc(plan.plan_name)+' · '+money(plan.total_revenue_target)+' target · '+plan.growth_pct+'% growth from '+plan.base_year:'No active plan'}</p>
+    <div class="cc-stat-grid">
+      ${statCard('Annual Target',money(plan?.total_revenue_target),'Growth: '+(plan?.growth_pct??0)+'%',null)}
+      ${statCard('MTD Revenue',money(d.g('revenue').actual_value),'June budget: '+money(d.g('revenue').target_value),d.g('revenue').variance_pct)}
+      ${statCard('Avg Order',money(d.g('avg_order').actual_value),'Target: '+money(d.g('avg_order').target_value),d.g('avg_order').variance_pct)}
+      ${statCard('IPO',fmtN(d.g('ipo').actual_value,2),'Target: '+fmtN(d.g('ipo').target_value,1),d.g('ipo').variance_pct)}
+      ${statCard('Item Value',money(d.g('item_value').actual_value),'Target: '+money(d.g('item_value').target_value),d.g('item_value').variance_pct)}
+    </div>
+    <div class="cc-panel"><h3>Annual Budget Cascade</h3>
+    <table class="cc-table"><thead><tr><th>Location</th><th>Type</th><th class="num">Annual Revenue Target</th><th class="num">% of Parent</th></tr></thead><tbody>
+    <tr style="font-weight:700"><td>Corporate</td><td>—</td><td class="num">${money(plan?.total_revenue_target)}</td><td class="num">100%</td></tr>
+    ${d.locs.filter(l=>l.location_type!=='corporate').sort((a,b)=>{const o={region:1,district:2,store:3};return (o[a.location_type]??9)-(o[b.location_type]??9);}).map(l=>{
+      const n=(nodes??[]).find(x=>x.location_id===l.id&&x.metric_type==='revenue');
+      const indent=l.location_type==='region'?16:l.location_type==='district'?32:48;
+      return `<tr><td style="padding-left:${indent}px">${esc(l.name)} <span style="color:var(--steel);font-size:11px">${esc(l.code??'')}</span></td><td>${esc(l.location_type)}</td><td class="num">${money(n?.target_value)}</td><td class="num">${n?.pct_of_parent?n.pct_of_parent.toFixed(1)+'%':'—'}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ${storeTable('MTD Revenue by Store',d,'revenue',money)}`;
 }
+
 async function renderWarranty(){
-  const{data:stores}=await sb.from('metric_snapshots').select('location_id,metric_key,actual_value,target_value,variance_pct').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').is('user_id',null).not('location_id','is',null).in('metric_key',['warranty_value','warranty_attach']);
-  const{data:locs}=await sb.from('org_locations').select('id,name,code').eq('organization_id',currentOrg.id).eq('location_type','store').eq('is_active',true);
-  const m=$('#ccMain');
-  m.innerHTML=`<h2 class="cc-page-title">Warranty Intelligence</h2><p class="cc-page-sub">Attach rate and warranty revenue by store · June 2026</p>
-    <div class="cc-panel"><h3>Warranty Performance</h3>
-    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Attach Rate</th><th class="num">Target</th><th class="num">Gap</th><th class="num">Warranty $</th><th class="num">Budget $</th><th>Status</th></tr></thead><tbody>
-    ${(locs??[]).map(s=>{
-      const wa=(stores??[]).find(x=>x.location_id===s.id&&x.metric_key==='warranty_attach')||{};
-      const wv=(stores??[]).find(x=>x.location_id===s.id&&x.metric_key==='warranty_value')||{};
+  const d=await loadAll();const m=$('#ccMain');
+  const warV=d.g('warranty_value'),warA=d.g('warranty_attach'),warO=d.g('warranty_opps');
+  const penetration=warO.actual_value&&d.g('units_sold').actual_value?(warO.actual_value/d.g('units_sold').actual_value*100):0;
+  m.innerHTML=`<h2 class="cc-page-title">Warranty Intelligence</h2><p class="cc-page-sub">Attach rate, penetration, and revenue · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Warranty Revenue',money(warV.actual_value),'Budget: '+money(warV.target_value),warV.variance_pct)}
+      ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('Opportunities',fmtN(warO.actual_value,0),'Target: '+fmtN(warO.target_value,0),warO.variance_pct)}
+      ${statCard('Penetration Rate',penetration.toFixed(1)+'%','Opps vs units sold',null)}
+    </div>
+    <div class="cc-panel"><h3>Warranty by Store</h3>
+    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Attach %</th><th class="num">Target</th><th class="num">Gap</th><th class="num">Opps</th><th class="num">Warranty $</th><th class="num">Budget $</th><th>Status</th></tr></thead><tbody>
+    ${d.storeList.map(s=>{
+      const wa=d.gl(d.stores,s.id,'warranty_attach')||{};const wv=d.gl(d.stores,s.id,'warranty_value')||{};const wo=d.gl(d.stores,s.id,'warranty_opps')||{};
       const gap=(wa.actual_value??0)-(wa.target_value??0);
-      return `<tr><td><b>${esc(s.name)}</b></td><td class="num">${wa.actual_value?wa.actual_value.toFixed(1)+'%':'—'}</td><td class="num">${wa.target_value??'—'}%</td><td class="num" style="color:${gap>=0?'var(--verified)':'var(--danger)'}">${gap>=0?'+':''}${gap.toFixed(1)}%</td><td class="num">${money(wv.actual_value)}</td><td class="num">${money(wv.target_value)}</td><td><span class="cc-badge ${gap>=0?'up':gap>-5?'flat':'dn'}">${gap>=0?'On target':gap>-5?'Watch':'Action needed'}</span></td></tr>`;
-    }).join('')}</tbody></table></div>`;
-}
-async function renderStores(){
-  const{data:locs}=await sb.from('org_locations').select('id,name,code,location_type,parent_id,is_active,city').eq('organization_id',currentOrg.id).order('location_type').order('name');
-  const m=$('#ccMain');
-  m.innerHTML=`<h2 class="cc-page-title">Stores & Hierarchy</h2><p class="cc-page-sub">Location structure for ${esc(currentOrg.name)}</p>
-    <div class="cc-panel"><h3>Organization Tree</h3>
-    <table class="cc-table"><thead><tr><th>Location</th><th>Type</th><th>City</th><th>Status</th></tr></thead><tbody>
-    ${(locs??[]).map(l=>`<tr><td style="padding-left:${l.location_type==='corporate'?0:l.location_type==='region'?16:l.location_type==='district'?32:48}px"><b>${esc(l.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(l.code??'')}</span></td><td>${esc(l.location_type)}</td><td>${esc(l.city??'')}</td><td><span class="cc-badge ${l.is_active?'up':'dn'}">${l.is_active?'Active':'Closed'}</span></td></tr>`).join('')}
-    </tbody></table></div>`;
-}
-async function renderReps(){
-  const{data:reps}=await sb.from('metric_snapshots').select('user_id,metric_key,actual_value,target_value,variance_pct').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').not('user_id','is',null);
-  const userIds=[...new Set((reps??[]).map(r=>r.user_id))];
-  const m=$('#ccMain');
-  m.innerHTML=`<h2 class="cc-page-title">Rep Scorecards</h2><p class="cc-page-sub">${userIds.length} reps · June 2026</p>
-    <div class="cc-panel"><h3>Individual Performance</h3>
-    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Revenue</th><th class="num">vs Budget</th><th class="num">Warranty %</th><th class="num">Units</th><th>Status</th></tr></thead><tbody>
-    ${userIds.map(uid=>{
-      const rev=(reps??[]).find(r=>r.user_id===uid&&r.metric_key==='revenue')||{};
-      const wa=(reps??[]).find(r=>r.user_id===uid&&r.metric_key==='warranty_attach')||{};
-      const units=(reps??[]).find(r=>r.user_id===uid&&r.metric_key==='units_sold')||{};
-      const v=rev.variance_pct??0;
-      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${money(rev.actual_value)}</td><td class="num"><span class="cc-badge ${v>2?'up':v<-2?'dn':'flat'}">${pct(v)}</span></td><td class="num">${wa.actual_value?wa.actual_value.toFixed(1)+'%':'—'}</td><td class="num">${units.actual_value??'—'}</td><td><span class="cc-badge ${v>5?'up':v<-5?'dn':'flat'}">${v>5?'Strong':v<-5?'Needs coaching':'On track'}</span></td></tr>`;
+      return `<tr><td><b>${esc(s.name)}</b></td><td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtP(wa.target_value)}</td><td class="num" style="color:${gap>=0?'var(--verified)':'var(--danger)'}">${gap>=0?'+':''}${gap.toFixed(1)}%</td><td class="num">${fmtN(wo.actual_value,0)}</td><td class="num">${money(wv.actual_value)}</td><td class="num">${money(wv.target_value)}</td><td>${badge(gap,0,-5)}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="cc-panel"><h3>Warranty by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Attach %</th><th class="num">Opps</th><th class="num">Warranty $</th><th>Status</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const wa=d.gu(d.reps,uid,'warranty_attach')||{};const wv=d.gu(d.reps,uid,'warranty_value')||{};const wo=d.gu(d.reps,uid,'warranty_opps')||{};
+      const gap=(wa.actual_value??0)-45;
+      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td><td class="num">${money(wv.actual_value)}</td><td>${badge(gap,0,-5)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
+async function renderStores(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Stores & Hierarchy</h2><p class="cc-page-sub">${d.locs.length} locations · ${d.storeList.length} active stores</p>
+    <div class="cc-panel"><h3>Organization Tree</h3>
+    <table class="cc-table"><thead><tr><th>Location</th><th>Type</th><th>City</th><th class="num">Revenue</th><th class="num">Coaching</th><th class="num">Walk-Ins</th><th>Status</th></tr></thead><tbody>
+    ${d.locs.sort((a,b)=>{const o={corporate:0,region:1,district:2,store:3};return (o[a.location_type]??9)-(o[b.location_type]??9)||a.name.localeCompare(b.name);}).map(l=>{
+      const rev=d.gl(d.stores,l.id,'revenue')||{};const coach=d.gl(d.stores,l.id,'coaching_avg')||{};const walks=d.gl(d.stores,l.id,'walk_ins')||{};
+      const indent=l.location_type==='corporate'?0:l.location_type==='region'?16:l.location_type==='district'?32:48;
+      return `<tr><td style="padding-left:${indent}px"><b>${esc(l.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(l.code??'')}</span></td><td>${esc(l.location_type)}</td><td>${esc(l.city??'')}</td><td class="num">${money(rev.actual_value)}</td><td class="num">${coach.actual_value?fmtN(coach.actual_value,1)+'/10':'—'}</td><td class="num">${fmtN(walks.actual_value,0)}</td><td><span class="cc-badge ${l.is_active?'up':'dn'}">${l.is_active?'Active':'Closed'}</span></td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderReps(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Rep Scorecards</h2><p class="cc-page-sub">${d.userIds.length} reps · June 2026</p>
+    <div class="cc-panel"><h3>Full Scorecard</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Revenue</th><th class="num">vs Budget</th><th class="num">Avg Order</th><th class="num">IPO</th><th class="num">Item $</th><th class="num">War %</th><th class="num">War Opps</th><th class="num">Coach</th><th class="num">Training</th><th class="num">Conv %</th><th>Status</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const rv=d.gu(d.reps,uid,'revenue')||{};const ao=d.gu(d.reps,uid,'avg_order')||{};const ip=d.gu(d.reps,uid,'ipo')||{};
+      const iv=d.gu(d.reps,uid,'item_value')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};const wo=d.gu(d.reps,uid,'warranty_opps')||{};
+      const co=d.gu(d.reps,uid,'coaching_avg')||{};const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};
+      const v=rv.variance_pct??0;const coachV=co.variance_pct??0;
+      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td>
+        <td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
+        <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${money(iv.actual_value)}</td>
+        <td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td>
+        <td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+        <td>${v>5?'<span class="cc-badge up">Strong</span>':v<-5?'<span class="cc-badge dn">Needs coaching</span>':'<span class="cc-badge flat">On track</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderCoaching(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Coaching Intelligence</h2><p class="cc-page-sub">AI coaching performance across all stores · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Org Avg Score',fmtN(d.g('coaching_avg').actual_value,1)+'/10','Target: '+fmtN(d.g('coaching_avg').target_value,1)+'/10',d.g('coaching_avg').variance_pct)}
+    </div>
+    ${storeTable('Coaching Score by Store',d,'coaching_avg',(v)=>v?fmtN(v,1)+'/10':'—')}
+    <div class="cc-panel"><h3>Coaching by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Score</th><th class="num">Target</th><th class="num">Variance</th><th class="num">Training %</th><th class="num">Conv %</th><th>Action</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const co=d.gu(d.reps,uid,'coaching_avg')||{};const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};
+      const v=co.variance_pct??0;
+      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${fmtN(co.target_value,1)}/10</td><td class="num">${pct(v)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+        <td>${v<-15?'<span class="cc-badge dn">Priority coaching</span>':v<-5?'<span class="cc-badge flat">Monitor</span>':'<span class="cc-badge up">On track</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderTraining(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Training & Academy</h2><p class="cc-page-sub">Training completion and readiness · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Org Completion',fmtP(d.g('training_completion').actual_value),'Target: 100%',d.g('training_completion').variance_pct)}
+    </div>
+    ${storeTable('Training Completion by Store',d,'training_completion',fmtP)}
+    <div class="cc-panel"><h3>Training by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Completion</th><th class="num">Coaching Score</th><th class="num">Revenue</th><th>Readiness</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const tr=d.gu(d.reps,uid,'training_completion')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const rv=d.gu(d.reps,uid,'revenue')||{};
+      const v=tr.actual_value??0;
+      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${money(rv.actual_value)}</td>
+        <td>${v>=90?'<span class="cc-badge up">Ready</span>':v>=70?'<span class="cc-badge flat">In progress</span>':'<span class="cc-badge dn">Behind</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderFloor(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Floor / Up System</h2><p class="cc-page-sub">Walk-in traffic, conversion, and greeting times · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Total Walk-Ins',fmtN(d.g('walk_ins').actual_value,0),'All stores',null)}
+      ${statCard('Floor Conversion',fmtP(d.g('floor_conversion').actual_value),'Target: '+fmtP(d.g('floor_conversion').target_value),d.g('floor_conversion').variance_pct)}
+      ${statCard('Avg Greeting',fmtN(d.g('greeting_time').actual_value,0)+'s','Target: '+fmtN(d.g('greeting_time').target_value,0)+'s',d.g('greeting_time').variance_pct)}
+    </div>
+    <div class="cc-panel"><h3>Floor Performance by Store</h3>
+    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Walk-Ins</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Greeting Time</th><th class="num">Target</th><th>Status</th></tr></thead><tbody>
+    ${d.storeList.map(s=>{
+      const wi=d.gl(d.stores,s.id,'walk_ins')||{};const fc=d.gl(d.stores,s.id,'floor_conversion')||{};const gt=d.gl(d.stores,s.id,'greeting_time')||{};
+      const v=fc.variance_pct??0;
+      return `<tr><td><b>${esc(s.name)}</b></td><td class="num">${fmtN(wi.actual_value,0)}</td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${fmtN(gt.actual_value,0)}s</td><td class="num">${fmtN(gt.target_value,0)}s</td><td>${badge(v)}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="cc-panel"><h3>Conversion by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Revenue</th><th>Status</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const fc=d.gu(d.reps,uid,'floor_conversion')||{};const rv=d.gu(d.reps,uid,'revenue')||{};const v=fc.variance_pct??0;
+      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${money(rv.actual_value)}</td><td>${badge(v)}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderSettings(){
+  const{data:metrics}=await sb.from('metric_definitions').select('*').eq('organization_id',currentOrg.id).order('sort_order');
+  const{data:plan}=await sb.from('budget_plans').select('*').eq('organization_id',currentOrg.id).eq('status','active').maybeSingle();
+  const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Settings</h2><p class="cc-page-sub">Metric catalog and budget configuration</p>
+    <div class="cc-panel"><h3>Active Budget Plan</h3>
+    ${plan?`<table class="cc-table"><tbody>
+      <tr><td><b>Plan</b></td><td>${esc(plan.plan_name)}</td></tr>
+      <tr><td><b>Fiscal Year</b></td><td>${plan.fiscal_year}</td></tr>
+      <tr><td><b>Total Target</b></td><td>${money(plan.total_revenue_target)}</td></tr>
+      <tr><td><b>Growth %</b></td><td>${plan.growth_pct}% from ${plan.base_year}</td></tr>
+      <tr><td><b>Status</b></td><td><span class="cc-badge up">${plan.status}</span></td></tr>
+    </tbody></table>`:'<p style="color:var(--steel)">No active budget plan.</p>'}</div>
+    <div class="cc-panel"><h3>Metric Catalog (${(metrics??[]).length} metrics)</h3>
+    <table class="cc-table"><thead><tr><th>Key</th><th>Label</th><th>Category</th><th>Unit</th><th>Budgetable</th><th>Visible</th></tr></thead><tbody>
+    ${(metrics??[]).map(m=>`<tr><td><code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:12px">${esc(m.metric_key)}</code></td><td>${esc(m.metric_label)}</td><td><span class="cc-badge flat">${esc(m.metric_category)}</span></td><td>${esc(m.unit)}</td><td>${m.is_budgetable?'✓':'—'}</td><td>${m.is_visible?'✓':'—'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// Formatting helpers
+function fmtN(v,d){return v==null?'—':Number(v).toFixed(d??0);}
+function fmtP(v){return v==null?'—':Number(v).toFixed(1)+'%';}
+function badge(v,hi,lo){hi=hi??2;lo=lo??-2;v=v??0;return `<span class="cc-badge ${v>hi?'up':v<lo?'dn':'flat'}">${pct(v)}</span>`;}
+
 function statCard(label,value,sub,varPct){
-  const v=varPct??0;const cls=v>2?'up':v<-2?'dn':'';
-  return `<div class="cc-stat"><div class="cc-sl">${esc(label)}</div><div class="cc-sv">${value}</div>${sub?`<div style="font-size:11px;color:var(--steel)">${esc(sub)}</div>`:''}${varPct!=null?`<div class="cc-var ${cls}">${pct(v)} vs budget</div>`:''}</div>`;
+  const v=varPct??0;const cls=Math.abs(v)<2?'':v>0?'up':'dn';
+  return `<div class="cc-stat"><div class="cc-sl">${esc(label)}</div><div class="cc-sv">${value}</div>${sub?`<div style="font-size:11px;color:var(--steel)">${esc(sub)}</div>`:''}${varPct!=null?`<div class="cc-var ${cls}">${pct(v)} vs target</div>`:''}</div>`;
 }
 
 // BOOT
