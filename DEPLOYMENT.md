@@ -48,6 +48,8 @@ Set in Supabase dashboard → Edge Functions → Secrets:
 | `EMBEDDING_MODEL` (optional) | embedding-worker | Defaults per provider |
 | `RESEND_API_KEY` | email-dispatcher | Outbound email (resend.com -> API Keys) |
 | `EMAIL_FROM` (optional) | email-dispatcher | Verified sender; defaults to Resend onboarding sender |
+| `STRIPE_WEBHOOK_SECRET` | stripe-webhooks | Webhook signing secret (from Stripe dashboard) |
+| `STRIPE_SECRET_KEY` (optional) | stripe-webhooks | Stripe Secret Key for API calls (if needed) |
 
 ## Rollback
 

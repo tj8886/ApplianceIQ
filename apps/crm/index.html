@@ -131,6 +131,8 @@
   .step-row .sbar{flex:1;height:10px;background:#eef1f7;border-radius:5px;overflow:hidden}
   .step-row .sbar i{display:block;height:100%;background:var(--navy);border-radius:5px}
   .step-row .sv{width:36px;text-align:right;font-size:13px;font-weight:700}
+  .pricing-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;display:flex;flex-direction:column}
+  .pricing-card .btn{margin-top:auto}
   .dash-panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
   .dash-panel h3{margin:0 0 6px;font-size:15px}
 
@@ -287,6 +289,8 @@ async function render(){
   if(currentView==='tasks') return renderTasks();
   if(currentView==='recordings') return renderRecordings();
   if(currentView==='dashboard') return renderDashboard();
+  if(currentView==='pricing') return renderPricing();
+  if(currentView==='billing') return renderBilling();
   if(currentView==='assistant') return renderAssistant();
 }
 
@@ -598,6 +602,158 @@ function openEmailModal(opts){ // opts = { to, attach: {type,id,label} | null }
     }
   };
 }
+
+
+// ================= PRICING & SIGNUP =================
+async function renderPricing(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session) return renderPipeline(); // already logged in
+  
+  mainEl.innerHTML = `<div style="max-width:1000px;margin:40px auto;padding:0 16px">
+    <h1>ApplianceIQ — Sales Coaching Platform</h1>
+    <div class="sub" style="font-size:16px;margin-bottom:32px">Record sales calls. Get AI coaching. Track your 7-step performance.</div>
+    
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-bottom:40px">
+      <div class="pricing-card" data-tier="starter">
+        <div style="font-size:20px;font-weight:700">Starter</div>
+        <div style="font-size:32px;margin:12px 0"><span class="num">$29</span><span style="font-size:16px">/mo</span></div>
+        <div style="color:var(--steel);margin-bottom:20px;min-height:60px">
+          <div>100K AI tokens/month</div>
+          <div>10 recordings/month</div>
+          <div>Basic coaching</div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="openSignupModal('starter')">Start Free Trial</button>
+      </div>
+      
+      <div class="pricing-card" data-tier="pro" style="border:2px solid var(--navy);transform:scale(1.05)">
+        <div style="background:var(--navy);color:#fff;padding:4px 8px;border-radius:4px;display:inline-block;margin-bottom:12px;font-size:12px">POPULAR</div>
+        <div style="font-size:20px;font-weight:700">Pro</div>
+        <div style="font-size:32px;margin:12px 0"><span class="num">$99</span><span style="font-size:16px">/mo</span></div>
+        <div style="color:var(--steel);margin-bottom:20px;min-height:60px">
+          <div>1M AI tokens/month</div>
+          <div>100 recordings/month</div>
+          <div>Advanced coaching + trends</div>
+          <div>Email support</div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="openSignupModal('pro')">Start Free Trial</button>
+      </div>
+      
+      <div class="pricing-card" data-tier="enterprise">
+        <div style="font-size:20px;font-weight:700">Enterprise</div>
+        <div style="font-size:32px;margin:12px 0"><span class="num">$299</span><span style="font-size:16px">/mo</span></div>
+        <div style="color:var(--steel);margin-bottom:20px;min-height:60px">
+          <div>10M AI tokens/month</div>
+          <div>Unlimited recordings</div>
+          <div>Custom coaching models</div>
+          <div>Priority support</div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="openSignupModal('enterprise')">Start Free Trial</button>
+      </div>
+    </div>
+    
+    <div style="background:#f5f7fa;border:1px solid var(--line);border-radius:12px;padding:24px;text-align:center">
+      <div style="font-size:14px;color:var(--steel)">14-day free trial on all plans. No credit card required.</div>
+    </div>
+  </div>`;
+}
+
+function openSignupModal(tier){
+  openModal(`<h2>Create your account</h2>
+    <div class="field"><label>Company name</label><input id="su_company" placeholder="Acme Appliances"></div>
+    <div class="field"><label>Your email</label><input id="su_email" type="email" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input id="su_password" type="password" placeholder="••••••••"></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="su_cancel">Cancel</button>
+      <button class="btn btn-primary" id="su_submit">Sign up for ${tier.toUpperCase()}</button>
+    </div>
+    <div class="sub" style="text-align:center;margin-top:12px">14 days free. Then $${tier==='starter'?29:tier==='pro'?99:299}/month.</div>`);
+  
+  $('#su_cancel').onclick = closeModal;
+  $('#su_submit').onclick = async ()=>{
+    const company = $('#su_company').value.trim(), email = $('#su_email').value.trim(), password = $('#su_password').value.trim();
+    if(!company || !email || !password) return formErr('All fields required.');
+    if(password.length < 8) return formErr('Password must be 8+ characters.');
+    $('#su_submit').disabled = true; $('#su_submit').textContent = 'Creating...';
+    
+    // 1. Sign up user
+    const { data:{ user }, error: authErr } = await sb.auth.signUp({ email, password });
+    if(authErr || !user) return formErr(esc(authErr?.message ?? 'Signup failed.'));
+    
+    // 2. Create org
+    const { data:{ session } } = await sb.auth.getSession();
+    const { data: org, error: orgErr } = await sb.from('organizations').insert({
+      name: company, tier, created_by: user.id, 
+      trial_ends_at: new Date(Date.now() + 14*86400000).toISOString(),
+      subscription_status: 'trialing'
+    }).select('id').single();
+    if(orgErr || !org) return formErr('Organization creation failed.');
+    
+    // 3. Add user to org
+    await sb.from('organization_members').insert({ organization_id: org.id, user_id: user.id, role: 'owner' });
+    
+    // 4. Initialize token limits
+    const limits = { starter: 100000, pro: 1000000, enterprise: 10000000 };
+    await sb.from('ai_token_limits').insert({
+      organization_id: org.id, tier, monthly_limit: limits[tier], tokens_used_this_month: 0
+    });
+    
+    // 5. Redirect to Stripe checkout (payment collected later)
+    // For now, just show success and log in
+    openModal(`<h2>Welcome!</h2>
+      <div style="color:var(--verified);font-weight:700;margin:16px 0">✓ Account created</div>
+      <div class="sub">Your 14-day trial starts now. Upgrade anytime to remove limits.</div>
+      <div class="sheet-actions"><button class="btn btn-primary" id="ok_btn">Go to dashboard</button></div>`);
+    $('#ok_btn').onclick = async ()=>{ closeModal(); location.reload(); };
+  };
+}
+
+// Billing dashboard
+async function renderBilling(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return renderPricing();
+  
+  const [{ data: user }, { data: org }] = await Promise.all([
+    sb.auth.getUser(), sb.from('organizations').select('*').eq('id', currentOrg.id).single()
+  ]);
+  const { data: limits } = await sb.from('ai_token_limits').select('*').eq('organization_id', currentOrg.id).single();
+  
+  const used = limits?.tokens_used_this_month ?? 0;
+  const total = limits?.monthly_limit ?? 100000;
+  const pct = Math.round(used / total * 100);
+  
+  mainEl.innerHTML = `<div class="page-head"><h1>Billing</h1></div>
+    <div style="max-width:600px">
+      <div class="dash-panel">
+        <h3>Current plan</h3>
+        <div style="font-size:18px;font-weight:700;margin:8px 0">${org?.tier?.toUpperCase() ?? 'Demo'}</div>
+        ${org?.trial_ends_at ? `<div class="sub">Trial ends ${new Date(org.trial_ends_at).toLocaleDateString()}</div>` : ''}
+        ${org?.subscription_status==='active' ? `<div style="color:var(--verified)">✓ Active subscription</div>` : ''}
+        ${org?.subscription_status==='past_due' ? `<div style="color:var(--warn)">⚠ Payment past due</div>` : ''}
+        <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="alert('Upgrade in Stripe dashboard')">Upgrade or manage subscription</button>
+      </div>
+      
+      <div class="dash-panel">
+        <h3>AI token usage (this month)</h3>
+        <div style="margin:12px 0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span>Used</span><span class="num">${(used/1000).toFixed(0)}K / ${(total/1000).toFixed(0)}K</span>
+          </div>
+          <div style="background:#eef1f7;border-radius:8px;height:12px;overflow:hidden">
+            <div style="background:var(--navy);height:100%;width:${Math.min(pct,100)}%"></div>
+          </div>
+          <div style="color:var(--steel);font-size:12px;margin-top:4px">${pct}% of monthly limit</div>
+        </div>
+      </div>
+      
+      <div class="dash-panel">
+        <h3>Billing contact</h3>
+        <div class="sub">${org?.billing_email ?? user?.email ?? 'Not set'}</div>
+        <button class="btn btn-ghost btn-block" style="margin-top:12px" onclick="alert('Update in Stripe dashboard')">Change billing email</button>
+      </div>
+    </div>`;
+}
+
 
 // ================= DASHBOARD =================
 const SEVEN_STEP_LABELS = { prospecting:'Prospecting', preparation:'Preparation', needs_discovery:'Needs discovery', presentation:'Presentation', objection_handling:'Objection handling', closing:'Closing', follow_up:'Follow-up' };

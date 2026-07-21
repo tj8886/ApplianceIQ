@@ -23,4 +23,6 @@
 
 | Jul 20 | 20260720011501 | email_dispatch_v1 | crm_emails status/from/provider_message_id for Resend dispatch |
 
-Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (18/18).
+| Jul 20 | 20260720015201 | billing_schema_v1 | Org billing fields, ai_token_limits table, stripe_events audit, token budget check + deduction RPCs |
+
+Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (19/19).
