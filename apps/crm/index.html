@@ -647,7 +647,7 @@ async function renderDashboard(){
 }
 
 // ================= RECORDINGS =================
-const REC_MAX_SECONDS = 900;              // 15 min
+const REC_MAX_SECONDS = 10800;              // 3 hours              // 15 min
 const REC_MAX_BYTES = 25 * 1024 * 1024;   // 25 MB (transcription provider limit)
 const STATUS_CHIP = { uploaded:['n','Uploaded'], transcribing:['a','Transcribing…'], transcribed:['n','Transcribed'], analyzing:['a','Analyzing…'], complete:['g','Complete'], failed:['r','Failed'] };
 
@@ -755,7 +755,7 @@ function openRecorderModal(attach){ // attach = {type:'deal'|'contact', id, labe
       <label class="consent-row"><input type="checkbox" id="rc_consent">
         <span>I confirm I have permission to record this conversation for training purposes.</span></label>
       <p class="legal-note">Reminder: you are responsible for complying with recording-consent laws in your region and with company policy. This app does not provide legal advice.</p>
-      <div class="sub num">Limits: up to ${REC_MAX_SECONDS/60} minutes / 25 MB per recording.</div>
+      <div class="sub num">Limits: up to ${Math.floor(REC_MAX_SECONDS/3600)} hours / 25 MB per recording.</div>
       <div class="form-err" id="formErr"></div>
       <div class="sheet-actions">
         <button class="btn btn-ghost" id="rc_cancel">Cancel</button>
@@ -779,7 +779,7 @@ function openRecorderModal(attach){ // attach = {type:'deal'|'contact', id, labe
     openModal(`<h2>Recording…</h2>
       ${attachLine}
       <div class="rec-timer"><span class="rec-dot"></span><span id="rc_time">0:00</span></div>
-      <div class="sub" style="text-align:center">Auto-stops at ${REC_MAX_SECONDS/60}:00</div>
+      <div class="sub" style="text-align:center">Auto-stops at ${Math.floor(REC_MAX_SECONDS/3600)}:00:00</div>
       <div class="sheet-actions"><button class="btn btn-primary" id="rc_stop">⏹ Stop recording</button></div>`);
     $('#ovl').addEventListener('click', e=>{ if(e.target.id==='ovl') stopRecording(); }); // outside click stops safely -> preview, no lost audio
     tick = setInterval(()=>{ elapsed++; const t=$('#rc_time'); if(t) t.textContent=fmtTime(elapsed);
