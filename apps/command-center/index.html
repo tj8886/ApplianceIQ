@@ -295,6 +295,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
       <button class="cc-nav-btn active" data-view="overview">📊 Overview</button>
       <button class="cc-nav-btn" data-view="revenue">💰 Revenue & Budget</button>
       <button class="cc-nav-btn" data-view="warranty">🛡️ Warranty</button>
+      <button class="cc-nav-btn" data-view="brands">🏷️ Brands</button>
       <button class="cc-nav-btn" data-view="stores">🏬 Stores</button>
       <button class="cc-nav-btn" data-view="reps">👤 Rep Scorecards</button>
       <button class="cc-nav-btn" data-view="coaching">🏆 Coaching</button>
@@ -391,6 +392,7 @@ async function renderCC(){
   if(currentView==='overview') return renderOverview();
   if(currentView==='revenue') return renderRevenue();
   if(currentView==='warranty') return renderWarranty();
+  if(currentView==='brands') return renderBrands();
   if(currentView==='stores') return renderStores();
   if(currentView==='reps') return renderReps();
   if(currentView==='coaching') return renderCoaching();
@@ -509,21 +511,24 @@ async function renderOverview(){
   const d=await loadAll();const m=$('#ccMain');const isRep=viewLevel.level==='rep';
   const rev=d.g('revenue'),war=d.g('warranty_value'),warA=d.g('warranty_attach'),units=d.g('units_sold');
   const avgO=d.g('avg_order'),ipo=d.g('ipo'),itemV=d.g('item_value'),coach=d.g('coaching_avg'),train=d.g('training_completion'),conv=d.g('floor_conversion'),walks=d.g('walk_ins'),greet=d.g('greeting_time'),warOpp=d.g('warranty_opps');
-  const pen=warOpp.actual_value&&units.actual_value?(warOpp.actual_value/units.actual_value*100):0;
+  const mgD=d.g('margin_dollars'),mgP=d.g('margin_pct'),wpU=d.g('warranty_pen_units'),wpD=d.g('warranty_pen_dollars');
   m.innerHTML=`${levelBar()}
-    <h2 class="cc-page-title">${isRep?'Rep Scorecard':viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
+    <h2 class="cc-page-title">${isRep?esc(viewLevel.name):viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
     <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · ${esc(viewLevel.name)}</p>
     ${childCards(d)}
     <div class="cc-stat-grid">
       ${statCard('Revenue',money(rev.actual_value),'Budget: '+money(rev.target_value),rev.variance_pct)}
+      ${statCard('Margin $',money(mgD.actual_value),'Budget: '+money(mgD.target_value),mgD.variance_pct)}
+      ${statCard('Margin %',fmtP(mgP.actual_value),'Target: '+fmtP(mgP.target_value),mgP.variance_pct)}
       ${statCard('Avg Order',money(avgO.actual_value),'Target: '+money(avgO.target_value),avgO.variance_pct)}
       ${statCard('IPO',fmtN(ipo.actual_value,2),'Target: '+fmtN(ipo.target_value,1),ipo.variance_pct)}
       ${statCard('Item Value',money(itemV.actual_value),'Target: '+money(itemV.target_value),itemV.variance_pct)}
       ${statCard('Units',fmtN(units.actual_value,0),'Target: '+fmtN(units.target_value,0),units.variance_pct)}
       ${statCard('Warranty $',money(war.actual_value),'Budget: '+money(war.target_value),war.variance_pct)}
       ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('Pen. (Units)',fmtP(wpU.actual_value),'Target: '+fmtP(wpU.target_value),wpU.variance_pct)}
+      ${statCard('Pen. ($)',fmtP(wpD.actual_value),'War$/Rev$, Target: '+fmtP(wpD.target_value),wpD.variance_pct)}
       ${statCard('War. Opps',fmtN(warOpp.actual_value,0),'Target: '+fmtN(warOpp.target_value,0),warOpp.variance_pct)}
-      ${statCard('Penetration',pen.toFixed(1)+'%','Opps vs units',null)}
       ${statCard('Coaching',fmtN(coach.actual_value,1)+'/10','Target: '+fmtN(coach.target_value,1),coach.variance_pct)}
       ${statCard('Training',fmtP(train.actual_value),'Target: 100%',train.variance_pct)}
       ${statCard('Conversion',fmtP(conv.actual_value),'Target: '+fmtP(conv.target_value),conv.variance_pct)}
@@ -697,6 +702,40 @@ async function renderFloor(){
       const fc=d.gu(d.reps,uid,'floor_conversion')||{};const rv=d.gu(d.reps,uid,'revenue')||{};const v=fc.variance_pct??0;
       return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${money(rv.actual_value)}</td><td>${badge(v)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
+}
+
+async function renderBrands(){
+  const{data:brands}=await sb.from('brand_catalog').select('*').eq('organization_id',currentOrg.id).eq('is_active',true).order('sort_order');
+  const{data:brandSnaps}=await sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').in('metric_key',['brand_pct','brand_tier_pct']).is('location_id',null).is('user_id',null);
+  const byBrand=(brandSnaps??[]).filter(s=>s.metric_key==='brand_pct').sort((a,b)=>(b.actual_value??0)-(a.actual_value??0));
+  const byTier=(brandSnaps??[]).filter(s=>s.metric_key==='brand_tier_pct');
+  const tierLabels={entry:'Entry Level',mid:'Mid Level',luxury:'Luxury',ultra_luxury:'Ultra Luxury'};
+  const tierColors={entry:'#6b7280',mid:'var(--accent)',luxury:'#d97706',ultra_luxury:'#7c3aed'};
+  const m=$('#ccMain');
+  m.innerHTML=`${levelBar()}
+    <h2 class="cc-page-title">Brand Mix</h2><p class="cc-page-sub">Sales % by brand and tier · June 2026</p>
+    <div class="cc-panel"><h3>Sales by Tier</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">${byTier.sort((a,b)=>{const o={entry:0,mid:1,luxury:2,ultra_luxury:3};return (o[a.metric_subtype]??9)-(o[b.metric_subtype]??9);}).map(t=>`
+      <div style="flex:1;min-width:140px;background:#f9fafb;border:1px solid var(--line);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${tierColors[t.metric_subtype]??'var(--steel)'}">${esc(tierLabels[t.metric_subtype]??t.metric_subtype)}</div>
+        <div style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:var(--navy)">${fmtP(t.actual_value)}</div>
+        <div style="font-size:11px;color:var(--steel)">Target: ${fmtP(t.target_value)}</div>
+      </div>`).join('')}</div></div>
+    <div class="cc-panel"><h3>Sales by Brand</h3>
+    <table class="cc-table"><thead><tr><th>Brand</th><th>Tier</th><th class="num">% of Sales</th><th class="num">Target</th><th class="num">Gap</th><th style="width:30%">Share</th></tr></thead><tbody>
+    ${byBrand.map(b=>{
+      const brand=(brands??[]).find(br=>br.brand_name===b.metric_subtype);
+      const tier=brand?.brand_tier??'mid';const gap=(b.actual_value??0)-(b.target_value??0);
+      return `<tr><td><b>${esc(b.metric_subtype)}</b></td>
+        <td><span style="font-size:11px;font-weight:700;color:${tierColors[tier]??'var(--steel)'}">${esc(tierLabels[tier]??tier)}</span></td>
+        <td class="num">${fmtP(b.actual_value)}</td><td class="num">${fmtP(b.target_value)}</td>
+        <td class="num" style="color:${gap>=0?'var(--verified)':'var(--danger)'}">${gap>=0?'+':''}${gap.toFixed(1)}%</td>
+        <td><div style="background:#e5e7eb;border-radius:4px;height:18px;overflow:hidden"><div style="background:${tierColors[tier]??'var(--accent)'};height:100%;width:${Math.min(b.actual_value??0,100)}%;border-radius:4px"></div></div></td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="cc-panel"><h3>Brand Catalog (${(brands??[]).length} brands)</h3>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">${['entry','mid','luxury','ultra_luxury'].map(tier=>`
+      <div><div style="font-size:12px;font-weight:700;color:${tierColors[tier]};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${tierLabels[tier]}</div>
+      ${(brands??[]).filter(b=>b.brand_tier===tier).map(b=>`<div style="font-size:13px;padding:3px 0;color:var(--ink)">${esc(b.brand_name)}</div>`).join('')}</div>`).join('')}</div></div>`;
 }
 
 async function renderSettings(){
