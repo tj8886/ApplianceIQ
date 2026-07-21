@@ -394,6 +394,17 @@ async function renderCC(){
   if(currentView==='settings') return renderSettings();
 }
 
+// Event delegation for drill-down clicks (avoids inline onclick escaping issues)
+function bindClicks(){
+  const main=$('#ccMain');
+  main.querySelectorAll('[data-rep-id]').forEach(el=>{
+    el.onclick=()=>setLevel('rep',el.dataset.repId,el.dataset.repName);
+  });
+  main.querySelectorAll('[data-store-id]').forEach(el=>{
+    el.onclick=()=>setLevel('store',el.dataset.storeId,el.dataset.storeName);
+  });
+}
+
 // Helper: load snapshots filtered by current view level
 async function loadAll(period='2026-06'){
   const locR=await sb.from('org_locations').select('id,name,location_type,code,city,parent_id,is_active').eq('organization_id',currentOrg.id).eq('is_active',true);
@@ -477,7 +488,7 @@ function childCards(d){
   if(viewLevel.level==='store'&&d.userIds.length>0){
     return `<div class="cc-child-grid">${d.userIds.map(uid=>{
       const rev=d.gu(d.reps,uid,'revenue')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};
-      return `<div class="cc-child-card" onclick="setLevel('rep','${uid}','Rep ${esc(uid.slice(0,8))}')">
+      return `<div class="cc-child-card" data-rep-id="${uid}" data-rep-name="Rep ${esc(uid.slice(0,8))}">
         <div class="cc-cc-type">Sales Rep</div><div class="cc-cc-name">${esc(uid.slice(0,8))}…</div>
         <div class="cc-cc-stat">${money(rev.actual_value)}</div>
         <div style="font-size:11px;color:var(--steel)">Coach: ${co.actual_value?fmtN(co.actual_value,1)+'/10':'—'} · War: ${wa.actual_value?fmtP(wa.actual_value):'—'}</div>
@@ -514,6 +525,7 @@ async function renderOverview(){
     ${!isRep&&d.storeList.length>1?storeTable('Revenue by Location',d,'revenue',money):''}
     ${!isRep&&d.storeList.length>1?storeTable('Warranty Attach',d,'warranty_attach',fmtP):''}
     ${viewLevel.level==='store'&&d.userIds.length>0?repTable(d):''}`;
+  bindClicks();
 }
 
 function repTable(d){
@@ -523,7 +535,7 @@ function repTable(d){
     const rv=d.gu(d.reps,uid,'revenue')||{};const ao=d.gu(d.reps,uid,'avg_order')||{};const ip=d.gu(d.reps,uid,'ipo')||{};
     const wa=d.gu(d.reps,uid,'warranty_attach')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};
     const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};const v=rv.variance_pct??0;
-    return `<tr style="cursor:pointer" onclick="setLevel('rep','${uid}','Rep ${esc(uid.slice(0,8))}')">
+    return `<tr style="cursor:pointer" data-rep-id="${uid}" data-rep-name="Rep ${esc(uid.slice(0,8))}">
       <td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
       <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${fmtP(wa.actual_value)}</td>
       <td class="num">${fmtN(co.actual_value,1)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
@@ -535,7 +547,7 @@ function storeTable(title,d,key,fmt){
   return `<div class="cc-panel"><h3>${title}</h3>
   <table class="cc-table"><thead><tr><th>Store</th><th class="num">Actual</th><th class="num">Target</th><th class="num">Variance</th><th>Status</th></tr></thead><tbody>
   ${d.storeList.map(s=>{const r=d.gl(d.stores,s.id,key)||{};const v=r.variance_pct??0;
-    return `<tr style="cursor:pointer" onclick="setLevel('store','${s.id}','${esc(s.name)}')"><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
+    return `<tr style="cursor:pointer" data-store-id="${s.id}" data-store-name="${esc(s.name)}"><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
     <td class="num">${fmt(r.actual_value)}</td><td class="num">${fmt(r.target_value)}</td>
     <td class="num">${pct(v)}</td><td>${badge(v)}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
