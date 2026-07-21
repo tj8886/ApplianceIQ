@@ -92,6 +92,23 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
 .cc-nav-btn:hover,.cc-nav-btn.active{background:rgba(255,255,255,0.1);color:#fff}
 .cc-main{padding:24px 32px;overflow-y:auto;max-height:100vh}
 .cc-signout{margin-top:auto;background:none;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);padding:8px;border-radius:8px;font-size:12px;cursor:pointer}
+/* View Level Selector */
+.cc-level-bar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cc-breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px}
+.cc-breadcrumb .bc-item{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none}
+.cc-breadcrumb .bc-item:hover{text-decoration:underline}
+.cc-breadcrumb .bc-item.active{color:var(--navy);cursor:default}
+.cc-breadcrumb .bc-sep{color:var(--steel);font-size:11px}
+.cc-level-pills{display:flex;gap:6px;margin-left:auto}
+.cc-level-pill{padding:5px 14px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--steel);transition:all .15s}
+.cc-level-pill:hover{border-color:var(--accent);color:var(--accent)}
+.cc-level-pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cc-child-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px}
+.cc-child-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s}
+.cc-child-card:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(99,102,241,0.1)}
+.cc-child-card .cc-cc-name{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--navy)}
+.cc-child-card .cc-cc-type{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px}
+.cc-child-card .cc-cc-stat{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:var(--navy);margin-top:6px}
 .cc-page-title{font-family:'Sora',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px}
 .cc-page-sub{font-size:13px;color:var(--steel);margin-bottom:24px}
 .cc-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
@@ -298,6 +315,23 @@ const money=n=>n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',cur
 const pct=n=>n==null?'—':(n>=0?'+':'')+n.toFixed(1)+'%';
 
 let currentOrg=null,currentView='overview';
+// View level: {level:'corporate'|'region'|'store'|'rep', id:null|locationId|userId, name:'', path:[]}
+let viewLevel={level:'corporate',id:null,name:'All Stores',path:[]};
+let allLocs=[], allUserIds=[];
+
+function setLevel(level,id,name){
+  const prev={level:viewLevel.level,id:viewLevel.id,name:viewLevel.name};
+  if(level==='corporate') viewLevel={level,id:null,name:'All Stores',path:[]};
+  else viewLevel={level,id,name,path:[...viewLevel.path.filter(p=>p.level!==level),prev].filter(p=>p.level!=='corporate')};
+  renderCC();
+}
+function goUp(){
+  if(viewLevel.path.length>0){
+    const prev=viewLevel.path[viewLevel.path.length-1];
+    viewLevel={level:prev.level,id:prev.id,name:prev.name,path:viewLevel.path.slice(0,-1)};
+  } else viewLevel={level:'corporate',id:null,name:'All Stores',path:[]};
+  renderCC();
+}
 
 function toggleCCLogin(mode){
   const o=$('#ccLoginOverlay');
@@ -357,54 +391,140 @@ async function renderCC(){
   if(currentView==='settings') return renderSettings();
 }
 
-// Helper: load all snapshots for the period
+// Helper: load snapshots filtered by current view level
 async function loadAll(period='2026-06'){
-  const [corpR, storeR, repR, locR] = await Promise.all([
-    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).is('location_id',null).is('user_id',null).eq('period_type','monthly').eq('period_key',period),
-    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).is('user_id',null).not('location_id','is',null),
+  const locR=await sb.from('org_locations').select('id,name,location_type,code,city,parent_id,is_active').eq('organization_id',currentOrg.id).eq('is_active',true);
+  allLocs=locR.data??[];
+  const lv=viewLevel;
+  let scopeLocIds=[];
+  if(lv.level==='corporate') scopeLocIds=allLocs.map(l=>l.id);
+  else if(lv.level==='region') scopeLocIds=[lv.id,...allLocs.filter(l=>l.parent_id===lv.id).map(l=>l.id)];
+  else if(lv.level==='store') scopeLocIds=[lv.id];
+
+  let corpQ=sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period);
+  if(lv.level==='corporate') corpQ=corpQ.is('location_id',null).is('user_id',null);
+  else if(lv.level==='region') corpQ=corpQ.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='store') corpQ=corpQ.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='rep') corpQ=corpQ.eq('user_id',lv.id);
+
+  const [corpR,storeR,repR]=await Promise.all([corpQ,
+    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).is('user_id',null).not('location_id','is',null).in('location_id',scopeLocIds.length?scopeLocIds:['00000000-0000-0000-0000-000000000000']),
     sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).not('user_id','is',null),
-    sb.from('org_locations').select('id,name,location_type,code,city,parent_id,is_active').eq('organization_id',currentOrg.id).eq('is_active',true),
   ]);
-  const corp=corpR.data??[], stores=storeR.data??[], reps=repR.data??[], locs=locR.data??[];
-  const g=(arr,key)=>(arr).find(r=>r.metric_key===key)||{};
-  const gl=(arr,lid,key)=>(arr).find(r=>r.location_id===lid&&r.metric_key===key)||{};
-  const gu=(arr,uid,key)=>(arr).find(r=>r.user_id===uid&&r.metric_key===key)||{};
-  const storeList=locs.filter(l=>l.location_type==='store');
-  const regionList=locs.filter(l=>l.location_type==='region');
-  const userIds=[...new Set(reps.map(r=>r.user_id))];
-  return {corp,stores,reps,locs,storeList,regionList,userIds,g:(k)=>g(corp,k),gl,gu};
+  const corp=corpR.data??[],stores=storeR.data??[];
+  let scopeReps=repR.data??[];
+  if(lv.level==='store'){
+    const{data:members}=await sb.from('org_location_members').select('user_id').eq('location_id',lv.id);
+    const mids=(members??[]).map(m=>m.user_id);
+    scopeReps=scopeReps.filter(r=>mids.includes(r.user_id));
+  } else if(lv.level==='rep') scopeReps=scopeReps.filter(r=>r.user_id===lv.id);
+
+  const g=(k)=>corp.find(r=>r.metric_key===k)||{};
+  const gl=(arr,lid,key)=>arr.find(r=>r.location_id===lid&&r.metric_key===key)||{};
+  const gu=(arr,uid,key)=>arr.find(r=>r.user_id===uid&&r.metric_key===key)||{};
+  let childLocs=[];
+  if(lv.level==='corporate') childLocs=allLocs.filter(l=>l.location_type==='region');
+  else if(lv.level==='region') childLocs=allLocs.filter(l=>l.parent_id===lv.id&&l.location_type==='store');
+  const storeList=lv.level==='corporate'?allLocs.filter(l=>l.location_type==='store'):lv.level==='region'?allLocs.filter(l=>l.parent_id===lv.id):lv.level==='store'?allLocs.filter(l=>l.id===lv.id):[];
+  const userIds=[...new Set(scopeReps.map(r=>r.user_id))];
+  allUserIds=userIds;
+  return {corp,stores,reps:scopeReps,locs:allLocs,storeList,childLocs,userIds,g,gl,gu};
+}
+
+function levelBar(){
+  const lv=viewLevel;
+  let bc=`<span class="bc-item ${lv.level==='corporate'?'active':''}" onclick="setLevel('corporate')">🏢 Corporate</span>`;
+  for(const p of lv.path){
+    const em=p.level==='region'?'🗺️':p.level==='store'?'🏬':'👤';
+    bc+=`<span class="bc-sep">›</span><span class="bc-item" onclick="setLevel('${p.level}','${p.id}','${esc(p.name)}')">${em} ${esc(p.name)}</span>`;
+  }
+  if(lv.level!=='corporate'){
+    const em=lv.level==='region'?'🗺️':lv.level==='store'?'🏬':'👤';
+    bc+=`<span class="bc-sep">›</span><span class="bc-item active">${em} ${esc(lv.name)}</span>`;
+  }
+  return `<div class="cc-level-bar"><div class="cc-breadcrumb">${bc}</div>
+    <div class="cc-level-pills">
+      <button class="cc-level-pill ${lv.level==='corporate'?'active':''}" onclick="setLevel('corporate')">🏢 Corporate</button>
+      <button class="cc-level-pill ${lv.level==='region'?'active':''}" disabled style="opacity:${lv.level==='region'?.99:.4}">🗺️ Region</button>
+      <button class="cc-level-pill ${lv.level==='store'?'active':''}" disabled style="opacity:${lv.level==='store'?.99:.4}">🏬 Store</button>
+      <button class="cc-level-pill ${lv.level==='rep'?'active':''}" disabled style="opacity:${lv.level==='rep'?.99:.4}">👤 Rep</button>
+    </div></div>`;
+}
+
+function childCards(d){
+  if(d.childLocs.length>0){
+    const next=viewLevel.level==='corporate'?'region':'store';
+    return `<div class="cc-child-grid">${d.childLocs.map(c=>{
+      const rev=d.gl(d.stores,c.id,'revenue')||{};const co=d.gl(d.stores,c.id,'coaching_avg')||{};const wa=d.gl(d.stores,c.id,'warranty_attach')||{};
+      return `<div class="cc-child-card" onclick="setLevel('${next}','${c.id}','${esc(c.name)}')">
+        <div class="cc-cc-type">${esc(c.location_type)} ${esc(c.code??'')}</div>
+        <div class="cc-cc-name">${esc(c.name)}</div>
+        <div class="cc-cc-stat">${money(rev.actual_value)}</div>
+        <div style="font-size:11px;color:var(--steel)">Coach: ${co.actual_value?fmtN(co.actual_value,1)+'/10':'—'} · War: ${wa.actual_value?fmtP(wa.actual_value):'—'}</div>
+      </div>`;}).join('')}</div>`;
+  }
+  if(viewLevel.level==='store'&&d.userIds.length>0){
+    return `<div class="cc-child-grid">${d.userIds.map(uid=>{
+      const rev=d.gu(d.reps,uid,'revenue')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};
+      return `<div class="cc-child-card" onclick="setLevel('rep','${uid}','Rep ${esc(uid.slice(0,8))}')">
+        <div class="cc-cc-type">Sales Rep</div><div class="cc-cc-name">${esc(uid.slice(0,8))}…</div>
+        <div class="cc-cc-stat">${money(rev.actual_value)}</div>
+        <div style="font-size:11px;color:var(--steel)">Coach: ${co.actual_value?fmtN(co.actual_value,1)+'/10':'—'} · War: ${wa.actual_value?fmtP(wa.actual_value):'—'}</div>
+      </div>`;}).join('')}</div>`;
+  }
+  return '';
 }
 
 async function renderOverview(){
-  const d=await loadAll();const m=$('#ccMain');
+  const d=await loadAll();const m=$('#ccMain');const isRep=viewLevel.level==='rep';
   const rev=d.g('revenue'),war=d.g('warranty_value'),warA=d.g('warranty_attach'),units=d.g('units_sold');
   const avgO=d.g('avg_order'),ipo=d.g('ipo'),itemV=d.g('item_value'),coach=d.g('coaching_avg'),train=d.g('training_completion'),conv=d.g('floor_conversion'),walks=d.g('walk_ins'),greet=d.g('greeting_time'),warOpp=d.g('warranty_opps');
-  m.innerHTML=`<h2 class="cc-page-title">Operations Overview</h2>
-    <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · All Stores</p>
+  const pen=warOpp.actual_value&&units.actual_value?(warOpp.actual_value/units.actual_value*100):0;
+  m.innerHTML=`${levelBar()}
+    <h2 class="cc-page-title">${isRep?'Rep Scorecard':viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
+    <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · ${esc(viewLevel.name)}</p>
+    ${childCards(d)}
     <div class="cc-stat-grid">
       ${statCard('Revenue',money(rev.actual_value),'Budget: '+money(rev.target_value),rev.variance_pct)}
       ${statCard('Avg Order',money(avgO.actual_value),'Target: '+money(avgO.target_value),avgO.variance_pct)}
       ${statCard('IPO',fmtN(ipo.actual_value,2),'Target: '+fmtN(ipo.target_value,1),ipo.variance_pct)}
       ${statCard('Item Value',money(itemV.actual_value),'Target: '+money(itemV.target_value),itemV.variance_pct)}
-      ${statCard('Units Sold',fmtN(units.actual_value,0),'Target: '+fmtN(units.target_value,0),units.variance_pct)}
+      ${statCard('Units',fmtN(units.actual_value,0),'Target: '+fmtN(units.target_value,0),units.variance_pct)}
       ${statCard('Warranty $',money(war.actual_value),'Budget: '+money(war.target_value),war.variance_pct)}
-      ${statCard('Warranty Attach',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
-      ${statCard('Warranty Opps',fmtN(warOpp.actual_value,0),'Target: '+fmtN(warOpp.target_value,0),warOpp.variance_pct)}
-      ${statCard('Coaching Score',fmtN(coach.actual_value,1)+'/10','Target: '+fmtN(coach.target_value,1),coach.variance_pct)}
+      ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('War. Opps',fmtN(warOpp.actual_value,0),'Target: '+fmtN(warOpp.target_value,0),warOpp.variance_pct)}
+      ${statCard('Penetration',pen.toFixed(1)+'%','Opps vs units',null)}
+      ${statCard('Coaching',fmtN(coach.actual_value,1)+'/10','Target: '+fmtN(coach.target_value,1),coach.variance_pct)}
       ${statCard('Training',fmtP(train.actual_value),'Target: 100%',train.variance_pct)}
-      ${statCard('Walk-Ins',fmtN(walks.actual_value,0),'This month',null)}
-      ${statCard('Floor Conversion',fmtP(conv.actual_value),'Target: '+fmtP(conv.target_value),conv.variance_pct)}
-      ${statCard('Avg Greeting',fmtN(greet.actual_value,0)+'s','Target: '+fmtN(greet.target_value,0)+'s',greet.variance_pct)}
+      ${statCard('Conversion',fmtP(conv.actual_value),'Target: '+fmtP(conv.target_value),conv.variance_pct)}
+      ${!isRep&&walks.actual_value?statCard('Walk-Ins',fmtN(walks.actual_value,0),'This month',null):''}
+      ${!isRep&&greet.actual_value?statCard('Greeting',fmtN(greet.actual_value,0)+'s','Target: '+fmtN(greet.target_value,0)+'s',greet.variance_pct):''}
     </div>
-    ${storeTable('Store Revenue',d,'revenue',money)}
-    ${storeTable('Warranty Attach by Store',d,'warranty_attach',fmtP)}`;
+    ${!isRep&&d.storeList.length>1?storeTable('Revenue by Location',d,'revenue',money):''}
+    ${!isRep&&d.storeList.length>1?storeTable('Warranty Attach',d,'warranty_attach',fmtP):''}
+    ${viewLevel.level==='store'&&d.userIds.length>0?repTable(d):''}`;
+}
+
+function repTable(d){
+  return `<div class="cc-panel"><h3>Rep Performance</h3>
+  <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Revenue</th><th class="num">vs Budget</th><th class="num">Avg Order</th><th class="num">IPO</th><th class="num">War %</th><th class="num">Coach</th><th class="num">Train</th><th class="num">Conv</th><th>Action</th></tr></thead><tbody>
+  ${d.userIds.map(uid=>{
+    const rv=d.gu(d.reps,uid,'revenue')||{};const ao=d.gu(d.reps,uid,'avg_order')||{};const ip=d.gu(d.reps,uid,'ipo')||{};
+    const wa=d.gu(d.reps,uid,'warranty_attach')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};
+    const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};const v=rv.variance_pct??0;
+    return `<tr style="cursor:pointer" onclick="setLevel('rep','${uid}','Rep ${esc(uid.slice(0,8))}')">
+      <td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
+      <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${fmtP(wa.actual_value)}</td>
+      <td class="num">${fmtN(co.actual_value,1)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+      <td>${v>5?'<span class="cc-badge up">Strong</span>':v<-5?'<span class="cc-badge dn">Coach</span>':'<span class="cc-badge flat">OK</span>'}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
 }
 
 function storeTable(title,d,key,fmt){
   return `<div class="cc-panel"><h3>${title}</h3>
   <table class="cc-table"><thead><tr><th>Store</th><th class="num">Actual</th><th class="num">Target</th><th class="num">Variance</th><th>Status</th></tr></thead><tbody>
   ${d.storeList.map(s=>{const r=d.gl(d.stores,s.id,key)||{};const v=r.variance_pct??0;
-    return `<tr><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
+    return `<tr style="cursor:pointer" onclick="setLevel('store','${s.id}','${esc(s.name)}')"><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
     <td class="num">${fmt(r.actual_value)}</td><td class="num">${fmt(r.target_value)}</td>
     <td class="num">${pct(v)}</td><td>${badge(v)}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
