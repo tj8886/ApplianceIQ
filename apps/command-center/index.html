@@ -104,8 +104,10 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
 .cc-level-pill:hover{border-color:var(--accent);color:var(--accent)}
 .cc-level-pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .cc-child-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px}
-.cc-child-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s}
-.cc-child-card:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(99,102,241,0.1)}
+.cc-child-card{background:#fff;border:2px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;position:relative}
+.cc-child-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(99,102,241,0.15);transform:translateY(-2px)}
+.cc-child-card::after{content:'→';position:absolute;top:14px;right:14px;color:var(--accent);font-size:16px;font-weight:700;opacity:0;transition:opacity .15s}
+.cc-child-card:hover::after{opacity:1}
 .cc-child-card .cc-cc-name{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--navy)}
 .cc-child-card .cc-cc-type{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px}
 .cc-child-card .cc-cc-stat{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:var(--navy);margin-top:6px}
@@ -122,6 +124,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
 .cc-table{width:100%;border-collapse:collapse;font-size:13px}
 .cc-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--steel);padding:8px 10px;border-bottom:2px solid var(--line)}
 .cc-table td{padding:8px 10px;border-bottom:1px solid #f3f5f8}
+.cc-table tr[style*="cursor"]:hover td{background:#f0f0ff}
 .cc-table .num{text-align:right;font-variant-numeric:tabular-nums}
 .cc-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
 .cc-badge.up{background:#e8f5e9;color:#2e7d32}.cc-badge.dn{background:#fdecea;color:#8c2f22}.cc-badge.flat{background:#fff8e6;color:#b8860b}
@@ -442,12 +445,20 @@ function levelBar(){
     const em=lv.level==='region'?'🗺️':lv.level==='store'?'🏬':'👤';
     bc+=`<span class="bc-sep">›</span><span class="bc-item active">${em} ${esc(lv.name)}</span>`;
   }
+  const regions=allLocs.filter(l=>l.location_type==='region');
+  const stores=allLocs.filter(l=>l.location_type==='store');
   return `<div class="cc-level-bar"><div class="cc-breadcrumb">${bc}</div>
     <div class="cc-level-pills">
       <button class="cc-level-pill ${lv.level==='corporate'?'active':''}" onclick="setLevel('corporate')">🏢 Corporate</button>
-      <button class="cc-level-pill ${lv.level==='region'?'active':''}" disabled style="opacity:${lv.level==='region'?.99:.4}">🗺️ Region</button>
-      <button class="cc-level-pill ${lv.level==='store'?'active':''}" disabled style="opacity:${lv.level==='store'?.99:.4}">🏬 Store</button>
-      <button class="cc-level-pill ${lv.level==='rep'?'active':''}" disabled style="opacity:${lv.level==='rep'?.99:.4}">👤 Rep</button>
+      <select class="cc-level-pill ${lv.level==='region'?'active':''}" onchange="if(this.value){const o=JSON.parse(this.value);setLevel('region',o.id,o.name)}" style="cursor:pointer">
+        <option value="">🗺️ Region</option>
+        ${regions.map(r=>`<option value='${JSON.stringify({id:r.id,name:r.name}).replace(/'/g,"&#39;")}' ${lv.level==='region'&&lv.id===r.id?'selected':''}>${r.name}</option>`).join('')}
+      </select>
+      <select class="cc-level-pill ${lv.level==='store'?'active':''}" onchange="if(this.value){const o=JSON.parse(this.value);setLevel('store',o.id,o.name)}" style="cursor:pointer">
+        <option value="">🏬 Store</option>
+        ${stores.map(s=>`<option value='${JSON.stringify({id:s.id,name:s.name}).replace(/'/g,"&#39;")}' ${lv.level==='store'&&lv.id===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+      <button class="cc-level-pill" style="opacity:${lv.level==='rep'?1:.4}" ${lv.level==='rep'?'':'disabled'}>👤 Rep</button>
     </div></div>`;
 }
 
