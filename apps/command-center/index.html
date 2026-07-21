@@ -537,8 +537,37 @@ async function renderOverview(){
     </div>
     ${!isRep&&d.storeList.length>1?storeTable('Revenue by Location',d,'revenue',money):''}
     ${!isRep&&d.storeList.length>1?storeTable('Warranty Attach',d,'warranty_attach',fmtP):''}
-    ${viewLevel.level==='store'&&d.userIds.length>0?repTable(d):''}`;
+    ${viewLevel.level==='store'&&d.userIds.length>0?repTable(d):''}
+    ${await channelPanel()}`;
   bindClicks();
+}
+
+async function channelPanel(){
+  const lv=viewLevel;
+  let q=sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').in('metric_key',['channel_pct','channel_revenue']);
+  if(lv.level==='corporate') q=q.is('location_id',null).is('user_id',null);
+  else if(lv.level==='region') q=q.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='store') q=q.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='rep') q=q.eq('user_id',lv.id);
+  const{data:ch}=await q;
+  const pcts=(ch??[]).filter(c=>c.metric_key==='channel_pct');
+  const revs=(ch??[]).filter(c=>c.metric_key==='channel_revenue');
+  if(pcts.length===0) return '';
+  const channels=['Retail','Commercial','Trades'];
+  const colors={Retail:'var(--accent)',Commercial:'#d97706',Trades:'#7c3aed'};
+  const icons={Retail:'🏪',Commercial:'🏢',Trades:'🔨'};
+  const labels={Trades:'Trades (Designers, Builders, Cabinet Makers)'};
+  return `<div class="cc-panel"><h3>Sales by Channel</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">${channels.map(c=>{
+      const p=pcts.find(x=>x.metric_subtype===c)||{};const r=revs.find(x=>x.metric_subtype===c)||{};
+      const gap=(p.actual_value??0)-(p.target_value??0);
+      return `<div style="flex:1;min-width:180px;border:1px solid var(--line);border-radius:10px;padding:16px">
+        <div style="font-size:13px;color:${colors[c]};font-weight:700">${icons[c]} ${esc(labels[c]??c)}</div>
+        <div style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:var(--navy);margin:4px 0">${fmtP(p.actual_value)}</div>
+        ${r.actual_value?`<div style="font-size:13px;color:var(--ink)">${money(r.actual_value)}</div>`:''}
+        <div style="font-size:11px;color:var(--steel)">Target: ${fmtP(p.target_value)} · <span style="color:${gap>=0?'var(--verified)':'var(--danger)'}">Gap: ${gap>=0?'+':''}${gap.toFixed(1)}%</span></div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;margin-top:8px;overflow:hidden"><div style="background:${colors[c]};height:100%;width:${Math.min(p.actual_value??0,100)}%;border-radius:4px"></div></div>
+      </div>`;}).join('')}</div></div>`;
 }
 
 function repTable(d){
