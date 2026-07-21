@@ -652,7 +652,10 @@ const REC_MAX_BYTES = 25 * 1024 * 1024;   // 25 MB (transcription provider limit
 const STATUS_CHIP = { uploaded:['n','Uploaded'], transcribing:['a','Transcribing…'], transcribed:['n','Transcribed'], analyzing:['a','Analyzing…'], complete:['g','Complete'], failed:['r','Failed'] };
 
 function recSupported(){ return !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder); }
-function fmtTime(s){ return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+function fmtTime(s){
+  if(s>=3600){ const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const sec=s%60; return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; }
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
 function fmtBytes(b){ return b==null?'—':(b>1048576? (b/1048576).toFixed(1)+' MB' : Math.round(b/1024)+' KB'); }
 
 async function renderRecordings(){
