@@ -320,7 +320,9 @@ const pct=n=>n==null?'—':(n>=0?'+':'')+n.toFixed(1)+'%';
 let currentOrg=null,currentView='overview';
 // View level: {level:'corporate'|'region'|'store'|'rep', id:null|locationId|userId, name:'', path:[]}
 let viewLevel={level:'corporate',id:null,name:'All Stores',path:[]};
-let allLocs=[], allUserIds=[];
+let allLocs=[], allUserIds=[], repNames={};
+
+function repName(uid){ return repNames[uid] || uid.slice(0,8)+'…'; }
 
 function setLevel(level,id,name){
   const prev={level:viewLevel.level,id:viewLevel.id,name:viewLevel.name};
@@ -378,6 +380,9 @@ async function bootApp(){
     currentOrg=o2[0]??null;
   } else currentOrg=orgs[0];
   if(!currentOrg){$('#ccMain').innerHTML='<div style="padding:40px;color:var(--steel);text-align:center">No organization found. Ask your admin for an invite.</div>';return;}
+  // Load rep names
+  const{data:profiles}=await sb.rpc('get_org_member_profiles',{p_org_id:currentOrg.id});
+  repNames={};(profiles??[]).forEach(p=>{repNames[p.user_id]=p.display_name;});
   renderCC();
 }
 
@@ -469,7 +474,10 @@ function levelBar(){
         <option value="">🏬 Store</option>
         ${stores.map(s=>`<option value='${JSON.stringify({id:s.id,name:s.name}).replace(/'/g,"&#39;")}' ${lv.level==='store'&&lv.id===s.id?'selected':''}>${s.name}</option>`).join('')}
       </select>
-      <button class="cc-level-pill" style="opacity:${lv.level==='rep'?1:.4}" ${lv.level==='rep'?'':'disabled'}>👤 Rep</button>
+      <select class="cc-level-pill ${lv.level==='rep'?'active':''}" onchange="if(this.value){const o=JSON.parse(this.value);setLevel('rep',o.id,o.name)}" style="cursor:pointer">
+        <option value="">👤 Rep</option>
+        ${Object.entries(repNames).map(([uid,name])=>`<option value='${JSON.stringify({id:uid,name:name}).replace(/'/g,"&#39;")}' ${lv.level==='rep'&&lv.id===uid?'selected':''}>${name}</option>`).join('')}
+      </select>
     </div></div>`;
 }
 
@@ -488,8 +496,8 @@ function childCards(d){
   if(viewLevel.level==='store'&&d.userIds.length>0){
     return `<div class="cc-child-grid">${d.userIds.map(uid=>{
       const rev=d.gu(d.reps,uid,'revenue')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};
-      return `<div class="cc-child-card" data-rep-id="${uid}" data-rep-name="Rep ${esc(uid.slice(0,8))}">
-        <div class="cc-cc-type">Sales Rep</div><div class="cc-cc-name">${esc(uid.slice(0,8))}…</div>
+      return `<div class="cc-child-card" data-rep-id="${uid}" data-rep-name="${esc(repName(uid))}">
+        <div class="cc-cc-type">Sales Rep</div><div class="cc-cc-name">${esc(repName(uid))}</div>
         <div class="cc-cc-stat">${money(rev.actual_value)}</div>
         <div style="font-size:11px;color:var(--steel)">Coach: ${co.actual_value?fmtN(co.actual_value,1)+'/10':'—'} · War: ${wa.actual_value?fmtP(wa.actual_value):'—'}</div>
       </div>`;}).join('')}</div>`;
@@ -535,8 +543,8 @@ function repTable(d){
     const rv=d.gu(d.reps,uid,'revenue')||{};const ao=d.gu(d.reps,uid,'avg_order')||{};const ip=d.gu(d.reps,uid,'ipo')||{};
     const wa=d.gu(d.reps,uid,'warranty_attach')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};
     const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};const v=rv.variance_pct??0;
-    return `<tr style="cursor:pointer" data-rep-id="${uid}" data-rep-name="Rep ${esc(uid.slice(0,8))}">
-      <td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
+    return `<tr style="cursor:pointer" data-rep-id="${uid}" data-rep-name="${esc(repName(uid))}">
+      <td><b>${esc(repName(uid))}</b></td><td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
       <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${fmtP(wa.actual_value)}</td>
       <td class="num">${fmtN(co.actual_value,1)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
       <td>${v>5?'<span class="cc-badge up">Strong</span>':v<-5?'<span class="cc-badge dn">Coach</span>':'<span class="cc-badge flat">OK</span>'}</td></tr>`;
@@ -599,7 +607,7 @@ async function renderWarranty(){
     ${d.userIds.map(uid=>{
       const wa=d.gu(d.reps,uid,'warranty_attach')||{};const wv=d.gu(d.reps,uid,'warranty_value')||{};const wo=d.gu(d.reps,uid,'warranty_opps')||{};
       const gap=(wa.actual_value??0)-45;
-      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td><td class="num">${money(wv.actual_value)}</td><td>${badge(gap,0,-5)}</td></tr>`;
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td><td class="num">${money(wv.actual_value)}</td><td>${badge(gap,0,-5)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
@@ -625,7 +633,7 @@ async function renderReps(){
       const iv=d.gu(d.reps,uid,'item_value')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};const wo=d.gu(d.reps,uid,'warranty_opps')||{};
       const co=d.gu(d.reps,uid,'coaching_avg')||{};const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};
       const v=rv.variance_pct??0;const coachV=co.variance_pct??0;
-      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td>
+      return `<tr><td><b>${esc(repName(uid))}</b></td>
         <td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
         <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${money(iv.actual_value)}</td>
         <td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td>
@@ -646,7 +654,7 @@ async function renderCoaching(){
     ${d.userIds.map(uid=>{
       const co=d.gu(d.reps,uid,'coaching_avg')||{};const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};
       const v=co.variance_pct??0;
-      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${fmtN(co.target_value,1)}/10</td><td class="num">${pct(v)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${fmtN(co.target_value,1)}/10</td><td class="num">${pct(v)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
         <td>${v<-15?'<span class="cc-badge dn">Priority coaching</span>':v<-5?'<span class="cc-badge flat">Monitor</span>':'<span class="cc-badge up">On track</span>'}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
@@ -663,7 +671,7 @@ async function renderTraining(){
     ${d.userIds.map(uid=>{
       const tr=d.gu(d.reps,uid,'training_completion')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const rv=d.gu(d.reps,uid,'revenue')||{};
       const v=tr.actual_value??0;
-      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${money(rv.actual_value)}</td>
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${money(rv.actual_value)}</td>
         <td>${v>=90?'<span class="cc-badge up">Ready</span>':v>=70?'<span class="cc-badge flat">In progress</span>':'<span class="cc-badge dn">Behind</span>'}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
@@ -687,7 +695,7 @@ async function renderFloor(){
     <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Revenue</th><th>Status</th></tr></thead><tbody>
     ${d.userIds.map(uid=>{
       const fc=d.gu(d.reps,uid,'floor_conversion')||{};const rv=d.gu(d.reps,uid,'revenue')||{};const v=fc.variance_pct??0;
-      return `<tr><td><b>${esc(uid.slice(0,8))}…</b></td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${money(rv.actual_value)}</td><td>${badge(v)}</td></tr>`;
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${money(rv.actual_value)}</td><td>${badge(v)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
