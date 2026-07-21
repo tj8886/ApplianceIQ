@@ -4,10 +4,11 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="theme-color" content="#0f1f3d" />
-<title>CRMAI IQ — Appliance IQ CRM</title>
+<title>ApplianceIQ CRM — AI-Powered Sales Coaching for Appliance Retail</title>
+<meta name="description" content="Record pitches. Get AI coaching from your team of specialists. Track KPIs. Close more deals. The CRM built for appliance retail."/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --navy:#0f1f3d; --navy-2:#16294e; --paper:#f6f8fb; --card:#ffffff;
@@ -23,7 +24,71 @@
   :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
   .num{font-variant-numeric:tabular-nums}
 
-  #auth{min-height:100%;display:flex;align-items:center;justify-content:center;background:
+  /* LANDING PAGE */
+  #landing{display:block}
+  #auth{display:none}
+  #app{display:none}
+  .lnav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%}
+  .lnav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+  .lnav-logo{font-family:'Sora',sans-serif;font-weight:800;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:9px}
+  .lnav-pill{background:var(--navy);color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+  .lnav-links{display:flex;align-items:center;gap:24px}
+  .lnav-links a{color:var(--steel);font-size:13px;text-decoration:none;font-weight:500}
+  .lnav-links a:hover{color:var(--navy)}
+  .lbtn{background:var(--navy);color:#fff;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;cursor:pointer;text-decoration:none;display:inline-block}
+  .lbtn:hover{background:var(--navy-2)}
+  .lbtn-o{border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:'Sora',sans-serif;font-weight:600;display:inline-block;background:transparent}
+  .lbtn-o:hover{border-color:var(--navy);background:#f0f4ff}
+  .lsection{padding:100px 5%}
+  .lsection-inner{max-width:1200px;margin:0 auto}
+  .leyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:20px}
+  .leyebrow-line{width:24px;height:1px;background:var(--navy)}
+  .leyebrow-text{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--navy);font-weight:600}
+  .lhero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px;position:relative;overflow:hidden}
+  .lhero::after{content:'';position:absolute;top:30%;right:0;width:500px;height:500px;background:radial-gradient(ellipse at right,rgba(15,31,61,0.06) 0%,transparent 70%);pointer-events:none}
+  .lhero-inner{max-width:1200px;margin:0 auto;width:100%}
+  .lhero h1{font-family:'Sora',sans-serif;font-size:clamp(38px,5.5vw,72px);font-weight:800;letter-spacing:-2px;color:var(--navy);margin-bottom:24px;max-width:800px;line-height:1.05}
+  .lhero h1 em{font-style:normal;color:var(--verified)}
+  .lhero-sub{font-size:18px;color:var(--steel);max-width:560px;line-height:1.65;margin-bottom:40px}
+  .lhero-ctas{display:flex;align-items:center;gap:16px;margin-bottom:72px;flex-wrap:wrap}
+  .lhero-stats{display:flex;gap:48px;border-top:1px solid var(--line);padding-top:40px;flex-wrap:wrap}
+  .lstat-num{font-family:'Sora',sans-serif;font-size:36px;font-weight:800;color:var(--navy);letter-spacing:-1px}
+  .lstat-lbl{font-size:12px;color:var(--steel);margin-top:2px}
+  .ltitle{font-family:'Sora',sans-serif;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-0.8px;color:var(--navy);margin-bottom:14px}
+  .lsub{font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px}
+  .lfeat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+  .lfeat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px}
+  .lfeat-icon{font-size:28px;margin-bottom:12px}
+  .lfeat h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)}
+  .lfeat p{font-size:14px;color:var(--steel);line-height:1.6}
+  .lhow-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;counter-reset:step}
+  .lstep{position:relative;padding:24px;background:#fff;border:1px solid var(--line);border-radius:14px}
+  .lstep::before{counter-increment:step;content:counter(step);font-family:'Sora',sans-serif;font-size:32px;font-weight:800;color:rgba(15,31,61,0.08)}
+  .lstep h3{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin:8px 0 6px;color:var(--navy)}
+  .lstep p{font-size:13px;color:var(--steel);line-height:1.6}
+  .lteam-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+  .lteam-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;min-width:160px;flex:1}
+  .lteam-emoji{font-size:24px}
+  .lteam-name{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;margin-top:4px}
+  .lteam-role{font-size:12px;color:var(--steel)}
+  .lpricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+  .lprice-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column}
+  .lprice-card.pop{border-color:var(--navy);box-shadow:0 4px 24px rgba(15,31,61,0.12)}
+  .lprice-tier{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)}
+  .lprice-amt{font-family:'Sora',sans-serif;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px}
+  .lprice-per{font-size:13px;color:var(--steel)}
+  .lprice-list{list-style:none;padding:0;margin:18px 0;flex:1}
+  .lprice-list li{font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8}
+  .lprice-list li::before{content:'✓ ';color:var(--verified);font-weight:700}
+  .lfooter{background:var(--navy);color:rgba(255,255,255,0.7);text-align:center;padding:40px 5%;font-size:13px}
+  .lfooter a{color:#fff;text-decoration:none;font-weight:600}
+  @media(max-width:768px){
+    .lnav-links a:not(.lbtn){display:none}
+    .lhero-stats{gap:24px}
+    .lteam-grid{flex-direction:column}
+  }
+
+  #auth{min-height:100%;align-items:center;justify-content:center;background:
     linear-gradient(160deg,var(--navy) 0%, #132b57 60%, #0c1830 100%)}
   .auth-card{background:var(--card);border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
   .mark{display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
@@ -197,6 +262,152 @@
 </head>
 <body>
 
+<div id="landing">
+
+<nav class="lnav">
+  <div class="lnav-inner">
+    <div class="lnav-logo"><span class="lnav-pill">IQ</span>ApplianceIQ <b style="color:var(--verified)">CRM</b></div>
+    <div class="lnav-links">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#team">Your AI Team</a>
+      <a href="#crm-pricing">Pricing</a>
+      <a href="#" onclick="event.preventDefault();showLogin();" class="lbtn-o">Log In</a>
+      <button class="lbtn" onclick="showSignup()">Start Free Trial →</button>
+    </div>
+  </div>
+</nav>
+
+<section class="lhero">
+  <div class="lhero-inner">
+    <div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">ApplianceIQ CRM</span></div>
+    <h1>Record the Pitch.<br>Coach the <em>Rep</em>.<br>Close the Deal.</h1>
+    <p class="lhero-sub">The only CRM that listens to your sales conversations, coaches reps against your custom KPIs, and gives every team member a personal AI coaching squad — built specifically for appliance retail.</p>
+    <div class="lhero-ctas">
+      <button class="lbtn" onclick="showSignup()" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button>
+      <a href="#how-it-works" class="lbtn-o">See How It Works</a>
+    </div>
+    <div class="lhero-stats">
+      <div><div class="lstat-num">6</div><div class="lstat-lbl">AI Coaching Personas</div></div>
+      <div><div class="lstat-num">3hr</div><div class="lstat-lbl">Max Recording Length</div></div>
+      <div><div class="lstat-num">5</div><div class="lstat-lbl">Custom KPI Metrics</div></div>
+      <div><div class="lstat-num">7-Step</div><div class="lstat-lbl">Sales Methodology</div></div>
+      <div><div class="lstat-num">24/7</div><div class="lstat-lbl">AI Coaching Available</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="lsection" id="features" style="background:#fff">
+  <div class="lsection-inner">
+    <div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">Features</span></div>
+    <h2 class="ltitle">Everything a sales floor needs.<br>Nothing it doesn't.</h2>
+    <p class="lsub">Built by people who've sold on the floor. Powered by AI that actually understands appliance retail.</p>
+    <div class="lfeat-grid">
+      <div class="lfeat"><div class="lfeat-icon">🎙️</div><h3>Record Any Pitch</h3><p>Up to 3 hours. Browser-based — works on any phone. Consent-first with full audit trail. Transcribed automatically via AI.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">🏆</div><h3>AI Coaching Team</h3><p>Six persona coaches analyze every recording. TJ on sales technique. Natalie on specs. Leah on design. They hand off to each other like a real team.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">📊</div><h3>Custom KPIs</h3><p>Define your own success metrics. Every coaching session and roleplay scores against them. Daily briefings show what to focus on today.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">🎯</div><h3>Deal Pipeline</h3><p>Track every deal from first contact to close. Attach recordings, emails, and coaching scores directly to deals and contacts.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">🎬</div><h3>AI Roleplay Training</h3><p>Practice cold calls, objection handling, follow-ups, and demos against an AI customer. Get scored in real time by your coaching persona.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">📈</div><h3>Analytics Dashboard</h3><p>Today, week, MTD, QTD, YTD. Budget vs. actual with variance tracking. See exactly where every rep stands against targets.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">👥</div><h3>Flexible Org Structure</h3><p>CEO to sales rep. Define your own roles, permissions, and hierarchy. Invite reps by email with one-click onboarding.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">✉️</div><h3>CRM Email</h3><p>Send emails from deal and contact records. Every message logged, timestamped, and visible on the activity timeline.</p></div>
+      <div class="lfeat"><div class="lfeat-icon">🔒</div><h3>Enterprise Security</h3><p>Row-level tenant isolation. JWT-authenticated edge functions. API keys never touch the browser. Full audit trail on every AI call.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="lsection" id="how-it-works">
+  <div class="lsection-inner">
+    <div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">How It Works</span></div>
+    <h2 class="ltitle">Four steps. Zero friction.</h2>
+    <p class="lsub">From recording a pitch to actionable coaching in minutes — not days.</p>
+    <div class="lhow-grid">
+      <div class="lstep"><h3>Record</h3><p>Open the CRM on your phone. Hit record. Consent is captured first. Works in any browser — no app to install.</p></div>
+      <div class="lstep"><h3>Transcribe</h3><p>AI transcribes the full conversation automatically. Up to 3 hours. The transcript is stored and searchable.</p></div>
+      <div class="lstep"><h3>Coach</h3><p>Your AI coaching team analyzes the pitch against your custom KPIs. The right persona leads — specialists weigh in when relevant.</p></div>
+      <div class="lstep"><h3>Improve</h3><p>Scores land on your dashboard. Daily briefings tell reps what to focus on. Practice with AI roleplay before the next real pitch.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="lsection" id="team" style="background:#fff">
+  <div class="lsection-inner">
+    <div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">Your AI Team</span></div>
+    <h2 class="ltitle">Six specialists. One coaching team.</h2>
+    <p class="lsub">They collaborate like siblings — handing off naturally when a question crosses specialties. Quick debates, then the expert decides. No rambling, no generic advice.</p>
+    <div class="lteam-grid">
+      <div class="lteam-card"><div class="lteam-emoji">🏆</div><div class="lteam-name">TJ</div><div class="lteam-role">Sales Coach — Closing, objections, deal momentum</div></div>
+      <div class="lteam-card"><div class="lteam-emoji">📚</div><div class="lteam-name">Natalie</div><div class="lteam-role">Product Expert — Specs, comparisons, features</div></div>
+      <div class="lteam-card"><div class="lteam-emoji">🎨</div><div class="lteam-name">Leah</div><div class="lteam-role">Design Consultant — Kitchen layout, lifestyle fit</div></div>
+      <div class="lteam-card"><div class="lteam-emoji">🎓</div><div class="lteam-name">Caden</div><div class="lteam-role">Training Expert — Knowledge gaps, teaching moments</div></div>
+      <div class="lteam-card"><div class="lteam-emoji">🔧</div><div class="lteam-name">Asher</div><div class="lteam-role">Installation Expert — Timelines, procedures, delivery</div></div>
+      <div class="lteam-card"><div class="lteam-emoji">❤️</div><div class="lteam-name">Katrina</div><div class="lteam-role">Service Consultant — Customer emotions, after-sale care</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="lsection" id="crm-pricing">
+  <div class="lsection-inner">
+    <div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">Pricing</span></div>
+    <h2 class="ltitle">Start free. Scale when ready.</h2>
+    <p class="lsub">14-day free trial on every plan. No credit card required.</p>
+    <div class="lpricing-grid">
+      <div class="lprice-card">
+        <div class="lprice-tier">Starter</div>
+        <div class="lprice-amt">$29<span style="font-size:16px;font-weight:400">/mo</span></div>
+        <div class="lprice-per">per seat · billed monthly</div>
+        <ul class="lprice-list">
+          <li>100K AI tokens/month</li>
+          <li>10 recordings/month</li>
+          <li>All 6 coaching personas</li>
+          <li>Custom KPIs</li>
+          <li>Deal pipeline + contacts</li>
+          <li>Email dispatch</li>
+        </ul>
+        <button class="lbtn" onclick="showSignup()" style="width:100%;text-align:center">Start Free Trial</button>
+      </div>
+      <div class="lprice-card pop">
+        <div class="lprice-tier" style="color:var(--navy)">Pro <span style="background:var(--navy);color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;margin-left:6px">Popular</span></div>
+        <div class="lprice-amt">$99<span style="font-size:16px;font-weight:400">/mo</span></div>
+        <div class="lprice-per">per seat · billed monthly</div>
+        <ul class="lprice-list">
+          <li>1M AI tokens/month</li>
+          <li>100 recordings/month</li>
+          <li>Everything in Starter</li>
+          <li>AI roleplay training</li>
+          <li>Analytics dashboard</li>
+          <li>Team onboarding + invites</li>
+          <li>Daily coaching briefings</li>
+        </ul>
+        <button class="lbtn" onclick="showSignup()" style="width:100%;text-align:center">Start Free Trial</button>
+      </div>
+      <div class="lprice-card">
+        <div class="lprice-tier">Enterprise</div>
+        <div class="lprice-amt">$299<span style="font-size:16px;font-weight:400">/mo</span></div>
+        <div class="lprice-per">per seat · billed monthly</div>
+        <ul class="lprice-list">
+          <li>10M AI tokens/month</li>
+          <li>Unlimited recordings</li>
+          <li>Everything in Pro</li>
+          <li>Custom org structure</li>
+          <li>Manager analytics</li>
+          <li>Shared knowledge base</li>
+          <li>Priority support</li>
+          <li>YoY performance tracking</li>
+        </ul>
+        <button class="lbtn" onclick="showSignup()" style="width:100%;text-align:center">Start Free Trial</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="lfooter">
+  <p>© 2026 ApplianceIQ · <a href="#features">Features</a> · <a href="#crm-pricing">Pricing</a> · <a href="#" onclick="event.preventDefault();showLogin();">Log In</a></p>
+  <p style="margin-top:8px;font-size:11px;opacity:0.6">Built for appliance retail. Powered by AI that knows the floor.</p>
+</footer>
+
+</div>
+
 <div id="auth">
   <div class="auth-card">
     <div class="mark"><span class="iq">IQ</span>
@@ -242,9 +453,24 @@ const SUPABASE_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const $ = (s)=>document.querySelector(s);
-const authEl = $('#auth'), appEl = $('#app'), mainEl = $('#main'), modalRoot = $('#modalRoot');
+const landingEl = $('#landing'), authEl = $('#auth'), appEl = $('#app'), mainEl = $('#main'), modalRoot = $('#modalRoot');
 const money = (n)=> n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
 const esc = (s)=> String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function showLogin(){
+  landingEl.style.display='none'; authEl.style.display='flex'; appEl.style.display='none';
+  $('#email')?.focus();
+}
+function showSignup(){
+  showLogin();
+  setTimeout(()=>{ note('Enter your email and password, then tap Create an account.', true); },100);
+}
+function showLanding(){
+  landingEl.style.display='block'; authEl.style.display='none'; appEl.style.display='none';
+}
+function showApp(){
+  landingEl.style.display='none'; authEl.style.display='none'; appEl.style.display='block';
+}
 
 let orgs=[], currentOrg=null, currentView='pipeline';
 let assistants=[], currentAssistant=null, chatLog=[];
@@ -266,12 +492,12 @@ $('#signupLink').onclick = async ()=>{
   if(e2) return note('Account created — check your email to confirm, then sign in.', true);
   boot();
 };
-$('#signoutBtn').onclick = async ()=>{ await sb.auth.signOut(); location.reload(); };
+$('#signoutBtn').onclick = async ()=>{ await sb.auth.signOut(); showLanding(); };
 
 async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
-  if(!session){ authEl.style.display='flex'; appEl.style.display='none'; return; }
-  authEl.style.display='none'; appEl.style.display='block';
+  if(!session){ showLanding(); return; }
+  showApp();
 
   const { data: memberships } = await sb.from('organization_members')
     .select('organization_id, role, organizations(id,name,slug)').eq('status','active');
