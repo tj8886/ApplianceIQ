@@ -73,6 +73,19 @@ a{color:var(--teal);text-decoration:none}
 .btn-add{width:100%;background:var(--teal-tint);color:var(--teal-dark);border:none;padding:9px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
 .btn-add:hover{background:var(--teal);color:#fff}
 
+/* Admin/training cards */
+.admin-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:18px;box-shadow:0 2px 10px rgba(15,31,61,.04)}
+.admin-card h3{font-family:'Sora',Arial,sans-serif;font-size:16px;font-weight:800;color:var(--navy);margin-bottom:12px}
+.admin-card table{width:100%;border-collapse:collapse;font-size:13px}
+.admin-card th{text-align:left;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--steel);padding:8px 10px;border-bottom:1px solid var(--line)}
+.admin-card td{padding:10px;border-bottom:1px solid var(--line)}
+.pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:1px}
+.pill.active{background:var(--teal-tint);color:var(--teal-dark)}
+.pill.pending{background:#fef3c7;color:#92400e}
+.pill.draft{background:#dbeafe;color:#1e40af}
+.pill.published{background:var(--teal-tint);color:var(--teal-dark)}
+.empty{text-align:center;padding:40px;color:var(--steel);font-size:14px}
+
 /* Upload modal */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(15,31,61,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
 .modal{background:var(--card);border-radius:22px;max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:36px;box-shadow:0 30px 80px rgba(15,31,61,.25)}
@@ -302,16 +315,41 @@ function render(){
   if(MYVENDORS.length>1){
     vsw=`<div class="role-bar">${MYVENDORS.map(v=>`<button class="role-btn ${v.id===ACTIVE_VENDOR.id?'active':''}" onclick="setVendor('${v.id}')">${v.name}</button>`).join('')}</div>`;
   }
-  body.innerHTML=roleBar+`
+
+  // Portal view tabs
+  const viewTabs = `<div class="role-bar" style="margin-top:14px">
+    <button class="role-btn ${PORTAL_VIEW==='assets'?'active':''}" onclick="setPortalView('assets')">📁 Content Library</button>
+    <button class="role-btn ${PORTAL_VIEW==='training'?'active':''}" onclick="setPortalView('training')">📚 Brand Training</button>
+  </div>`;
+
+  if (PORTAL_VIEW === 'training') {
+    body.innerHTML=roleBar+vsw+`
+      <div class="page-eyebrow">Brand Training</div>
+      <h1 class="page-title">${ACTIVE_VENDOR.name} — Training Content</h1>
+      <p class="page-sub">Review and edit your brand's training card — this powers what salespeople see in the Academy. Changes enter review before publishing.</p>
+      ${viewTabs}
+      <div id="training-editor"><div class="loading"><div class="spin"></div>Loading training content…</div></div>`;
+    loadTrainingEditor();
+    return;
+  }
+
+  body.innerHTML=roleBar+vsw+`
     <div class="page-eyebrow">Manufacturer Portal</div>
     <h1 class="page-title">${ACTIVE_VENDOR.name} — Content Library</h1>
     <p class="page-sub">Upload and manage everything for your brand: specs, installation, manuals, warranty, energy guides, CAD, sales tools, promos, training, and videos. Tag each item for who should see it — retail floors, builders, or designers.</p>
+    ${viewTabs}
     <div id="cat-groups"><div class="loading"><div class="spin"></div>Loading your library…</div></div>`;
   loadAssets();
 }
 
 function setVendor(id){ ACTIVE_VENDOR=MYVENDORS.find(v=>v.id===id); render(); }
 function setAdminView(v){ ADMIN_VIEW=v; render(); }
+let PORTAL_VIEW = 'assets'; // 'assets' or 'training'
+
+function setPortalView(v) {
+  PORTAL_VIEW = v;
+  render();
+}
 
 // ---------- ASSETS ----------
 let ASSETS=[];
@@ -453,6 +491,202 @@ async function sendInvite(){
   loadAdmin();
 }
 async function approveVendor(id){ await sb.from('mfr_vendors').update({status:'active'}).eq('id',id); loadAdmin(); }
+
+// ---------- TRAINING EDITOR ----------
+let TRAINING_CARD = null;
+let BRAND_CATALOG_ENTRY = null;
+
+async function loadTrainingEditor() {
+  const el = document.getElementById('training-editor');
+  if (!ACTIVE_VENDOR) { el.innerHTML = '<div class="empty">No brand selected.</div>'; return; }
+
+  // Find brand_catalog entry matching this vendor name
+  const { data: brands } = await sb.from('brand_catalog').select('*').ilike('brand_name', ACTIVE_VENDOR.name).limit(1);
+  BRAND_CATALOG_ENTRY = brands?.[0] || null;
+
+  if (!BRAND_CATALOG_ENTRY) {
+    el.innerHTML = `<div class="empty">No brand catalog entry found for "${ACTIVE_VENDOR.name}". Contact the ApplianceIQ team to link your vendor account to a brand.</div>`;
+    return;
+  }
+
+  // Load training card
+  const { data: cards } = await sb.from('brand_training_cards').select('*').eq('brand_id', BRAND_CATALOG_ENTRY.id).limit(1);
+  TRAINING_CARD = cards?.[0] || null;
+
+  renderTrainingEditor();
+}
+
+function renderTrainingEditor() {
+  const el = document.getElementById('training-editor');
+  const c = TRAINING_CARD;
+
+  if (!c) {
+    el.innerHTML = `<div class="admin-card">
+      <h3>No Training Card Yet</h3>
+      <p style="color:var(--steel);margin-bottom:14px">Create a brand training card to power Academy content for your salespeople.</p>
+      <button class="btn" style="width:auto;padding:12px 22px" onclick="createTrainingCard()">Create Training Card</button>
+    </div>`;
+    return;
+  }
+
+  const statusColor = c.status === 'published' ? 'var(--teal)' : c.status === 'draft' ? '#ca8a04' : 'var(--steel)';
+  const fields = [
+    { key: 'heritage', label: 'Brand Heritage & History', type: 'textarea' },
+    { key: 'brand_positioning', label: 'Brand Positioning & Market Position', type: 'textarea' },
+    { key: 'customer_profile', label: 'Customer Profile', type: 'textarea' },
+    { key: 'price_position', label: 'Price Position', type: 'textarea' },
+    { key: 'competitive_advantage', label: 'Competitive Advantage', type: 'textarea' },
+    { key: 'competitive_weakness', label: 'Known Weakness', type: 'textarea' },
+    { key: 'known_for', label: 'Known For', type: 'text' },
+    { key: 'parent_company', label: 'Parent Company', type: 'text' },
+    { key: 'country_of_origin', label: 'Country of Origin', type: 'text' },
+    { key: 'founded_year', label: 'Founded Year', type: 'text' },
+  ];
+
+  el.innerHTML = `
+    <div class="admin-card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+        <div>
+          <h3 style="margin-bottom:4px">${ACTIVE_VENDOR.name} Training Card</h3>
+          <div style="font-size:12px;color:var(--steel)">
+            Version ${c.version || 1} · Status: <span style="color:${statusColor};font-weight:700">${c.status || 'draft'}</span>
+            ${c.last_reviewed_at ? ' · Last reviewed: ' + new Date(c.last_reviewed_at).toLocaleDateString() : ''}
+            ${c.manufacturer_approved ? ' · <span style="color:var(--teal)">✓ Manufacturer Approved</span>' : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" style="width:auto;padding:10px 20px;font-size:12px" onclick="saveTrainingCard()">💾 Save Changes</button>
+          ${!c.manufacturer_approved ? `<button class="btn-ghost btn" style="width:auto;padding:10px 20px;font-size:12px" onclick="approveTrainingCard()">✓ Approve</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <div id="tc-msg"></div>
+    ${fields.map(f => `<div class="admin-card" style="margin-bottom:14px">
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">${f.label}</label>
+      ${f.type === 'textarea'
+        ? `<textarea id="tc-${f.key}" style="width:100%;min-height:160px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;font-family:inherit;font-size:13px;line-height:1.7;color:var(--ink);resize:vertical;outline:none">${esc(c[f.key]||'')}</textarea>`
+        : `<input id="tc-${f.key}" type="text" value="${esc(c[f.key]||'')}" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--ink);outline:none">`
+      }
+    </div>`).join('')}
+
+    <div class="admin-card" style="margin-bottom:14px">
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Floor Talking Points</label>
+      <div id="tc-talking-points">
+        ${(c.floor_talking_points||[]).map((tp,i) => `<div style="margin-bottom:8px"><textarea id="tc-tp-${i}" style="width:100%;min-height:80px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;font-size:13px;line-height:1.6;color:var(--ink);resize:vertical;outline:none">${esc(tp)}</textarea></div>`).join('')}
+      </div>
+      <button class="btn-add" style="margin-top:8px" onclick="addTalkingPoint()">+ Add Talking Point</button>
+    </div>
+
+    <div class="admin-card" style="margin-bottom:14px">
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Common Objections & Responses</label>
+      <div id="tc-objections">
+        ${(c.common_objections||[]).map((ob,i) => `<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px">
+          <label style="font-size:10px;font-weight:700;color:var(--steel);letter-spacing:1px;text-transform:uppercase">Objection</label>
+          <input id="tc-obj-q-${i}" type="text" value="${esc(ob.objection||'')}" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);outline:none;margin:4px 0 10px">
+          <label style="font-size:10px;font-weight:700;color:var(--steel);letter-spacing:1px;text-transform:uppercase">Response</label>
+          <textarea id="tc-obj-a-${i}" style="width:100%;min-height:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;color:var(--ink);outline:none;resize:vertical;margin-top:4px">${esc(ob.response||'')}</textarea>
+        </div>`).join('')}
+      </div>
+      <button class="btn-add" style="margin-top:8px" onclick="addObjection()">+ Add Objection</button>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-bottom:40px">
+      <button class="btn" style="width:auto;padding:12px 28px" onclick="saveTrainingCard()">💾 Save All Changes</button>
+    </div>`;
+}
+
+function addTalkingPoint() {
+  const container = document.getElementById('tc-talking-points');
+  const idx = container.querySelectorAll('textarea').length;
+  const div = document.createElement('div');
+  div.style.marginBottom = '8px';
+  div.innerHTML = `<textarea id="tc-tp-${idx}" style="width:100%;min-height:80px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-family:inherit;font-size:13px;line-height:1.6;color:var(--ink);resize:vertical;outline:none" placeholder="New talking point..."></textarea>`;
+  container.appendChild(div);
+}
+
+function addObjection() {
+  const container = document.getElementById('tc-objections');
+  const idx = container.querySelectorAll('input[id^="tc-obj-q"]').length;
+  const div = document.createElement('div');
+  div.style.cssText = 'background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px';
+  div.innerHTML = `<label style="font-size:10px;font-weight:700;color:var(--steel);letter-spacing:1px;text-transform:uppercase">Objection</label>
+    <input id="tc-obj-q-${idx}" type="text" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);outline:none;margin:4px 0 10px" placeholder="Customer objection...">
+    <label style="font-size:10px;font-weight:700;color:var(--steel);letter-spacing:1px;text-transform:uppercase">Response</label>
+    <textarea id="tc-obj-a-${idx}" style="width:100%;min-height:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;color:var(--ink);outline:none;resize:vertical;margin-top:4px" placeholder="Your response..."></textarea>`;
+  container.appendChild(div);
+}
+
+async function saveTrainingCard() {
+  const msgEl = document.getElementById('tc-msg');
+  msgEl.innerHTML = '<div class="msg ok">Saving...</div>';
+
+  // Gather text fields
+  const updates = {};
+  ['heritage','brand_positioning','customer_profile','price_position','competitive_advantage','competitive_weakness','known_for','parent_company','country_of_origin','founded_year'].forEach(key => {
+    const el = document.getElementById('tc-' + key);
+    if (el) updates[key] = el.value.trim() || null;
+  });
+
+  // Gather talking points
+  const tps = [];
+  document.querySelectorAll('#tc-talking-points textarea').forEach(ta => {
+    const v = ta.value.trim();
+    if (v) tps.push(v);
+  });
+  updates.floor_talking_points = tps;
+
+  // Gather objections
+  const objs = [];
+  document.querySelectorAll('input[id^="tc-obj-q-"]').forEach(inp => {
+    const idx = inp.id.replace('tc-obj-q-','');
+    const q = inp.value.trim();
+    const a = document.getElementById('tc-obj-a-'+idx)?.value.trim() || '';
+    if (q) objs.push({ objection: q, response: a });
+  });
+  updates.common_objections = objs;
+
+  updates.version = (TRAINING_CARD.version || 1) + 1;
+  updates.updated_at = new Date().toISOString();
+  updates.editor_id = ME.id;
+  updates.status = 'draft'; // goes to draft on edit, needs review
+
+  const { error } = await sb.from('brand_training_cards').update(updates).eq('id', TRAINING_CARD.id);
+  if (error) {
+    msgEl.innerHTML = `<div class="msg err">Save failed: ${error.message}</div>`;
+    return;
+  }
+  Object.assign(TRAINING_CARD, updates);
+  msgEl.innerHTML = '<div class="msg ok">✓ Saved! Version ' + updates.version + ' — status set to draft for review.</div>';
+  setTimeout(() => { msgEl.innerHTML = ''; }, 4000);
+}
+
+async function approveTrainingCard() {
+  const { error } = await sb.from('brand_training_cards').update({
+    manufacturer_approved: true,
+    reviewed_by: ME.id,
+    last_reviewed_at: new Date().toISOString(),
+    status: 'published'
+  }).eq('id', TRAINING_CARD.id);
+  if (error) { alert('Approval failed: ' + error.message); return; }
+  TRAINING_CARD.manufacturer_approved = true;
+  TRAINING_CARD.status = 'published';
+  renderTrainingEditor();
+}
+
+async function createTrainingCard() {
+  if (!BRAND_CATALOG_ENTRY) return;
+  const { data, error } = await sb.from('brand_training_cards').insert({
+    brand_id: BRAND_CATALOG_ENTRY.id,
+    organization_id: BRAND_CATALOG_ENTRY.organization_id,
+    status: 'draft',
+    version: 1
+  }).select().single();
+  if (error) { alert('Create failed: ' + error.message); return; }
+  TRAINING_CARD = data;
+  renderTrainingEditor();
+}
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
 // ---------- START ----------
 boot();
