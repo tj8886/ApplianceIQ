@@ -7,6 +7,7 @@
 | CRM (`apps/crm`) | Netlify site `crmaiiq` (`38f8f64f-c674-4e14-8639-37ebb40ac939`) | GitHub Actions on push to `main` (or manual) |
 | Academy (`apps/academy`) | Netlify site `trainingiq-academy` (`840dd2f5-21c6-410c-9491-e4887fa9be38`) | GitHub Actions on push to `main` (or manual) |
 | Academy mirror | `applianceiq-aiacademy.netlify.app` | Lives in a **separate Netlify account** — must be updated from that account with the same `apps/academy` content |
+| Spec IQ (`apps/spec-iq`) | Netlify site `spec-iq` (`7dd39e7d-8c68-4109-a803-f4d6e0aab6ff`) | GitHub Actions on push to `main` (or manual) |
 | Edge functions (`supabase/functions/*`) | Supabase project `fumwwhyozeouoqscolke` | Supabase CLI / dashboard / MCP (manual) |
 | Migrations (`supabase/migrations/*`) | Same Supabase project | Already applied in prod; new ones via `supabase db push` |
 
@@ -28,6 +29,9 @@ npx netlify-cli deploy --prod --dir apps/crm --site 38f8f64f-c674-4e14-8639-37eb
 
 # Academy
 npx netlify-cli deploy --prod --dir apps/academy --site 840dd2f5-21c6-410c-9491-e4887fa9be38
+
+# Spec IQ
+npx netlify-cli deploy --prod --dir apps/spec-iq --site 7dd39e7d-8c68-4109-a803-f4d6e0aab6ff
 
 # Edge function
 supabase functions deploy activity-analyzer --project-ref fumwwhyozeouoqscolke

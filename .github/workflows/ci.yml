@@ -33,6 +33,18 @@ jobs:
           fi
           echo 'Academy HTML OK'
 
+      - name: Check Spec IQ inline JS syntax
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'fs';
+          const html = readFileSync('apps/spec-iq/index.html','utf8');
+          const m = html.match(/<script type=\"module\">([\s\S]*?)<\/script>/);
+          if(!m) { console.error('no module script found'); process.exit(1); }
+          const js = m[1].replace(/^import .*$/m, 'const createClient = () => ({});');
+          new Function(js);
+          console.log('Spec IQ JS syntax OK');
+          "
+
       - name: Check migrations are timestamp-ordered
         run: |
           ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
@@ -70,3 +82,20 @@ jobs:
             exit 0
           fi
           npx -y netlify-cli deploy --prod --dir apps/academy --site 840dd2f5-21c6-410c-9491-e4887fa9be38
+
+  deploy-speciq:
+    name: Deploy Spec IQ to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/spec-iq -> spec-iq.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/spec-iq --site 7dd39e7d-8c68-4109-a803-f4d6e0aab6ff
