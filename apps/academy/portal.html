@@ -848,20 +848,87 @@ function renderDashboard() {
   const nextCh = real.find(c => !completedIds.has(c.id));
   const nextVol = nextCh ? volumes.find(v => v.id === nextCh.volume_id) : null;
 
+  // Track progress for quick view
+  const trackSummaries = TRACKS.map(track => {
+    const trackChs = getTrackChapters(track);
+    const trackDone = trackChs.filter(c => completedIds.has(c.id)).length;
+    const trackPct = trackChs.length ? Math.round(trackDone/trackChs.length*100) : 0;
+    return { ...track, done: trackDone, total: trackChs.length, pct: trackPct };
+  });
+
+  // Brand stats
+  const brandModulesDone = Object.values(brandProgress).reduce((s, arr) => s + arr.length, 0);
+  const brandsStarted = Object.keys(brandProgress).length;
+  const brandCertsEarned = Object.keys(brandCertifications).length;
+
+  // Required training
+  const requiredBrands = brandCatalog.filter(b => orgBrandAssignments[b.id] === 'required');
+  const requiredIncomplete = requiredBrands.filter(b => {
+    const m = getBrandModuleCount(b.id);
+    return m.total > 0 && m.done < m.total;
+  });
+
+  // Certifications earned (career tracks)
+  const earnedCerts = trackSummaries.filter(t => certEligible(t, t.pct));
+
+  // Notification count
+  const unreadNotifs = notifications.filter(n => !n.read).length;
+
   document.getElementById('dashboard').innerHTML = `
     <div class="dash-inner">
+      <!-- GREETING -->
       <div class="dash-greeting">
         <h1>Welcome back, ${name}.</h1>
-        <p>${done === 0 ? 'Start with Chapter 1 — the foundation everything else builds on.' : done === real.length ? 'You have completed the full curriculum. Outstanding.' : `${real.length - done} chapters remaining. Keep moving.`}</p>
+        <p>${done === 0 ? 'Start with Chapter 1 — the foundation everything else builds on.' : done === real.length && brandModulesDone > 0 ? 'Full curriculum complete. Keep mastering your brands.' : `${real.length - done} chapters remaining. ${requiredIncomplete.length ? requiredIncomplete.length + ' required brand' + (requiredIncomplete.length!==1?'s':'')+' need attention.' : 'Keep moving.'}`}</p>
       </div>
+
+      <!-- STATS ROW -->
       <div class="dash-stats">
-        <div class="dash-stat"><div class="dash-stat-num">${done}</div><div class="dash-stat-label">Completed</div></div>
-        <div class="dash-stat"><div class="dash-stat-num">${real.length - done}</div><div class="dash-stat-label">Remaining</div></div>
-        <div class="dash-stat"><div class="dash-stat-num">${pct}%</div><div class="dash-stat-label">Complete</div></div>
-        <div class="dash-stat"><div class="dash-stat-num">${volumes.length}</div><div class="dash-stat-label">Volumes</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${done}<span style="font-size:16px;color:var(--steel)">/${real.length}</span></div><div class="dash-stat-label">Chapters</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${trackSummaries.filter(t=>t.pct===100).length}<span style="font-size:16px;color:var(--steel)">/${TRACKS.length}</span></div><div class="dash-stat-label">Tracks</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${brandsStarted}<span style="font-size:16px;color:var(--steel)">/${brandCatalog.length}</span></div><div class="dash-stat-label">Brands</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${brandCertsEarned + earnedCerts.length}</div><div class="dash-stat-label">Certifications</div></div>
       </div>
-      ${nextCh ? `<div style="margin-bottom:40px"><div class="dash-section-title">Continue Where You Left Off</div><div class="vol-card" onclick="loadChapter('${nextCh.slug}',${JSON.stringify(nextVol).replace(/"/g,'&quot;')})" style="max-width:480px;display:block"><div class="vol-card-num">Vol ${nextVol?.vol_number} — Next Up</div><div class="vol-card-title">${nextCh.title}</div><div style="font-size:12px;color:var(--steel)">${nextCh.intro?nextCh.intro.substring(0,100)+'...':'Continue your training.'}</div></div></div>` : ''}
-      ${typeof renderDashboardRecommendations==='function' ? renderDashboardRecommendations() : ''}
+
+      <!-- CONTINUE LEARNING -->
+      ${nextCh || requiredIncomplete.length ? `<div style="margin-bottom:40px">
+        <div class="dash-section-title">Continue Learning</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+          ${nextCh ? `<div class="vol-card" onclick="loadChapter('${nextCh.slug}',${JSON.stringify(nextVol).replace(/"/g,'&quot;')})" style="display:block">
+            <div class="vol-card-num">📖 Career Curriculum · Vol ${nextVol?.vol_number}</div>
+            <div class="vol-card-title">${nextCh.title}</div>
+            <div style="font-size:12px;color:var(--steel)">${nextCh.intro?nextCh.intro.substring(0,100)+'...':'Continue your training.'}</div>
+          </div>` : ''}
+          ${requiredIncomplete.slice(0,2).map(b => {
+            const m = getBrandModuleCount(b.id);
+            const p = m.total ? Math.round(m.done/m.total*100) : 0;
+            return `<div class="vol-card" onclick="showView('brands');setTimeout(()=>openBrandDetail('${b.id}'),100)" style="display:block">
+              <div class="vol-card-num">🏷️ Required Brand Training</div>
+              <div class="vol-card-title">${b.brand_name}</div>
+              <div class="ba-card-progress" style="margin:8px 0 4px"><div class="ba-card-bar" style="width:${p}%"></div></div>
+              <div style="font-size:11px;color:var(--steel)">${m.done}/${m.total} modules · ${p}%</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- CAREER TRACKS -->
+      <div style="margin-bottom:40px">
+        <div class="dash-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Career Tracks</span>
+          <button onclick="showView('tracks')" style="font-size:11px;color:var(--teal);background:none;border:1px solid var(--teal);padding:4px 12px;border-radius:999px;cursor:pointer;font-weight:600">View All →</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+          ${trackSummaries.map(t => `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s" onclick="showView('tracks')" onmouseover="this.style.borderColor='rgba(47,125,114,.3)'" onmouseout="this.style.borderColor='var(--line)'">
+            <div style="font-size:10px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:6px">${t.badge}</div>
+            <div style="font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px">${t.name}</div>
+            <div class="ba-card-progress" style="margin-bottom:4px"><div class="ba-card-bar" style="width:${t.pct}%"></div></div>
+            <div style="font-size:10px;color:var(--steel)">${t.done}/${t.total} · ${t.pct}%${t.pct===100?' ✓':''}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- BRAND ACADEMY -->
       ${brandCatalog.length ? `<div style="margin-bottom:40px">
         <div class="dash-section-title" style="display:flex;align-items:center;justify-content:space-between">
           <span>Brand Academy</span>
@@ -871,34 +938,111 @@ function renderDashboard() {
           ${brandCatalog.slice(0,8).map(b => {
             const m = getBrandModuleCount(b.id);
             const p = m.total ? Math.round(m.done/m.total*100) : 0;
+            const assign = orgBrandAssignments[b.id];
             return `<div class="ba-card" onclick="showView('brands');setTimeout(()=>openBrandDetail('${b.id}'),100)" style="padding:14px">
               <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
                 <div class="ba-logo" style="width:36px;height:36px;font-size:11px">${brandInitials(b.brand_name)}</div>
-                <div style="font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--navy)">${b.brand_name}</div>
+                <div>
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--navy)">${b.brand_name}</div>
+                  ${assign==='required'?'<span class="ba-assign-tag required" style="font-size:8px">Required</span>':''}
+                </div>
               </div>
               <div class="ba-card-progress"><div class="ba-card-bar" style="width:${p}%"></div></div>
-              <div style="font-size:10px;color:var(--steel);margin-top:4px">${p}% complete</div>
+              <div style="font-size:10px;color:var(--steel);margin-top:4px">${p}%${brandCertifications[b.id]?' · 🏆':''}</div>
             </div>`;
           }).join('')}
         </div>
       </div>` : ''}
-      <div class="dash-section-title">All Volumes</div>
-      <div class="vol-cards">
-        ${volumes.map(vol => {
-          const volChs = real.filter(c => c.volume_id === vol.id);
-          const volDone = volChs.filter(c => completedIds.has(c.id)).length;
-          const volPct = volChs.length ? Math.round(volDone/volChs.length*100) : 0;
-          const firstCh = volChs[0];
-          return `<div class="vol-card" onclick="${firstCh?`loadChapter('${firstCh.slug}',${JSON.stringify(vol).replace(/"/g,'&quot;')})`:''}">
-            <div class="vol-card-num">Volume ${vol.vol_number}</div>
-            <div class="vol-card-title">${vol.title}</div>
-            <div class="vol-card-desc">${vol.description}</div>
-            <div class="vol-card-progress"><div class="vol-card-bar" style="width:${volPct}%"></div></div>
-            <div class="vol-card-pct">${volDone} / ${volChs.length} chapters${volPct===100?' · Complete':''}</div>
-          </div>`;
-        }).join('')}
+
+      <!-- AI RECOMMENDATIONS -->
+      ${typeof renderDashboardRecommendations==='function' ? renderDashboardRecommendations() : ''}
+
+      <!-- REQUIRED TRAINING -->
+      ${requiredIncomplete.length > 2 ? `<div style="margin-bottom:40px">
+        <div class="dash-section-title">🔴 Required Training</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+          ${requiredIncomplete.map(b => {
+            const m = getBrandModuleCount(b.id);
+            const p = m.total ? Math.round(m.done/m.total*100) : 0;
+            return `<div class="ba-card" onclick="showView('brands');setTimeout(()=>openBrandDetail('${b.id}'),100)" style="padding:14px;border-left:3px solid #ef4444">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <div class="ba-logo" style="width:32px;height:32px;font-size:10px">${brandInitials(b.brand_name)}</div>
+                <div style="font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--navy)">${b.brand_name}</div>
+              </div>
+              <div class="ba-card-progress"><div class="ba-card-bar" style="width:${p}%"></div></div>
+              <div style="font-size:10px;color:var(--steel);margin-top:4px">${m.done}/${m.total} modules</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- CERTIFICATIONS -->
+      ${earnedCerts.length || brandCertsEarned ? `<div style="margin-bottom:40px">
+        <div class="dash-section-title">🏆 Your Certifications</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+          ${earnedCerts.map(t => `<div style="background:linear-gradient(135deg,var(--teal-tint),#dbeafe);border:2px solid var(--teal);border-radius:14px;padding:18px">
+            <div style="font-size:10px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:4px">${t.badge}</div>
+            <div style="font-family:'Sora',Arial,sans-serif;font-size:15px;font-weight:700;color:var(--navy)">${t.cert}</div>
+            <div style="font-size:11px;color:var(--steel);margin-top:4px">Career Track · All chapters + quizzes</div>
+          </div>`).join('')}
+          ${Object.entries(brandCertifications).map(([bid, cert]) => {
+            const b = brandCatalog.find(x=>x.id===bid);
+            return b ? `<div style="background:linear-gradient(135deg,var(--teal-tint),#f0fdf4);border:2px solid var(--teal);border-radius:14px;padding:18px">
+              <div style="font-size:10px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:4px">Brand · ${cert.tier}</div>
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:15px;font-weight:700;color:var(--navy)">${b.brand_name}</div>
+              <div style="font-size:11px;color:var(--steel);margin-top:4px">${cert.cert_number}${cert.expires_at ? ' · Exp ' + new Date(cert.expires_at).toLocaleDateString() : ''}</div>
+            </div>` : '';
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- LEADERBOARD -->
+      <div style="margin-bottom:40px" id="dash-leaderboard"></div>
+
+      <!-- NOTIFICATIONS -->
+      ${unreadNotifs ? `<div style="margin-bottom:40px">
+        <div class="dash-section-title" style="display:flex;align-items:center;justify-content:space-between">
+          <span>🔔 Recent Notifications</span>
+          <button onclick="toggleNotifications()" style="font-size:11px;color:var(--teal);background:none;border:1px solid var(--teal);padding:4px 12px;border-radius:999px;cursor:pointer;font-weight:600">View All →</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${notifications.filter(n=>!n.read).slice(0,3).map(n => {
+            const icons = {new_training:'📚',required_training:'🔴',launch_training:'🚀',cert_expiring:'⏰',manager_assigned:'👤',recommended:'✨',updated_lesson:'🔄',brand_update:'🏷️',quiz_available:'📝'};
+            return `<div style="background:var(--card);border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer" onclick="readNotif('${n.id}')">
+              <span style="font-size:18px">${icons[n.type]||'📌'}</span>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--navy)">${esc(n.title)}</div>${n.body?`<div style="font-size:11px;color:var(--steel)">${esc(n.body).substring(0,80)}</div>`:''}</div>
+              <span style="font-size:10px;color:var(--steel)">${timeAgo(n.created_at)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+
+      <!-- ALL VOLUMES (collapsed) -->
+      <div style="margin-bottom:40px">
+        <div class="dash-section-title" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById('dash-vols').style.display=document.getElementById('dash-vols').style.display==='none'?'grid':'none';this.querySelector('.dv-chev').textContent=document.getElementById('dash-vols').style.display==='none'?'›':'⌄'">
+          <span>All Volumes · ${volumes.length}</span>
+          <span class="dv-chev" style="font-size:16px;color:var(--steel)">›</span>
+        </div>
+        <div class="vol-cards" id="dash-vols" style="display:none">
+          ${volumes.map(vol => {
+            const volChs = real.filter(c => c.volume_id === vol.id);
+            const volDone = volChs.filter(c => completedIds.has(c.id)).length;
+            const volPct = volChs.length ? Math.round(volDone/volChs.length*100) : 0;
+            const firstCh = volChs[0];
+            return `<div class="vol-card" onclick="${firstCh?`loadChapter('${firstCh.slug}',${JSON.stringify(vol).replace(/"/g,'&quot;')})`:''}">
+              <div class="vol-card-num">Volume ${vol.vol_number}</div>
+              <div class="vol-card-title">${vol.title}</div>
+              <div class="vol-card-desc">${vol.description}</div>
+              <div class="vol-card-progress"><div class="vol-card-bar" style="width:${volPct}%"></div></div>
+              <div class="vol-card-pct">${volDone} / ${volChs.length} chapters${volPct===100?' · Complete':''}</div>
+            </div>`;
+          }).join('')}
+        </div>
       </div>
     </div>`;
+
+  // Load leaderboard async
+  loadLeaderboard();
 }
 
 // ── TRACKS VIEW ──────────────────────────────────────────────────────────────
@@ -2526,6 +2670,74 @@ function getAssignmentLabel(brandId) {
   if (a === 'manager_only') return '<span class="ba-assign-tag" style="background:#fef3c7;color:#92400e">Manager Only</span>';
   if (a === 'installer_only') return '<span class="ba-assign-tag" style="background:#e0e7ff;color:#3730a3">Installer Only</span>';
   return '';
+}
+
+// ── LEADERBOARD ─────────────────────────────────────────────────────────────
+async function loadLeaderboard() {
+  const el = document.getElementById('dash-leaderboard');
+  if (!el || !currentUser) return;
+  try {
+    // Get user's org
+    const { data: member } = await sb.from('organization_members')
+      .select('organization_id')
+      .eq('user_id', currentUser.id)
+      .single();
+    if (!member) { el.innerHTML = ''; return; }
+
+    // Get all org members
+    const { data: members } = await sb.from('organization_members')
+      .select('user_id, profiles(full_name)')
+      .eq('organization_id', member.organization_id);
+    if (!members || members.length < 2) { el.innerHTML = ''; return; }
+
+    // Get chapter progress for all org members
+    const userIds = members.map(m => m.user_id);
+    const { data: chProgress } = await sb.from('academy_progress')
+      .select('user_id')
+      .in('user_id', userIds);
+    const { data: brProgress } = await sb.from('academy_brand_progress')
+      .select('user_id')
+      .in('user_id', userIds);
+
+    // Tally scores
+    const scores = {};
+    userIds.forEach(uid => { scores[uid] = { chapters: 0, brands: 0, total: 0 }; });
+    (chProgress || []).forEach(r => { if (scores[r.user_id]) scores[r.user_id].chapters++; });
+    (brProgress || []).forEach(r => { if (scores[r.user_id]) scores[r.user_id].brands++; });
+    Object.values(scores).forEach(s => { s.total = s.chapters + s.brands; });
+
+    // Sort by total desc
+    const ranked = members.map(m => ({
+      userId: m.user_id,
+      name: m.profiles?.full_name || 'Team Member',
+      ...scores[m.user_id]
+    })).sort((a,b) => b.total - a.total);
+
+    if (ranked.length === 0 || ranked[0].total === 0) { el.innerHTML = ''; return; }
+
+    const medals = ['🥇','🥈','🥉'];
+    el.innerHTML = `
+      <div class="dash-section-title">🏆 Team Leaderboard</div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden">
+        ${ranked.slice(0,10).map((r, i) => {
+          const isMe = r.userId === currentUser.id;
+          return `<div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);${isMe?'background:rgba(47,125,114,.04)':''}">
+            <span style="font-size:18px;width:28px;text-align:center">${i < 3 ? medals[i] : `<span style="font-size:13px;font-weight:700;color:var(--steel)">${i+1}</span>`}</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:${isMe?'800':'600'};color:var(--navy)">${esc(r.name)}${isMe?' <span style="font-size:10px;color:var(--teal)">(you)</span>':''}</div>
+            </div>
+            <div style="display:flex;gap:16px;font-size:11px;color:var(--steel)">
+              <span>${r.chapters} ch</span>
+              <span>${r.brands} brand</span>
+            </div>
+            <div style="font-family:'Sora',Arial,sans-serif;font-size:16px;font-weight:800;color:var(--teal);min-width:40px;text-align:right">${r.total}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } catch(e) {
+    console.error('Leaderboard error:', e);
+    el.innerHTML = '';
+  }
 }
 
 // ── AI RECOMMENDATIONS ──────────────────────────────────────────────────────
