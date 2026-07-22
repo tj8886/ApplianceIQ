@@ -431,6 +431,44 @@ label{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin-
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
 </svg>
 
+<script>
+/* ---- IMMEDIATE UI (runs before module loads) ---- */
+function el(id) { return document.getElementById(id); }
+function show(id) { el(id).style.display = ''; }
+function hide() { for(var i=0;i<arguments.length;i++) el(arguments[i]).style.display='none'; }
+function esc(s) { if(!s) return ''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+var authMode = 'login';
+
+function showLanding() { hide('auth-page','pricing-page','app'); el('landing').style.display=''; }
+function showPricing() { el('landing').style.display='none'; hide('auth-page','app'); show('pricing-page'); }
+function showAuth(mode) {
+  authMode = mode;
+  el('landing').style.display='none';
+  hide('pricing-page','app');
+  show('auth-page');
+  el('auth-success').classList.add('hidden');
+  el('auth-form').classList.remove('hidden');
+  el('auth-error').classList.add('hidden');
+  if (mode === 'signup') {
+    el('auth-title').textContent = 'Start your free trial';
+    el('name-field').classList.remove('hidden');
+    el('auth-submit').textContent = 'Create account';
+    el('auth-switch-text').textContent = 'Already have an account?';
+    el('auth-switch').textContent = 'Sign in';
+    el('auth-toggle-text').textContent = '14-day free trial. No credit card required.';
+  } else {
+    el('auth-title').textContent = 'Sign in to your account';
+    el('name-field').classList.add('hidden');
+    el('auth-submit').textContent = 'Sign in';
+    el('auth-switch-text').textContent = "Don't have an account?";
+    el('auth-switch').textContent = 'Start free trial';
+    el('auth-toggle-text').textContent = '';
+  }
+}
+function toggleAuthMode(e) { e.preventDefault(); showAuth(authMode === 'login' ? 'signup' : 'login'); }
+</script>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -440,7 +478,6 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ---- STATE ---- */
 let currentUser = null;
-let authMode = 'login';
 let projects = [];
 let builderProducts = [];
 let currentView = 'dashboard';
@@ -471,35 +508,7 @@ function planCard(p) {
   </div>`;
 }
 
-/* ---- ROUTING ---- */
-window.showLanding = () => { hide('auth-page','pricing-page','app'); el('landing').style.display = ''; };
-window.showPricing = () => { el('landing').style.display = 'none'; hide('auth-page','app'); show('pricing-page'); };
-window.showAuth = (mode) => {
-  authMode = mode;
-  el('landing').style.display = 'none';
-  hide('pricing-page','app');
-  show('auth-page');
-  el('auth-success').classList.add('hidden');
-  el('auth-form').classList.remove('hidden');
-  el('auth-error').classList.add('hidden');
-  if (mode === 'signup') {
-    el('auth-title').textContent = 'Start your free trial';
-    el('name-field').classList.remove('hidden');
-    el('auth-submit').textContent = 'Create account';
-    el('auth-switch-text').textContent = 'Already have an account?';
-    el('auth-switch').textContent = 'Sign in';
-    el('auth-toggle-text').textContent = '14-day free trial. No credit card required.';
-  } else {
-    el('auth-title').textContent = 'Sign in to your account';
-    el('name-field').classList.add('hidden');
-    el('auth-submit').textContent = 'Sign in';
-    el('auth-switch-text').textContent = "Don't have an account?";
-    el('auth-switch').textContent = 'Start free trial';
-    el('auth-toggle-text').textContent = '';
-  }
-};
-window.toggleAuthMode = (e) => { e.preventDefault(); showAuth(authMode === 'login' ? 'signup' : 'login'); };
-
+/* ---- ROUTING (module-side) ---- */
 function showApp() {
   el('landing').style.display = 'none';
   hide('auth-page','pricing-page');
@@ -731,12 +740,6 @@ window.savePackage = async (status) => {
   builderProducts = [];
   navigate('dashboard');
 };
-
-/* ---- HELPERS ---- */
-function el(id) { return document.getElementById(id); }
-function show(id) { el(id).style.display = ''; }
-function hide(...ids) { ids.forEach(id => el(id).style.display = 'none'); }
-function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ---- INIT ---- */
 // Render plan cards
