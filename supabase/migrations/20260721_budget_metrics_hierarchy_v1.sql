@@ -1,6 +1,0 @@
--- Budget & Metrics Hierarchy v1 — see Supabase migration budget_metrics_hierarchy_v1
--- Tables: org_locations, org_location_members, budget_plans, budget_nodes,
---         sales_transactions, metric_definitions, metric_snapshots,
---         ai_budget_predictions, dashboard_views
--- RPCs: init_default_metrics, cascade_budget
--- See full DDL in Supabase migration history

@@ -1,28 +1,41 @@
-# Migration log
+# Migration Log
 
-| Date (2026) | Version | Name | Purpose |
+**Last reconciliation**: 2026-07-22
+**Production migrations**: 54
+**Repository migration files**: 54 (aligned by version)
+**DDL coverage**: 23 of 54 contain executable SQL; 31 are historical markers
+
+For the full reconciliation matrix, see [docs/reconciliation/MIGRATION_RECONCILIATION.md](reconciliation/MIGRATION_RECONCILIATION.md).
+For schema baseline status, see [docs/reconciliation/SCHEMA_BASELINE_STATUS.md](reconciliation/SCHEMA_BASELINE_STATUS.md).
+
+## Migration Summary
+
+| Category | Count | Contains DDL |
+|---|---|---|
+| Exact match (original commit) | 14 | Yes |
+| Renamed to match production timestamp | 8 | Yes |
+| Renamed (was already comment-only) | 1 | No |
+| Historical marker (production-only, no DDL) | 30 | No |
+| **Total** | **54** | **23** |
+
+## Edge Functions
+
+| Function | Deployable | Source Status | Missing Dependencies |
 |---|---|---|---|
-| Jul 18 | 20260718131521 | academy_seed_v1 | Academy schema + curriculum seed |
-| Jul 18 | 20260718131629 | foundation_schema_v1 | Foundation objects/facts/relationships |
-| Jul 18 | 20260718131647 | memory_schema_v1 | Memory events/facts/subjects |
-| Jul 18 | 20260718131708 | privacy_schema_v1 | Consent ledger, DSR requests, purge log |
-| Jul 18 | 20260718131846 | security_hardening_v1 | RLS + helper hardening pass 1 |
-| Jul 18 | 20260718140815 | daily_metrics_v1 | Academy daily metrics |
-| Jul 18 | 20260718141148 | metrics_import_v1 | academy_api_keys + metric imports |
-| Jul 18 | 20260718230316 | aiq_kernel_foundations_crm | Organizations, members, CRM core (companies, contacts, deals, tasks, products) |
-| Jul 18 | 20260718230510 | aiq_kernel_ai_layer | ai_assistants/requests/sessions/knowledge/audit/usage + governance RPCs |
-| Jul 19 | 20260719011509 | aiq_seeds_branding_assistants | Org seeds, brand tokens, assistant seeds |
-| Jul 19 | 20260719011720 | aiq_security_hardening | Hardening pass 2 |
-| Jul 19 | 20260719012140 | aiq_join_demo_org | join_demo_org RPC |
-| Jul 19 | 20260719115706 | aiq_activity_capture_layer | activities, sales_recordings, transcripts, coaching reviews, crm_emails/presentations scaffolding, crm-media bucket policies |
-| Jul 19 | 20260719123219 | sales_recording_capture_fields | Recording consent/source/attachment fields, status lifecycle, bucket size cap |
-| Jul 19 | 20260719232101 | closeout_security_fixes | **Security fix**: match_products caller-membership guard (cross-tenant vector query defect) |
-| Jul 19 | 20260719232401 | closeout_index_tuning | Drop duplicate index; add recording-pipeline FK indexes |
+| activity-analyzer | Yes | EXACT_PRODUCTION_SOURCE | None |
+| ai-request-processor | Yes | EXACT_PRODUCTION_SOURCE | None |
+| ai-roleplay | Yes | EXACT_PRODUCTION_SOURCE | None |
+| deploy-host | Yes | EXACT_PRODUCTION_SOURCE | None |
+| email-dispatcher | Yes | EXACT_PRODUCTION_SOURCE | None |
+| embedding-worker | Yes | EXACT_PRODUCTION_SOURCE | None |
+| stripe-webhooks | Yes | EXACT_PRODUCTION_SOURCE | None |
+| aicrm-ai-enrichment-runner | No | PARTIAL_SOURCE_NON_DEPLOYABLE | Full source not written (~1100 lines) |
+| email-webhook | No | PARTIAL_SOURCE_NON_DEPLOYABLE | communication_* tables (6) |
+| send-push-notification | No | PARTIAL_SOURCE_NON_DEPLOYABLE | push_*, mobile_notifications tables (3) |
+| turnstile-verify | No | MISSING_DEPENDENCIES_NON_DEPLOYABLE | check_turnstile_rate_limit, log_turnstile_verification RPCs |
+| file-url-mint | No | MISSING_DEPENDENCIES_NON_DEPLOYABLE | signed_url_nonces, file_access_events, consume_signed_url_nonce |
+| storage-deletion-worker | No | MISSING_DEPENDENCIES_NON_DEPLOYABLE | storage_deletion_jobs, file_assets, file_access_events |
+| file-scanner | No | MISSING_DEPENDENCIES_NON_DEPLOYABLE | file_assets, file_access_events, v_files_pending_scan |
 
-| Jul 20 | 20260720003822 | kpi_events_v1 | KPI event stream, lifecycle/coaching triggers, backfill, Dashboard support |
-
-| Jul 20 | 20260720011501 | email_dispatch_v1 | crm_emails status/from/provider_message_id for Resend dispatch |
-
-| Jul 20 | 20260720015201 | billing_schema_v1 | Org billing fields, ai_token_limits table, stripe_events audit, token budget check + deduction RPCs |
-
-Repo `supabase/migrations/` mirrors `supabase_migrations.schema_migrations` in prod exactly (19/19).
+**7 deployable** (all EXACT_PRODUCTION_SOURCE, committed at HEAD)
+**7 non-deployable** (in `supabase/functions/_non_deployable/`, see README there)

@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — phase_21_ecosystem_collaboration_platform_recovery
+-- Version: 20260720143614
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: Ecosystem collaboration
+-- Objects created: aicrm_partner_organizations, aicrm_partnerships, aicrm_referrals, aicrm_shared_assets, aicrm_shared_projects, aicrm_shared_market_intelligence, aicrm_collaboration_audit_log
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================

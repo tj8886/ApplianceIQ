@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — applianceiq_industry_intelligence_recovery (duplicate name)
+-- Version: 20260720144655
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: Industry intelligence (second pass)
+-- Objects created: Additional industry intelligence objects
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================

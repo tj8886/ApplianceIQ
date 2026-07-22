@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — applianceiq_access_helpers_recovery
+-- Version: 20260720140201
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: Core access helpers (private schema)
+-- Objects created: private.user_can_access_organization(), private.user_has_org_permission(), private.set_updated_at(), private.sync_profiles_id()
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================

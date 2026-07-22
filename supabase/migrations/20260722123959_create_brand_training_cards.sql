@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — create_brand_training_cards
+-- Version: 20260722123959
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: Brand training cards
+-- Objects created: brand_training_cards table modifications, seeded data
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================

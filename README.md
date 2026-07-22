@@ -3,6 +3,8 @@
 ![CI & Deploy](https://github.com/tj8886/ApplianceIQ/actions/workflows/ci.yml/badge.svg)
 ![CRM](https://img.shields.io/website?url=https%3A%2F%2Fcrmaiiq.netlify.app&label=CRM)
 ![Academy](https://img.shields.io/website?url=https%3A%2F%2Ftrainingiq-academy.netlify.app&label=Academy)
+| Spec IQ | https://appliance-spec-iq.netlify.app | `spec-iq` | `apps/spec-iq/` |
+| IQ UP System | https://applianceiq-iq-up-system.netlify.app | `iq-up-system` | `apps/up-system/` |
 
 The Appliance Sales Operating System — CRM, AI Academy, and governed AI layer for appliance and specialty retail.
 
@@ -13,6 +15,8 @@ The Appliance Sales Operating System — CRM, AI Academy, and governed AI layer 
 | CRMAI IQ (CRM) | https://crmaiiq.netlify.app | `crmaiiq` | `apps/crm/` |
 | ApplianceIQ Academy | https://applianceiq-aiacademy.netlify.app | (separate Netlify account, same content) | `apps/academy/` |
 | Academy (team mirror) | https://trainingiq-academy.netlify.app | `trainingiq-academy` | `apps/academy/` |
+| Spec IQ | https://appliance-spec-iq.netlify.app | `spec-iq` | `apps/spec-iq/` |
+| IQ UP System | https://applianceiq-iq-up-system.netlify.app | `iq-up-system` | `apps/up-system/` |
 
 Backend: Supabase project **ApplianceIQ** (`fumwwhyozeouoqscolke`, ca-central-1).
 
@@ -23,12 +27,18 @@ apps/
   crm/                      Single-file CRM app (index.html) + netlify.toml
   academy/                  Academy site (single source; deployed to both academy URLs)
 supabase/
-  migrations/               All applied migrations, exported from supabase_migrations.schema_migrations
+  migrations/               54 files aligned with production migration history
+                            (23 contain DDL; 31 are historical markers — see docs/reconciliation/)
   functions/
-    ai-request-processor/   Governed AI assistant endpoint (Anthropic; DB-side governance via ai_submit_request)
+    ai-request-processor/   Governed AI assistant endpoint (Anthropic)
     activity-analyzer/      Recording pipeline: process | transcribe | coach | summarize
-    embedding-worker/       Knowledge/product embeddings (Voyage or OpenAI), service-role only
-    deploy-host/            RETIRED deploy helper (served HTML bundles for Netlify import)
+    ai-roleplay/            AI roleplay sessions
+    email-dispatcher/       Outbound email via Resend
+    embedding-worker/       Knowledge/product embeddings (Voyage or OpenAI)
+    stripe-webhooks/        Stripe payment webhook handler
+    deploy-host/            RETIRED deploy helper
+    _shared/                Shared modules (http, communications, file-governance, etc.)
+    _non_deployable/        7 functions with missing schema deps (see README there)
 ```
 
 ## Architecture notes
@@ -48,4 +58,4 @@ supabase/
 
 - **CRM to Netlify**: from `apps/crm/`, deploy to site id `38f8f64f-c674-4e14-8639-37ebb40ac939` (`crmaiiq`). The site is currently deployed manually (no CI); linking this repo to the Netlify project enables auto-deploys from `main`.
 - **Edge functions**: `supabase functions deploy <name> --project-ref fumwwhyozeouoqscolke` (or via MCP/dashboard).
-- **Migrations**: files here mirror what is already applied in production. New migrations should be added with a fresh timestamp and applied via `supabase db push` or the dashboard/MCP.
+- **Migrations**: 54 files match 54 production migration records. 23 contain DDL; 31 are historical markers (no executable SQL). See `docs/reconciliation/` for details. New migrations should be added with a fresh timestamp and applied via `supabase db push` or the dashboard/MCP.

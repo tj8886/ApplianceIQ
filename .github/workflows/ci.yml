@@ -49,6 +49,79 @@ jobs:
         run: |
           ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
 
+      - name: Check for duplicate migration versions
+        run: |
+          DUPES=$(ls supabase/migrations/*.sql | sed 's/.*\///' | sed 's/_.*//' | sort | uniq -d)
+          if [ -n "$DUPES" ]; then
+            echo "Duplicate migration versions found:"
+            echo "$DUPES"
+            exit 1
+          fi
+          echo 'No duplicate migration versions'
+
+      - name: Check for empty migration files
+        run: |
+          EMPTY=0
+          for f in supabase/migrations/*.sql; do
+            SIZE=$(wc -c < "$f")
+            if [ "$SIZE" -lt 10 ]; then
+              echo "Empty or near-empty migration: $f ($SIZE bytes)"
+              EMPTY=$((EMPTY + 1))
+            fi
+          done
+          if [ "$EMPTY" -gt 0 ]; then exit 1; fi
+          echo 'No empty migration files'
+
+      - name: Check for malformed migration filenames
+        run: |
+          BAD=0
+          for f in supabase/migrations/*.sql; do
+            NAME=$(basename "$f")
+            if ! echo "$NAME" | grep -qP '^\d{14}_\w+\.sql$'; then
+              echo "Malformed migration filename: $NAME (expected YYYYMMDDHHMMSS_name.sql)"
+              BAD=$((BAD + 1))
+            fi
+          done
+          if [ "$BAD" -gt 0 ]; then exit 1; fi
+          echo 'All migration filenames are well-formed'
+
+      - name: Check edge function entrypoints exist
+        run: |
+          MISSING=0
+          for fn in $(ls -d supabase/functions/*/ | grep -v _shared | grep -v _non_deployable); do
+            NAME=$(basename "$fn")
+            if [ ! -f "$fn/index.ts" ]; then
+              echo "Missing entrypoint: $fn/index.ts"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ "$MISSING" -gt 0 ]; then exit 1; fi
+          echo 'All deployable edge functions have entrypoints'
+
+      - name: Reject incomplete deployable edge functions
+        run: |
+          UNSAFE=0
+          for fn in $(ls -d supabase/functions/*/ | grep -v _shared | grep -v _non_deployable); do
+            NAME=$(basename "$fn")
+            FILE="$fn/index.ts"
+            if [ ! -f "$FILE" ]; then continue; fi
+            if grep -qiE 'placeholder|simplified|TODO.full.source|structural.reconstruction|source.pending|not.implemented|not.yet.restored|framework.only' "$FILE" 2>/dev/null; then
+              echo "BLOCKED: $NAME contains incomplete/placeholder markers"
+              UNSAFE=$((UNSAFE + 1))
+            fi
+            LINES=$(wc -l < "$FILE")
+            if [ "$LINES" -lt 8 ]; then
+              echo "BLOCKED: $NAME has only $LINES lines (below minimum threshold)"
+              UNSAFE=$((UNSAFE + 1))
+            fi
+          done
+          if [ "$UNSAFE" -gt 0 ]; then
+            echo "ERROR: $UNSAFE deployable function(s) contain incomplete or placeholder code"
+            echo "Move incomplete functions to supabase/functions/_non_deployable/"
+            exit 1
+          fi
+          echo 'All deployable edge functions are complete'
+
   deploy-crm:
     name: Deploy CRM to Netlify
     needs: validate

@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — phase_12_market_intelligence_engine_recovery
+-- Version: 20260720142557
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: Market intelligence engine
+-- Objects created: aicrm_market_coverage, aicrm_market_discovery_queue, aicrm_market_refresh_queue, aicrm_market_events, aicrm_market_watchlists, aicrm_market_connectors, aicrm_market_brief() RPC, private.aicrm_handle_market_account_change(), private.aicrm_handle_market_contact_change(), private.aicrm_queue_market_refresh(), private.aicrm_record_market_event()
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================

@@ -1,0 +1,18 @@
+-- =============================================================================
+-- HISTORICAL MARKER — budget_metrics_hierarchy_v1
+-- Version: 20260721195759
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — the committed file at the original timestamp
+--               (20260721_budget_metrics_hierarchy_v1.sql) was also comment-only.
+-- Domain: Budget, metrics, and hierarchy
+-- Objects created: org_locations, org_location_members, budget_plans, budget_nodes,
+--                  sales_transactions, metric_definitions, metric_snapshots,
+--                  ai_budget_predictions, dashboard_views, init_default_metrics(),
+--                  cascade_budget()
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+--
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production.
+-- =============================================================================

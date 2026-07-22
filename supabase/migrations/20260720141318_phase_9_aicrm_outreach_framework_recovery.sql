@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — phase_9_aicrm_outreach_framework_recovery
+-- Version: 20260720141318
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: AI CRM outreach
+-- Objects created: aicrm_outreach_campaigns, aicrm_outreach_messages, aicrm_campaign_sequences, aicrm_campaign_types, aicrm_campaign_categories, aicrm_sequence_enrollments, aicrm_sequence_steps, aicrm_suppression_list, aicrm_consent_records, aicrm_channels, aicrm_sales_motions
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================

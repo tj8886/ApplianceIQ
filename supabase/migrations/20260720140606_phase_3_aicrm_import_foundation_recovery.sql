@@ -1,0 +1,16 @@
+-- =============================================================================
+-- HISTORICAL MARKER — phase_3_aicrm_import_foundation_recovery
+-- Version: 20260720140606
+-- Applied to production: yes (via MCP, original SQL not preserved in version control)
+-- Original SQL: UNAVAILABLE — applied interactively, not recoverable
+-- Domain: AI CRM import system
+-- Objects created: aicrm_imports, aicrm_import_rows, aicrm_import_mappings, enums (aicrm_import_source, aicrm_import_status, aicrm_import_row_status), normalize_aicrm_import_signature()
+-- Current schema reference: Query production with information_schema or pg_catalog
+-- Execute in new environment: NO — this file contains no DDL
+-- Execute against production: NO — already applied
+-- 
+-- This file exists solely to align the repository migration history with
+-- supabase_migrations.schema_migrations in production. It does NOT recreate
+-- the objects listed above. A separate baseline migration or manual schema
+-- export is required to reproduce these objects in a new environment.
+-- =============================================================================
