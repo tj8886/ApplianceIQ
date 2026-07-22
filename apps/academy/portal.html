@@ -1,0 +1,1747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ApplianceIQ Academy — Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#0f1f3d;--navy-2:#16294a;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;--sand:#e9e0d0;--sand-text:#9c7c46;--ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#ffffff;--white:#FFFFFF;--sidebar-w:300px;--black:#0f1f3d;--gold:#2f7d72;--gold-light:#276b61;--charcoal:#ffffff;--offwhite:#f4f6f8}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,Arial,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+/* AUTH */
+#auth-screen{position:fixed;inset:0;background:linear-gradient(160deg,#eef3f1,#f4f6f8);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.auth-box{width:100%;max-width:420px;padding:44px 38px;border:1px solid var(--line);background:var(--card);border-radius:22px;box-shadow:0 20px 60px rgba(15,31,61,.08)}
+.auth-logo{text-align:center;margin-bottom:36px}
+.auth-logo-main{font-family:'Sora',Arial,sans-serif;font-size:22px;font-weight:800;color:var(--navy)}
+.auth-logo-sub{font-size:10px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;display:block;margin-top:4px;font-weight:700}
+.auth-tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:28px}
+.auth-tab{flex:1;padding:10px;text-align:center;background:none;border:none;color:var(--steel);font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.3px;border-bottom:2px solid transparent;transition:all 0.2s}
+.auth-tab.active{color:var(--white);border-bottom-color:var(--gold)}
+.auth-form{display:flex;flex-direction:column;gap:14px}
+.auth-input{background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:12px 16px;font-family:'Inter',Arial,sans-serif;font-size:14px;width:100%;outline:none;transition:border-color 0.2s}
+.auth-input:focus{border-color:var(--gold)}
+.auth-input::placeholder{color:var(--steel)}
+.auth-btn{background:var(--teal);color:#fff;border:none;padding:14px;border-radius:999px;font-family:'Sora',Arial,sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:0.2px;transition:background 0.2s;margin-top:4px}
+.auth-btn:hover{background:var(--teal-dark)}
+.auth-btn:disabled{opacity:0.6;cursor:not-allowed}
+.auth-error{font-size:12px;color:#f87171;text-align:center;min-height:16px}
+
+/* PORTAL */
+#portal{display:none;height:100vh;overflow:hidden}
+#portal.active{display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{height:60px;background:var(--card);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;z-index:50}
+.topbar-logo{font-family:'Sora',Arial,sans-serif;font-weight:800;font-size:16px;color:var(--navy);cursor:pointer;display:flex;align-items:center;gap:10px}
+.topbar-logo span{color:var(--teal);font-size:10px;letter-spacing:2px;text-transform:uppercase;display:block;font-weight:700;line-height:1}
+.logo-pill{background:var(--navy);color:#fff;width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;font-family:'Sora',Arial,sans-serif}
+.logo-word{font-size:16px;font-weight:800;color:var(--navy)}
+.topbar-center{display:flex;align-items:center;gap:4px}
+.topbar-nav-btn{background:none;border:none;color:var(--steel);font-size:12px;padding:6px 14px;cursor:pointer;font-family:'Sora',Arial,sans-serif;font-weight:600;letter-spacing:0.3px;transition:all 0.2s;border-bottom:2px solid transparent}
+.topbar-nav-btn:hover{color:var(--white)}
+.topbar-nav-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.progress-pill{background:rgba(46,124,246,0.12);border:1px solid rgba(46,124,246,0.25);padding:4px 12px;font-size:11px;color:var(--gold);letter-spacing:0.5px}
+.user-pill{font-size:12px;color:var(--steel)}
+.signout-btn{background:none;border:1px solid var(--line);color:var(--steel);font-size:11px;padding:6px 14px;border-radius:999px;cursor:pointer;transition:all 0.2s;font-family:'Inter',Arial,sans-serif}
+.signout-btn:hover{border-color:var(--gold);color:var(--gold)}
+.menu-btn{display:none;background:none;border:none;color:var(--white);font-size:20px;cursor:pointer}
+
+/* PORTAL BODY */
+.portal-body{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar-w);background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:transform 0.3s}
+.sidebar-search{padding:14px;border-bottom:1px solid var(--line)}
+.sidebar-search input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:8px 12px;font-size:12px;font-family:'Inter',Arial,sans-serif;outline:none}
+.sidebar-search input::placeholder{color:var(--steel)}
+.sidebar-search input:focus{border-color:rgba(46,124,246,0.4)}
+.sidebar-nav{flex:1;overflow-y:auto;padding-bottom:20px}
+.sidebar-nav::-webkit-scrollbar{width:4px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--line)}
+.vol-group{border-bottom:1px solid var(--line)}
+.vol-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:background 0.15s;user-select:none}
+.vol-header:hover,.vol-header.active{background:var(--teal-tint)}
+.vol-num{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;flex-shrink:0;width:36px}
+.vol-title{font-size:12px;color:var(--ink);flex:1;font-weight:600;line-height:1.3}
+.vol-chevron{font-size:16px;color:var(--steel);transition:transform 0.2s;flex-shrink:0}
+.vol-chevron.open{transform:rotate(90deg)}
+.vol-chapters{display:none}
+.vol-chapters.open{display:block}
+.ch-item{display:flex;align-items:flex-start;gap:10px;padding:9px 16px 9px 24px;cursor:pointer;transition:background 0.15s;border-left:2px solid transparent}
+.ch-item:hover{background:var(--teal-tint)}
+.ch-item.active{background:rgba(46,124,246,0.08);border-left-color:var(--gold)}
+.ch-item.completed .ch-title{color:var(--steel)}
+.ch-check{width:14px;height:14px;border:1px solid rgba(46,124,246,0.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--gold);margin-top:2px}
+.ch-item.completed .ch-check{background:var(--teal);border-color:var(--teal);color:#fff}
+.ch-title{font-size:12px;color:var(--ink);opacity:.85;line-height:1.4}
+
+/* READER */
+.reader{flex:1;overflow-y:auto;background:var(--bg)}
+.reader::-webkit-scrollbar{width:4px}
+.reader::-webkit-scrollbar-thumb{background:var(--line)}
+.reader-inner{max-width:740px;margin:0 auto;padding:48px 40px 80px}
+
+/* DASHBOARD */
+.dash-inner{max-width:900px;margin:0 auto;padding:48px 40px 80px}
+.dash-greeting h1{font-family:'Sora',Arial,sans-serif;font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-1px;margin-bottom:10px}
+.dash-greeting p{font-size:14px;color:var(--steel);margin-bottom:40px}
+.dash-stats{display:flex;gap:32px;margin-bottom:48px;flex-wrap:wrap}
+.dash-stat{text-align:center;padding:20px 28px;border:1px solid var(--line)}
+.dash-stat-num{font-family:'Sora',Arial,sans-serif;font-size:32px;font-weight:700;letter-spacing:-1px;color:var(--gold)}
+.dash-stat-label{font-size:11px;color:var(--steel);letter-spacing:0.5px;margin-top:4px}
+.dash-section-title{font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:20px}
+.vol-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:48px}
+.vol-card{padding:24px;background:var(--card);cursor:pointer;transition:.2s;border:1px solid var(--line);border-radius:18px;box-shadow:0 2px 10px rgba(15,31,61,.04)}
+.vol-card:hover{background:rgba(46,124,246,0.06)}
+.vol-card-num{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.vol-card-title{font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;margin-bottom:6px;letter-spacing:-0.2px}
+.vol-card-desc{font-size:12px;color:var(--steel);margin-bottom:16px;line-height:1.5}
+.vol-card-progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden}
+.vol-card-bar{height:100%;background:var(--teal);transition:width 0.5s ease}
+.vol-card-pct{font-size:11px;color:var(--steel);margin-top:8px}
+
+/* TRACKS VIEW */
+.tracks-view-inner{max-width:1100px;margin:0 auto;padding:48px 40px 80px}
+.track-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;margin-top:32px}
+.track-view-card{background:var(--card);border:1px solid var(--line);padding:30px;border-radius:20px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(15,31,61,.05)}
+.track-view-card:hover{border-color:rgba(46,124,246,0.3);background:rgba(46,124,246,0.04)}
+.track-view-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--teal);opacity:0;transition:opacity 0.2s}
+.track-view-card:hover::before{opacity:1}
+.tvc-badge{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:14px}
+.tvc-name{font-family:'Sora',Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.3px;margin-bottom:6px}
+.tvc-timeline{font-size:12px;color:var(--steel);margin-bottom:16px}
+.tvc-progress{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.tvc-bar{height:100%;background:var(--teal)}
+.tvc-stats{font-size:11px;color:var(--steel)}
+.tvc-stats strong{color:var(--gold)}
+.tvc-cert{display:inline-block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;background:rgba(46,124,246,0.1);color:var(--gold);padding:4px 10px;margin-top:14px;font-weight:600}
+
+/* CHAPTER VIEW */
+.chapter-header{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid var(--line)}
+.chapter-vol-label{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:12px}
+.chapter-title{font-family:'Sora',Arial,sans-serif;font-size:clamp(22px,3vw,36px);font-weight:700;letter-spacing:-0.5px;line-height:1.2;margin-bottom:16px}
+.chapter-intro{font-size:15px;color:var(--steel);line-height:1.7;max-width:680px}
+.section-block{margin-bottom:48px}
+.section-title{font-family:'Sora',Arial,sans-serif;font-size:18px;font-weight:700;letter-spacing:-0.3px;margin-bottom:20px;color:var(--white)}
+.section-content p{font-size:14px;color:var(--ink);line-height:1.8;margin-bottom:14px}
+.chapter-actions{display:flex;align-items:center;justify-content:space-between;margin-top:64px;padding-top:32px;border-top:1px solid var(--line)}
+.btn-complete{background:none;border:1px solid rgba(46,124,246,0.4);color:var(--gold);padding:10px 22px;font-size:12px;cursor:pointer;transition:all 0.2s;font-family:'Sora',Arial,sans-serif;font-weight:600;letter-spacing:0.3px}
+.btn-complete:hover{background:rgba(46,124,246,0.1)}
+.btn-complete.done{background:rgba(46,124,246,0.15);color:var(--gold)}
+.btn-nav{background:none;border:1px solid var(--line);color:var(--steel);padding:10px 20px;font-size:12px;cursor:pointer;transition:all 0.2s;font-family:'Sora',Arial,sans-serif;font-weight:600}
+.btn-nav:hover{border-color:var(--gold);color:var(--gold)}
+.nav-pair{display:flex;gap:8px}
+
+/* RESOURCES */
+.resources-view-inner{max-width:900px;margin:0 auto;padding:48px 40px 80px}
+.res-cats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:28px}
+.res-cat-btn{background:none;border:1px solid var(--line);color:var(--steel);padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Sora',Arial,sans-serif;font-weight:600;transition:all 0.2s}
+.res-cat-btn.active,.res-cat-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ws-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.ws-card{background:var(--card);padding:24px;border:1px solid var(--line);border-radius:16px}
+.ws-card-id{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+.ws-card-title{font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;margin-bottom:6px}
+.ws-card-cat{display:inline-block;font-size:10px;color:var(--steel);border:1px solid var(--line);padding:2px 8px;margin-bottom:10px}
+.ws-card-desc{font-size:12px;color:var(--steel);line-height:1.5;margin-bottom:16px}
+.ws-download{display:inline-block;font-size:11px;color:var(--gold);letter-spacing:0.5px;text-decoration:none;border:1px solid rgba(46,124,246,0.3);padding:6px 12px;transition:all 0.2s;font-family:'Sora',Arial,sans-serif;font-weight:600}
+.ws-download:hover{background:rgba(46,124,246,0.1)}
+
+/* RESOURCE LIBRARY */
+.rl-intro{font-size:14px;color:var(--steel);margin-bottom:32px;line-height:1.7;max-width:640px}
+.rl-summary{display:flex;gap:24px;padding:24px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:40px;flex-wrap:wrap}
+.rl-stat{text-align:center;flex:1;min-width:80px}
+.rl-stat-num{font-family:'Sora',Arial,sans-serif;font-size:28px;font-weight:700;color:var(--gold);letter-spacing:-1px}
+.rl-stat-label{font-size:11px;color:var(--steel);margin-top:4px}
+.rl-section{margin-bottom:40px}
+.rl-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.rl-section-title{font-family:'Sora',Arial,sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.2px}
+.rl-section-count{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;background:rgba(46,124,246,0.1);padding:4px 10px}
+.rl-vol-grid{display:flex;flex-direction:column;gap:1px}
+.rl-vol-card{display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.rl-vol-num{font-size:10px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:600;width:50px;flex-shrink:0}
+.rl-vol-info{flex:1}
+.rl-vol-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px}
+.rl-vol-chapters{font-size:11px;color:var(--steel);margin-bottom:2px}
+.rl-vol-desc{font-size:11px;color:var(--steel)}
+.rl-dl-btn{font-size:11px;color:var(--gold);text-decoration:none;border:1px solid rgba(46,124,246,0.3);padding:5px 10px;flex-shrink:0;font-family:'Sora',Arial,sans-serif;font-weight:600;transition:all 0.2s}
+.rl-dl-btn:hover{background:rgba(46,124,246,0.1)}
+.rl-ws-grid{display:flex;flex-direction:column;gap:1px}
+.rl-ws-row{display:flex;align-items:center;gap:16px;padding:14px 20px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.rl-ws-left{display:flex;align-items:center;gap:14px;flex:1}
+.rl-ws-id{font-size:10px;color:var(--gold);letter-spacing:1.5px;font-weight:600;width:40px;flex-shrink:0}
+.rl-ws-info{flex:1}
+.rl-ws-title{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px}
+.rl-ws-desc{font-size:11px;color:var(--steel)}
+.rl-ws-cat{font-size:10px;color:var(--steel);border:1px solid var(--line);padding:3px 8px;flex-shrink:0}
+
+/* CHAPTER DOWNLOADS */
+.ch-downloads{margin-top:40px;padding-top:32px;border-top:1px solid var(--line)}
+.ch-downloads-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:16px}
+.ch-dl-list{display:flex;flex-direction:column;gap:12px}
+.ch-dl-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+.ch-dl-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.ch-dl-desc{font-size:12px;color:var(--steel)}
+
+/* LOADING */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px;gap:16px;color:var(--steel);font-size:13px}
+.loading-spin{width:28px;height:28px;border:2px solid rgba(46,124,246,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{position:absolute;left:0;top:0;bottom:0;z-index:40;transform:translateX(-100%)}
+  .sidebar.mobile-open{transform:none}
+  .menu-btn{display:block}
+  .reader-inner,.dash-inner,.tracks-view-inner,.resources-view-inner{padding:28px 20px 60px}
+  .dash-stats{gap:16px}
+  .track-cards-grid{grid-template-columns:1fr}
+  .topbar-center{display:none}
+}
+
+/* Knowledge Check */
+.quiz-block{margin-top:40px;padding:28px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:0 2px 12px rgba(15,31,61,.05)}
+.quiz-badge{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);background:rgba(47,125,114,.12);padding:4px 10px;border-radius:20px;margin-bottom:10px}
+.quiz-title{font-size:20px;font-weight:700;margin:6px 0}
+.quiz-sub{opacity:.7;font-size:14px;margin-bottom:14px;line-height:1.5}
+.quiz-prev{font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:14px;display:inline-block}
+.quiz-prev.pass{background:rgba(34,197,94,.12);color:#4ade80}
+.quiz-prev.fail{background:rgba(148,163,184,.12);color:#94a3b8}
+.btn-quiz-start{background:var(--teal);color:#fff;border:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-quiz-start:hover{background:var(--teal-dark)}
+.btn-quiz-start:disabled{opacity:.4;cursor:not-allowed}
+.quiz-q{margin:22px 0;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.quiz-q-text{font-size:15px;font-weight:600;line-height:1.5;margin-bottom:12px;display:flex;gap:10px}
+.quiz-q-num{flex-shrink:0;width:24px;height:24px;background:rgba(47,125,114,.15);color:var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.quiz-opts{display:flex;flex-direction:column;gap:8px;margin-left:34px}
+.quiz-opt{text-align:left;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font-size:14px;cursor:pointer;transition:.12s}
+.quiz-opt:hover:not(:disabled){border-color:var(--teal);background:rgba(47,125,114,.06)}
+.quiz-opt.selected{border-color:var(--teal);background:rgba(47,125,114,.12)}
+.quiz-opt.correct{border-color:#22c55e;background:rgba(34,197,94,.14);color:#4ade80}
+.quiz-opt.wrong{border-color:#ef4444;background:rgba(239,68,68,.12);color:#f87171}
+.quiz-opt:disabled{cursor:default}
+.quiz-why{margin:10px 0 0 34px;padding:11px 14px;font-size:13px;line-height:1.55;background:var(--teal-tint);color:var(--ink);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;opacity:1}
+.quiz-score{margin-top:20px;text-align:center;padding:24px;border-radius:12px}
+.quiz-score.pass{background:rgba(34,197,94,.1)}
+.quiz-score.fail{background:rgba(148,163,184,.08)}
+.quiz-score-num{font-size:38px;font-weight:800}
+.quiz-score.pass .quiz-score-num{color:#4ade80}
+.quiz-score-label{font-size:14px;opacity:.8;margin:6px 0 14px}
+
+
+/* Certificate */
+.btn-claim-cert{width:100%;margin-top:12px;background:var(--teal);color:#fff;border:none;padding:13px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;letter-spacing:.02em}
+.btn-claim-cert:hover{background:var(--teal-dark);transform:translateY(-1px)}
+.cert-locked{margin-top:12px;font-size:11px;color:var(--steel);opacity:.9;line-height:1.5;padding:8px 10px;background:var(--bg);border-radius:8px;text-align:center}
+.cert-overlay{position:fixed;inset:0;background:rgba(15,31,61,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.cert-modal{background:var(--card);border:1px solid var(--line);border-radius:22px;max-width:960px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(15,31,61,.25)}
+.cert-modal-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:18px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.cert-name-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--teal);margin-bottom:6px;font-weight:600}
+.cert-name-input{background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--navy);font-size:15px;min-width:260px}
+.cert-name-input:focus{outline:none;border-color:var(--teal)}
+.cert-modal-actions{display:flex;gap:10px;align-items:center}
+.btn-cert-print{background:var(--teal);color:#fff;border:none;padding:10px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-cert-print:hover{background:var(--teal-dark)}
+.btn-cert-close{background:var(--bg);color:var(--navy);border:1px solid var(--line);width:38px;height:38px;border-radius:999px;font-size:16px;cursor:pointer}
+.btn-cert-close:hover{background:var(--line)}
+.cert-scroll{overflow:auto;padding:22px;background:var(--bg)}
+#cert-canvas{background:#fff;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.4);overflow:hidden}
+@media(max-width:640px){.cert-modal-head{flex-direction:column;align-items:stretch}.cert-name-input{min-width:0;width:100%}.cert-modal-actions{justify-content:space-between}}
+
+
+/* VENDOR LIBRARY */
+.vendor-howto{font-size:13px;color:var(--ink);background:var(--teal-tint);border-radius:12px;padding:12px 16px;line-height:1.6;max-width:720px}
+.vendor-howto strong{color:var(--navy)}
+.vendor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:24px}
+.vendor-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;cursor:pointer;transition:.2s;box-shadow:0 2px 10px rgba(15,31,61,.04)}
+.vendor-card:hover{border-color:var(--teal);box-shadow:0 8px 24px rgba(15,31,61,.09);transform:translateY(-2px)}
+.vendor-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.vendor-logo{width:48px;height:48px;border-radius:13px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Sora',Arial,sans-serif;font-weight:800;font-size:17px;letter-spacing:-.5px}
+.vendor-logo.lg{width:64px;height:64px;font-size:22px;border-radius:16px;flex-shrink:0}
+.vendor-tier{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:var(--teal);background:var(--teal-tint);padding:4px 10px;border-radius:12px;white-space:nowrap}
+.vendor-name{font-family:'Sora',Arial,sans-serif;font-size:18px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.vendor-tagline{font-size:12px;color:var(--teal-dark);font-style:italic;margin-bottom:10px;line-height:1.4}
+.vendor-focus{font-size:11px;color:var(--steel);line-height:1.5;margin-bottom:14px}
+.vendor-card-foot{font-size:11px;color:var(--teal);font-weight:700;padding-top:12px;border-top:1px solid var(--line)}
+.vendor-back{background:none;border:1px solid var(--line);color:var(--steel);font-size:12px;padding:8px 16px;border-radius:999px;cursor:pointer;font-family:'Inter',Arial,sans-serif;font-weight:600;margin-bottom:24px;transition:.15s}
+.vendor-back:hover{border-color:var(--teal);color:var(--teal)}
+.vendor-detail-head{display:flex;gap:18px;align-items:center;margin-bottom:28px}
+.vendor-detail-name{font-family:'Sora',Arial,sans-serif;font-size:clamp(24px,3.5vw,32px);font-weight:800;color:var(--navy);letter-spacing:-.6px}
+.vendor-detail-tagline{font-size:15px;color:var(--teal-dark);font-style:italic;margin:4px 0 8px}
+.vendor-detail-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.vendor-focus-inline{font-size:12px;color:var(--steel)}
+.vendor-section{margin-bottom:28px}
+.vendor-section-title{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:10px}
+.vendor-story{font-size:15px;color:var(--ink);line-height:1.75;max-width:760px}
+.vendor-twocol{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.vendor-fit{font-size:14px;color:var(--ink);line-height:1.65}
+.vendor-angles{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:9px}
+.vendor-angles li{font-size:13px;color:var(--ink);line-height:1.5;padding-left:20px;position:relative}
+.vendor-angles li::before{content:'→';position:absolute;left:0;color:var(--teal);font-weight:700}
+.vendor-spec-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.vendor-spec-center{font-size:12px;font-weight:700;color:#fff;background:var(--teal);padding:9px 16px;border-radius:999px;text-decoration:none;white-space:nowrap;transition:.15s}
+.vendor-spec-center:hover{background:var(--teal-dark)}
+.vendor-spec-list{display:flex;flex-direction:column;gap:10px}
+.vendor-spec-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:12px;text-decoration:none}
+.vendor-spec-item.has-link{cursor:pointer;transition:.15s}
+.vendor-spec-item.has-link:hover{border-color:var(--teal);box-shadow:0 4px 14px rgba(15,31,61,.06)}
+.vendor-spec-model{font-size:14px;font-weight:700;color:var(--navy);font-family:'Sora',Arial,sans-serif}
+.vendor-spec-note{font-size:12px;color:var(--steel);margin-top:2px}
+.vendor-spec-badge{font-size:11px;font-weight:700;color:var(--steel);background:var(--bg);padding:5px 12px;border-radius:20px;white-space:nowrap;border:1px solid var(--line)}
+.vendor-spec-badge.open{color:var(--teal);background:var(--teal-tint);border-color:transparent}
+@media(max-width:640px){.vendor-twocol{grid-template-columns:1fr;gap:20px}.vendor-detail-head{gap:14px}}
+
+
+/* VIDEO — chapter toggle + players */
+.mode-toggle{display:inline-flex;gap:4px;margin-top:18px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px}
+.mode-btn{border:none;background:none;color:var(--steel);font-family:'Sora',Arial,sans-serif;font-size:12px;font-weight:600;padding:8px 18px;border-radius:999px;cursor:pointer;transition:.15s}
+.mode-btn:hover{color:var(--navy)}
+.mode-btn.active{background:var(--teal);color:#fff}
+#chapter-media{margin:0 0 32px}
+.ch-video-frame{position:relative;width:100%;max-width:760px;aspect-ratio:16/9;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(15,31,61,.14);background:#000}
+.ch-video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.ch-video-el{width:100%;max-width:760px;border-radius:16px;box-shadow:0 8px 30px rgba(15,31,61,.14);background:#000}
+/* VENDOR videos */
+.vendor-video-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}
+.vendor-video-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(15,31,61,.04)}
+.vendor-video-label{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px;font-family:'Sora',Arial,sans-serif}
+.vendor-video-card .ch-video-frame,.vendor-video-card .ch-video-el{max-width:100%;box-shadow:none}
+
+
+/* AI TRAINER */
+.btn-ai-trainer{display:inline-flex;align-items:center;gap:8px;background:var(--navy);color:#fff;border:none;padding:12px 22px;border-radius:999px;font-family:'Sora',Arial,sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:.15s;margin-top:28px}
+.btn-ai-trainer:hover{background:var(--navy-2);transform:translateY(-1px)}
+.btn-ai-trainer .spark{color:#7fc4b8}
+#ai-panel{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100vw;background:var(--card);border-left:1px solid var(--line);box-shadow:-16px 0 50px rgba(15,31,61,.14);z-index:900;display:none;flex-direction:column;transform:translateX(100%);transition:transform .25s ease}
+#ai-panel.open{display:flex;transform:translateX(0)}
+.ai-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);flex-shrink:0}
+.ai-head-title{font-family:'Sora',Arial,sans-serif;font-weight:800;font-size:15px;color:var(--navy);display:flex;align-items:center;gap:9px}
+.ai-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:var(--teal);background:var(--teal-tint);padding:3px 9px;border-radius:12px}
+.ai-close{background:var(--bg);border:1px solid var(--line);color:var(--navy);width:34px;height:34px;border-radius:999px;font-size:15px;cursor:pointer}
+.ai-context{font-size:11px;color:var(--steel);padding:10px 18px;border-bottom:1px solid var(--line);background:var(--bg);line-height:1.5;flex-shrink:0}
+.ai-context b{color:var(--navy)}
+.ai-msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px}
+.ai-msg{max-width:88%;padding:11px 15px;border-radius:16px;font-size:13.5px;line-height:1.6;white-space:pre-wrap}
+.ai-msg.user{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:5px}
+.ai-msg.assistant{align-self:flex-start;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-bottom-left-radius:5px}
+.ai-msg.thinking{color:var(--steel);font-style:italic}
+.ai-suggest{display:flex;gap:6px;flex-wrap:wrap;padding:0 18px 10px;flex-shrink:0}
+.ai-sg{font-size:11px;font-weight:600;color:var(--teal-dark);background:var(--teal-tint);border:none;padding:7px 12px;border-radius:999px;cursor:pointer}
+.ai-sg:hover{background:var(--teal);color:#fff}
+.ai-inputbar{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line);flex-shrink:0}
+.ai-input{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:11px 16px;font-size:13.5px;font-family:inherit;color:var(--ink);outline:none}
+.ai-input:focus{border-color:var(--teal)}
+.ai-send{background:var(--teal);color:#fff;border:none;width:42px;height:42px;border-radius:999px;font-size:16px;cursor:pointer;flex-shrink:0}
+.ai-send:hover{background:var(--teal-dark)}
+.ai-send:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:720px){#ai-panel{width:100vw;border-left:none}}
+
+
+.tts-bar{display:flex;align-items:center;gap:10px;background:var(--card,#fff);border:1px solid var(--line,#dfe7ee);border-radius:14px;padding:10px 14px;margin:0 0 18px;flex-wrap:wrap}
+.tts-btn{border:none;background:var(--teal,#2f7d72);color:#fff;width:38px;height:38px;border-radius:50%;font-size:15px;cursor:pointer;flex-shrink:0}
+.tts-btn:hover{filter:brightness(1.08)}
+.tts-progress{flex:1;min-width:120px;height:6px;background:#e8eef3;border-radius:99px;overflow:hidden}
+.tts-progress-fill{height:100%;width:0%;background:var(--teal,#2f7d72);transition:width .3s}
+.tts-status{font-size:12px;color:var(--steel,#5a6b7a);white-space:nowrap}
+.tts-rate{border:1px solid var(--line,#dfe7ee);border-radius:8px;padding:4px 6px;font-size:12px;background:#fff}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px">
+        <span class="logo-pill">IQ</span>
+        <span class="auth-logo-main">ApplianceIQ <b style="color:var(--teal);font-weight:800">Academy</b></span>
+      </div>
+      <span class="auth-logo-sub">Sales Training</span>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Sign In</button>
+      <button class="auth-tab" onclick="switchTab('signup')">Create Account</button>
+    </div>
+    <div id="login-form" class="auth-form">
+      <input id="login-email" class="auth-input" type="email" placeholder="Email address" autocomplete="email"/>
+      <input id="login-password" class="auth-input" type="password" placeholder="Password" autocomplete="current-password"/>
+      <div class="auth-error" id="login-error"></div>
+      <button class="auth-btn" id="login-btn" onclick="signIn()">Sign In</button>
+    </div>
+    <div id="signup-form" class="auth-form" style="display:none">
+      <input id="signup-name" class="auth-input" type="text" placeholder="Full name"/>
+      <input id="signup-email" class="auth-input" type="email" placeholder="Email address" autocomplete="email"/>
+      <input id="signup-password" class="auth-input" type="password" placeholder="Password (8+ characters)" autocomplete="new-password"/>
+      <div class="auth-error" id="signup-error"></div>
+      <button class="auth-btn" id="signup-btn" onclick="signUp()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- PORTAL -->
+<div id="portal">
+  <div class="topbar">
+    <div class="topbar-logo" onclick="showDashboard()">
+      <span class="logo-pill">IQ</span>
+      <span class="logo-word">ApplianceIQ <b style="color:var(--teal);font-weight:800">Academy</b></span>
+    </div>
+    <div class="topbar-center">
+      <button id="nav-learn" class="topbar-nav-btn active" onclick="showView('learn')">Curriculum</button>
+      <button id="nav-tracks" class="topbar-nav-btn" onclick="showView('tracks')">Training Tracks</button>
+      <button id="nav-resources" class="topbar-nav-btn" onclick="showView('resources')">Resources</button>
+      <button id="nav-vendors" class="topbar-nav-btn" onclick="showView('vendors')">Vendors</button>
+      <button id="nav-scorecard" class="topbar-nav-btn" onclick="showView('scorecard')">Daily Five</button>
+    </div>
+    <div class="topbar-right">
+      <div class="progress-pill" id="progress-pill">0 / 124 chapters</div>
+      <span class="user-pill" id="user-pill"></span>
+      <button class="signout-btn" onclick="signOut()">Sign Out</button>
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    </div>
+  </div>
+
+  <div class="portal-body">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-search">
+        <input type="text" placeholder="Search chapters…" oninput="filterChapters(this.value)" id="search-input"/>
+      </div>
+      <div class="sidebar-nav" id="sidebar-nav"></div>
+    </div>
+
+    <div class="reader" id="reader">
+      <div id="dashboard"><!-- rendered by JS --></div>
+      <div id="chapter-view" style="display:none"><div class="reader-inner" id="chapter-inner"></div></div>
+      <div id="tracks-view" style="display:none">
+        <div class="tracks-view-inner">
+          <div style="margin-bottom:8px;font-size:10px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600">Training Tracks</div>
+          <h2 style="font-family:'Sora',Arial,sans-serif;font-size:clamp(22px,3vw,34px);font-weight:700;letter-spacing:-0.8px;margin-bottom:10px">Your Learning Path</h2>
+          <p style="font-size:14px;color:var(--steel);margin-bottom:0">Six tracks covering the full salesperson lifecycle — floor and trade. Follow a track for a structured path, or explore volumes freely in the curriculum view. Each track leads to a certification.</p>
+          <div class="track-cards-grid" id="tracks-grid"></div>
+        </div>
+      </div>
+      <div id="resources-view" style="display:none">
+        <div class="resources-view-inner">
+          <div style="margin-bottom:8px;font-size:10px;color:var(--gold);letter-spacing:3px;text-transform:uppercase;font-weight:600">Resources</div>
+          <h2 style="font-family:'Sora',Arial,sans-serif;font-size:clamp(22px,3vw,34px);font-weight:700;letter-spacing:-0.8px;margin-bottom:32px">Worksheets &amp; Downloads</h2>
+          <div id="res-cats" class="res-cats"></div>
+          <div id="ws-grid" class="ws-grid"></div>
+        </div>
+      </div>
+      <div id="vendors-view" style="display:none">
+        <div class="resources-view-inner" id="vendors-inner"></div>
+      </div>
+      <div id="scorecard-view" style="display:none">
+        <div class="resources-view-inner" id="scorecard-inner"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- AI TRAINER PANEL -->
+<div id="ai-panel">
+  <div class="ai-head">
+    <div class="ai-head-title"><span class="spark" style="color:var(--teal)">✦</span> AI Trainer <span class="ai-badge">Beta</span></div>
+    <button class="ai-close" onclick="closeTrainer()">✕</button>
+  </div>
+  <div class="ai-context" id="ai-context">—</div>
+  <div class="ai-msgs" id="ai-msgs"></div>
+  <div class="ai-suggest" id="ai-suggest">
+    <button class="ai-sg" onclick="trainerAsk('Summarize this lesson in 5 bullet points')">Summarize</button>
+    <button class="ai-sg" onclick="trainerAsk('Explain the hardest concept in this lesson simply')">Simplify</button>
+    <button class="ai-sg" onclick="trainerAsk('Give me a real floor example of this lesson in action')">Example</button>
+    <button class="ai-sg" onclick="trainerAsk('Quiz me with 3 questions from this lesson')">Quiz me</button>
+  </div>
+  <div class="ai-inputbar">
+    <input class="ai-input" id="ai-input" placeholder="Ask about this lesson…" onkeydown="if(event.key==='Enter')sendTrainer()">
+    <button class="ai-send" id="ai-send" onclick="sendTrainer()">➤</button>
+  </div>
+</div>
+
+<script>
+// ⚠️ APPLIANCEIQ SUPABASE — create a NEW Supabase project for ApplianceIQ Academy
+// (do not reuse the Elev8 project — keep user bases separate).
+// Paste your new project URL and publishable key below, then run seed_applianceiq_v1.sql
+const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let currentUser = null;
+let volumes = [];
+let chapters = [];
+let completedIds = new Set();
+let currentChapterSlug = null;
+let allChapterItems = [];
+let worksheets = [];
+let quizzes = [];
+let quizScores = {};  // {vol: {score, total, ts}}
+let vendors = [];
+let vendorMeta = {};
+
+// ── TRAINING TRACKS DEFINITION ──────────────────────────────────────────────
+const TRACKS = [
+  {
+    id:'foundation', badge:'Track 01 · Foundation', name:'New Salesperson',
+    timeline:'Months 0–6 · Foundation chapters', cert:'Certified Appliance Advisor',
+    chRange:[1,8],
+    desc:'The complete foundation. Mindset, ethics, the modern buyer, your personal operating system, AI-assisted selling, and the 90-day ramp.'
+  },
+  {
+    id:'professional', badge:'Track 02 · Professional', name:'Established Salesperson',
+    timeline:'Months 6–18 · Product + closing chapters', cert:'Senior Sales Professional',
+    chRange:[9,40],
+    desc:'Advanced product knowledge, ACRA objection handling, floor closing techniques, attach rate mastery, and follow-up systems.'
+  },
+  {
+    id:'trade', badge:'Track 03 · Trade Specialist', name:'B2B & Commercial Sales',
+    timeline:'Months 12+ · Trade channel chapters', cert:'Trade & Commercial Specialist',
+    chRange:[41,72],
+    desc:'The trade channel — custom builders, renovation contractors, designers, and property managers. BD, account management, and growth.'
+  },
+  {
+    id:'elite', badge:'Track 04 · Elite', name:'Top Performer',
+    timeline:'Months 18+ · Psychology + metrics chapters', cert:'Elite Advisor Certification',
+    chRange:[73,94],
+    desc:'The psychology of the appliance buyer, buyer archetypes, trust dynamics, closing psychology, and personal scorecard mastery.'
+  },
+  {
+    id:'ai', badge:'Track 05 · Specialist', name:'AI-Powered Selling',
+    timeline:'Cross-level · AI chapters', cert:'AI-Powered Seller Certification',
+    chNums:[7,95,96,97,98,99,100,101,102],
+    desc:'The AI-assisted daily workflow, product comparison, follow-up drafting, trade research, and the AI Command Console.'
+  },
+  {
+    id:'leadership', badge:'Track 06 · Leadership', name:'Sales Leader',
+    timeline:'Managers · Operations + leadership chapters', cert:'Sales Leader Certification',
+    chRange:[103,124],
+    desc:'Hiring and onboarding, running the floor, managing to the scorecard, building the trade desk, and multi-location standards.'
+  },
+];
+
+function getTrackChapters(track) {
+  const real = chapters.filter(c => c.chapter_number >= 1);
+  if (track.chNums) return real.filter(c => track.chNums.includes(c.chapter_number));
+  return real.filter(c => c.chapter_number >= track.chRange[0] && c.chapter_number <= track.chRange[1]);
+}
+
+// ── AUTH ────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0)===(tab==='login')));
+  document.getElementById('login-form').style.display = tab==='login' ? 'flex' : 'none';
+  document.getElementById('signup-form').style.display = tab==='signup' ? 'flex' : 'none';
+}
+
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-password').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  err.textContent = '';
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message; btn.disabled=false; btn.textContent='Sign In'; }
+}
+
+async function signUp() {
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const pass = document.getElementById('signup-password').value;
+  const btn = document.getElementById('signup-btn');
+  const err = document.getElementById('signup-error');
+  err.textContent = '';
+  if (!name) { err.textContent='Please enter your name.'; return; }
+  if (pass.length < 8) { err.textContent='Password must be at least 8 characters.'; return; }
+  btn.disabled=true; btn.textContent='Creating account...';
+  const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name } } });
+  if (error) { err.textContent = error.message; btn.disabled=false; btn.textContent='Create Account'; }
+  else { err.style.color='#4ade80'; err.textContent='Check your email to confirm your account.'; btn.textContent='Email sent!'; }
+}
+
+async function signOut() { await sb.auth.signOut(); location.reload(); }
+
+// ── BOOT ────────────────────────────────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('portal').classList.add('active');
+    document.getElementById('user-pill').textContent = currentUser.email?.split('@')[0] || '';
+    await loadWorksheets();
+  await loadQuizzes();
+  await loadVendors();
+    await loadCurriculum();
+    await loadProgress();
+    renderDashboard();
+    renderSidebar();
+    renderTracksGrid();
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('portal').classList.remove('active');
+  }
+});
+
+// ── DATA ────────────────────────────────────────────────────────────────────
+async function loadCurriculum() {
+  const { data: vols } = await sb.from('academy_volumes').select('*').order('sort_order');
+  const { data: chs } = await sb.from('academy_chapters').select('*').order('sort_order');
+  volumes = vols || [];
+  chapters = chs || [];
+}
+
+async function loadProgress() {
+  const { data } = await sb.from('academy_progress').select('chapter_id').eq('user_id', currentUser.id);
+  completedIds = new Set((data||[]).map(r => r.chapter_id));
+  updateProgressPill();
+}
+
+function updateProgressPill() {
+  const real = chapters.filter(c => c.chapter_number >= 1);
+  const done = real.filter(c => completedIds.has(c.id)).length;
+  document.getElementById('progress-pill').textContent = `${done} / ${real.length} chapters`;
+}
+
+async function loadWorksheets() {
+  // Repair: academy_worksheets (DB, versioned) is the source; JSON is fallback.
+  try {
+    const { data, error } = await sb.from('academy_worksheets').select('id,title,track,definition').order('id');
+    if (error) throw error;
+    if (data && data.length) { worksheets = data.map(r => ({ id: r.id, title: r.title, track: r.track, ...(r.definition||{}) })); return; }
+    throw new Error('empty');
+  } catch(e) {
+    try { const res = await fetch('worksheets.json'); worksheets = await res.json(); }
+    catch(e2) { worksheets = []; }
+  }
+}
+
+
+async function loadQuizzes() {
+  // Repair: academy_quizzes (DB, versioned) is the source; JSON is fallback.
+  try {
+    const { data, error } = await sb.from('academy_quizzes').select('volume_id,questions').order('volume_id');
+    if (error) throw error;
+    if (data && data.length) { quizzes = data.map(r => ({ vol: r.volume_id, questions: r.questions })); }
+    else throw new Error('empty');
+  } catch(e) {
+    try { const res = await fetch('quizzes.json'); quizzes = await res.json(); }
+    catch(e2) { quizzes = []; }
+  }
+  // load saved scores from Supabase (academy_quiz_scores) if present
+  try {
+    const { data } = await sb.from('academy_quiz_scores').select('*').eq('user_id', currentUser.id);
+    (data||[]).forEach(r => { quizScores[r.vol] = { score:r.score, total:r.total, ts:r.updated_at }; });
+  } catch(e) {}
+}
+
+async function loadVendors() {
+  // Repair (Stage 1 File 30): mfr_vendors is the single vendor source.
+  try {
+    const { data, error } = await sb.from('mfr_vendors').select('*').order('name');
+    if (error) throw error;
+    if (data && data.length) { vendors = data; vendorMeta = { source: 'db' }; return; }
+    throw new Error('empty');
+  } catch(e) {
+    try { // fallback for pre-migration deployments only
+      const res = await fetch('vendors.json');
+      const d = await res.json();
+      vendors = d.vendors || []; vendorMeta = d.meta || {};
+    } catch(e2) { vendors = []; vendorMeta = {}; }
+  }
+}
+// ── SIDEBAR ─────────────────────────────────────────────────────────────────
+function renderSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+  allChapterItems = [];
+  volumes.forEach(vol => {
+    const volChs = chapters.filter(c => c.volume_id === vol.id && c.chapter_number >= 1);
+    if (!volChs.length) return;
+    const group = document.createElement('div');
+    group.className = 'vol-group';
+    group.dataset.volId = vol.id;
+    const header = document.createElement('div');
+    header.className = 'vol-header';
+    header.innerHTML = `<span class="vol-num">Vol ${vol.vol_number}</span><span class="vol-title">${vol.title}</span><span class="vol-chevron" id="chev-${vol.id}">›</span>`;
+    header.onclick = () => toggleVol(vol.id);
+    const chList = document.createElement('div');
+    chList.className = 'vol-chapters';
+    chList.id = `vol-chs-${vol.id}`;
+    volChs.forEach(ch => {
+      const item = document.createElement('div');
+      item.className = 'ch-item' + (completedIds.has(ch.id) ? ' completed' : '');
+      item.dataset.slug = ch.slug;
+      item.dataset.title = ch.title.toLowerCase();
+      item.innerHTML = `<div class="ch-check">${completedIds.has(ch.id)?'✓':''}</div><span class="ch-title">${ch.title.replace(/Chapter \d+ — /,'')}</span>`;
+      item.onclick = () => ch.slug === 'resource-library' ? renderResourceLibrary() : loadChapter(ch.slug, vol);
+      chList.appendChild(item);
+      allChapterItems.push(item);
+    });
+    group.appendChild(header);
+    group.appendChild(chList);
+    nav.appendChild(group);
+  });
+}
+
+function toggleVol(volId) {
+  const chList = document.getElementById(`vol-chs-${volId}`);
+  const chev = document.getElementById(`chev-${volId}`);
+  const isOpen = chList.classList.contains('open');
+  chList.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+function filterChapters(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('.vol-group').forEach(g => g.style.display = '');
+  allChapterItems.forEach(item => {
+    const match = !q || item.dataset.title.includes(q);
+    item.style.display = match ? 'flex' : 'none';
+    if (match && q) {
+      const volId = item.closest('.vol-group')?.dataset.volId;
+      if (volId) { document.getElementById(`vol-chs-${volId}`)?.classList.add('open'); document.getElementById(`chev-${volId}`)?.classList.add('open'); }
+    }
+  });
+  if (q) {
+    document.querySelectorAll('.vol-group').forEach(g => {
+      const vis = g.querySelectorAll('.ch-item:not([style*="display: none"])').length;
+      g.style.display = vis > 0 ? '' : 'none';
+    });
+  } else {
+    document.querySelectorAll('.vol-chapters').forEach(c => c.classList.remove('open'));
+    document.querySelectorAll('.vol-chevron').forEach(c => c.classList.remove('open'));
+  }
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const real = chapters.filter(c => c.chapter_number >= 1);
+  const done = real.filter(c => completedIds.has(c.id)).length;
+  const pct = real.length ? Math.round(done/real.length*100) : 0;
+  const name = currentUser.user_metadata?.full_name?.split(' ')[0] || 'Salesperson';
+  const nextCh = real.find(c => !completedIds.has(c.id));
+  const nextVol = nextCh ? volumes.find(v => v.id === nextCh.volume_id) : null;
+
+  document.getElementById('dashboard').innerHTML = `
+    <div class="dash-inner">
+      <div class="dash-greeting">
+        <h1>Welcome back, ${name}.</h1>
+        <p>${done === 0 ? 'Start with Chapter 1 — the foundation everything else builds on.' : done === real.length ? 'You have completed the full curriculum. Outstanding.' : `${real.length - done} chapters remaining. Keep moving.`}</p>
+      </div>
+      <div class="dash-stats">
+        <div class="dash-stat"><div class="dash-stat-num">${done}</div><div class="dash-stat-label">Completed</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${real.length - done}</div><div class="dash-stat-label">Remaining</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${pct}%</div><div class="dash-stat-label">Complete</div></div>
+        <div class="dash-stat"><div class="dash-stat-num">${volumes.length}</div><div class="dash-stat-label">Volumes</div></div>
+      </div>
+      ${nextCh ? `<div style="margin-bottom:40px"><div class="dash-section-title">Continue Where You Left Off</div><div class="vol-card" onclick="loadChapter('${nextCh.slug}',${JSON.stringify(nextVol).replace(/"/g,'&quot;')})" style="max-width:480px;display:block"><div class="vol-card-num">Vol ${nextVol?.vol_number} — Next Up</div><div class="vol-card-title">${nextCh.title}</div><div style="font-size:12px;color:var(--steel)">${nextCh.intro?nextCh.intro.substring(0,100)+'...':'Continue your training.'}</div></div></div>` : ''}
+      <div class="dash-section-title">All Volumes</div>
+      <div class="vol-cards">
+        ${volumes.map(vol => {
+          const volChs = real.filter(c => c.volume_id === vol.id);
+          const volDone = volChs.filter(c => completedIds.has(c.id)).length;
+          const volPct = volChs.length ? Math.round(volDone/volChs.length*100) : 0;
+          const firstCh = volChs[0];
+          return `<div class="vol-card" onclick="${firstCh?`loadChapter('${firstCh.slug}',${JSON.stringify(vol).replace(/"/g,'&quot;')})`:''}">
+            <div class="vol-card-num">Volume ${vol.vol_number}</div>
+            <div class="vol-card-title">${vol.title}</div>
+            <div class="vol-card-desc">${vol.description}</div>
+            <div class="vol-card-progress"><div class="vol-card-bar" style="width:${volPct}%"></div></div>
+            <div class="vol-card-pct">${volDone} / ${volChs.length} chapters${volPct===100?' · Complete':''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+// ── TRACKS VIEW ──────────────────────────────────────────────────────────────
+function renderTracksGrid() {
+  const grid = document.getElementById('tracks-grid');
+  if (!grid) return;
+  grid.innerHTML = TRACKS.map(track => {
+    const trackChs = getTrackChapters(track);
+    const done = trackChs.filter(c => completedIds.has(c.id)).length;
+    const pct = trackChs.length ? Math.round(done/trackChs.length*100) : 0;
+    return `<div class="track-view-card" onclick="startTrack('${track.id}')">
+      <div class="tvc-badge">${track.badge}</div>
+      <div class="tvc-name">${track.name}</div>
+      <div class="tvc-timeline">${track.timeline}</div>
+      <p style="font-size:12px;color:var(--steel);line-height:1.6;margin-bottom:16px">${track.desc}</p>
+      <div class="tvc-progress"><div class="tvc-bar" style="width:${pct}%"></div></div>
+      <div class="tvc-stats" style="margin-top:8px"><strong>${done}</strong> of <strong>${trackChs.length}</strong> chapters complete · <strong>${pct}%</strong></div>
+      <div class="tvc-cert">${track.cert}</div>
+      ${certStatusHtml(track, pct)}
+    </div>`;
+  }).join('');
+}
+
+// ── CERTIFICATE GENERATION ──────────────────────────────────────────────────
+// Map each track to the volume codes whose knowledge checks must be passed.
+const TRACK_CERT_VOLS = {
+  foundation: ['I'],
+  professional: ['II','IV','V','VI','VII'],
+  trade: ['VIII','IX','X','XI'],
+  elite: ['III','XII','XIV'],
+  ai: ['XIII'],
+  leadership: ['XV','XVI']
+};
+
+function trackQuizStatus(track) {
+  const vols = TRACK_CERT_VOLS[track.id] || [];
+  let passed = 0, total = 0;
+  vols.forEach(v => {
+    const quiz = quizzes.find(q => q.vol === v);
+    if (!quiz) return;
+    total++;
+    const s = quizScores[v];
+    const passMark = Math.ceil(quiz.questions.length * 0.75);
+    if (s && s.score >= passMark) passed++;
+  });
+  return { passed, total, allPassed: total > 0 && passed === total };
+}
+
+function certEligible(track, pct) {
+  const q = trackQuizStatus(track);
+  return pct === 100 && q.allPassed;
+}
+
+function certStatusHtml(track, pct) {
+  const q = trackQuizStatus(track);
+  if (certEligible(track, pct)) {
+    return `<button class="btn-claim-cert" onclick="event.stopPropagation(); openCertificate('${track.id}')">🏆 Claim Your Certificate</button>`;
+  }
+  const chaptersLeft = pct < 100;
+  const quizzesLeft = !q.allPassed;
+  let msg = 'Complete to unlock: ';
+  const parts = [];
+  if (chaptersLeft) parts.push('all chapters');
+  if (quizzesLeft && q.total) parts.push(`knowledge checks (${q.passed}/${q.total} passed)`);
+  return `<div class="cert-locked">🔒 ${msg}${parts.join(' + ')}</div>`;
+}
+
+function openCertificate(trackId) {
+  const track = TRACKS.find(t => t.id === trackId);
+  if (!track) return;
+  const learnerName = (currentUser && (currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0])) || 'Salesperson';
+  const overlay = document.createElement('div');
+  overlay.className = 'cert-overlay';
+  overlay.id = 'cert-overlay';
+  overlay.innerHTML = `
+    <div class="cert-modal">
+      <div class="cert-modal-head">
+        <div>
+          <label class="cert-name-label">Name on certificate</label>
+          <input id="cert-name-input" class="cert-name-input" value="${learnerName.replace(/"/g,'&quot;')}" oninput="updateCertName(this.value)" />
+        </div>
+        <div class="cert-modal-actions">
+          <button class="btn-cert-print" onclick="printCertificate()">🖨 Print / Save PDF</button>
+          <button class="btn-cert-close" onclick="closeCertificate()">✕</button>
+        </div>
+      </div>
+      <div class="cert-scroll">
+        <div id="cert-canvas">${certificateSVG(track, learnerName)}</div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  window._certTrack = track;
+}
+
+function updateCertName(name) {
+  const el = document.getElementById('cert-name-field');
+  if (el) el.textContent = name || 'Salesperson';
+}
+
+function certificateSVG(track, name) {
+  const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+  const store = 'ApplianceIQ Academy';
+  return `
+  <svg id="cert-svg" viewBox="0 0 1100 800" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;background:#fff">
+    <defs>
+      <linearGradient id="gborder" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#2f7d72"/><stop offset="0.5" stop-color="#e9e0d0"/><stop offset="1" stop-color="#2f7d72"/>
+      </linearGradient>
+      <linearGradient id="gseal" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3a8f83"/><stop offset="1" stop-color="#0f1f3d"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="0" width="1100" height="800" fill="#ffffff"/>
+    <rect x="24" y="24" width="1052" height="752" fill="none" stroke="url(#gborder)" stroke-width="6" rx="10"/>
+    <rect x="40" y="40" width="1020" height="720" fill="none" stroke="#e5e7eb" stroke-width="1.5" rx="6"/>
+    <text x="550" y="120" text-anchor="middle" font-family="Georgia, serif" font-size="26" letter-spacing="4"><tspan fill="#0f1f3d">APPLIANCEIQ</tspan> <tspan fill="#2f7d72">ACADEMY</tspan></text>
+    <line x1="380" y1="140" x2="720" y2="140" stroke="#e5e7eb" stroke-width="1"/>
+    <text x="550" y="200" text-anchor="middle" font-family="Georgia, serif" font-size="44" fill="#1f2937" font-weight="bold">Certificate of Achievement</text>
+    <text x="550" y="250" text-anchor="middle" font-family="Georgia, serif" font-size="17" fill="#6b7280" font-style="italic">This certifies that</text>
+    <text id="cert-name-field" x="550" y="330" text-anchor="middle" font-family="Georgia, serif" font-size="52" fill="#0f1f3d" font-weight="bold">${name}</text>
+    <line x1="275" y1="355" x2="825" y2="355" stroke="#e9e0d0" stroke-width="2"/>
+    <text x="550" y="405" text-anchor="middle" font-family="Georgia, serif" font-size="17" fill="#6b7280">has successfully completed all chapters and knowledge checks,</text>
+    <text x="550" y="432" text-anchor="middle" font-family="Georgia, serif" font-size="17" fill="#6b7280">and demonstrated the required standards to earn the designation</text>
+    <text x="550" y="500" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="#1f2937" font-weight="bold">${track.cert}</text>
+    <text x="550" y="535" text-anchor="middle" font-family="Georgia, serif" font-size="15" fill="#2f7d72" letter-spacing="2">${track.badge.toUpperCase()}</text>
+    <circle cx="550" cy="620" r="46" fill="url(#gseal)"/>
+    <circle cx="550" cy="620" r="46" fill="none" stroke="#e9e0d0" stroke-width="2"/>
+    <text x="550" y="614" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#fff" font-weight="bold">AIQ</text>
+    <text x="550" y="632" text-anchor="middle" font-family="Georgia, serif" font-size="9" fill="#e6f0ed">CERTIFIED</text>
+    <line x1="180" y1="710" x2="420" y2="710" stroke="#9ca3af" stroke-width="1"/>
+    <text x="300" y="732" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#6b7280">${today}</text>
+    <text x="300" y="750" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#9ca3af">Date of Completion</text>
+    <line x1="680" y1="710" x2="920" y2="710" stroke="#9ca3af" stroke-width="1"/>
+    <text x="800" y="732" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#6b7280">Facilitator / Assessor</text>
+    <text x="800" y="750" text-anchor="middle" font-family="Georgia, serif" font-size="11" fill="#9ca3af">Signature</text>
+  </svg>`;
+}
+
+function closeCertificate() {
+  const o = document.getElementById('cert-overlay');
+  if (o) o.remove();
+}
+
+function printCertificate() {
+  const svg = document.getElementById('cert-svg');
+  if (!svg) return;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>Certificate</title>
+    <style>@page{size:landscape;margin:0}body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}svg{width:100%;max-width:1100px;height:auto}</style>
+    </head><body>${svg.outerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+  w.document.close();
+}
+
+function startTrack(trackId) {
+  const track = TRACKS.find(t => t.id === trackId);
+  if (!track) return;
+  const trackChs = getTrackChapters(track);
+  const next = trackChs.find(c => !completedIds.has(c.id)) || trackChs[0];
+  if (!next) return;
+  const vol = volumes.find(v => v.id === next.volume_id);
+  showView('learn');
+  loadChapter(next.slug, vol);
+}
+
+// ── CHAPTER READER ──────────────────────────────────────────────────────────
+async function loadChapter(slug, vol) {
+  if (typeof aiqSpeechStop==='function') aiqSpeechStop();
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('mobile-open');
+  currentChapterSlug = slug;
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('tracks-view').style.display = 'none';
+  document.getElementById('resources-view').style.display = 'none';
+  const view = document.getElementById('chapter-view');
+  view.style.display = 'block';
+  const inner = document.getElementById('chapter-inner');
+  inner.innerHTML = '<div class="loading"><div class="loading-spin"></div><div>Loading chapter...</div></div>';
+  document.getElementById('reader').scrollTop = 0;
+  document.querySelectorAll('.ch-item').forEach(i => i.classList.toggle('active', i.dataset.slug === slug));
+
+  try {
+    const res = await fetch(`content/${slug}.json`);
+    if (!res.ok) throw new Error('Content not found');
+    const data = await res.json();
+    const ch = chapters.find(c => c.slug === slug);
+    const isComplete = ch && completedIds.has(ch.id);
+    const real = chapters.filter(c => c.chapter_number >= 1);
+    const idx = real.findIndex(c => c.slug === slug);
+    const prev = idx > 0 ? real[idx-1] : null;
+    const next = idx < real.length-1 ? real[idx+1] : null;
+    const prevVol = prev ? volumes.find(v => v.id === prev.volume_id) : null;
+    const nextVol2 = next ? volumes.find(v => v.id === next.volume_id) : null;
+
+    inner.innerHTML = `
+      <div class="chapter-header">
+        <div class="chapter-vol-label">Volume ${data.vol} — ${vol?.title || ''}</div>
+        <h1 class="chapter-title">${data.title}</h1>
+        ${data.intro ? `<p class="chapter-intro">${data.intro}</p>` : ''}
+        <div class="mode-toggle">
+          ${data.video ? `<button class="mode-btn" data-mode="watch" onclick="setChapterMode('watch','${data.video}')">▶ Watch</button>` : ''}
+          <button class="mode-btn" data-mode="listen" onclick="setChapterMode('listen','${data.video || ''}')">🔊 Listen</button>
+          <button class="mode-btn active" data-mode="read" onclick="setChapterMode('read','${data.video || ''}')">📖 Read</button>
+        </div>
+      </div>
+      <div id="chapter-media" style="display:none"></div>
+      <div id="chapter-body">
+      ${data.sections.map(s => `
+        <div class="section-block">
+          <h2 class="section-title">${s.title}</h2>
+          <div class="section-content">${formatContent(s.content)}</div>
+        </div>`).join('')}
+      </div>
+      <button class="btn-ai-trainer" onclick="openTrainer()"><span class="spark">✦</span> Ask AI Trainer</button>
+      <div class="chapter-actions">
+        <div class="nav-pair">
+          ${prev ? `<button class="btn-nav" onclick="loadChapter('${prev.slug}',${JSON.stringify(prevVol).replace(/"/g,'&quot;')})">← Previous</button>` : '<span></span>'}
+          ${next ? `<button class="btn-nav" onclick="loadChapter('${next.slug}',${JSON.stringify(nextVol2).replace(/"/g,'&quot;')})">Next →</button>` : ''}
+        </div>
+        ${ch ? `<button class="btn-complete ${isComplete?'done':''}" onclick="toggleComplete('${ch.id}','${slug}')" id="complete-btn">${isComplete?'✓ Completed':'Mark as Complete'}</button>` : ''}
+      </div>`;
+    _chapterMode = 'read';
+    window._currentChapterData = data;
+    window.currentSlug = slug;
+    const cws = worksheets.filter(w => w.chapters && w.chapters.includes(slug));
+    if (cws.length) {
+      const dl = document.createElement('div');
+      dl.className = 'ch-downloads';
+      dl.innerHTML = `<div class="ch-downloads-title">Worksheets for This Chapter</div><div class="ch-dl-list">${cws.map(w=>`<div class="ch-dl-item"><div><div class="ch-dl-name">${w.title}</div><div class="ch-dl-desc">${w.description}</div></div><a href="${w.file}" download class="ws-download" style="flex-shrink:0">↓ Download</a></div>`).join('')}</div>`;
+      inner.appendChild(dl);
+    }
+    // Knowledge check at end of each volume (on the volume's last chapter)
+    const volChaps = chapters.filter(c => c.volume_id === (vol?.id ?? ch?.volume_id)).sort((a,b)=>a.chapter_number-b.chapter_number);
+    const isLastOfVol = volChaps.length && volChaps[volChaps.length-1].slug === slug;
+    const quiz = quizzes.find(q => q.vol === data.vol);
+    if (isLastOfVol && quiz) {
+      const qc = document.createElement('div');
+      qc.className = 'quiz-block';
+      qc.id = 'quiz-block';
+      renderQuizIntro(qc, quiz);
+      inner.appendChild(qc);
+    }
+  } catch(e) {
+    inner.innerHTML = `<div class="loading" style="color:#f87171">Could not load chapter. Please try again.</div>`;
+  }
+}
+
+// ── AI TRAINER ────────────────────────────────────────────────────────────────
+let TRAINER = { open:false, sessionId:null, slug:null, ctx:null, lessonText:"", history:[] };
+
+function trainerContext() {
+  // Auto-injected context: course/module/lesson/chapter/user/role/progress
+  const slug = currentSlug;
+  const ch = chapters.find(c => c.slug === slug);
+  const vol = ch ? volumes.find(v => v.id === ch.volume_id) : null;
+  const track = TRACKS.find(t => t.chNums && ch && t.chNums.includes(ch.chapter_number));
+  const done = completedIds.size;
+  const total = chapters.length;
+  return {
+    track: track ? track.name : "General",
+    volume: vol ? ("Volume " + vol.vol_number + " — " + vol.title) : "",
+    chapter: ch ? ch.title : slug,
+    chapterNumber: ch ? ch.chapter_number : null,
+    userName: (currentUser && (currentUser.user_metadata?.full_name || currentUser.email?.split("@")[0])) || "Learner",
+    role: "salesperson",
+    progress: done + " of " + total + " chapters complete (" + Math.round(done/Math.max(total,1)*100) + "%)"
+  };
+}
+
+function trainerLessonText() {
+  // Full grounding text of the current lesson from the loaded chapter data
+  const d = window._currentChapterData;
+  if (!d) return "";
+  let t = d.title + "\n" + (d.intro || "") + "\n\n";
+  (d.sections || []).forEach(s => { t += "## " + s.title + "\n" + s.content + "\n\n"; });
+  return t.slice(0, 24000); // keep the request lean
+}
+
+function trainerCompletedTitles() {
+  return chapters.filter(c => completedIds.has(c.id)).map(c => c.title).slice(0, 150);
+}
+
+async function openTrainer() {
+  const ctx = trainerContext();
+  ctx.metrics = await fetchCoachMetrics();
+  TRAINER.ctx = ctx;
+  TRAINER.slug = currentSlug;
+  TRAINER.lessonText = trainerLessonText();
+  document.getElementById("ai-context").innerHTML =
+    "<b>" + ctx.track + "</b> · " + ctx.volume + "<br>" + ctx.chapter + " · " + ctx.progress;
+  document.getElementById("ai-panel").classList.add("open");
+  document.getElementById("ai-panel").style.display = "flex";
+  TRAINER.open = true;
+  await trainerLoadHistory();
+  if (!TRAINER.history.length) {
+    trainerRender({ msg_role:"assistant", content:"Hi " + ctx.userName.split(" ")[0] + " — I can see you are on \"" + ctx.chapter + "\". Ask me anything about this lesson, or tap a quick action below." });
+  }
+}
+function closeTrainer() {
+  document.getElementById("ai-panel").classList.remove("open");
+  setTimeout(()=>{ if(!TRAINER.open) return; document.getElementById("ai-panel").style.display="none"; TRAINER.open=false; }, 250);
+  TRAINER.open = false;
+}
+
+async function trainerLoadHistory() {
+  const box = document.getElementById("ai-msgs");
+  box.innerHTML = "";
+  TRAINER.history = [];
+  try {
+    // find or create the session for this user+lesson
+    let { data: sess } = await sb.from("ai_trainer_sessions").select("id").eq("user_id", currentUser.id).eq("chapter_slug", TRAINER.slug).maybeSingle();
+    if (!sess) {
+      const ins = await sb.from("ai_trainer_sessions").insert({
+        user_id: currentUser.id, chapter_slug: TRAINER.slug,
+        course: TRAINER.ctx.track, module: TRAINER.ctx.volume, lesson: TRAINER.ctx.chapter
+      }).select("id").single();
+      sess = ins.data;
+    }
+    TRAINER.sessionId = sess ? sess.id : null;
+    if (TRAINER.sessionId) {
+      const { data: msgs } = await sb.from("ai_trainer_messages").select("msg_role,content").eq("session_id", TRAINER.sessionId).order("created_at");
+      (msgs || []).forEach(m => { TRAINER.history.push(m); trainerRender(m); });
+    }
+  } catch(e) {}
+}
+
+function trainerRender(m) {
+  const box = document.getElementById("ai-msgs");
+  const el = document.createElement("div");
+  el.className = "ai-msg " + (m.msg_role === "user" ? "user" : "assistant");
+  el.textContent = m.content;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function trainerAsk(q) { document.getElementById("ai-input").value = q; sendTrainer(); }
+
+async function sendTrainer() {
+  const input = document.getElementById("ai-input");
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = "";
+  const btn = document.getElementById("ai-send"); btn.disabled = true;
+
+  const userMsg = { msg_role:"user", content:q };
+  TRAINER.history.push(userMsg); trainerRender(userMsg);
+  if (TRAINER.sessionId) sb.from("ai_trainer_messages").insert({ session_id:TRAINER.sessionId, user_id:currentUser.id, msg_role:"user", content:q }).then(()=>{});
+
+  const thinking = trainerRender({ msg_role:"assistant", content:"Thinking…" });
+  thinking.classList.add("thinking");
+
+  try {
+    const resp = await fetch("/.netlify/functions/ai-trainer", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        context: TRAINER.ctx,
+        lessonText: TRAINER.lessonText,
+        completedTitles: trainerCompletedTitles(),
+        messages: TRAINER.history.map(m => ({ role: m.msg_role, content: m.content }))
+      })
+    });
+    const data = await resp.json();
+    thinking.remove();
+    const replyText = data.reply || data.error || "Sorry — the AI Trainer could not answer just now.";
+    const aiMsg = { msg_role:"assistant", content:replyText };
+    TRAINER.history.push(aiMsg); trainerRender(aiMsg);
+    if (TRAINER.sessionId && data.reply) sb.from("ai_trainer_messages").insert({ session_id:TRAINER.sessionId, user_id:currentUser.id, msg_role:"assistant", content:data.reply }).then(()=>{});
+  } catch(e) {
+    thinking.remove();
+    trainerRender({ msg_role:"assistant", content:"Connection problem — please try again." });
+  }
+  btn.disabled = false;
+}
+
+// ── VIDEO EMBED HELPERS ───────────────────────────────────────────────────────
+// Accepts YouTube, Vimeo, HeyGen share links, or direct .mp4 URLs.
+function videoEmbedUrl(url) {
+  if (!url) return null;
+  const u = url.trim();
+  // Direct video file first (covers HeyGen-hosted .mp4 downloads too)
+  if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(u)) return { type:'file', src:u };
+  // YouTube
+  let m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{6,})/);
+  if (m) return { type:'iframe', src:`https://www.youtube.com/embed/${m[1]}` };
+  // Vimeo
+  m = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (m) return { type:'iframe', src:`https://player.vimeo.com/video/${m[1]}` };
+  // HeyGen share link — embed path
+  if (/heygen\.com/.test(u)) return { type:'iframe', src:u.replace('/share/','/embeds/') };
+  // Fallback: try as iframe
+  return { type:'iframe', src:u };
+}
+
+function videoPlayerHtml(url, audioOnly) {
+  const e = videoEmbedUrl(url);
+  if (!e) return '';
+  if (e.type === 'file') {
+    return `<video controls ${audioOnly?'style="height:54px"':''} class="ch-video-el" src="${e.src}"></video>`;
+  }
+  // iframe (YouTube/Vimeo/HeyGen). Audio-only can't hide picture in an iframe reliably,
+  // so "Listen" for iframe videos just plays the same embed (audio + video); still useful.
+  return `<div class="ch-video-frame"><iframe src="${e.src}" frameborder="0" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`;
+}
+
+// Chapter Watch/Listen/Read toggle
+let _chapterMode = 'read';
+function setChapterMode(mode, url) {
+  _chapterMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  const media = document.getElementById('chapter-media');
+  const body = document.getElementById('chapter-body');
+  if (!media) return;
+  if (mode !== 'listen') aiqSpeechStop();
+  if (mode === 'read') {
+    media.style.display = 'none';
+    media.innerHTML = '';
+    if (body) body.style.display = 'block';
+  } else if (mode === 'watch' && url) {
+    media.style.display = 'block';
+    media.innerHTML = videoPlayerHtml(url, false);
+    if (body) body.style.display = 'block';
+  } else if (mode === 'listen') {
+    media.style.display = 'block';
+    if (body) body.style.display = 'block';
+    aiqListen(media);   // HD audio if cached; browser voice otherwise
+  }
+}
+
+// Try studio-quality cached audio first; fall back to the browser narrator
+async function aiqListen(media) {
+  media.innerHTML = `<div class="tts-bar"><span class="tts-status">Checking for HD audio…</span></div>`;
+  let hd = null;
+  try {
+    const r = await fetch(`/.netlify/functions/tts?slug=${window.currentSlug}`);
+    if (r.ok) hd = await r.json();
+  } catch (e) { /* offline or function missing — fall back */ }
+  if (_chapterMode !== 'listen') return; // user navigated away meanwhile
+  if (hd && hd.status === 'ready') {
+    media.innerHTML = `
+      <div class="tts-bar" style="flex-direction:column;align-items:stretch;gap:6px">
+        <audio controls autoplay preload="auto" style="width:100%" src="${hd.url}"></audio>
+        <span class="tts-status">HD narration · scrub, speed, and background play via the player</span>
+      </div>`;
+    return;
+  }
+  media.innerHTML = ttsBarHtml(hd && hd.status === 'generating');
+  aiqPopulateVoices();
+  aiqSpeechStart();
+}
+
+// ── LISTEN: built-in text-to-speech narrator ────────────────────────────────
+const TTS = { chunks: [], i: 0, playing: false, paused: false, rate: 1.0, keepAlive: null };
+
+function ttsBarHtml(hdGenerating) {
+  const supported = 'speechSynthesis' in window;
+  if (!supported) return `<div class="tts-bar"><span style="color:var(--steel)">Listening isn't supported in this browser — try Chrome, Edge, or Safari.</span></div>`;
+  return `
+  <div class="tts-bar" id="tts-bar">
+    <button class="tts-btn" id="tts-toggle" onclick="aiqSpeechToggle()" aria-label="Play / pause">⏸</button>
+    <button class="tts-btn" onclick="aiqSpeechStop();setChapterMode('read','')" aria-label="Stop">⏹</button>
+    <div class="tts-progress"><div class="tts-progress-fill" id="tts-fill"></div></div>
+    <span class="tts-status" id="tts-status">Preparing…</span>
+    <select class="tts-rate" id="tts-voice" onchange="aiqSetVoice(this.value)" aria-label="Voice"></select>
+    <select class="tts-rate" id="tts-rate" onchange="aiqSpeechRate(this.value)" aria-label="Speed">
+      <option value="0.85">0.85×</option><option value="1" selected>1×</option>
+      <option value="1.15">1.15×</option><option value="1.3">1.3×</option><option value="1.5">1.5×</option>
+    </select>
+    ${hdGenerating ? `<span class="tts-status" style="width:100%">✨ Studio narration is being generated for this chapter — it'll be ready on your next listen. Using your device voice for now.</span>` : ''}
+  </div>`;
+}
+
+// Rank device voices: natural/neural/premium first — defaults are usually the worst
+function aiqVoiceScore(v) {
+  let s = 0; const n = v.name || '';
+  if (/natural/i.test(n)) s += 6;            // Edge neural voices — near human
+  if (/premium|enhanced|neural/i.test(n)) s += 5;
+  if (/siri|samantha|ava|karen|daniel|moira|serena/i.test(n)) s += 4;  // Apple's better voices
+  if (/google/i.test(n)) s += 2;
+  if (/^en(-|_)(CA|US|GB|AU)/i.test(v.lang)) s += 2; else if (/^en/i.test(v.lang)) s += 1; else s -= 5;
+  return s;
+}
+function aiqPopulateVoices() {
+  const sel = document.getElementById('tts-voice'); if (!sel) return;
+  const fill = () => {
+    const voices = speechSynthesis.getVoices();
+    if (!voices.length) return;
+    const ranked = voices.slice().sort((a,b) => aiqVoiceScore(b) - aiqVoiceScore(a)).slice(0, 8);
+    const saved = localStorage.getItem('aiq_tts_voice');
+    sel.innerHTML = ranked.map(v =>
+      `<option value="${v.name}" ${v.name === saved ? 'selected' : ''}>${v.name.replace(/Microsoft |Google |\(.*\)/g,'').trim().slice(0,22)}</option>`).join('');
+    if (!saved) sel.selectedIndex = 0;
+    TTS.voiceName = sel.value;
+  };
+  fill();
+  if ('onvoiceschanged' in speechSynthesis) speechSynthesis.onvoiceschanged = fill;
+}
+function aiqSetVoice(name) {
+  TTS.voiceName = name;
+  try { localStorage.setItem('aiq_tts_voice', name); } catch(e) {}
+  if (TTS.playing) { speechSynthesis.cancel(); setTimeout(aiqSpeakNext, 60); }
+}
+
+function aiqBuildChunks() {
+  const d = window._currentChapterData; if (!d) return [];
+  const strip = s => (s || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+  const pieces = [];
+  pieces.push({ sec: -1, text: strip(d.title) });
+  if (d.intro) pieces.push({ sec: -1, text: strip(d.intro) });
+  (d.sections || []).forEach((s, si) => {
+    if (s.title) pieces.push({ sec: si, text: strip(s.title) });
+    strip(s.content).split(/(?<=[.!?])\s+/).forEach(sentence => {
+      if (!sentence) return;
+      // keep utterances short: long ones get cut off by some engines
+      if (sentence.length <= 220) pieces.push({ sec: si, text: sentence });
+      else sentence.match(/.{1,200}(\s|$)/g).forEach(part => pieces.push({ sec: si, text: part.trim() }));
+    });
+  });
+  return pieces.filter(p => p.text);
+}
+
+function aiqSpeechStart() {
+  if (!('speechSynthesis' in window)) return;
+  aiqSpeechStop();
+  TTS.chunks = aiqBuildChunks();
+  if (!TTS.chunks.length) return;
+  TTS.i = 0; TTS.playing = true; TTS.paused = false;
+  // Chrome workaround: long speech silently stops unless nudged
+  TTS.keepAlive = setInterval(() => {
+    if (TTS.playing && !TTS.paused && speechSynthesis.speaking) { speechSynthesis.pause(); speechSynthesis.resume(); }
+  }, 12000);
+  aiqSpeakNext();
+}
+
+function aiqSpeakNext() {
+  if (!TTS.playing || TTS.i >= TTS.chunks.length) { if (TTS.i >= TTS.chunks.length) aiqSpeechFinished(); return; }
+  const chunk = TTS.chunks[TTS.i];
+  const u = new SpeechSynthesisUtterance(chunk.text);
+  u.rate = TTS.rate;
+  const voices = speechSynthesis.getVoices();
+  const v = (TTS.voiceName && voices.find(v => v.name === TTS.voiceName))
+        || voices.slice().sort((a,b) => aiqVoiceScore(b) - aiqVoiceScore(a))[0];
+  if (v) u.voice = v;
+  u.onend = () => { TTS.i++; aiqSpeechProgress(); aiqSpeakNext(); };
+  u.onerror = () => { TTS.i++; aiqSpeakNext(); };
+  speechSynthesis.speak(u);
+  aiqSpeechProgress();
+}
+
+function aiqSpeechProgress() {
+  const fill = document.getElementById('tts-fill');
+  const status = document.getElementById('tts-status');
+  if (fill) fill.style.width = Math.min(100, Math.round(100 * TTS.i / TTS.chunks.length)) + '%';
+  if (status) {
+    const sec = TTS.chunks[Math.min(TTS.i, TTS.chunks.length - 1)]?.sec;
+    const total = (window._currentChapterData?.sections || []).length;
+    status.textContent = sec >= 0 ? `Section ${sec + 1} of ${total}` : 'Introduction';
+  }
+}
+
+function aiqSpeechToggle() {
+  const btn = document.getElementById('tts-toggle');
+  if (!TTS.playing) { aiqSpeechStart(); if (btn) btn.textContent = '⏸'; return; }
+  if (TTS.paused) { speechSynthesis.resume(); TTS.paused = false; if (btn) btn.textContent = '⏸'; }
+  else { speechSynthesis.pause(); TTS.paused = true; if (btn) btn.textContent = '▶'; }
+}
+
+function aiqSpeechRate(r) {
+  TTS.rate = parseFloat(r) || 1;
+  if (TTS.playing) { speechSynthesis.cancel(); setTimeout(aiqSpeakNext, 60); } // re-speak current chunk at new rate
+}
+
+function aiqSpeechStop() {
+  TTS.playing = false; TTS.paused = false;
+  if (TTS.keepAlive) { clearInterval(TTS.keepAlive); TTS.keepAlive = null; }
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+}
+
+function aiqSpeechFinished() {
+  aiqSpeechStop();
+  const status = document.getElementById('tts-status');
+  const btn = document.getElementById('tts-toggle');
+  if (status) status.textContent = 'Finished ✓';
+  if (btn) btn.textContent = '▶';
+}
+
+function formatContent(text) {
+  if (!text) return '';
+  return text.split('\n').filter(l=>l.trim()).map(l=>`<p>${l}</p>`).join('');
+}
+
+
+// ── KNOWLEDGE CHECK / QUIZ ──────────────────────────────────────────────────
+function renderQuizIntro(container, quiz) {
+  const prev = quizScores[quiz.vol];
+  const passMark = Math.ceil(quiz.questions.length * 0.75);
+  container.innerHTML = `
+    <div class="quiz-head">
+      <div class="quiz-badge">Knowledge Check</div>
+      <h2 class="quiz-title">Volume ${quiz.vol} — ${quiz.title}</h2>
+      <p class="quiz-sub">${quiz.questions.length} questions · pass mark ${passMark}/${quiz.questions.length} (75%). Answer, then see the chapter-referenced explanation.</p>
+      ${prev ? `<div class="quiz-prev ${prev.score>=passMark?'pass':'fail'}">Last attempt: ${prev.score}/${prev.total} ${prev.score>=passMark?'✓ Passed':'· try again'}</div>` : ''}
+      <button class="btn-quiz-start" onclick="startQuiz('${quiz.vol}')">${prev ? 'Retake Knowledge Check' : 'Start Knowledge Check'}</button>
+    </div>`;
+}
+
+let _activeQuiz = null;
+let _quizAnswers = {};
+function startQuiz(vol) {
+  const quiz = quizzes.find(q => q.vol === vol);
+  if (!quiz) return;
+  _activeQuiz = quiz; _quizAnswers = {};
+  const c = document.getElementById('quiz-block');
+  c.innerHTML = `
+    <div class="quiz-head"><div class="quiz-badge">Knowledge Check</div>
+    <h2 class="quiz-title">Volume ${quiz.vol} — ${quiz.title}</h2></div>
+    <div id="quiz-questions">${quiz.questions.map((q,qi)=>`
+      <div class="quiz-q" id="q-${qi}">
+        <div class="quiz-q-text"><span class="quiz-q-num">${qi+1}</span>${q.q}</div>
+        <div class="quiz-opts">${q.options.map((o,oi)=>`
+          <button class="quiz-opt" data-q="${qi}" data-o="${oi}" onclick="answerQuiz(${qi},${oi})">${String.fromCharCode(65+oi)}. ${o}</button>`).join('')}</div>
+        <div class="quiz-why" id="why-${qi}" style="display:none"></div>
+      </div>`).join('')}</div>
+    <button class="btn-quiz-start" id="quiz-submit" onclick="submitQuiz()" disabled>Submit Answers</button>
+    <div id="quiz-result"></div>`;
+  c.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function answerQuiz(qi, oi) {
+  _quizAnswers[qi] = oi;
+  document.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(b => b.classList.toggle('selected', +b.dataset.o===oi));
+  if (Object.keys(_quizAnswers).length === _activeQuiz.questions.length) {
+    const s = document.getElementById('quiz-submit'); if (s) s.disabled = false;
+  }
+}
+
+async function submitQuiz() {
+  const quiz = _activeQuiz; let score = 0;
+  quiz.questions.forEach((q,qi) => {
+    const chosen = _quizAnswers[qi];
+    const correct = q.answer;
+    if (chosen === correct) score++;
+    document.querySelectorAll(`.quiz-opt[data-q="${qi}"]`).forEach(b => {
+      const o = +b.dataset.o;
+      if (o===correct) b.classList.add('correct');
+      else if (o===chosen) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    const why = document.getElementById(`why-${qi}`);
+    if (why) { why.style.display='block'; why.innerHTML = `<strong>${chosen===correct?'✓ Correct':'✗'}</strong> — ${q.why}`; }
+  });
+  const passMark = Math.ceil(quiz.questions.length * 0.75);
+  const passed = score >= passMark;
+  quizScores[quiz.vol] = { score, total: quiz.questions.length, ts: new Date().toISOString() };
+  const r = document.getElementById('quiz-result');
+  r.innerHTML = `<div class="quiz-score ${passed?'pass':'fail'}">
+    <div class="quiz-score-num">${score}/${quiz.questions.length}</div>
+    <div class="quiz-score-label">${passed?'✓ Passed — knowledge check cleared':'Below pass mark — review and retake'}</div>
+    <button class="btn-quiz-start" onclick="startQuiz('${quiz.vol}')">Retake</button></div>`;
+  document.getElementById('quiz-submit').style.display='none';
+  try {
+    await sb.from('academy_quiz_scores').upsert({ user_id: currentUser.id, vol: quiz.vol, score, total: quiz.questions.length, updated_at: new Date().toISOString() }, { onConflict: 'user_id,vol' });
+  } catch(e) {}
+}
+
+async function toggleComplete(chapterId, slug) {
+  const id = parseInt(chapterId);
+  const btn = document.getElementById('complete-btn');
+  btn.disabled = true;
+  if (completedIds.has(id)) {
+    await sb.from('academy_progress').delete().eq('user_id', currentUser.id).eq('chapter_id', id);
+    completedIds.delete(id);
+  } else {
+    await sb.from('academy_progress').upsert({ user_id: currentUser.id, chapter_id: id });
+    completedIds.add(id);
+  }
+  const isNowComplete = completedIds.has(id);
+  btn.className = 'btn-complete' + (isNowComplete ? ' done' : '');
+  btn.textContent = isNowComplete ? '✓ Completed' : 'Mark as Complete';
+  btn.disabled = false;
+  const item = document.querySelector(`.ch-item[data-slug="${slug}"]`);
+  if (item) { item.classList.toggle('completed', isNowComplete); item.querySelector('.ch-check').textContent = isNowComplete ? '✓' : ''; }
+  updateProgressPill();
+  renderTracksGrid();
+}
+
+function showDashboard() {
+  document.getElementById('chapter-view').style.display = 'none';
+  document.getElementById('tracks-view').style.display = 'none';
+  document.getElementById('resources-view').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('reader').style.overflowY = 'auto';
+  currentChapterSlug = null;
+  document.querySelectorAll('.ch-item').forEach(i => i.classList.remove('active'));
+  ['nav-learn','nav-tracks','nav-resources'].forEach(id => document.getElementById(id)?.classList.remove('active'));
+  document.getElementById('nav-learn')?.classList.add('active');
+  renderDashboard();
+}
+
+// ── VENDOR LIBRARY ────────────────────────────────────────────────────────────
+let _vendorFilter = 'All';
+
+function renderVendors(filterTier) {
+  if (filterTier) _vendorFilter = filterTier;
+  const inner = document.getElementById('vendors-inner');
+  if (!vendors.length) {
+    inner.innerHTML = '<div class="loading"><div class="loading-spin"></div><div>Loading vendor library...</div></div>';
+    return;
+  }
+  const tiers = ['All', ...Array.from(new Set(vendors.map(v => v.tier)))];
+  const list = _vendorFilter === 'All' ? vendors : vendors.filter(v => v.tier === _vendorFilter);
+  inner.innerHTML = `
+    <div style="margin-bottom:8px;font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;font-weight:700">Vendor Library</div>
+    <h2 style="font-family:'Sora',Arial,sans-serif;font-size:clamp(22px,3vw,34px);font-weight:700;letter-spacing:-0.8px;margin-bottom:10px;color:var(--navy)">${vendorMeta.title || 'Vendors'}</h2>
+    <p style="font-size:14px;color:var(--steel);line-height:1.7;max-width:720px;margin-bottom:14px">${vendorMeta.intro || ''}</p>
+    <div class="vendor-howto"><strong>How to use this:</strong> ${vendorMeta.howToSell || ''}</div>
+    <div class="res-cats" style="margin-top:20px">${tiers.map(t => `<button class="res-cat-btn${t===_vendorFilter?' active':''}" onclick="renderVendors('${t}')">${t}</button>`).join('')}</div>
+    <div class="vendor-grid">
+      ${list.map(v => `
+        <div class="vendor-card" onclick="openVendor('${v.id}')">
+          <div class="vendor-card-top">
+            <div class="vendor-logo">${vendorInitials(v.name)}</div>
+            <span class="vendor-tier">${v.tier}</span>
+          </div>
+          <div class="vendor-name">${v.name}</div>
+          <div class="vendor-tagline">${v.tagline}</div>
+          <div class="vendor-focus">${v.focus}</div>
+          <div class="vendor-card-foot">${v.specGuides.length} spec guides →</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function vendorInitials(name) {
+  const clean = name.replace(/[^A-Za-z0-9 ]/g,'');
+  const parts = clean.split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0].substring(0,2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+async function loadVendorAssets(vendorSlug) {
+  // Pull manufacturer-uploaded assets flagged for the retailer audience
+  try {
+    const { data: vrow } = await sb.from('mfr_vendors').select('id').eq('slug', vendorSlug).maybeSingle();
+    if (!vrow) return [];
+    const { data } = await sb.from('mfr_assets').select('*').eq('vendor_id', vrow.id).eq('is_published', true).order('created_at', {ascending:false});
+    return (data||[]).filter(a => !a.audiences || a.audiences.includes('retailer') || a.audiences.includes('all'));
+  } catch(e) { return []; }
+}
+
+function openVendor(id) {
+  const v = vendors.find(x => x.id === id);
+  if (!v) return;
+  const inner = document.getElementById('vendors-inner');
+  document.getElementById('reader').scrollTop = 0;
+  inner.innerHTML = `
+    <button class="vendor-back" onclick="renderVendors()">← All vendors</button>
+    <div class="vendor-detail-head">
+      <div class="vendor-logo lg">${vendorInitials(v.name)}</div>
+      <div>
+        <div class="vendor-detail-name">${v.name}</div>
+        <div class="vendor-detail-tagline">${v.tagline}</div>
+        <div class="vendor-detail-meta"><span class="vendor-tier">${v.tier}</span> <span class="vendor-focus-inline">${v.focus}</span></div>
+      </div>
+    </div>
+
+    <div class="vendor-section">
+      <div class="vendor-section-title">The Story</div>
+      <p class="vendor-story">${v.story}</p>
+    </div>
+
+    ${(v.videos && v.videos.length) ? `
+    <div class="vendor-section">
+      <div class="vendor-section-title">Videos</div>
+      <div class="vendor-video-grid">
+        ${v.videos.map(vid => `
+          <div class="vendor-video-card">
+            <div class="vendor-video-label">${vid.label || 'Video'}</div>
+            ${videoPlayerHtml(vid.url, false)}
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="vendor-twocol">
+      <div class="vendor-section">
+        <div class="vendor-section-title">Who it's right for</div>
+        <p class="vendor-fit">${v.rightFor}</p>
+      </div>
+      <div class="vendor-section">
+        <div class="vendor-section-title">Selling angles</div>
+        <ul class="vendor-angles">${v.sellingAngles.map(a => `<li>${a}</li>`).join('')}</ul>
+      </div>
+    </div>
+
+    <div class="vendor-section">
+      <div class="vendor-spec-head">
+        <div class="vendor-section-title" style="margin:0">Spec Guides</div>
+        <a href="${v.specCenter}" target="_blank" rel="noopener" class="vendor-spec-center">Visit ${v.name} spec center ↗</a>
+      </div>
+      <p style="font-size:12px;color:var(--steel);margin:6px 0 14px">${vendorMeta.specNote || ''}</p>
+      <div class="vendor-spec-list">
+        ${v.specGuides.map(s => s.url
+          ? `<a href="${s.url}" target="_blank" rel="noopener" class="vendor-spec-item has-link">
+               <div><div class="vendor-spec-model">${s.model}</div>${s.note?`<div class="vendor-spec-note">${s.note}</div>`:''}</div>
+               <span class="vendor-spec-badge open">Open spec ↗</span>
+             </a>`
+          : `<div class="vendor-spec-item">
+               <div><div class="vendor-spec-model">${s.model}</div>${s.note?`<div class="vendor-spec-note">${s.note}</div>`:''}</div>
+               <span class="vendor-spec-badge">Link pending</span>
+             </div>`
+        ).join('')}
+      </div>
+    </div>
+    <div class="vendor-section" id="vendor-uploads" style="display:none">
+      <div class="vendor-section-title">From ${v.name} — Latest Uploads</div>
+      <div class="vendor-spec-list" id="vendor-uploads-list"></div>
+    </div>`;
+  // Load manufacturer uploads live and append
+  loadVendorAssets(v.id).then(assets => {
+    if (!assets.length) return;
+    const sec = document.getElementById('vendor-uploads');
+    const list = document.getElementById('vendor-uploads-list');
+    if (!sec || !list) return;
+    const catLabel = { spec_sheet:'Spec Sheet', install_guide:'Installation', owners_manual:'Manual', warranty:'Warranty', energy_guide:'Energy Guide', parts_diagram:'Parts', cad_file:'CAD/Design', sell_sheet:'Sell Sheet', product_image:'Image', comparison:'Comparison', faq_objection:'FAQ', promo:'Promo', price_map:'Pricing', spiff:'Spiff', coop:'Co-op', launch:'Launch', discontinuation:'Transition', service_bulletin:'Service', rep_directory:'Rep Directory', availability:'Availability', training_video:'Training Video', training_doc:'Training', certification:'Certification', brand_video:'Video' };
+    list.innerHTML = assets.map(a => {
+      const url = a.external_url || a.file_url || '#';
+      const tag = catLabel[a.category] || a.category;
+      return `<a href="${url}" target="_blank" rel="noopener" class="vendor-spec-item has-link">
+        <div><div class="vendor-spec-model">${a.title}</div><div class="vendor-spec-note">${tag}${a.model?' · '+a.model:''}${a.description?' · '+a.description:''}</div></div>
+        <span class="vendor-spec-badge open">Open ↗</span></a>`;
+    }).join('');
+    sec.style.display = 'block';
+  });
+}
+
+function showView(view) {
+  if (typeof aiqSpeechStop==='function') aiqSpeechStop();
+  ['learn','tracks','resources','vendors','scorecard'].forEach(v => {
+    document.getElementById(`nav-${v}`)?.classList.toggle('active', v === view);
+  });
+  document.getElementById('dashboard').style.display = view==='learn' ? 'block' : 'none';
+  document.getElementById('chapter-view').style.display = 'none';
+  document.getElementById('tracks-view').style.display = view==='tracks' ? 'block' : 'none';
+  document.getElementById('resources-view').style.display = view==='resources' ? 'block' : 'none';
+  document.getElementById('vendors-view').style.display = view==='vendors' ? 'block' : 'none';
+  document.getElementById('scorecard-view').style.display = view==='scorecard' ? 'block' : 'none';
+  document.getElementById('reader').style.overflowY = 'auto';
+  if (view === 'learn') renderDashboard();
+  if (view === 'tracks') renderTracksGrid();
+  if (view === 'resources') renderResources();
+  if (view === 'vendors') renderVendors();
+  if (view === 'scorecard') renderScorecard();
+}
+
+// ── DAILY FIVE SCORECARD (WS01 / Ch 90–94, live) ─────────────────────────────
+const SC_FIELDS = [
+  ['opportunities','Opportunities','Real selling conversations'],
+  ['captures','Captures','Contact + situation + next-touch date'],
+  ['asks','Asks','Actual closing attempts'],
+  ['touches','Touches','Follow-up contacts made'],
+  ['attach_presentations','Attach Presentations','Complete quote walks'],
+  ['sales','Sales','Closed today'],
+];
+async function renderScorecard() {
+  const box = document.getElementById('scorecard-inner');
+  const today = new Date().toISOString().slice(0,10);
+  let row = null, recent = [];
+  try {
+    const r1 = await sb.from('academy_daily_metrics').select('*').eq('user_id', currentUser.id).eq('metric_date', today).maybeSingle();
+    row = r1.data;
+    const r2 = await sb.from('academy_daily_metrics').select('*').eq('user_id', currentUser.id).order('metric_date',{ascending:false}).limit(7);
+    recent = r2.data || [];
+  } catch(e) { console.error(e); }
+  const v = f => (row && row[f] != null) ? row[f] : (f==='ticket_total' ? '' : 0);
+  box.innerHTML = `
+    <h2 style="margin:0 0 4px">The Daily Five</h2>
+    <p style="color:var(--ink-soft,#5a6b7a);margin:0 0 18px">Log live, not at day's end (Ch 90). Your AI coach reads these numbers.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:760px">
+      ${SC_FIELDS.map(([k,label,hint])=>`
+        <label style="display:block;background:#fff;border:1px solid #dfe7ee;border-radius:14px;padding:12px">
+          <span style="font-weight:700;font-size:13px;display:block">${label}</span>
+          <span style="font-size:11px;color:#8a97a5;display:block;margin:2px 0 6px">${hint}</span>
+          <input type="number" min="0" id="sc-${k}" value="${v(k)}" style="width:100%;font-size:20px;font-weight:800;border:none;outline:none;background:transparent">
+        </label>`).join('')}
+      <label style="display:block;background:#fff;border:1px solid #dfe7ee;border-radius:14px;padding:12px">
+        <span style="font-weight:700;font-size:13px;display:block">Ticket $ Total</span>
+        <span style="font-size:11px;color:#8a97a5;display:block;margin:2px 0 6px">Today's written business</span>
+        <input type="number" min="0" step="0.01" id="sc-ticket_total" value="${v('ticket_total')}" style="width:100%;font-size:20px;font-weight:800;border:none;outline:none;background:transparent">
+      </label>
+    </div>
+    <div style="max-width:760px;margin-top:12px">
+      <label style="font-weight:700;font-size:13px">One-sentence debrief (the day's one lesson)</label>
+      <input type="text" id="sc-debrief" value="${row?.debrief ? String(row.debrief).replace(/"/g,'&quot;') : ''}" placeholder="What did today teach you?" style="width:100%;margin-top:6px;padding:10px;border:1px solid #dfe7ee;border-radius:10px">
+      <label style="font-weight:700;font-size:13px;display:block;margin-top:10px">Hot flags for tomorrow</label>
+      <input type="text" id="sc-hot_flags" value="${row?.hot_flags ? String(row.hot_flags).replace(/"/g,'&quot;') : ''}" placeholder="Callbacks, deliveries at risk, quotes expiring…" style="width:100%;margin-top:6px;padding:10px;border:1px solid #dfe7ee;border-radius:10px">
+      <button onclick="saveScorecard()" style="margin-top:14px;background:var(--teal,#2f7d72);color:#fff;border:none;padding:12px 26px;border-radius:999px;font-weight:800;cursor:pointer">Save Today's Numbers</button>
+      <span id="sc-status" style="margin-left:12px;font-weight:700"></span>
+    </div>
+    <h3 style="margin:26px 0 8px">Last 7 entries</h3>
+    <div style="overflow-x:auto;max-width:760px">
+    <table style="border-collapse:collapse;width:100%;font-size:13px;background:#fff;border-radius:12px">
+      <tr style="text-align:left"><th style="padding:8px">Date</th><th>Opp</th><th>Cap</th><th>Asks</th><th>Touch</th><th>Attach</th><th>Sales</th><th>Ticket $</th></tr>
+      ${recent.map(r=>`<tr><td style="padding:8px">${r.metric_date}</td><td>${r.opportunities}</td><td>${r.captures}</td><td>${r.asks}</td><td>${r.touches}</td><td>${r.attach_presentations}</td><td>${r.sales}</td><td>${r.ticket_total ?? '—'}</td></tr>`).join('') || '<tr><td colspan="8" style="padding:12px;color:#8a97a5">No entries yet — today is day one.</td></tr>'}
+    </table>
+    </div>`;
+}
+async function saveScorecard() {
+  const status = document.getElementById('sc-status');
+  const rec = { user_id: currentUser.id, metric_date: new Date().toISOString().slice(0,10), updated_at: new Date().toISOString() };
+  SC_FIELDS.forEach(([k]) => rec[k] = parseInt(document.getElementById('sc-'+k).value||'0',10));
+  const tt = document.getElementById('sc-ticket_total').value;
+  rec.ticket_total = tt === '' ? null : parseFloat(tt);
+  rec.debrief = document.getElementById('sc-debrief').value || null;
+  rec.hot_flags = document.getElementById('sc-hot_flags').value || null;
+  const { error } = await sb.from('academy_daily_metrics').upsert(rec);
+  status.textContent = error ? 'Save failed — try again' : 'Saved ✓';
+  status.style.color = error ? '#c0392b' : 'var(--teal,#2f7d72)';
+  if (!error) setTimeout(renderScorecard, 800);
+}
+async function fetchCoachMetrics() {
+  try {
+    const { data: roll } = await sb.from('v_daily_metrics_rollup').select('*').eq('user_id', currentUser.id).maybeSingle();
+    const { data: last } = await sb.from('academy_daily_metrics').select('metric_date,debrief,hot_flags')
+      .eq('user_id', currentUser.id).order('metric_date',{ascending:false}).limit(1);
+    if (!roll) return null;
+    return { ...roll, last_debrief: last?.[0]?.debrief || null, last_hot_flags: last?.[0]?.hot_flags || null, last_date: last?.[0]?.metric_date || null };
+  } catch(e) { return null; }
+}
+
+// ── RESOURCES ─────────────────────────────────────────────────────────────────
+function renderResources(filterCat='All') {
+  const cats = ['All',...new Set(worksheets.map(w=>w.category))];
+  document.getElementById('res-cats').innerHTML = cats.map(c=>`<button class="res-cat-btn${c===filterCat?' active':''}" onclick="renderResources('${c}')">${c}</button>`).join('');
+  const filtered = filterCat==='All' ? worksheets : worksheets.filter(w=>w.category===filterCat);
+  document.getElementById('ws-grid').innerHTML = filtered.map(w=>`
+    <div class="ws-card">
+      <div class="ws-card-id">${w.id}</div>
+      <div class="ws-card-title">${w.title}</div>
+      <span class="ws-card-cat">${w.category}</span>
+      <div class="ws-card-desc">${w.description}</div>
+      <a href="${w.file}" download class="ws-download">↓ Download (.docx)</a>
+    </div>`).join('');
+}
+
+async function renderResourceLibrary() {
+  showView('learn');
+  const view = document.getElementById('chapter-view');
+  view.style.display = 'block';
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('reader').scrollTop = 0;
+  const inner = document.getElementById('chapter-inner');
+  inner.innerHTML = '<div class="loading"><div class="loading-spin"></div><div>Loading resource library...</div></div>';
+  document.querySelectorAll('.ch-item').forEach(i => i.classList.toggle('active', i.dataset.slug === 'resource-library'));
+  try {
+    const res = await fetch('content/resource-library.json');
+    const data = await res.json();
+    inner.innerHTML = `
+      <div class="chapter-header" style="margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--line)">
+        <div class="chapter-vol-label">Resource Library</div>
+        <h1 class="chapter-title">${data.title}</h1>
+      </div>
+      <p class="rl-intro">${data.intro}</p>
+      <div class="rl-summary">
+        <div class="rl-stat"><div class="rl-stat-num">${(data.volumes||[]).length}</div><div class="rl-stat-label">Volumes</div></div>
+        <div class="rl-stat"><div class="rl-stat-num">124</div><div class="rl-stat-label">Chapters</div></div>
+        <div class="rl-stat"><div class="rl-stat-num">${(data.worksheets||[]).length}</div><div class="rl-stat-label">Worksheets</div></div>
+        <div class="rl-stat"><div class="rl-stat-num">6</div><div class="rl-stat-label">Tracks</div></div>
+      </div>
+      <div class="rl-section">
+        <div class="rl-section-header">
+          <div><div class="rl-section-title">Full Volumes — Downloadable</div><div style="font-size:12px;color:var(--steel);margin-top:4px">14 volumes · 124 chapters</div></div>
+          <span class="rl-section-count">14 FILES</span>
+        </div>
+        <div class="rl-vol-grid">
+          ${data.volumes.map(v=>`<div class="rl-vol-card"><div class="rl-vol-num">Vol ${String(v.num).padStart(2,'0')}</div><div class="rl-vol-info"><div class="rl-vol-title">${v.title}</div><div class="rl-vol-chapters">${v.chapters}</div><div class="rl-vol-desc">${v.desc}</div></div><a href="${v.file}" download class="rl-dl-btn">↓ .docx</a></div>`).join('')}
+        </div>
+      </div>
+      <div class="rl-section">
+        <div class="rl-section-header">
+          <div><div class="rl-section-title">Worksheets, Scorecards & Templates</div><div style="font-size:12px;color:var(--steel);margin-top:4px">20 practical tools</div></div>
+          <span class="rl-section-count">20 FILES</span>
+        </div>
+        <div class="rl-ws-grid">
+          ${data.worksheets.map(w=>`<div class="rl-ws-row"><div class="rl-ws-left"><div class="rl-ws-id">${w.id}</div><div class="rl-ws-info"><div class="rl-ws-title">${w.title}</div><div class="rl-ws-desc">${w.desc}</div></div><div class="rl-ws-cat">${w.category}</div></div><a href="${w.file}" download class="rl-dl-btn">↓ Download</a></div>`).join('')}
+        </div>
+      </div>`;
+  } catch(e) { inner.innerHTML = '<div class="loading" style="color:#f87171">Could not load resource library.</div>'; }
+}
+</script>
+</body>
+</html>
