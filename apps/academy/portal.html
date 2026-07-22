@@ -496,6 +496,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,Ari
       <button id="nav-resources" class="topbar-nav-btn" onclick="showView('resources')">Resources</button>
       <button id="nav-vendors" class="topbar-nav-btn" onclick="showView('vendors')">Vendors</button>
       <button id="nav-scorecard" class="topbar-nav-btn" onclick="showView('scorecard')">Daily Five</button>
+      <button class="topbar-nav-btn" onclick="showRoleplayPicker()" style="color:var(--teal)">🎬 Roleplay</button>
     </div>
     <div class="topbar-right">
       <button class="notif-bell" id="notif-bell" onclick="toggleNotifications()" title="Notifications">
@@ -701,6 +702,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     await loadOrgBrandAssignments();
     await loadBrandQuizData();
     await loadNotifications();
+    await loadRoleplayPersonas();
     renderDashboard();
     renderSidebar();
     renderTracksGrid();
@@ -3061,6 +3063,183 @@ function renderDashboardRecommendations() {
       }).join('')}
     </div>
   </div>`;
+}
+
+// ── AI ROLEPLAY ─────────────────────────────────────────────────────────────
+let currentOrg = null, currentRoleplaySession = null, roleplayPersonas = [], selectedRoleplayCoach = null;
+
+async function loadRoleplayPersonas() {
+  if (!currentUser) return;
+  try {
+    const { data: member } = await sb.from('organization_members').select('organization_id').eq('user_id', currentUser.id).single();
+    if (!member) return;
+    const { data: org } = await sb.from('organizations').select('*').eq('id', member.organization_id).single();
+    currentOrg = org;
+    const { data: personas } = await sb.from('ai_personas').select('persona_name,persona_role,avatar_emoji,tone').eq('organization_id', org.id).eq('active', true);
+    roleplayPersonas = personas ?? [];
+    selectedRoleplayCoach = roleplayPersonas.find(p => p.persona_name === 'TJ') ?? roleplayPersonas[0] ?? null;
+  } catch(e) { console.error('Persona load error:', e); }
+}
+
+function showRoleplayPicker() {
+  if (!currentOrg) { alert('Please log in first'); return; }
+  if (!roleplayPersonas.length) { alert('No coaching personas configured for your organization.'); return; }
+  const modal = document.createElement('div');
+  modal.id = 'rpPickerModal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:520px;padding:28px;box-shadow:0 20px 60px rgba(15,31,61,.2)">
+    <h2 style="margin:0 0 6px;font-size:20px;font-weight:800;font-family:'Sora',Arial,sans-serif;color:var(--navy)">🎬 Practice Roleplay</h2>
+    <p style="color:var(--steel);font-size:13px;margin:0 0 20px">Pick a scenario and your coaching persona. They'll give you real-time feedback on every response.</p>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--steel);letter-spacing:1.5px;margin-bottom:8px">Scenario</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
+      <button class="rp-scn active" data-sc="cold_call" style="border:2px solid var(--navy);border-radius:12px;padding:14px;background:var(--teal-tint);cursor:pointer;text-align:left">
+        <div style="font-weight:700;font-size:14px;color:var(--navy)">📞 Cold Call</div><div style="font-size:11px;color:var(--steel)">Customer picks up the phone</div></button>
+      <button class="rp-scn" data-sc="follow_up" style="border:2px solid var(--line);border-radius:12px;padding:14px;background:#fff;cursor:pointer;text-align:left">
+        <div style="font-weight:700;font-size:14px;color:var(--navy)">🔄 Follow Up</div><div style="font-size:11px;color:var(--steel)">Reconnect after a visit</div></button>
+      <button class="rp-scn" data-sc="objection_handling" style="border:2px solid var(--line);border-radius:12px;padding:14px;background:#fff;cursor:pointer;text-align:left">
+        <div style="font-weight:700;font-size:14px;color:var(--navy)">🛡️ Objections</div><div style="font-size:11px;color:var(--steel)">Customer pushes back on price</div></button>
+      <button class="rp-scn" data-sc="product_demo" style="border:2px solid var(--line);border-radius:12px;padding:14px;background:#fff;cursor:pointer;text-align:left">
+        <div style="font-weight:700;font-size:14px;color:var(--navy)">🎯 Product Demo</div><div style="font-size:11px;color:var(--steel)">Walk through features live</div></button>
+    </div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--steel);letter-spacing:1.5px;margin-bottom:8px">Your Coach</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">${roleplayPersonas.map(p =>
+      `<button class="rp-coach ${p.persona_name===selectedRoleplayCoach?.persona_name?'active':''}" data-pn="${esc(p.persona_name)}" style="border:2px solid ${p.persona_name===selectedRoleplayCoach?.persona_name?'var(--teal)':'var(--line)'};border-radius:10px;padding:8px 14px;background:${p.persona_name===selectedRoleplayCoach?.persona_name?'var(--teal-tint)':'#fff'};cursor:pointer;font-size:13px">
+        ${esc(p.avatar_emoji)} <b>${esc(p.persona_name)}</b> <span style="color:var(--steel);font-size:11px">${esc(p.persona_role)}</span>
+      </button>`).join('')}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="document.getElementById('rpPickerModal').remove()" style="padding:10px 22px;border:1px solid var(--line);border-radius:999px;background:#fff;cursor:pointer;font-size:13px;font-weight:600">Cancel</button>
+      <button id="rpStartBtn" style="padding:10px 22px;border:none;border-radius:999px;background:var(--teal);color:#fff;cursor:pointer;font-weight:700;font-size:13px;font-family:'Sora',Arial,sans-serif">Start Practice</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+
+  let selectedScenario = 'cold_call';
+  modal.querySelectorAll('.rp-scn').forEach(b => {
+    b.onclick = () => {
+      modal.querySelectorAll('.rp-scn').forEach(x => { x.style.borderColor='var(--line)'; x.style.background='#fff'; });
+      b.style.borderColor='var(--navy)'; b.style.background='var(--teal-tint)';
+      selectedScenario = b.dataset.sc;
+    };
+  });
+  modal.querySelectorAll('.rp-coach').forEach(b => {
+    b.onclick = () => {
+      modal.querySelectorAll('.rp-coach').forEach(x => { x.style.borderColor='var(--line)'; x.style.background='#fff'; });
+      b.style.borderColor='var(--teal)'; b.style.background='var(--teal-tint)';
+      selectedRoleplayCoach = roleplayPersonas.find(p => p.persona_name === b.dataset.pn);
+    };
+  });
+  document.getElementById('rpStartBtn').onclick = () => { modal.remove(); startRoleplay(selectedScenario); };
+}
+
+async function startRoleplay(scenario) {
+  if (!currentOrg) return;
+  const { data: { session } } = await sb.auth.getSession();
+  const coachName = selectedRoleplayCoach?.persona_name ?? 'TJ';
+  const res = await fetch(SB_URL + '/functions/v1/ai-roleplay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+    body: JSON.stringify({ action: 'start', scenario_type: scenario, organization_id: currentOrg.id, persona_name: coachName })
+  });
+  const data = await res.json();
+  if (!data.ok) { alert('Failed to start: ' + (data.error ?? 'Unknown')); return; }
+  currentRoleplaySession = data.session_id;
+
+  const scenarioLabels = { cold_call: 'Cold Call', follow_up: 'Follow Up', objection_handling: 'Objections', product_demo: 'Product Demo' };
+  const coach = data.coaching_persona ?? selectedRoleplayCoach;
+  const modal = document.createElement('div');
+  modal.id = 'rpSessionModal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `<div style="background:#fff;border-radius:18px;width:100%;max-width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(15,31,61,.2)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
+      <div style="font-weight:800;font-size:16px;flex:1;font-family:'Sora',Arial,sans-serif;color:var(--navy)">${scenarioLabels[scenario] ?? scenario}</div>
+      ${coach ? `<div style="font-size:12px;color:var(--steel)">Coach: ${esc(coach.emoji ?? coach.avatar_emoji ?? '')} ${esc(coach.name ?? coach.persona_name)}</div>` : ''}
+    </div>
+    <div id="rpChat" style="flex:1;overflow-y:auto;padding:16px;background:var(--bg);min-height:300px">
+      ${data.customer_response ? `<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%">
+        <div style="font-size:11px;color:var(--steel);font-weight:600;margin-bottom:4px">🧑 Customer</div>
+        <div style="font-size:14px;line-height:1.5;color:var(--ink)">${esc(data.customer_response)}</div>
+      </div>` : '<div style="color:var(--steel);text-align:center;padding:20px">Customer is ready...</div>'}
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px">
+      <input id="rpInput" type="text" placeholder="Your response..." style="flex:1;padding:10px 16px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:'Inter',Arial,sans-serif;outline:none">
+      <button onclick="sendRoleplayMessage()" style="padding:10px 20px;background:var(--teal);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-family:'Sora',Arial,sans-serif;font-size:13px">Send</button>
+      <button onclick="endRoleplay()" style="padding:10px 20px;background:#fff;border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:600;color:var(--steel);font-size:13px">End</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('rpInput').focus();
+  document.getElementById('rpInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendRoleplayMessage(); } });
+}
+
+async function sendRoleplayMessage() {
+  const input = document.getElementById('rpInput'), msg = input.value.trim();
+  if (!msg) return; input.value = '';
+  const chat = document.getElementById('rpChat');
+  chat.innerHTML += `<div style="background:var(--navy);color:#fff;border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%;margin-left:auto;border-bottom-right-radius:4px">
+    <div style="font-size:11px;opacity:0.7;margin-bottom:4px">You</div><div style="font-size:14px;line-height:1.5">${esc(msg)}</div></div>`;
+  chat.innerHTML += '<div id="rpThinking" style="color:var(--steel);font-size:13px;padding:8px">Thinking...</div>';
+  chat.scrollTop = chat.scrollHeight;
+
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(SB_URL + '/functions/v1/ai-roleplay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+    body: JSON.stringify({ session_id: currentRoleplaySession, action: 'message', rep_message: msg, persona_name: selectedRoleplayCoach?.persona_name ?? 'TJ' })
+  });
+  const data = await res.json();
+  const thinking = document.getElementById('rpThinking');
+  if (thinking) thinking.remove();
+
+  if (data.customer_response) {
+    chat.innerHTML += `<div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%;border-bottom-left-radius:4px">
+      <div style="font-size:11px;color:var(--steel);font-weight:600;margin-bottom:4px">🧑 Customer</div>
+      <div style="font-size:14px;line-height:1.5;color:var(--ink)">${esc(data.customer_response)}</div></div>`;
+  }
+  if (data.kpi_scores || data.coaching_tip) {
+    let fbHtml = '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:14px;margin-bottom:10px;font-size:13px">';
+    if (data.primary_coach) fbHtml += `<div style="font-weight:700;margin-bottom:6px">${esc(data.primary_coach.emoji)} ${esc(data.primary_coach.name)} · ${esc(data.primary_coach.role)}</div>`;
+    if (data.kpi_scores) {
+      fbHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+      Object.entries(data.kpi_scores).forEach(([k, v]) => {
+        const color = v >= 7 ? '#16a34a' : v >= 5 ? '#ca8a04' : '#dc2626';
+        fbHtml += `<span style="background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 8px"><b style="color:${color}">${v}</b>/10 ${k}</span>`;
+      });
+      fbHtml += '</div>';
+    }
+    if (data.coaching_tip) fbHtml += `<div style="color:var(--navy)">💡 ${esc(data.coaching_tip)}</div>`;
+    if (data.handoff_insight) fbHtml += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #bfdbfe;color:#4b5563;font-size:12px">🔄 ${esc(data.handoff_insight)}</div>`;
+    fbHtml += '</div>';
+    chat.innerHTML += fbHtml;
+  }
+  chat.scrollTop = chat.scrollHeight;
+  document.getElementById('rpInput').focus();
+}
+
+async function endRoleplay() {
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch(SB_URL + '/functions/v1/ai-roleplay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+    body: JSON.stringify({ session_id: currentRoleplaySession, action: 'end', persona_name: selectedRoleplayCoach?.persona_name ?? 'TJ' })
+  });
+  const data = await res.json();
+  const chat = document.getElementById('rpChat');
+  let summaryHtml = `<div style="background:#f0fdf4;border:2px solid #86efac;border-radius:14px;padding:22px;margin:12px 0;text-align:center">
+    <div style="font-size:32px;font-weight:800;color:#16a34a;font-family:'Sora',Arial,sans-serif">${(data.session_score ?? 0).toFixed(1)}/10</div>
+    <div style="font-size:13px;color:var(--steel);margin:4px 0 14px">Session Score</div>`;
+  if (data.kpi_scores) {
+    summaryHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px">';
+    Object.entries(data.kpi_scores).forEach(([k, v]) => {
+      const color = v >= 7 ? '#16a34a' : v >= 5 ? '#ca8a04' : '#dc2626';
+      summaryHtml += `<span style="background:#fff;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:13px"><b style="color:${color}">${typeof v === 'number' ? v : '-'}</b> ${k}</span>`;
+    });
+    summaryHtml += '</div>';
+  }
+  if (data.feedback) summaryHtml += `<div style="font-size:14px;line-height:1.5;color:#374151;text-align:left;margin-top:8px">${esc(data.feedback)}</div>`;
+  summaryHtml += `<button onclick="document.getElementById('rpSessionModal').remove()" style="margin-top:16px;padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-family:'Sora',Arial,sans-serif">Done</button></div>`;
+  chat.innerHTML += summaryHtml;
+  chat.scrollTop = chat.scrollHeight;
 }
 
 </script>
