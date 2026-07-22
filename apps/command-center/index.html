@@ -128,6 +128,31 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
 .cc-table .num{text-align:right;font-variant-numeric:tabular-nums}
 .cc-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
 .cc-badge.up{background:#e8f5e9;color:#2e7d32}.cc-badge.dn{background:#fdecea;color:#8c2f22}.cc-badge.flat{background:#fff8e6;color:#b8860b}
+/* Leaderboard */
+.lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:24px 0 32px;padding:0 20px}
+.lb-pod{text-align:center;border-radius:14px 14px 0 0;padding:18px 16px 14px;position:relative;min-width:140px}
+.lb-pod.gold{background:linear-gradient(180deg,#fef3c7,#fde68a);border:2px solid #f59e0b;order:2;min-height:180px}
+.lb-pod.silver{background:linear-gradient(180deg,#f1f5f9,#e2e8f0);border:2px solid #94a3b8;order:1;min-height:150px}
+.lb-pod.bronze{background:linear-gradient(180deg,#fef2e8,#fed7aa);border:2px solid #ea580c;order:3;min-height:130px}
+.lb-pod .lb-rank{font-size:32px;margin-bottom:4px}
+.lb-pod .lb-name{font-family:'Sora',sans-serif;font-weight:800;font-size:15px;color:var(--navy)}
+.lb-pod .lb-store{font-size:11px;color:var(--steel)}
+.lb-pod .lb-val{font-family:'Sora',sans-serif;font-size:22px;font-weight:800;color:var(--navy);margin-top:6px}
+.lb-pod .lb-metric{font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px}
+.lb-cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.lb-card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lb-card-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.lb-card-head .lb-icon{font-size:20px}
+.lb-card-head h4{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;margin:0;color:var(--navy)}
+.lb-row{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid #f9fafb;gap:10px}
+.lb-row:last-child{border-bottom:none}
+.lb-row .lb-pos{font-family:'Sora',sans-serif;font-weight:800;font-size:14px;width:24px;text-align:center;color:var(--steel)}
+.lb-row.top1 .lb-pos{color:#f59e0b}
+.lb-row.top2 .lb-pos{color:#94a3b8}
+.lb-row.top3 .lb-pos{color:#ea580c}
+.lb-row .lb-rname{flex:1;font-weight:600;font-size:13px}
+.lb-row .lb-rstore{font-size:11px;color:var(--steel)}
+.lb-row .lb-rval{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--navy)}
 /* LOGIN */
 .clogin-overlay{position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:none;align-items:center;justify-content:center}
 .clogin-overlay.show{display:flex}
@@ -301,6 +326,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
       <button class="cc-nav-btn" data-view="coaching">🏆 Coaching</button>
       <button class="cc-nav-btn" data-view="training">🎓 Training</button>
       <button class="cc-nav-btn" data-view="floor">🔄 Floor / Up System</button>
+      <button class="cc-nav-btn" data-view="leaderboard">🏅 Leaderboard</button>
       <button class="cc-nav-btn" data-view="settings">⚙️ Settings</button>
       <button class="cc-signout" id="ccSignout">Sign out</button>
     </aside>
@@ -398,6 +424,7 @@ async function renderCC(){
   if(currentView==='coaching') return renderCoaching();
   if(currentView==='training') return renderTraining();
   if(currentView==='floor') return renderFloor();
+  if(currentView==='leaderboard') return renderLeaderboard();
   if(currentView==='settings') return renderSettings();
 }
 
@@ -765,6 +792,104 @@ async function renderBrands(){
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">${['entry','mid','luxury','ultra_luxury'].map(tier=>`
       <div><div style="font-size:12px;font-weight:700;color:${tierColors[tier]};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${tierLabels[tier]}</div>
       ${(brands??[]).filter(b=>b.brand_tier===tier).map(b=>`<div style="font-size:13px;padding:3px 0;color:var(--ink)">${esc(b.brand_name)}</div>`).join('')}</div>`).join('')}</div></div>`;
+}
+
+async function renderLeaderboard(){
+  const{data:reps}=await sb.from('metric_snapshots').select('user_id,location_id,metric_key,actual_value').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').not('user_id','is',null);
+  const{data:locs}=await sb.from('org_locations').select('id,name,code').eq('organization_id',currentOrg.id).eq('location_type','store');
+  const locMap={};(locs??[]).forEach(l=>{locMap[l.id]=l.name;});
+  const userIds=[...new Set((reps??[]).map(r=>r.user_id))];
+  const storeName=(uid)=>{const r=(reps??[]).find(x=>x.user_id===uid);return r?locMap[r.location_id]??'':'';};
+
+  function ranked(metricKey,fmt,higherIsBetter=true){
+    const vals=userIds.map(uid=>{const r=(reps??[]).find(x=>x.user_id===uid&&x.metric_key===metricKey);return{uid,val:r?.actual_value??null};}).filter(v=>v.val!==null);
+    vals.sort((a,b)=>higherIsBetter?(b.val-a.val):(a.val-b.val));
+    return vals.map((v,i)=>({...v,rank:i+1,display:fmt(v.val)}));
+  }
+
+  const categories=[
+    {key:'revenue',label:'Revenue',icon:'💰',fmt:money},
+    {key:'margin_dollars',label:'Margin $',icon:'📊',fmt:money},
+    {key:'margin_pct',label:'Margin %',icon:'📈',fmt:fmtP},
+    {key:'warranty_attach',label:'Warranty Attach',icon:'🛡️',fmt:fmtP},
+    {key:'warranty_pen_units',label:'Warranty Pen. (Units)',icon:'🔗',fmt:fmtP},
+    {key:'warranty_value',label:'Warranty $',icon:'💎',fmt:money},
+    {key:'avg_order',label:'Avg Order',icon:'🛒',fmt:money},
+    {key:'ipo',label:'IPO',icon:'📦',fmt:v=>fmtN(v,2)},
+    {key:'item_value',label:'Item Value',icon:'🏷️',fmt:money},
+    {key:'coaching_avg',label:'Coaching Score',icon:'🏆',fmt:v=>fmtN(v,1)+'/10'},
+    {key:'training_completion',label:'Training',icon:'🎓',fmt:fmtP},
+    {key:'floor_conversion',label:'Floor Conversion',icon:'🎯',fmt:fmtP},
+    {key:'units_sold',label:'Units Sold',icon:'📊',fmt:v=>fmtN(v,0)},
+  ];
+
+  // Top revenue earner for the podium
+  const revRank=ranked('revenue',money);
+  const marRank=ranked('margin_dollars',money);
+  const warRank=ranked('warranty_attach',fmtP);
+  const medals=['🥇','🥈','🥉'];
+  const podCls=['gold','silver','bronze'];
+
+  const m=$('#ccMain');
+  m.innerHTML=`
+    <div style="text-align:center;padding:20px 0 0">
+      <div style="font-size:40px">🏅</div>
+      <h2 class="cc-page-title" style="margin:8px 0 4px">Leaderboard</h2>
+      <p class="cc-page-sub" style="margin:0 auto 8px;text-align:center">Who's leading the pack this month? · June 2026</p>
+    </div>
+
+    <div style="text-align:center;margin-bottom:8px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:2px;color:var(--accent)">💰 Top Revenue</span></div>
+    <div class="lb-podium">
+      ${revRank.slice(0,3).map((r,i)=>`<div class="lb-pod ${podCls[i]}">
+        <div class="lb-rank">${medals[i]}</div>
+        <div class="lb-name">${esc(repName(r.uid))}</div>
+        <div class="lb-store">${esc(storeName(r.uid))}</div>
+        <div class="lb-val">${r.display}</div>
+        <div class="lb-metric">Revenue</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px">
+      <div style="flex:1;min-width:280px;text-align:center;background:linear-gradient(135deg,#eff6ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:12px;padding:18px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent)">🛡️ Warranty Champion</div>
+        <div style="font-size:24px;margin:6px 0">${medals[0]}</div>
+        <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color:var(--navy)">${esc(repName(warRank[0]?.uid))}</div>
+        <div style="font-size:13px;color:var(--steel)">${warRank[0]?.display} attach rate</div>
+      </div>
+      <div style="flex:1;min-width:280px;text-align:center;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:18px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--verified)">📊 Margin Leader</div>
+        <div style="font-size:24px;margin:6px 0">${medals[0]}</div>
+        <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color:var(--navy)">${esc(repName(marRank[0]?.uid))}</div>
+        <div style="font-size:13px;color:var(--steel)">${marRank[0]?.display} gross margin</div>
+      </div>
+    </div>
+
+    <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:16px;color:var(--navy);margin:24px 0 14px">Rankings by Category</div>
+    <div class="lb-cat-grid">
+    ${categories.map(cat=>{
+      const rank=ranked(cat.key,cat.fmt);
+      return `<div class="lb-card">
+        <div class="lb-card-head"><span class="lb-icon">${cat.icon}</span><h4>${esc(cat.label)}</h4></div>
+        ${rank.slice(0,5).map((r,i)=>`<div class="lb-row ${i<3?'top'+(i+1):''}">
+          <span class="lb-pos">${i<3?medals[i]:(i+1)}</span>
+          <span class="lb-rname">${esc(repName(r.uid))}<br><span class="lb-rstore">${esc(storeName(r.uid))}</span></span>
+          <span class="lb-rval">${r.display}</span>
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
+    </div>
+
+    <div style="text-align:center;margin:32px 0 16px;padding:20px;background:#f9fafb;border-radius:12px;border:1px solid var(--line)">
+      <div style="font-size:28px">🎉</div>
+      <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:var(--navy);margin:8px 0">Shoutouts</div>
+      <div style="font-size:13px;color:var(--steel);max-width:500px;margin:0 auto">
+        ${revRank[0]?`<b>${esc(repName(revRank[0].uid))}</b> is leading revenue with ${revRank[0].display} 🔥<br>`:''}
+        ${warRank[0]?`<b>${esc(repName(warRank[0].uid))}</b> has the highest warranty attach at ${warRank[0].display} 💪<br>`:''}
+        ${(()=>{const coachRank=ranked('coaching_avg',v=>fmtN(v,1));return coachRank[0]?`<b>${esc(repName(coachRank[0].uid))}</b> topped coaching with ${coachRank[0].display}/10 🧠<br>`:''})()}
+        ${(()=>{const trainRank=ranked('training_completion',fmtP);return trainRank[0]&&trainRank[0].val>=100?`<b>${esc(repName(trainRank[0].uid))}</b> completed 100% of training! 🎓<br>`:''})()}
+        ${(()=>{const ipoRank=ranked('ipo',v=>fmtN(v,2));return ipoRank[0]?`<b>${esc(repName(ipoRank[0].uid))}</b> is building the biggest tickets at ${ipoRank[0].display} items per order 📦`:''})()}
+      </div>
+    </div>`;
 }
 
 async function renderSettings(){
