@@ -600,6 +600,8 @@ let quizScores = {};  // {vol: {score, total, ts}}
 let vendors = [];
 let vendorMeta = {};
 
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
 // ── TRAINING TRACKS DEFINITION ──────────────────────────────────────────────
 const TRACKS = [
   {
@@ -841,6 +843,7 @@ function toggleSidebar() { document.getElementById('sidebar').classList.toggle('
 
 // ── DASHBOARD ────────────────────────────────────────────────────────────────
 function renderDashboard() {
+  try {
   const real = chapters.filter(c => c.chapter_number >= 1);
   const done = real.filter(c => completedIds.has(c.id)).length;
   const pct = real.length ? Math.round(done/real.length*100) : 0;
@@ -1043,6 +1046,10 @@ function renderDashboard() {
 
   // Load leaderboard async
   loadLeaderboard();
+  } catch(e) {
+    console.error('Dashboard render error:', e);
+    document.getElementById('dashboard').innerHTML = `<div class="dash-inner"><div class="dash-greeting"><h1>Welcome back.</h1><p>Dashboard is loading — <a href="javascript:location.reload()">refresh</a> if needed.</p></div></div>`;
+  }
 }
 
 // ── TRACKS VIEW ──────────────────────────────────────────────────────────────
@@ -2686,12 +2693,17 @@ async function loadLeaderboard() {
 
     // Get all org members
     const { data: members } = await sb.from('organization_members')
-      .select('user_id, profiles(full_name)')
+      .select('user_id')
       .eq('organization_id', member.organization_id);
     if (!members || members.length < 2) { el.innerHTML = ''; return; }
 
-    // Get chapter progress for all org members
+    // Get profile names separately
     const userIds = members.map(m => m.user_id);
+    const { data: profileData } = await sb.from('profiles')
+      .select('user_id, full_name')
+      .in('user_id', userIds);
+    const profileMap = {};
+    (profileData || []).forEach(p => { profileMap[p.user_id] = p.full_name; });
     const { data: chProgress } = await sb.from('academy_progress')
       .select('user_id')
       .in('user_id', userIds);
@@ -2709,7 +2721,7 @@ async function loadLeaderboard() {
     // Sort by total desc
     const ranked = members.map(m => ({
       userId: m.user_id,
-      name: m.profiles?.full_name || 'Team Member',
+      name: profileMap[m.user_id] || 'Team Member',
       ...scores[m.user_id]
     })).sort((a,b) => b.total - a.total);
 
