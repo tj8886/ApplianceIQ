@@ -861,6 +861,7 @@ function renderDashboard() {
         <div class="dash-stat"><div class="dash-stat-num">${volumes.length}</div><div class="dash-stat-label">Volumes</div></div>
       </div>
       ${nextCh ? `<div style="margin-bottom:40px"><div class="dash-section-title">Continue Where You Left Off</div><div class="vol-card" onclick="loadChapter('${nextCh.slug}',${JSON.stringify(nextVol).replace(/"/g,'&quot;')})" style="max-width:480px;display:block"><div class="vol-card-num">Vol ${nextVol?.vol_number} — Next Up</div><div class="vol-card-title">${nextCh.title}</div><div style="font-size:12px;color:var(--steel)">${nextCh.intro?nextCh.intro.substring(0,100)+'...':'Continue your training.'}</div></div></div>` : ''}
+      ${typeof renderDashboardRecommendations==='function' ? renderDashboardRecommendations() : ''}
       ${brandCatalog.length ? `<div style="margin-bottom:40px">
         <div class="dash-section-title" style="display:flex;align-items:center;justify-content:space-between">
           <span>Brand Academy</span>
@@ -1988,8 +1989,11 @@ function renderBrandAcademy(filter) {
       <button class="ba-filter-btn${_brandAssignFilter==='required'?' active':''}" onclick="_brandAssignFilter=_brandAssignFilter==='required'?'':' required';renderBrandAcademy()" style="border-color:#fee2e2;${_brandAssignFilter==='required'?'background:#991b1b;color:#fff':'color:#991b1b'}">Required</button>
       <button class="ba-filter-btn${_brandAssignFilter==='recommended'?' active':''}" onclick="_brandAssignFilter=_brandAssignFilter==='recommended'?'':'recommended';renderBrandAcademy()" style="border-color:#dbeafe;${_brandAssignFilter==='recommended'?'background:#1e40af;color:#fff':'color:#1e40af'}">Recommended</button>
     </div>
-    ${list.length ? `<div class="ba-grid">
-      ${list.map(b => {
+    ${list.length ? `<div class="ba-grid">` : '<div class="ba-empty">No brands match your filters.</div>'}`;
+
+  // Add leaderboard section after grid
+  if (list.length) {
+    inner.innerHTML += list.map(b => {
         const m = getBrandModuleCount(b.id);
         const pct = m.total ? Math.round(m.done / m.total * 100) : 0;
         const card = brandTrainingCards[b.id];
@@ -2015,8 +2019,8 @@ function renderBrandAcademy(filter) {
             ${hasCard && pct > 0 && pct < 100 ? '<span class="ba-badge updated">In Progress</span>' : ''}
           </div>
         </div>`;
-      }).join('')}
-    </div>` : '<div class="ba-empty">No brands match your filters.</div>'}`;
+      }).join('') + '</div>';
+  }
 }
 
 function openBrandDetail(brandId) {
@@ -2088,11 +2092,11 @@ function openBrandDetail(brandId) {
       <div class="ba-level-header" onclick="toggleBrandLevel(this)">
         <span class="ba-level-num">Level 2</span>
         <span class="ba-level-title">Category Training</span>
-        <span class="ba-level-status">Coming Soon</span>
+        <span class="ba-level-status" id="l2-status">Loading...</span>
         <span class="ba-level-chevron">›</span>
       </div>
-      <div class="ba-level-content">
-        <div class="ba-empty">Category-specific training (Laundry, Cooking, Dishwashers, Refrigeration, Ventilation) will be populated from the product catalog as products are added.</div>
+      <div class="ba-level-content" id="l2-content">
+        <div class="ba-empty">Loading categories...</div>
       </div>
     </div>
 
@@ -2100,11 +2104,11 @@ function openBrandDetail(brandId) {
       <div class="ba-level-header" onclick="toggleBrandLevel(this)">
         <span class="ba-level-num">Level 3</span>
         <span class="ba-level-title">Product Families & Series</span>
-        <span class="ba-level-status">Coming Soon</span>
+        <span class="ba-level-status" id="l3-status">Loading...</span>
         <span class="ba-level-chevron">›</span>
       </div>
-      <div class="ba-level-content">
-        <div class="ba-empty">Product family training (e.g. 800 Series, Benchmark, Profile, Studio) will be generated from product catalog data.</div>
+      <div class="ba-level-content" id="l3-content">
+        <div class="ba-empty">Loading product families...</div>
       </div>
     </div>
 
@@ -2112,11 +2116,11 @@ function openBrandDetail(brandId) {
       <div class="ba-level-header" onclick="toggleBrandLevel(this)">
         <span class="ba-level-num">Level 4</span>
         <span class="ba-level-title">Individual Products</span>
-        <span class="ba-level-status">Coming Soon</span>
+        <span class="ba-level-status" id="l4-status">Loading...</span>
         <span class="ba-level-chevron">›</span>
       </div>
-      <div class="ba-level-content">
-        <div class="ba-empty">Model-specific training with features, specifications, installation notes, cross-sell opportunities, and competitive comparisons.</div>
+      <div class="ba-level-content" id="l4-content">
+        <div class="ba-empty">Loading products...</div>
       </div>
     </div>
 
@@ -2131,6 +2135,9 @@ function openBrandDetail(brandId) {
         <div class="ba-empty">New product launches will automatically appear here as learning modules when manufacturers publish launch materials.</div>
       </div>
     </div>`;
+
+  // Load products for this brand and render Levels 2-4
+  loadBrandProducts(b.brand_name, brandId);
 }
 
 function toggleBrandLevel(el) {
@@ -2138,6 +2145,139 @@ function toggleBrandLevel(el) {
   const content = el.nextElementSibling;
   content.classList.toggle('open');
   el.querySelector('.ba-level-chevron').classList.toggle('open');
+}
+
+async function loadBrandProducts(brandName, brandId) {
+  try {
+    const { data: products } = await sb.from('aiq_products')
+      .select('*')
+      .eq('brand_name', brandName)
+      .eq('status', 'active')
+      .order('category')
+      .order('product_family')
+      .order('model');
+
+    const prods = products || [];
+    const prog = brandProgress[brandId] || [];
+
+    // Level 2: Category Training
+    const categories = {};
+    prods.forEach(p => {
+      if (!categories[p.category]) categories[p.category] = [];
+      categories[p.category].push(p);
+    });
+    const catKeys = Object.keys(categories).sort();
+    const l2Done = catKeys.filter(c => prog.includes('2:cat_' + c)).length;
+
+    const l2El = document.getElementById('l2-content');
+    const l2Status = document.getElementById('l2-status');
+    if (catKeys.length === 0) {
+      l2El.innerHTML = '<div class="ba-empty">No products cataloged for this brand yet.</div>';
+      l2Status.textContent = 'No products';
+    } else {
+      l2Status.textContent = l2Done + '/' + catKeys.length;
+      const catIcons = {cooking:'🔥',refrigeration:'❄️',dishwashers:'🍽️',laundry:'👕',ventilation:'💨',microwaves:'📡'};
+      l2El.innerHTML = catKeys.map(cat => {
+        const isDone = prog.includes('2:cat_' + cat);
+        const catProds = categories[cat];
+        const families = [...new Set(catProds.map(p => p.product_family).filter(Boolean))];
+        const priceRange = catProds.filter(p=>p.msrp).length ? '$' + Math.min(...catProds.filter(p=>p.msrp).map(p=>Number(p.msrp))).toLocaleString() + ' – $' + Math.max(...catProds.filter(p=>p.msrp).map(p=>Number(p.msrp))).toLocaleString() : '';
+        return `<div class="ba-module">
+          <div class="ba-module-title">${catIcons[cat]||'📦'} ${esc(cat.charAt(0).toUpperCase()+cat.slice(1))}</div>
+          <div class="ba-module-body">
+            <p><strong>${catProds.length}</strong> product${catProds.length!==1?'s':''} ${priceRange ? ' · ' + priceRange : ''}</p>
+            ${families.length ? '<p style="font-size:12px;color:var(--steel)">Families: ' + families.map(f=>esc(f)).join(', ') + '</p>' : ''}
+            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">${catProds.slice(0,6).map(p => `<span style="font-size:11px;background:var(--bg);border:1px solid var(--line);padding:3px 8px;border-radius:6px">${esc(p.model)}</span>`).join('')}${catProds.length>6?`<span style="font-size:11px;color:var(--steel);padding:3px 4px">+${catProds.length-6} more</span>`:''}</div>
+          </div>
+          <div class="ba-module-check">
+            <input type="checkbox" id="l2-${cat}" ${isDone?'checked':''} onchange="toggleBrandModule('${brandId}',2,'cat_${cat}',this.checked)">
+            <label for="l2-${cat}">${isDone?'Completed':'Mark as reviewed'}</label>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Level 3: Product Families & Series
+    const families = {};
+    prods.forEach(p => {
+      const fam = p.product_family || p.series || 'General';
+      if (!families[fam]) families[fam] = { products: [], category: p.category };
+      families[fam].products.push(p);
+    });
+    const famKeys = Object.keys(families).sort();
+    const l3Done = famKeys.filter(f => prog.includes('3:fam_' + f.replace(/[^a-zA-Z0-9]/g,'_'))).length;
+
+    const l3El = document.getElementById('l3-content');
+    const l3Status = document.getElementById('l3-status');
+    if (famKeys.length === 0) {
+      l3El.innerHTML = '<div class="ba-empty">No product families cataloged yet.</div>';
+      l3Status.textContent = 'No families';
+    } else {
+      l3Status.textContent = l3Done + '/' + famKeys.length;
+      l3El.innerHTML = famKeys.map(fam => {
+        const famKey = fam.replace(/[^a-zA-Z0-9]/g,'_');
+        const isDone = prog.includes('3:fam_' + famKey);
+        const famData = families[fam];
+        const priceRange = famData.products.filter(p=>p.msrp).length ? '$' + Math.min(...famData.products.filter(p=>p.msrp).map(p=>Number(p.msrp))).toLocaleString() + ' – $' + Math.max(...famData.products.filter(p=>p.msrp).map(p=>Number(p.msrp))).toLocaleString() : '';
+        return `<div class="ba-module">
+          <div class="ba-module-title">${esc(fam)}</div>
+          <div class="ba-module-body">
+            <p style="font-size:12px;color:var(--steel);margin-bottom:6px">${esc(famData.category.charAt(0).toUpperCase()+famData.category.slice(1))} · ${famData.products.length} model${famData.products.length!==1?'s':''} ${priceRange ? ' · ' + priceRange : ''}</p>
+            ${famData.products.map(p => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)">
+              <span style="font-family:'Sora',Arial,sans-serif;font-size:12px;font-weight:700;color:var(--navy);min-width:120px">${esc(p.model)}</span>
+              <span style="font-size:12px;color:var(--ink);flex:1">${esc(p.short_description||'')}</span>
+              ${p.msrp ? `<span style="font-size:11px;font-weight:600;color:var(--teal);white-space:nowrap">$${Number(p.msrp).toLocaleString()}</span>` : ''}
+            </div>`).join('')}
+          </div>
+          <div class="ba-module-check">
+            <input type="checkbox" id="l3-${famKey}" ${isDone?'checked':''} onchange="toggleBrandModule('${brandId}',3,'fam_${famKey}',this.checked)">
+            <label for="l3-${famKey}">${isDone?'Completed':'Mark as reviewed'}</label>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Level 4: Individual Products
+    const l4Done = prods.filter(p => prog.includes('4:mod_' + p.model.replace(/[^a-zA-Z0-9]/g,'_'))).length;
+    const l4El = document.getElementById('l4-content');
+    const l4Status = document.getElementById('l4-status');
+    if (prods.length === 0) {
+      l4El.innerHTML = '<div class="ba-empty">No individual products cataloged yet.</div>';
+      l4Status.textContent = 'No products';
+    } else {
+      l4Status.textContent = l4Done + '/' + prods.length;
+      l4El.innerHTML = prods.map(p => {
+        const modKey = p.model.replace(/[^a-zA-Z0-9]/g,'_');
+        const isDone = prog.includes('4:mod_' + modKey);
+        return `<div class="ba-module" style="padding:12px 0">
+          <div style="display:flex;align-items:flex-start;gap:14px">
+            <div style="flex:1;min-width:0">
+              <div class="ba-module-title" style="margin-bottom:2px">${esc(p.model)}</div>
+              <div style="font-size:12px;color:var(--steel);margin-bottom:4px">${esc((p.product_family||p.series||''))} · ${esc(p.category.charAt(0).toUpperCase()+p.category.slice(1))}</div>
+              <div style="font-size:13px;color:var(--ink);line-height:1.6">${esc(p.short_description||'')}</div>
+            </div>
+            ${p.msrp ? `<div style="font-family:'Sora',Arial,sans-serif;font-size:15px;font-weight:700;color:var(--teal);white-space:nowrap">$${Number(p.msrp).toLocaleString()}</div>` : ''}
+          </div>
+          <div class="ba-module-check">
+            <input type="checkbox" id="l4-${modKey}" ${isDone?'checked':''} onchange="toggleBrandModule('${brandId}',4,'mod_${modKey}',this.checked)">
+            <label for="l4-${modKey}">${isDone?'Studied':'Mark as studied'}</label>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Update brand product count in catalog
+    if (prods.length > 0) {
+      const brand = brandCatalog.find(x => x.id === brandId);
+      if (brand) brand.product_count = prods.length;
+    }
+  } catch(e) {
+    console.error('Load brand products error:', e);
+    ['l2','l3','l4'].forEach(id => {
+      const el = document.getElementById(id+'-content');
+      if (el) el.innerHTML = '<div class="ba-empty">Could not load products.</div>';
+    });
+  }
 }
 
 async function toggleBrandModule(brandId, level, moduleKey, checked) {
@@ -2386,6 +2526,77 @@ function getAssignmentLabel(brandId) {
   if (a === 'manager_only') return '<span class="ba-assign-tag" style="background:#fef3c7;color:#92400e">Manager Only</span>';
   if (a === 'installer_only') return '<span class="ba-assign-tag" style="background:#e0e7ff;color:#3730a3">Installer Only</span>';
   return '';
+}
+
+// ── AI RECOMMENDATIONS ──────────────────────────────────────────────────────
+function getAIRecommendations() {
+  // Deterministic recommendations based on progress, assignments, and quiz data
+  const recs = [];
+
+  // 1. Required brands with no progress
+  brandCatalog.forEach(b => {
+    const assign = orgBrandAssignments[b.id];
+    const m = getBrandModuleCount(b.id);
+    if (assign === 'required' && m.done === 0 && brandTrainingCards[b.id]) {
+      recs.push({ brandId: b.id, brand: b, reason: 'Required by your organization', priority: 10 });
+    }
+  });
+
+  // 2. Required brands started but incomplete
+  brandCatalog.forEach(b => {
+    const assign = orgBrandAssignments[b.id];
+    const m = getBrandModuleCount(b.id);
+    if (assign === 'required' && m.done > 0 && m.done < m.total) {
+      recs.push({ brandId: b.id, brand: b, reason: `${m.total - m.done} modules left — finish to certify`, priority: 9 });
+    }
+  });
+
+  // 3. Recommended brands not started
+  brandCatalog.forEach(b => {
+    const assign = orgBrandAssignments[b.id];
+    const m = getBrandModuleCount(b.id);
+    if (assign === 'recommended' && m.done === 0 && brandTrainingCards[b.id]) {
+      recs.push({ brandId: b.id, brand: b, reason: 'Recommended for your role', priority: 5 });
+    }
+  });
+
+  // 4. Brands almost complete (>50% but not 100%)
+  brandCatalog.forEach(b => {
+    const m = getBrandModuleCount(b.id);
+    const pct = m.total ? m.done / m.total : 0;
+    if (pct >= 0.5 && pct < 1 && !recs.find(r => r.brandId === b.id)) {
+      recs.push({ brandId: b.id, brand: b, reason: `${Math.round(pct*100)}% complete — close to certification`, priority: 7 });
+    }
+  });
+
+  // Sort by priority desc, take top 5
+  recs.sort((a,b) => b.priority - a.priority);
+  return recs.slice(0, 5);
+}
+
+function renderDashboardRecommendations() {
+  const recs = getAIRecommendations();
+  if (!recs.length) return '';
+  return `<div style="margin-bottom:40px">
+    <div class="dash-section-title">✦ Recommended Training</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+      ${recs.map(r => {
+        const m = getBrandModuleCount(r.brandId);
+        const pct = m.total ? Math.round(m.done/m.total*100) : 0;
+        return `<div class="ba-card" onclick="showView('brands');setTimeout(()=>openBrandDetail('${r.brandId}'),100)" style="padding:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div class="ba-logo" style="width:36px;height:36px;font-size:11px">${brandInitials(r.brand.brand_name)}</div>
+            <div>
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:13px;font-weight:700;color:var(--navy)">${r.brand.brand_name}</div>
+              <div style="font-size:10px;color:var(--teal)">${esc(r.reason)}</div>
+            </div>
+          </div>
+          <div class="ba-card-progress"><div class="ba-card-bar" style="width:${pct}%"></div></div>
+          <div style="font-size:10px;color:var(--steel);margin-top:4px">${pct}% complete</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
 }
 
 </script>
