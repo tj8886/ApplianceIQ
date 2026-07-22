@@ -17,5 +17,5 @@ The closeout spec references an Elev8 capability set (Stripe, email transport, p
 
 ## Production status
 - CRM: live at crmaiiq.netlify.app (deploy 6a5d6afe...) — auth, CRM CRUD, recording -> transcription -> coaching pipeline, tiered AI, Recordings tab.
-- Academy: live at trainingiq-academy.netlify.app (deploy 6a5d6b21...), canonical content, clean markup.
+- Academy: historical evidence referenced trainingiq-academy.netlify.app (deploy 6a5d6b21...). That site is rogue/abandoned; the canonical target is now applianceiq-aiacademy.netlify.app.
 - Supabase fumwwhyozeouoqscolke: 16 migrations, 4 edge functions (2 active AI, 1 worker, 1 retired stub), advisors reviewed.

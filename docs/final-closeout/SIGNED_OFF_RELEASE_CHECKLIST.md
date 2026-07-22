@@ -11,8 +11,8 @@ Statuses: VERIFIED_COMPLETE (VC) · INTENTIONALLY_EXCLUDED (IE) · BLOCKED_EXTER
 | Migration log | VC | G: docs/migration-log.md; DB: 16/16 versions match schema_migrations |
 | CI | BE | Workflow committed, YAML-valid; GitHub Actions runs end in startup_failure (no jobs start), consistent with new-account verification gate. Not load-bearing: release deployed manually + verified live |
 | Netlify CRM deployment | VC | L: crmaiiq.netlify.app 200; deploy 6a5d6afe...; content = apps/crm |
-| Netlify Academy deployment | VC | L: trainingiq-academy.netlify.app 200; deploy 6a5d6b21...; content = apps/academy |
-| Academy mirror deployment | BE | applianceiq-aiacademy.netlify.app lives in a separate Netlify account; content currently identical except robots/sitemap; redeploy requires that account |
+| Netlify Academy deployment | HISTORICAL | 2026-07-19 evidence references rogue `trainingiq-academy`; superseded by canonical `applianceiq-aiacademy` (see PLATFORM_CANONICAL_INFRASTRUCTURE.md) |
+| Academy mirror deployment | HISTORICAL | `applianceiq-aiacademy` is now the canonical Academy site, not a mirror |
 | Supabase migration alignment | VC | M: 16 applied = 16 in repo; no drift (schema built solely via migrations) |
 | Authentication (signup/login/logout/session) | VC | Supabase Auth email+password; exercised live via CRM; L: auth endpoints active |
 | Organizations / roles / permissions | VC | DB: organization_members + is_org_member/is_org_admin RLS across all org tables |

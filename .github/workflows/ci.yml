@@ -146,7 +146,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy apps/academy -> trainingiq-academy.netlify.app
+      # Canonical Academy target. Do not change this to the abandoned
+      # trainingiq-academy site.
+      - name: Deploy apps/academy -> applianceiq-aiacademy.netlify.app
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
@@ -154,7 +156,7 @@ jobs:
             echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
             exit 0
           fi
-          npx -y netlify-cli deploy --prod --dir apps/academy --site 840dd2f5-21c6-410c-9491-e4887fa9be38
+          npx -y netlify-cli deploy --prod --dir apps/academy --site 4179d04b-ca18-4551-9b18-fe434b83ebc6
 
   deploy-speciq:
     name: Deploy Spec IQ to Netlify

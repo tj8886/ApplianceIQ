@@ -2,7 +2,7 @@
 
 ![CI & Deploy](https://github.com/tj8886/ApplianceIQ/actions/workflows/ci.yml/badge.svg)
 ![CRM](https://img.shields.io/website?url=https%3A%2F%2Fcrmaiiq.netlify.app&label=CRM)
-![Academy](https://img.shields.io/website?url=https%3A%2F%2Ftrainingiq-academy.netlify.app&label=Academy)
+![Academy](https://img.shields.io/website?url=https%3A%2F%2Fapplianceiq-aiacademy.netlify.app&label=Academy)
 | Spec IQ | https://appliance-spec-iq.netlify.app | `spec-iq` | `apps/spec-iq/` |
 | IQ UP System | https://applianceiq-iq-up-system.netlify.app | `iq-up-system` | `apps/up-system/` |
 
@@ -13,8 +13,8 @@ The Appliance Sales Operating System — CRM, AI Academy, and governed AI layer 
 | App | URL | Netlify project | Source in this repo |
 |---|---|---|---|
 | CRMAI IQ (CRM) | https://crmaiiq.netlify.app | `crmaiiq` | `apps/crm/` |
-| ApplianceIQ Academy | https://applianceiq-aiacademy.netlify.app | (separate Netlify account, same content) | `apps/academy/` |
-| Academy (team mirror) | https://trainingiq-academy.netlify.app | `trainingiq-academy` | `apps/academy/` |
+| ApplianceIQ Academy | https://applianceiq-aiacademy.netlify.app | `applianceiq-aiacademy` | `apps/academy/` |
+| Academy rogue site (abandoned) | https://trainingiq-academy.netlify.app | `trainingiq-academy` — do not deploy or restore | Historical only |
 | Spec IQ | https://appliance-spec-iq.netlify.app | `spec-iq` | `apps/spec-iq/` |
 | IQ UP System | https://applianceiq-iq-up-system.netlify.app | `iq-up-system` | `apps/up-system/` |
 

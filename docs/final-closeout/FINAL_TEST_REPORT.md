@@ -10,7 +10,7 @@
 | Test | Result |
 |---|---|
 | crmaiiq.netlify.app returns 200, contains recorder feature | PASS |
-| trainingiq-academy.netlify.app 200, identical to canonical academy source, no corrupted tags | PASS |
+| Historical: trainingiq-academy.netlify.app 200, identical to then-current Academy source | PASS — rogue site, superseded; not a current deployment target |
 | crmaiiq robots.txt = disallow all | PASS |
 | academy robots.txt + sitemap.xml served | PASS |
 | activity-analyzer unauthenticated POST -> 401 | PASS |
