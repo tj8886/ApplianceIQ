@@ -1775,9 +1775,9 @@ function renderVendors(filterTier) {
             <span class="vendor-tier">${v.tier}</span>
           </div>
           <div class="vendor-name">${v.name}</div>
-          <div class="vendor-tagline">${v.tagline}</div>
-          <div class="vendor-focus">${v.focus}</div>
-          <div class="vendor-card-foot">${v.specGuides.length} spec guides →</div>
+          <div class="vendor-tagline">${v.tagline||''}</div>
+          <div class="vendor-focus">${v.focus||''}</div>
+          <div class="vendor-card-foot">${(v.specGuides||[]).length} spec guides →</div>
         </div>`).join('')}
     </div>`;
 }
@@ -1835,18 +1835,18 @@ function openVendor(id) {
     <div class="vendor-twocol">
       <div class="vendor-section">
         <div class="vendor-section-title">Who it's right for</div>
-        <p class="vendor-fit">${v.rightFor}</p>
+        <p class="vendor-fit">${v.rightFor||'Details coming soon.'}</p>
       </div>
       <div class="vendor-section">
         <div class="vendor-section-title">Selling angles</div>
-        <ul class="vendor-angles">${v.sellingAngles.map(a => `<li>${a}</li>`).join('')}</ul>
+        <ul class="vendor-angles">${(v.sellingAngles||[]).map(a => `<li>${a}</li>`).join('')||'<li>Details coming soon.</li>'}</ul>
       </div>
     </div>
 
-    <div class="vendor-section">
+    ${(v.specGuides||[]).length ? `<div class="vendor-section">
       <div class="vendor-spec-head">
         <div class="vendor-section-title" style="margin:0">Spec Guides</div>
-        <a href="${v.specCenter}" target="_blank" rel="noopener" class="vendor-spec-center">Visit ${v.name} spec center ↗</a>
+        ${v.specCenter ? `<a href="${v.specCenter}" target="_blank" rel="noopener" class="vendor-spec-center">Visit ${v.name} spec center ↗</a>` : ''}
       </div>
       <p style="font-size:12px;color:var(--steel);margin:6px 0 14px">${vendorMeta.specNote || ''}</p>
       <div class="vendor-spec-list">
@@ -1861,7 +1861,7 @@ function openVendor(id) {
              </div>`
         ).join('')}
       </div>
-    </div>
+    </div>` : ''}
     <div class="vendor-section" id="vendor-uploads" style="display:none">
       <div class="vendor-section-title">From ${v.name} — Latest Uploads</div>
       <div class="vendor-spec-list" id="vendor-uploads-list"></div>
