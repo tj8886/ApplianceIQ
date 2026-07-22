@@ -432,330 +432,200 @@ label{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin-
 </svg>
 
 <script>
-/* ---- IMMEDIATE UI (runs before module loads) ---- */
+/* ==== IMMEDIATE UI — runs before Supabase loads ==== */
 function el(id) { return document.getElementById(id); }
 function show(id) { el(id).style.display = 'block'; }
 function hide() { for(var i=0;i<arguments.length;i++) el(arguments[i]).style.display='none'; }
 function esc(s) { if(!s) return ''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
 var authMode = 'login';
+var builderProducts = [];
+var currentStep = 1;
 
 function showLanding() { hide('auth-page','pricing-page','app'); el('landing').style.display=''; }
 function showPricing() { el('landing').style.display='none'; hide('auth-page','app'); show('pricing-page'); }
 function showAuth(mode) {
   authMode = mode;
-  el('landing').style.display='none';
-  hide('pricing-page','app');
-  show('auth-page');
-  el('auth-success').classList.add('hidden');
-  el('auth-form').classList.remove('hidden');
-  el('auth-error').classList.add('hidden');
+  el('landing').style.display='none'; hide('pricing-page','app'); show('auth-page');
+  el('auth-success').classList.add('hidden'); el('auth-form').classList.remove('hidden'); el('auth-error').classList.add('hidden');
   if (mode === 'signup') {
-    el('auth-title').textContent = 'Start your free trial';
-    el('name-field').classList.remove('hidden');
-    el('auth-submit').textContent = 'Create account';
-    el('auth-switch-text').textContent = 'Already have an account?';
-    el('auth-switch').textContent = 'Sign in';
-    el('auth-toggle-text').textContent = '14-day free trial. No credit card required.';
+    el('auth-title').textContent = 'Start your free trial'; el('name-field').classList.remove('hidden');
+    el('auth-submit').textContent = 'Create account'; el('auth-switch-text').textContent = 'Already have an account?';
+    el('auth-switch').textContent = 'Sign in'; el('auth-toggle-text').textContent = '14-day free trial. No credit card required.';
   } else {
-    el('auth-title').textContent = 'Sign in to your account';
-    el('name-field').classList.add('hidden');
-    el('auth-submit').textContent = 'Sign in';
-    el('auth-switch-text').textContent = "Don't have an account?";
-    el('auth-switch').textContent = 'Start free trial';
-    el('auth-toggle-text').textContent = '';
+    el('auth-title').textContent = 'Sign in to your account'; el('name-field').classList.add('hidden');
+    el('auth-submit').textContent = 'Sign in'; el('auth-switch-text').textContent = "Don't have an account?";
+    el('auth-switch').textContent = 'Start free trial'; el('auth-toggle-text').textContent = '';
   }
 }
 function toggleAuthMode(e) { e.preventDefault(); showAuth(authMode === 'login' ? 'signup' : 'login'); }
+
+function navigate(view) {
+  ['dashboard','projects','builder'].forEach(function(v) { el('view-'+v).classList.toggle('hidden', v !== view); });
+  document.querySelectorAll('#sidebar-nav a').forEach(function(a) { a.classList.toggle('active', a.dataset.view === view); });
+  if (view === 'projects' && window._loadProjects) window._loadProjects();
+  if (view === 'builder') resetBuilder();
+}
+function toggleNewProject() { el('new-project-form').classList.toggle('hidden'); }
+function toggleAddProduct() { el('add-product-form').classList.toggle('hidden'); }
+
+function setStep(n) {
+  currentStep = n;
+  [1,2,3].forEach(function(s) {
+    el('step-'+s).classList.toggle('hidden', s !== currentStep);
+    var btns = document.querySelectorAll('.step-btn'); if(btns[s-1]) btns[s-1].classList.toggle('active', s === currentStep);
+  });
+  el('product-count').textContent = builderProducts.length + ' appliance' + (builderProducts.length !== 1 ? 's' : '') + ' added';
+  if (n === 3) renderSummary();
+}
+function resetBuilder() { builderProducts = []; currentStep = 1; setStep(1); renderProducts(); }
+
+function addProduct() {
+  var name = el('ap-name').value, model = el('ap-model').value;
+  if (!name || !model) { alert('Product name and model number are required.'); return; }
+  builderProducts.push({ id: Date.now(), product_name: name, brand: el('ap-brand').value, model_number: model,
+    category: el('ap-cat').value, finish: el('ap-finish').value, msrp: parseFloat(el('ap-msrp').value) || 0,
+    width_inches: parseFloat(el('ap-w').value) || null, height_inches: parseFloat(el('ap-h').value) || null,
+    depth_inches: parseFloat(el('ap-d').value) || null, electrical_requirements: el('ap-elec').value || null });
+  ['ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){ el(id).value=''; });
+  el('ap-cat').selectedIndex = 0; el('add-product-form').classList.add('hidden');
+  renderProducts();
+}
+function removeProduct(id) { builderProducts = builderProducts.filter(function(p){ return p.id !== id; }); renderProducts(); }
+
+function renderProducts() {
+  var list = el('product-list'); if(!list) return;
+  el('product-count').textContent = builderProducts.length + ' appliance' + (builderProducts.length !== 1 ? 's' : '') + ' added';
+  if (!builderProducts.length) {
+    list.innerHTML = '<div class="card center" style="padding:48px;color:var(--ink-muted)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet. Add products to build the package.</p></div>';
+    el('product-total').classList.add('hidden'); return;
+  }
+  var total = 0; builderProducts.forEach(function(p){ total += (p.msrp||0); });
+  list.innerHTML = builderProducts.map(function(p) {
+    return '<div class="card flex between" style="padding:14px 20px;margin-bottom:8px"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--ink-muted)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+'</div><div style="font-size:13px;color:var(--ink-muted)">'+esc(p.model_number)+' · '+p.category+(p.finish?' · '+esc(p.finish):'')+(p.width_inches?' · '+p.width_inches+'"W':'')+'</div></div></div><div class="flex" style="gap:16px">'+(p.msrp>0?'<span style="font-weight:600;font-family:Space Grotesk">$'+p.msrp.toLocaleString()+'</span>':'')+'<button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>';
+  }).join('');
+  el('product-total').classList.remove('hidden');
+  el('product-total').textContent = 'Total MSRP: $' + total.toLocaleString();
+}
+
+function renderSummary() {
+  var total = 0; builderProducts.forEach(function(p){ total += (p.msrp||0); });
+  el('sum-customer').textContent = el('b-cust-name').value || '—';
+  el('sum-project').textContent = el('b-proj-name').value || el('b-pkg-name').value || '—';
+  el('sum-count').textContent = builderProducts.length + ' items';
+  el('sum-msrp').textContent = '$' + total.toLocaleString();
+  el('sum-table').innerHTML = builderProducts.map(function(p) {
+    var dims = [p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"';}).join(' × ');
+    return '<tr><td>'+p.category+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r" style="font-family:Space Grotesk">'+(p.msrp>0?'$'+p.msrp.toLocaleString():'—')+'</td></tr>';
+  }).join('');
+}
+
+var PLANS = [
+  {name:'Starter',price:'$99',unit:'/user/month',desc:'For individual salespeople',features:['Product search','Product Passport access','Spec package builder','PDF generation','Customer sharing links','Basic CRM connection']},
+  {name:'Professional',price:'$199',unit:'/user/month',desc:'For teams that sell',featured:true,features:['Everything in Starter','Pricing pages with approval','Package versioning','Installation summaries','Automated CRM follow-up','Custom branding','Customer engagement tracking']},
+  {name:'Retail Location',price:'$599',unit:'/location/month',desc:'For a store team',features:['Up to 10 users','Retailer branding','Full CRM integration','Shared templates','Manager controls','Pricing approvals','Store analytics']},
+  {name:'Multi-Location',price:'$1,500+',unit:'/month',desc:'For multi-store operations',features:['Multiple stores','Central administration','Shared catalog','Location-specific pricing','Enterprise reporting','SSO','API access']},
+  {name:'Builder & Designer',price:'$149',unit:'/user/month',desc:'For trade professionals',features:['Project management','Spec books','CAD/BIM access','Collaboration tools','Client presentation tools']}
+];
+function planCard(p) {
+  return '<div class="card price-card'+(p.featured?' featured':'')+'" style="background:#fff">'+(p.featured?'<div class="badge badge-b" style="position:absolute;top:-10px;left:20px">Most popular</div>':'')+'<h3 style="font-size:20px;margin-bottom:2px">'+p.name+'</h3><p style="font-size:13px;color:var(--ink-muted);margin-bottom:16px">'+p.desc+'</p><div style="display:flex;align-items:baseline;gap:4px;margin-bottom:24px"><span style="font-size:36px;font-weight:700;font-family:Space Grotesk">'+p.price+'</span><span style="color:var(--ink-muted);font-size:14px">'+p.unit+'</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">'+p.features.map(function(f){return '<div style="display:flex;gap:8px;font-size:14px;color:var(--ink-soft)"><svg class="icon" style="width:16px;height:16px;color:var(--ok);flex-shrink:0;margin-top:2px"><use href="#i-check"/></svg>'+f+'</div>';}).join('')+'</div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showAuth(\'signup\')">Start free trial</button></div>';
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();navigate(a.dataset.view);});});
+  var top3=PLANS.slice(0,3).map(planCard).join(''), extra=PLANS.slice(3).map(planCard).join('');
+  if(el('plan-cards'))el('plan-cards').innerHTML=top3;
+  if(el('pricing-cards-full'))el('pricing-cards-full').innerHTML=top3;
+  if(el('pricing-cards-extra'))el('pricing-cards-extra').innerHTML=extra;
+});
 </script>
 
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-/* ---- STATE ---- */
+const sb = createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
 let currentUser = null;
-let projects = [];
-let builderProducts = [];
-let currentView = 'dashboard';
-let currentStep = 1;
 
-/* ---- PLANS DATA ---- */
-const PLANS = [
-  { name:'Starter', price:'$99', unit:'/user/month', desc:'For individual salespeople', features:['Product search','Product Passport access','Spec package builder','PDF generation','Customer sharing links','Basic CRM connection'] },
-  { name:'Professional', price:'$199', unit:'/user/month', desc:'For teams that sell', featured:true, features:['Everything in Starter','Pricing pages with approval','Package versioning','Installation summaries','Automated CRM follow-up','Custom branding','Customer engagement tracking'] },
-  { name:'Retail Location', price:'$599', unit:'/location/month', desc:'For a store team', features:['Up to 10 users','Retailer branding','Full CRM integration','Shared templates','Manager controls','Pricing approvals','Store analytics'] },
-  { name:'Multi-Location', price:'$1,500+', unit:'/month', desc:'For multi-store operations', features:['Multiple stores','Central administration','Shared catalog','Location-specific pricing','Enterprise reporting','SSO','API access'] },
-  { name:'Builder & Designer', price:'$149', unit:'/user/month', desc:'For trade professionals', features:['Project management','Spec books','CAD/BIM access','Collaboration tools','Client presentation tools'] },
-];
-
-function planCard(p) {
-  return `<div class="card price-card${p.featured?' featured':''}" style="background:#fff">
-    ${p.featured?'<div class="badge badge-b" style="position:absolute;top:-10px;left:20px">Most popular</div>':''}
-    <h3 style="font-size:20px;margin-bottom:2px">${p.name}</h3>
-    <p style="font-size:13px;color:var(--ink-muted);margin-bottom:16px">${p.desc}</p>
-    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:24px">
-      <span style="font-size:36px;font-weight:700;font-family:'Space Grotesk'">${p.price}</span>
-      <span style="color:var(--ink-muted);font-size:14px">${p.unit}</span>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
-      ${p.features.map(f => `<div style="display:flex;gap:8px;font-size:14px;color:var(--ink-soft)"><svg class="icon" style="width:16px;height:16px;color:var(--ok);flex-shrink:0;margin-top:2px"><use href="#i-check"/></svg>${f}</div>`).join('')}
-    </div>
-    <button class="btn btn-p" style="width:100%;justify-content:center" onclick="showAuth('signup')">Start free trial</button>
-  </div>`;
-}
-
-/* ---- ROUTING (module-side) ---- */
 function showApp() {
-  el('landing').style.display = 'none';
-  hide('auth-page','pricing-page');
-  show('app');
-  el('user-email').textContent = currentUser?.email || '';
-  const name = currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'there';
-  el('welcome-msg').textContent = `Welcome back, ${name}`;
-  loadDashboardStats();
-  loadProjects();
+  el('landing').style.display='none'; hide('auth-page','pricing-page'); show('app');
+  el('user-email').textContent = currentUser?.email||'';
+  el('welcome-msg').textContent = 'Welcome back, '+(currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there');
+  loadDashboardStats(); loadProjects();
 }
 
-window.navigate = (view) => {
-  currentView = view;
-  ['dashboard','projects','builder'].forEach(v => {
-    el(`view-${v}`).classList.toggle('hidden', v !== view);
-  });
-  document.querySelectorAll('#sidebar-nav a').forEach(a => {
-    a.classList.toggle('active', a.dataset.view === view);
-  });
-  if (view === 'projects') loadProjects();
-  if (view === 'builder') resetBuilder();
-};
-
-document.querySelectorAll('#sidebar-nav a').forEach(a => {
-  a.addEventListener('click', e => { e.preventDefault(); navigate(a.dataset.view); });
-});
-
-/* ---- AUTH ---- */
-window.handleAuth = async (e) => {
-  e.preventDefault();
-  el('auth-error').classList.add('hidden');
-  el('auth-submit').textContent = authMode === 'login' ? 'Signing in...' : 'Creating account...';
-  const email = el('auth-email').value;
-  const pass = el('auth-pass').value;
-
-  if (authMode === 'signup') {
-    const name = el('auth-name').value;
-    const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name, app: 'speciq' } } });
-    if (error) { showAuthError(error.message); return; }
-    el('auth-form').classList.add('hidden');
-    el('auth-success').classList.remove('hidden');
+window.handleAuth = async(e)=>{
+  e.preventDefault(); el('auth-error').classList.add('hidden');
+  el('auth-submit').textContent = authMode==='login'?'Signing in...':'Creating account...';
+  const email=el('auth-email').value, pass=el('auth-pass').value;
+  if(authMode==='signup'){
+    const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:el('auth-name').value,app:'speciq'}}});
+    if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Create account';return;}
+    el('auth-form').classList.add('hidden');el('auth-success').classList.remove('hidden');
   } else {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) { showAuthError(error.message); return; }
-    currentUser = data.user;
-    showApp();
+    const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+    if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Sign in';return;}
+    currentUser=data.user; showApp();
   }
 };
+window.doSignOut = async()=>{ await sb.auth.signOut(); currentUser=null; showLanding(); };
 
-function showAuthError(msg) {
-  el('auth-error').textContent = msg;
-  el('auth-error').classList.remove('hidden');
-  el('auth-submit').textContent = authMode === 'login' ? 'Sign in' : 'Create account';
+async function loadDashboardStats(){
+  try{
+    const{count:pc}=await sb.from('speciq_projects').select('*',{count:'exact',head:true}).eq('status','active');
+    const{count:pkc}=await sb.from('speciq_packages').select('*',{count:'exact',head:true});
+    const{count:sc}=await sb.from('speciq_packages').select('*',{count:'exact',head:true}).eq('status','sent');
+    const{count:vc}=await sb.from('speciq_package_events').select('*',{count:'exact',head:true}).eq('event_type','link_opened');
+    el('stat-projects').textContent=pc??0; el('stat-packages').textContent=pkc??0;
+    el('stat-sent').textContent=sc??0; el('stat-views').textContent=vc??0;
+  }catch(e){}
 }
 
-window.doSignOut = async () => { await sb.auth.signOut(); currentUser = null; showLanding(); };
-
-/* ---- DASHBOARD ---- */
-async function loadDashboardStats() {
-  try {
-    const { count: pc } = await sb.from('speciq_projects').select('*', { count: 'exact', head: true }).eq('status', 'active');
-    const { count: pkc } = await sb.from('speciq_packages').select('*', { count: 'exact', head: true });
-    const { count: sc } = await sb.from('speciq_packages').select('*', { count: 'exact', head: true }).eq('status', 'sent');
-    const { count: vc } = await sb.from('speciq_package_events').select('*', { count: 'exact', head: true }).eq('event_type', 'link_opened');
-    el('stat-projects').textContent = pc ?? 0;
-    el('stat-packages').textContent = pkc ?? 0;
-    el('stat-sent').textContent = sc ?? 0;
-    el('stat-views').textContent = vc ?? 0;
-  } catch(e) { /* silent — RLS may block */ }
+let projects=[];
+async function loadProjects(){
+  try{const{data}=await sb.from('speciq_projects').select('*').order('created_at',{ascending:false});projects=data||[];}catch(e){projects=[];}
+  const q=(el('project-search')?.value||'').toLowerCase();
+  const f=projects.filter(p=>p.project_name.toLowerCase().includes(q)||p.customer_name.toLowerCase().includes(q));
+  const list=el('projects-list'); if(!list)return;
+  if(!f.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--ink-muted)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>';return;}
+  list.innerHTML=f.map(p=>'<div class="card flex between" style="padding:16px 24px;margin-bottom:8px"><div><div style="font-weight:600">'+esc(p.project_name)+'</div><div style="font-size:13px;color:var(--ink-muted);margin-top:2px">'+esc(p.customer_name)+(p.room_name?' · '+esc(p.room_name):'')+'</div></div><div class="flex" style="gap:12px"><span class="badge badge-'+(p.status==='active'?'g':'y')+'">'+p.status+'</span><button class="btn btn-s" style="padding:6px 14px;font-size:13px" onclick="navigate(\'builder\');el(\'b-proj-name\').value=\''+esc(p.project_name)+'\';el(\'b-cust-name\').value=\''+esc(p.customer_name)+'\'">Build Package</button></div></div>').join('');
 }
+window._loadProjects=loadProjects;
+window.renderProjects=loadProjects;
 
-/* ---- PROJECTS ---- */
-async function loadProjects() {
-  try {
-    const { data } = await sb.from('speciq_projects').select('*').order('created_at', { ascending: false });
-    projects = data || [];
-  } catch(e) { projects = []; }
-  renderProjects();
-}
-window.renderProjects = () => {
-  const q = (el('project-search')?.value || '').toLowerCase();
-  const f = projects.filter(p => p.project_name.toLowerCase().includes(q) || p.customer_name.toLowerCase().includes(q));
-  const list = el('projects-list');
-  if (!f.length) {
-    list.innerHTML = `<div class="card center" style="padding:48px;color:var(--ink-muted)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>`;
-    return;
-  }
-  list.innerHTML = f.map(p => `<div class="card flex between" style="padding:16px 24px;margin-bottom:8px">
-    <div><div style="font-weight:600">${esc(p.project_name)}</div><div style="font-size:13px;color:var(--ink-muted);margin-top:2px">${esc(p.customer_name)}${p.room_name ? ' • '+esc(p.room_name) : ''}</div></div>
-    <div class="flex" style="gap:12px"><span class="badge badge-${p.status==='active'?'g':'y'}">${p.status}</span><button class="btn btn-s" style="padding:6px 14px;font-size:13px" onclick="startPackageForProject('${p.id}','${esc(p.project_name)}','${esc(p.customer_name)}')">Build Package</button></div>
-  </div>`).join('');
-};
-
-window.toggleNewProject = () => el('new-project-form').classList.toggle('hidden');
-window.createProject = async (e) => {
+window.createProject = async(e)=>{
   e.preventDefault();
-  const orgId = currentUser?.user_metadata?.organization_id;
-  const { error } = await sb.from('speciq_projects').insert({
-    project_name: el('pj-name').value,
-    customer_name: el('pj-customer').value,
-    customer_email: el('pj-email').value || null,
-    property_address: el('pj-address').value || null,
-    room_name: el('pj-room').value || null,
-    builder_name: el('pj-builder').value || null,
-    designer_name: el('pj-designer').value || null,
-    expected_purchase_date: el('pj-date').value || null,
-    created_by: currentUser.id,
-    organization_id: orgId || currentUser.id
-  });
-  if (error) { alert('Error: ' + error.message); return; }
+  const orgId=currentUser?.user_metadata?.organization_id||currentUser.id;
+  const{error}=await sb.from('speciq_projects').insert({project_name:el('pj-name').value,customer_name:el('pj-customer').value,
+    customer_email:el('pj-email').value||null,property_address:el('pj-address').value||null,room_name:el('pj-room').value||null,
+    builder_name:el('pj-builder').value||null,designer_name:el('pj-designer').value||null,expected_purchase_date:el('pj-date').value||null,
+    created_by:currentUser.id,organization_id:orgId});
+  if(error){alert('Error: '+error.message);return;}
   el('new-project-form').classList.add('hidden');
-  ['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(id => el(id).value = '');
+  ['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(function(id){el(id).value='';});
   loadProjects();
 };
 
-window.startPackageForProject = (id, name, cust) => {
-  navigate('builder');
-  el('b-proj-name').value = name;
-  el('b-cust-name').value = cust;
+window.savePackage = async(status)=>{
+  const orgId=currentUser?.user_metadata?.organization_id||currentUser.id;
+  const total=builderProducts.reduce((s,p)=>s+(p.msrp||0),0);
+  const token=crypto.randomUUID().replace(/-/g,'').slice(0,16);
+  const projName=el('b-proj-name').value||el('b-pkg-name').value||'Untitled Project';
+  const custName=el('b-cust-name').value||'Unknown Customer';
+  const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,
+    customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
+  if(pe){alert('Error: '+pe.message);return;}
+  const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:proj.id,
+    package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:total,include_pricing:el('b-pricing').checked,created_by:currentUser.id}).select('id').single();
+  if(ke){alert('Error: '+ke.message);return;}
+  if(builderProducts.length){await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:orgId,
+    product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,
+    width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));}
+  await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created'});
+  if(status==='sent') await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
+  alert('Package '+(status==='draft'?'saved as draft':status==='sent'?'generated and sent':'generated')+' successfully!');
+  builderProducts=[]; navigate('dashboard'); loadDashboardStats();
 };
 
-/* ---- BUILDER ---- */
-function resetBuilder() { currentStep = 1; updateStepUI(); }
-
-window.setStep = (n) => { currentStep = n; updateStepUI(); if (n === 3) renderSummary(); };
-function updateStepUI() {
-  [1,2,3].forEach(s => {
-    el(`step-${s}`).classList.toggle('hidden', s !== currentStep);
-    document.querySelectorAll('.step-btn')[s-1]?.classList.toggle('active', s === currentStep);
-  });
-  el('product-count').textContent = `${builderProducts.length} appliance${builderProducts.length !== 1 ? 's' : ''} added`;
-}
-
-window.toggleAddProduct = () => el('add-product-form').classList.toggle('hidden');
-window.addProduct = () => {
-  const name = el('ap-name').value, model = el('ap-model').value;
-  if (!name || !model) return;
-  builderProducts.push({
-    id: Date.now(), product_name: name, brand: el('ap-brand').value, model_number: model,
-    category: el('ap-cat').value, finish: el('ap-finish').value, msrp: parseFloat(el('ap-msrp').value) || 0,
-    width_inches: parseFloat(el('ap-w').value) || null, height_inches: parseFloat(el('ap-h').value) || null,
-    depth_inches: parseFloat(el('ap-d').value) || null, electrical_requirements: el('ap-elec').value || null
-  });
-  ['ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(id => el(id).value = '');
-  el('ap-cat').selectedIndex = 0;
-  el('add-product-form').classList.add('hidden');
-  renderProducts();
-};
-
-window.removeProduct = (id) => { builderProducts = builderProducts.filter(p => p.id !== id); renderProducts(); };
-
-function renderProducts() {
-  updateStepUI();
-  const list = el('product-list');
-  if (!builderProducts.length) {
-    list.innerHTML = `<div class="card center" style="padding:48px;color:var(--ink-muted)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet. Add products to build the package.</p></div>`;
-    el('product-total').classList.add('hidden');
-    return;
-  }
-  const total = builderProducts.reduce((s, p) => s + (p.msrp || 0), 0);
-  list.innerHTML = builderProducts.map(p => `<div class="card flex between" style="padding:14px 20px;margin-bottom:8px">
-    <div class="flex" style="gap:12px"><svg class="icon" style="color:var(--ink-muted)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">${esc(p.brand)} ${esc(p.product_name)}</div><div style="font-size:13px;color:var(--ink-muted)">${esc(p.model_number)} · ${p.category}${p.finish ? ' · '+esc(p.finish) : ''}${p.width_inches ? ' · '+p.width_inches+'"W' : ''}</div></div></div>
-    <div class="flex" style="gap:16px">${p.msrp > 0 ? `<span style="font-weight:600;font-family:'Space Grotesk'">$${p.msrp.toLocaleString()}</span>` : ''}<button class="btn btn-g" style="padding:6px" onclick="removeProduct(${p.id})"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div>
-  </div>`).join('');
-  el('product-total').classList.remove('hidden');
-  el('product-total').textContent = `Total MSRP: $${total.toLocaleString()}`;
-}
-
-function renderSummary() {
-  const total = builderProducts.reduce((s, p) => s + (p.msrp || 0), 0);
-  el('sum-customer').textContent = el('b-cust-name').value || '—';
-  el('sum-project').textContent = el('b-proj-name').value || el('b-pkg-name').value || '—';
-  el('sum-count').textContent = `${builderProducts.length} items`;
-  el('sum-msrp').textContent = `$${total.toLocaleString()}`;
-  el('sum-table').innerHTML = builderProducts.map(p => {
-    const dims = [p.width_inches, p.height_inches, p.depth_inches].filter(Boolean).map(d => d + '"').join(' × ');
-    return `<tr><td>${p.category}</td><td>${esc(p.brand)}</td><td style="font-weight:600">${esc(p.model_number)}</td><td>${esc(p.finish) || '—'}</td><td>${dims || '—'}</td><td class="r" style="font-family:'Space Grotesk'">${p.msrp > 0 ? '$'+p.msrp.toLocaleString() : '—'}</td></tr>`;
-  }).join('');
-}
-
-window.savePackage = async (status) => {
-  const orgId = currentUser?.user_metadata?.organization_id || currentUser.id;
-  const total = builderProducts.reduce((s, p) => s + (p.msrp || 0), 0);
-  const token = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-
-  // Create project first if needed
-  let projectId = null;
-  const projName = el('b-proj-name').value || el('b-pkg-name').value || 'Untitled Project';
-  const custName = el('b-cust-name').value || 'Unknown Customer';
-  const { data: proj, error: projErr } = await sb.from('speciq_projects').insert({
-    organization_id: orgId, project_name: projName, customer_name: custName,
-    customer_email: el('b-cust-email').value || null,
-    property_address: el('b-address').value || null,
-    room_name: el('b-room').value || null,
-    created_by: currentUser.id
-  }).select('id').single();
-
-  if (projErr) { alert('Error creating project: ' + projErr.message); return; }
-  projectId = proj.id;
-
-  // Create package
-  const { data: pkg, error: pkgErr } = await sb.from('speciq_packages').insert({
-    organization_id: orgId, project_id: projectId,
-    package_name: el('b-pkg-name').value || projName,
-    status, share_token: token, total_msrp: total,
-    include_pricing: el('b-pricing').checked,
-    created_by: currentUser.id
-  }).select('id').single();
-
-  if (pkgErr) { alert('Error creating package: ' + pkgErr.message); return; }
-
-  // Add products
-  if (builderProducts.length) {
-    const prods = builderProducts.map((p, i) => ({
-      package_id: pkg.id, organization_id: orgId,
-      product_name: p.product_name, brand: p.brand, model_number: p.model_number,
-      category: p.category, finish: p.finish, msrp: p.msrp,
-      width_inches: p.width_inches, height_inches: p.height_inches, depth_inches: p.depth_inches,
-      electrical_requirements: p.electrical_requirements, sort_order: i
-    }));
-    await sb.from('speciq_package_products').insert(prods);
-  }
-
-  // Track event
-  await sb.from('speciq_package_events').insert({ package_id: pkg.id, event_type: 'created' });
-  if (status === 'sent') await sb.from('speciq_package_events').insert({ package_id: pkg.id, event_type: 'sent' });
-
-  alert(`Package ${status === 'draft' ? 'saved as draft' : status === 'sent' ? 'generated and sent' : 'generated'} successfully!`);
-  builderProducts = [];
-  navigate('dashboard');
-};
-
-/* ---- INIT ---- */
-// Render plan cards
-el('plan-cards').innerHTML = PLANS.slice(0, 3).map(planCard).join('');
-el('pricing-cards-full').innerHTML = PLANS.slice(0, 3).map(planCard).join('');
-el('pricing-cards-extra').innerHTML = PLANS.slice(3).map(planCard).join('');
-
-// Check session
-try {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) { currentUser = session.user; showApp(); }
-} catch(e) { console.warn('Session check failed:', e); }
-
-sb.auth.onAuthStateChange((_, session) => {
-  if (session?.user) { currentUser = session.user; showApp(); }
-});
+try{const{data:{session}}=await sb.auth.getSession();if(session?.user){currentUser=session.user;showApp();}}catch(e){}
+sb.auth.onAuthStateChange((_,session)=>{if(session?.user){currentUser=session.user;showApp();}});
 </script>
 </body>
 </html>
