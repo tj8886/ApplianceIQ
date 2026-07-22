@@ -10,7 +10,7 @@ Use eight controlled membership roles and six statuses: pending, active, suspend
 
 ## P2: authoritative invitations
 
-An invitation is vendor-bound, email-bound, role-bound, expiring, hashed, versioned, revocable, and single use. A trusted server transaction validates the signed-in identity, locks and consumes the invitation atomically, activates or creates membership, and writes audit events. Raw tokens are never stored. The first vendor owner needs platform approval; no first-click owner bootstrap exists.
+An invitation is vendor-bound, email-bound, role-bound, expiring, hashed, versioned, revocable, and single use. Its 15-field Migration 001 decision model includes the explicitly approved `vendor_id` controller binding plus 14 other invitation-field decisions; this corrects a prior validation-count omission, not the authorization architecture. A trusted server transaction validates the signed-in identity, locks and consumes the invitation atomically, activates or creates membership, and writes audit events. Raw tokens are never stored. The first vendor owner needs platform approval; no first-click owner bootstrap exists.
 
 ## Compatibility, portal, and server boundary
 

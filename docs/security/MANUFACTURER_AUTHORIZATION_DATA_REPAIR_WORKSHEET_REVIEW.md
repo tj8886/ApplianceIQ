@@ -10,6 +10,8 @@ Migration 001 is an additive staging schema preparation only. It does not repair
 
 ## Migration 001 scope and deferred work
 
+The authoritative invitation-field decision count is 15: the approved direct controller binding `vendor_id` plus 14 other invitation-field decisions. A prior 14-entry worksheet ledger mixed legacy and later-scope entries and is not the count used for Migration 001 approval.
+
 Migration 001 adds nullable lifecycle/provenance columns, invitation-security columns, metadata defaults, and non-disruptive indexes only. It does not update data, tighten constraints, enforce roles/status, change RLS/helpers/Storage, create vendor entities, or activate brand ownership. Controlled constraints, trusted invitation flow, browser-write cutoff, and enforcement are deferred to later P1/P2 units.
 
 ## Compatibility and validation
