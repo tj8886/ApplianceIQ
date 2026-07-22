@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>ApplianceIQ Academy — Portal</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f1f3d'/><text x='50' y='68' text-anchor='middle' font-family='Arial' font-weight='800' font-size='42' fill='white'>IQ</text></svg>" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
@@ -698,6 +699,7 @@ sb.auth.onAuthStateChange(async (event, session) => {
     await loadBrandAcademy();
     await loadBrandCertifications();
     await loadOrgBrandAssignments();
+    await loadBrandQuizData();
     await loadNotifications();
     renderDashboard();
     renderSidebar();
@@ -2279,16 +2281,26 @@ function openBrandDetail(brandId) {
       <div class="ba-level-header" onclick="toggleBrandLevel(this)">
         <span class="ba-level-num">Level 5</span>
         <span class="ba-level-title">Launch Training</span>
-        <span class="ba-level-status">Coming Soon</span>
+        <span class="ba-level-status" id="l5-status">Loading...</span>
         <span class="ba-level-chevron">›</span>
       </div>
-      <div class="ba-level-content">
-        <div class="ba-empty">New product launches will automatically appear here as learning modules when manufacturers publish launch materials.</div>
+      <div class="ba-level-content" id="l5-content">
+        <div class="ba-empty">Loading launches...</div>
       </div>
-    </div>`;
+    </div>
 
-  // Load products for this brand and render Levels 2-4
+    <!-- BRAND QUIZ -->
+    <div id="brand-quiz-section" style="margin-top:24px"></div>
+
+    <!-- ORG ADMIN: Brand Assignment (managers only) -->
+    <div id="brand-admin-section" style="margin-top:24px"></div>`;
+
+  // Load products for this brand and render Levels 2-5
   loadBrandProducts(b.brand_name, brandId);
+  // Load brand quiz
+  loadBrandQuiz(brandId);
+  // Load admin controls if manager
+  loadBrandAdminControls(brandId);
 }
 
 function toggleBrandLevel(el) {
@@ -2422,13 +2434,214 @@ async function loadBrandProducts(brandName, brandId) {
       const brand = brandCatalog.find(x => x.id === brandId);
       if (brand) brand.product_count = prods.length;
     }
+
+    // Level 5: Launch Training (products with launch_date in last 6 months)
+    const sixMonthsAgo = new Date(Date.now() - 180*24*60*60*1000).toISOString().split('T')[0];
+    const launches = prods.filter(p => p.launch_date && p.launch_date >= sixMonthsAgo);
+    const l5Done = launches.filter(p => prog.includes('5:launch_' + p.model.replace(/[^a-zA-Z0-9]/g,'_'))).length;
+    const l5El = document.getElementById('l5-content');
+    const l5Status = document.getElementById('l5-status');
+    if (launches.length === 0) {
+      l5El.innerHTML = '<div class="ba-empty">No recent product launches for this brand.</div>';
+      l5Status.textContent = 'None';
+    } else {
+      l5Status.textContent = l5Done + '/' + launches.length;
+      l5El.innerHTML = `<div style="font-size:12px;color:var(--steel);margin-bottom:14px">Products launched in the last 6 months</div>` +
+        launches.map(p => {
+          const modKey = p.model.replace(/[^a-zA-Z0-9]/g,'_');
+          const isDone = prog.includes('5:launch_' + modKey);
+          return `<div class="ba-module" style="padding:12px 0">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="flex:1">
+                <div class="ba-module-title">🚀 ${esc(p.model)}</div>
+                <div style="font-size:12px;color:var(--steel);margin-bottom:4px">${esc(p.category.charAt(0).toUpperCase()+p.category.slice(1))} · ${esc(p.product_family||'')} · Launched ${p.launch_date}</div>
+                <div style="font-size:13px;color:var(--ink)">${esc(p.short_description||'')}</div>
+              </div>
+              ${p.msrp ? `<div style="font-family:'Sora',Arial,sans-serif;font-size:15px;font-weight:700;color:var(--teal)">$${Number(p.msrp).toLocaleString()}</div>` : ''}
+            </div>
+            <div class="ba-module-check">
+              <input type="checkbox" id="l5-${modKey}" ${isDone?'checked':''} onchange="toggleBrandModule('${brandId}',5,'launch_${modKey}',this.checked)">
+              <label for="l5-${modKey}">${isDone?'Reviewed':'Mark as reviewed'}</label>
+            </div>
+          </div>`;
+        }).join('');
+    }
+
   } catch(e) {
     console.error('Load brand products error:', e);
-    ['l2','l3','l4'].forEach(id => {
+    ['l2','l3','l4','l5'].forEach(id => {
       const el = document.getElementById(id+'-content');
       if (el) el.innerHTML = '<div class="ba-empty">Could not load products.</div>';
     });
   }
+}
+
+// ── BRAND QUIZZES ───────────────────────────────────────────────────────────
+let brandQuizzes = {};
+let brandQuizScores = {};
+
+async function loadBrandQuizData() {
+  if (!currentUser) return;
+  try {
+    const { data: quizData } = await sb.from('academy_brand_quizzes').select('*');
+    (quizData || []).forEach(q => { brandQuizzes[q.brand_id + '_' + q.level] = q; });
+    const { data: scoreData } = await sb.from('academy_brand_quiz_scores').select('*').eq('user_id', currentUser.id);
+    (scoreData || []).forEach(s => { brandQuizScores[s.brand_id + '_' + s.level] = s; });
+  } catch(e) {}
+}
+
+async function loadBrandQuiz(brandId) {
+  const el = document.getElementById('brand-quiz-section');
+  if (!el) return;
+  const key = brandId + '_1';
+  const quiz = brandQuizzes[key];
+  const score = brandQuizScores[key];
+
+  if (!quiz || !quiz.questions || !quiz.questions.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  const passMark = Math.ceil(quiz.questions.length * 0.8);
+  const passed = score && score.passed;
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;${passed?'border-color:var(--teal)':''}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-family:'Sora',Arial,sans-serif;font-size:15px;font-weight:700;color:var(--navy)">📝 Level 1 Knowledge Check</div>
+          <div style="font-size:12px;color:var(--steel)">${quiz.questions.length} questions · ${passMark}/${quiz.questions.length} to pass</div>
+        </div>
+        ${passed ? '<span class="ba-badge certified" style="font-size:11px;padding:4px 10px">✓ Passed</span>' : ''}
+        ${score && !score.passed ? `<span style="font-size:12px;color:#dc2626;font-weight:600">Last: ${score.score}/${score.total} — try again</span>` : ''}
+      </div>
+      ${passed ? `<div style="font-size:13px;color:var(--teal)">You passed with ${score.score}/${score.total}. This quiz is required for Bronze certification.</div>` :
+      `<div id="bq-questions">
+        ${quiz.questions.map((q,i) => `<div style="margin-bottom:14px;padding:14px;background:var(--bg);border-radius:10px" id="bq-q-${i}">
+          <div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:8px">${i+1}. ${esc(q.q)}</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            ${q.options.map((opt,oi) => `<button class="bq-opt" data-q="${i}" data-o="${oi}" onclick="selectBrandQuizOpt(this,${i},${oi})" style="text-align:left;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13px;color:var(--ink);cursor:pointer;transition:all .15s">${String.fromCharCode(65+oi)}. ${esc(opt)}</button>`).join('')}
+          </div>
+        </div>`).join('')}
+      </div>
+      <button onclick="submitBrandQuiz('${brandId}')" style="background:var(--teal);color:#fff;border:none;padding:12px 28px;border-radius:999px;font-family:'Sora',Arial,sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-top:8px">Submit Answers</button>
+      <div id="bq-result" style="margin-top:12px"></div>`}
+    </div>`;
+}
+
+let _bqAnswers = {};
+function selectBrandQuizOpt(btn, qi, oi) {
+  _bqAnswers[qi] = oi;
+  const container = document.getElementById('bq-q-' + qi);
+  container.querySelectorAll('button').forEach(b => {
+    b.style.borderColor = 'var(--line)';
+    b.style.background = 'var(--card)';
+    b.style.fontWeight = '400';
+  });
+  btn.style.borderColor = 'var(--teal)';
+  btn.style.background = 'var(--teal-tint)';
+  btn.style.fontWeight = '600';
+}
+
+async function submitBrandQuiz(brandId) {
+  const key = brandId + '_1';
+  const quiz = brandQuizzes[key];
+  if (!quiz) return;
+  let correct = 0;
+  quiz.questions.forEach((q, i) => {
+    const chosen = _bqAnswers[i];
+    const isCorrect = chosen === q.answer;
+    if (isCorrect) correct++;
+    const container = document.getElementById('bq-q-' + i);
+    if (!container) return;
+    container.querySelectorAll('button').forEach((b, oi) => {
+      if (oi === q.answer) { b.style.borderColor = '#16a34a'; b.style.background = '#dcfce7'; }
+      else if (oi === chosen && !isCorrect) { b.style.borderColor = '#dc2626'; b.style.background = '#fee2e2'; }
+    });
+  });
+  const total = quiz.questions.length;
+  const passMark = Math.ceil(total * 0.8);
+  const passed = correct >= passMark;
+
+  // Save score
+  await sb.from('academy_brand_quiz_scores').upsert({
+    user_id: currentUser.id, brand_id: brandId, level: 1,
+    score: correct, total, passed
+  }, { onConflict: 'user_id,brand_id,level' });
+  brandQuizScores[key] = { score: correct, total, passed };
+
+  const resultEl = document.getElementById('bq-result');
+  if (passed) {
+    resultEl.innerHTML = `<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:#16a34a">${correct}/${total} — Passed!</div>
+      <div style="font-size:12px;color:#166534">You meet the quiz requirement for Bronze certification.</div>
+    </div>`;
+    // Check if eligible for certification now
+    await checkAndAwardBrandCert(brandId);
+  } else {
+    resultEl.innerHTML = `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:#dc2626">${correct}/${total}</div>
+      <div style="font-size:12px;color:#991b1b">Need ${passMark} to pass. Review the material and try again.</div>
+    </div>`;
+  }
+  _bqAnswers = {};
+}
+
+// ── ORG ADMIN BRAND CONTROLS ────────────────────────────────────────────────
+async function loadBrandAdminControls(brandId) {
+  const el = document.getElementById('brand-admin-section');
+  if (!el || !currentUser) return;
+
+  // Check if user is admin/manager
+  try {
+    const { data: member } = await sb.from('organization_members')
+      .select('role')
+      .eq('user_id', currentUser.id)
+      .single();
+    if (!member || !['owner','admin','manager'].includes(member.role)) { el.innerHTML = ''; return; }
+
+    const currentAssign = orgBrandAssignments[brandId] || 'optional';
+    const brand = brandCatalog.find(b => b.id === brandId);
+    const options = ['required','recommended','optional','manager_only','installer_only'];
+
+    el.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px">
+        <div style="font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px">⚙️ Organization Settings</div>
+        <div style="font-size:12px;color:var(--steel);margin-bottom:14px">Set the training requirement level for ${esc(brand?.brand_name || 'this brand')} across your team.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${options.map(o => `<button onclick="setBrandAssignment('${brandId}','${o}',this)" style="padding:8px 16px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid ${o===currentAssign?'var(--teal)':'var(--line)'};background:${o===currentAssign?'var(--teal)':'var(--card)'};color:${o===currentAssign?'#fff':'var(--steel)'}">${o.replace('_',' ').replace(/\b\w/g,l=>l.toUpperCase())}</button>`).join('')}
+        </div>
+        <div id="brand-admin-msg" style="margin-top:8px"></div>
+      </div>`;
+  } catch(e) { el.innerHTML = ''; }
+}
+
+async function setBrandAssignment(brandId, assignment, btn) {
+  const { data: member } = await sb.from('organization_members')
+    .select('organization_id')
+    .eq('user_id', currentUser.id)
+    .single();
+  if (!member) return;
+
+  await sb.from('organization_brands').upsert({
+    organization_id: member.organization_id,
+    brand_id: brandId,
+    assignment,
+    assigned_by: currentUser.id
+  }, { onConflict: 'organization_id,brand_id' });
+
+  orgBrandAssignments[brandId] = assignment;
+  const msgEl = document.getElementById('brand-admin-msg');
+  if (msgEl) msgEl.innerHTML = '<div style="font-size:11px;color:var(--teal);font-weight:600">✓ Updated</div>';
+
+  // Re-render buttons
+  const container = btn.parentElement;
+  container.querySelectorAll('button').forEach(b => {
+    const isActive = b.textContent.toLowerCase().replace(' ','_') === assignment;
+    b.style.borderColor = isActive ? 'var(--teal)' : 'var(--line)';
+    b.style.background = isActive ? 'var(--teal)' : 'var(--card)';
+    b.style.color = isActive ? '#fff' : 'var(--steel)';
+  });
 }
 
 async function toggleBrandModule(brandId, level, moduleKey, checked) {
@@ -2611,40 +2824,67 @@ async function loadBrandCertifications() {
 async function checkAndAwardBrandCert(brandId) {
   if (!currentUser) return;
   const m = getBrandModuleCount(brandId);
-  if (m.total === 0 || m.done < m.total) return; // not complete
-  if (brandCertifications[brandId]) return; // already awarded
+  if (m.total === 0 || m.done < m.total) return;
 
-  // Award Bronze certification
-  const { data, error } = await sb.from('academy_brand_certifications').insert({
-    user_id: currentUser.id,
-    brand_id: brandId,
-    tier: 'bronze',
-    expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-  }).select().single();
+  // Check quiz requirement for Bronze
+  const quizScore = brandQuizScores[brandId + '_1'];
+  const quizPassed = quizScore && quizScore.passed;
 
-  if (!error && data) {
-    brandCertifications[brandId] = data;
-    const brand = brandCatalog.find(b => b.id === brandId);
+  // Determine tier based on progress
+  const prog = brandProgress[brandId] || [];
+  const l2Done = prog.filter(k => k.startsWith('2:')).length > 0;
+  const l3Done = prog.filter(k => k.startsWith('3:')).length > 0;
+  const l4Done = prog.filter(k => k.startsWith('4:')).length > 0;
+  const l5Done = prog.filter(k => k.startsWith('5:')).length > 0;
 
-    // Create notification
-    await sb.from('academy_notifications').insert({
+  let targetTier = null;
+  if (m.done >= m.total && quizPassed) targetTier = 'bronze';
+  if (targetTier === 'bronze' && l2Done) targetTier = 'silver';
+  if (targetTier === 'silver' && l3Done) targetTier = 'gold';
+  if (targetTier === 'gold' && l4Done) targetTier = 'expert';
+  if (targetTier === 'expert' && l5Done) targetTier = 'master';
+
+  if (!targetTier) return;
+  const existing = brandCertifications[brandId];
+  const tierOrder = ['bronze','silver','gold','expert','master','elite'];
+  if (existing && tierOrder.indexOf(existing.tier) >= tierOrder.indexOf(targetTier)) return;
+
+  if (existing) {
+    // Upgrade tier
+    await sb.from('academy_brand_certifications').update({ tier: targetTier }).eq('id', existing.id);
+    existing.tier = targetTier;
+  } else {
+    // New cert
+    const { data, error } = await sb.from('academy_brand_certifications').insert({
       user_id: currentUser.id,
-      type: 'new_training',
-      title: `🏆 ${brand?.brand_name || 'Brand'} — Bronze Certified!`,
-      body: `You completed all Level 1 Brand Foundations modules. Certificate: ${data.cert_number}`,
       brand_id: brandId,
-      link: `brands:${brand?.slug || ''}`
-    });
-    await loadNotifications();
+      tier: targetTier,
+      expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+    }).select().single();
 
-    // Show award banner in the detail view
-    const heroEl = document.querySelector('.ba-detail-hero');
-    if (heroEl) {
-      const banner = document.createElement('div');
-      banner.className = 'ba-cert-banner';
-      banner.innerHTML = `<h3>🏆 Bronze Certification Awarded!</h3><p>You've mastered ${esc(brand?.brand_name || 'this brand')}'s foundations. Certificate: <strong>${data.cert_number}</strong></p>`;
-      heroEl.after(banner);
+    if (!error && data) {
+      brandCertifications[brandId] = data;
+      const brand = brandCatalog.find(b => b.id === brandId);
+      await sb.from('academy_notifications').insert({
+        user_id: currentUser.id,
+        type: 'new_training',
+        title: '🏆 ' + (brand?.brand_name||'Brand') + ' — ' + targetTier.charAt(0).toUpperCase()+targetTier.slice(1) + ' Certified!',
+        body: 'Certificate: ' + data.cert_number,
+        brand_id: brandId,
+        link: 'brands:' + (brand?.slug||'')
+      });
+      await loadNotifications();
     }
+  }
+
+  // Show award banner
+  const brand = brandCatalog.find(b => b.id === brandId);
+  const heroEl = document.querySelector('.ba-detail-hero');
+  if (heroEl && !document.querySelector('.ba-cert-banner')) {
+    const banner = document.createElement('div');
+    banner.className = 'ba-cert-banner';
+    banner.innerHTML = '<h3>🏆 ' + targetTier.charAt(0).toUpperCase()+targetTier.slice(1) + ' Certification!</h3><p>You\'ve earned ' + esc(brand?.brand_name||'') + ' ' + targetTier + ' certification.</p>';
+    heroEl.after(banner);
   }
 }
 
