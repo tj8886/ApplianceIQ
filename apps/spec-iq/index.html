@@ -740,7 +740,17 @@ import{createClient}from'https://esm.sh/@supabase/supabase-js@2';
 const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
 let currentUser=null;let userOrgId=null;let retailerSettings=null;let allPackages=[];
 
-async function resolveOrg(){const{data}=await sb.from('organization_members').select('organization_id').eq('user_id',currentUser.id).limit(1).single();userOrgId=data?.organization_id||'00000000-0000-0000-0000-000000000002'}
+async function resolveOrg(){
+  const{data}=await sb.from('organization_members').select('organization_id').eq('user_id',currentUser.id).limit(1).single();
+  if(data?.organization_id){userOrgId=data.organization_id;return}
+  // First login — create org, profile, and membership
+  const name=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'User';
+  const{data:org}=await sb.from('organizations').insert({name:name+"'s Store"}).select('id').single();
+  if(!org){userOrgId='00000000-0000-0000-0000-000000000002';return}
+  userOrgId=org.id;
+  await sb.from('organization_members').insert({organization_id:org.id,user_id:currentUser.id,role:'owner'});
+  await sb.from('profiles').upsert({user_id:currentUser.id,full_name:name,email:currentUser.email},{onConflict:'user_id'});
+}
 function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';el('welcome-msg').textContent='Welcome back, '+(currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there');resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings()})}
 
 /* ==================== AUTH ==================== */
@@ -763,8 +773,11 @@ window.savePackage=async(status)=>{const orgId=userOrgId;const total=builderProd
 /* ==================== PACKAGES LIST ==================== */
 async function loadPackages(){
   try{
-    const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address), speciq_package_products(count)').order('created_at',{ascending:false});
+    const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address)').order('created_at',{ascending:false});
     allPackages=data||[];
+    // Fetch product counts for each package
+    const pkgIds=allPackages.map(p=>p.id);
+    if(pkgIds.length){const{data:prods}=await sb.from('speciq_package_products').select('package_id').in('package_id',pkgIds);const counts={};(prods||[]).forEach(p=>{counts[p.package_id]=(counts[p.package_id]||0)+1});allPackages.forEach(p=>{p._productCount=counts[p.id]||0})}
   }catch(e){allPackages=[]}
   renderPackagesList();
 }
@@ -779,7 +792,7 @@ window.renderPackagesList=function(){
   empty.classList.add('hidden');
   tbody.innerHTML=filtered.map(p=>{
     const cust=p.speciq_projects?.customer_name||'—';
-    const itemCount=p.speciq_package_products?.[0]?.count||0;
+    const itemCount=p._productCount||0;
     return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.speciq_projects?.project_name||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+'</td><td>'+itemCount+' items</td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><button class="btn btn-g" style="padding:4px" onclick="event.stopPropagation();printPackage(\''+p.id+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg></button></td></tr>'}).join('');
 };
 
@@ -921,12 +934,18 @@ let teamMembers=[];
 async function loadTeam(){
   if(!userOrgId)return;
   try{
-    const{data}=await sb.from('organization_members').select('*, profiles:user_id(email, raw_user_meta_data)').eq('organization_id',userOrgId).order('created_at',{ascending:true});
-    teamMembers=data||[];
+    const{data:members}=await sb.from('organization_members').select('*').eq('organization_id',userOrgId).order('created_at',{ascending:true});
+    const mems=members||[];
+    // Fetch profiles for all member user_ids
+    const uids=mems.map(m=>m.user_id);
+    if(uids.length){
+      const{data:profs}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids);
+      const profMap={};(profs||[]).forEach(p=>{profMap[p.user_id]=p});
+      mems.forEach(m=>{m.profiles=profMap[m.user_id]||null});
+    }
+    teamMembers=mems;
   }catch(e){
-    // profiles might not be accessible, fallback
-    const{data}=await sb.from('organization_members').select('*').eq('organization_id',userOrgId).order('created_at',{ascending:true});
-    teamMembers=data||[];
+    teamMembers=[];
   }
   renderTeam();
 }
@@ -936,8 +955,7 @@ function renderTeam(){
   if(!teamMembers.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
   tbody.innerHTML=teamMembers.map(m=>{
-    const meta=m.profiles?.raw_user_meta_data;
-    const name=meta?.full_name||m.profiles?.email?.split('@')[0]||'—';
+    const name=m.profiles?.full_name||m.profiles?.email?.split('@')[0]||'—';
     const email=m.profiles?.email||m.user_id?.slice(0,8)+'...';
     const role=m.role||'member';
     const isMe=m.user_id===currentUser?.id;
@@ -950,11 +968,19 @@ window.sendInvite=async function(){
   if(!email){el('invite-error').textContent='Email is required.';el('invite-error').classList.remove('hidden');return}
   // Create auth user via invite (admin action) — for now, create the membership record
   // In production this would send an invite email via Supabase Auth admin API
-  const{data:existing}=await sb.from('organization_members').select('id').eq('organization_id',userOrgId);
-  // For now, show success and explain the flow
-  el('invite-success').textContent='Invite sent to '+email+'. They will receive an email to join your organization.';
+  // Check if user already exists in profiles
+  const{data:existingProfile}=await sb.from('profiles').select('user_id').eq('email',email).single();
+  if(existingProfile){
+    // User exists — add them directly
+    const{error:memErr}=await sb.from('organization_members').insert({organization_id:userOrgId,user_id:existingProfile.user_id,role:role});
+    if(memErr){el('invite-error').textContent=memErr.message.includes('duplicate')?'This user is already on your team.':memErr.message;el('invite-error').classList.remove('hidden');return}
+    el('invite-success').textContent=email+' has been added to your team as '+role+'.';
+  }else{
+    el('invite-success').textContent='When '+email+' signs up for Spec IQ, they will be added to your team. Share this link: '+window.location.origin;
+  }
   el('invite-success').classList.remove('hidden');
   el('inv-email').value='';el('inv-name').value='';el('inv-role').selectedIndex=0;
+  loadTeam();
 };
 window.changeRole=async function(memberId,userId){
   const newRole=prompt('Enter new role (sales_rep, sales_manager, store_manager, admin):');
