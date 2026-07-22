@@ -125,45 +125,45 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 }
 
 /* ==================== PRINT STYLES ==================== */
+/* On-screen preview styles (inside modal) */
+.print-page{padding:32px 0;border-bottom:2px dashed #e3e8f0;margin-bottom:24px}
+.print-page:last-child{border-bottom:none;margin-bottom:0}
+.print-cover{text-align:center;padding:40px 0}
+.print-cover-logos{display:flex;align-items:center;gap:20px;justify-content:center;margin-bottom:40px}
+.print-cover-logos img{max-height:80px;max-width:200px;object-fit:contain}
+.print-cover h1{font-size:26pt;margin-bottom:8px;color:#0f1f3d}
+.print-cover .cover-subtitle{font-size:14pt;color:#5b6b85;margin-bottom:32px}
+.print-cover-info{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;max-width:400px;margin:0 auto;font-size:10pt}
+.print-cover-info dt{color:#5b6b85;font-size:9pt;text-transform:uppercase;letter-spacing:.5px}
+.print-cover-info dd{font-weight:600;margin:2px 0 8px}
+.print-section-title{font-size:16pt;color:#0f1f3d;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #0f1f3d}
+.print-product{border:1px solid #e3e8f0;border-radius:8px;padding:20px;margin-bottom:16px}
+.print-product h3{font-size:13pt;margin-bottom:8px;color:#0f1f3d}
+.print-product .specs-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:9pt}
+.print-product .specs-grid dt{color:#5b6b85}
+.print-product .specs-grid dd{font-weight:600;margin:0 0 8px}
+.print-install-table{width:100%;border-collapse:collapse;font-size:9pt}
+.print-install-table th{text-align:left;padding:6px 8px;background:#f6f8fb;border:1px solid #e3e8f0;font-size:8pt;text-transform:uppercase;color:#5b6b85}
+.print-install-table td{padding:6px 8px;border:1px solid #e3e8f0}
+.print-pricing-table{width:100%;border-collapse:collapse;font-size:10pt}
+.print-pricing-table th{text-align:left;padding:8px 12px;background:#f6f8fb;border-bottom:2px solid #0f1f3d;font-size:9pt;text-transform:uppercase;color:#5b6b85}
+.print-pricing-table td{padding:8px 12px;border-bottom:1px solid #e3e8f0}
+.print-pricing-table .total-row td{border-top:2px solid #0f1f3d;font-weight:700;font-size:12pt}
+
 @media print{
   @page{size:letter;margin:0.5in}
   body{background:#fff!important;font-size:11pt;color:#000}
-  #landing,#auth-page,#pricing-page,.sidebar,.main{display:none!important}
+  #landing,#auth-page,#pricing-page,.sidebar,.main,#pkg-detail-modal{display:none!important}
   #print-package{display:block!important}
   .no-print{display:none!important}
 
-  .print-page{page-break-after:always;padding:0;position:relative;min-height:9in}
+  .print-page{page-break-after:always;padding:0;position:relative;min-height:9in;border-bottom:none;margin-bottom:0}
   .print-page:last-child{page-break-after:avoid}
-
-  .print-cover{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:9.5in;text-align:center;padding:1in}
-  .print-cover-logos{display:flex;align-items:center;gap:20px;justify-content:center;margin-bottom:60px}
-  .print-cover-logos img{max-height:80px;max-width:200px;object-fit:contain}
-  .print-cover h1{font-size:32pt;margin-bottom:8px;color:#0f1f3d}
-  .print-cover .cover-subtitle{font-size:14pt;color:#5b6b85;margin-bottom:40px}
-  .print-cover-info{display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:left;max-width:500px;margin:0 auto;font-size:10pt}
-  .print-cover-info dt{color:#5b6b85;font-size:9pt;text-transform:uppercase;letter-spacing:.5px}
-  .print-cover-info dd{font-weight:600;margin:2px 0 12px}
-
-  .print-product{border:1px solid #e3e8f0;border-radius:8px;padding:20px;margin-bottom:16px;page-break-inside:avoid}
-  .print-product h3{font-size:13pt;margin-bottom:8px;color:#0f1f3d}
-  .print-product .specs-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:9pt}
-  .print-product .specs-grid dt{color:#5b6b85}
-  .print-product .specs-grid dd{font-weight:600;margin:0 0 8px}
+  .print-cover{min-height:9.5in;padding:1in}
 
   .print-footer{position:fixed;bottom:0;left:0;right:0;padding:8px 0.5in;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e3e8f0;font-size:8pt;color:#5b6b85}
   .print-footer-brand{display:flex;align-items:center;gap:8px}
   .print-footer-brand svg{width:16px;height:16px}
-
-  .print-section-title{font-size:16pt;color:#0f1f3d;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #0f1f3d}
-
-  .print-install-table{width:100%;border-collapse:collapse;font-size:9pt}
-  .print-install-table th{text-align:left;padding:6px 8px;background:#f6f8fb;border:1px solid #e3e8f0;font-size:8pt;text-transform:uppercase;color:#5b6b85}
-  .print-install-table td{padding:6px 8px;border:1px solid #e3e8f0}
-
-  .print-pricing-table{width:100%;border-collapse:collapse;font-size:10pt}
-  .print-pricing-table th{text-align:left;padding:8px 12px;background:#f6f8fb;border-bottom:2px solid #0f1f3d;font-size:9pt;text-transform:uppercase;color:#5b6b85}
-  .print-pricing-table td{padding:8px 12px;border-bottom:1px solid #e3e8f0}
-  .print-pricing-table .total-row td{border-top:2px solid #0f1f3d;font-weight:700;font-size:12pt}
 }
 #print-package{display:none}
 </style>
@@ -768,7 +768,39 @@ window._loadProjects=loadProjects;window.renderProjects=loadProjects;
 window.createProject=async(e)=>{e.preventDefault();const orgId=userOrgId;const{error}=await sb.from('speciq_projects').insert({project_name:el('pj-name').value,customer_name:el('pj-customer').value,customer_email:el('pj-email').value||null,property_address:el('pj-address').value||null,room_name:el('pj-room').value||null,builder_name:el('pj-builder').value||null,designer_name:el('pj-designer').value||null,expected_purchase_date:el('pj-date').value||null,created_by:currentUser.id,organization_id:orgId});if(error){alert('Error: '+error.message);return}el('new-project-form').classList.add('hidden');['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(function(id){el(id).value=''});loadProjects()};
 
 /* ==================== SAVE PACKAGE ==================== */
-window.savePackage=async(status)=>{const orgId=userOrgId;const total=builderProducts.reduce((s,p)=>s+(p.msrp||0),0);const token=crypto.randomUUID().replace(/-/g,'').slice(0,16);const projName=el('b-proj-name').value||el('b-pkg-name').value||'Untitled Project';const custName=el('b-cust-name').value||'Unknown Customer';const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();if(pe){alert('Error: '+pe.message);return}const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:proj.id,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:total,include_pricing:el('b-pricing').checked,created_by:currentUser.id}).select('id').single();if(ke){alert('Error: '+ke.message);return}if(builderProducts.length){await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:orgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})))}await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created'});if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});alert('Package '+(status==='draft'?'saved as draft':status==='sent'?'generated and sent':'generated')+' successfully!');builderProducts=[];navigate('packages');loadDashboardStats()};
+window.savePackage=async(status)=>{
+  const btn=event?.target?.closest?.('button');
+  const origText=btn?.innerHTML;
+  try{
+    if(btn){btn.disabled=true;btn.innerHTML='<span style="opacity:.7">Saving...</span>'}
+    const orgId=userOrgId;
+    if(!orgId){throw new Error('No organization found. Please reload and try again.')}
+    const total=builderProducts.reduce((s,p)=>s+(p.msrp||0),0);
+    const token=crypto.randomUUID().replace(/-/g,'').slice(0,16);
+    const projName=el('b-proj-name').value||el('b-pkg-name').value||'Untitled Project';
+    const custName=el('b-cust-name').value||'Unknown Customer';
+    const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
+    if(pe)throw new Error('Project save failed: '+pe.message);
+    const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:proj.id,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:total,include_pricing:el('b-pricing').checked,created_by:currentUser.id}).select('id').single();
+    if(ke)throw new Error('Package save failed: '+ke.message);
+    if(builderProducts.length){
+      const{error:prodErr}=await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:orgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));
+      if(prodErr)console.warn('Product insert warning:',prodErr.message);
+    }
+    await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created'});
+    if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
+    builderProducts=[];
+    // Navigate to packages and auto-open the new package preview
+    await loadPackages();
+    navigate('packages');
+    loadDashboardStats();
+    openPackageDetail(pkg.id);
+  }catch(err){
+    console.error('savePackage error:',err);
+    alert('Error: '+err.message);
+    if(btn){btn.disabled=false;btn.innerHTML=origText}
+  }
+};
 
 /* ==================== PACKAGES LIST ==================== */
 async function loadPackages(){
@@ -793,43 +825,60 @@ window.renderPackagesList=function(){
   tbody.innerHTML=filtered.map(p=>{
     const cust=p.speciq_projects?.customer_name||'—';
     const itemCount=p._productCount||0;
-    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.speciq_projects?.project_name||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+'</td><td>'+itemCount+' items</td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><button class="btn btn-g" style="padding:4px" onclick="event.stopPropagation();printPackage(\''+p.id+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg></button></td></tr>'}).join('');
+    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.speciq_projects?.project_name||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+'</td><td>'+itemCount+' items</td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button><button class="btn btn-g" style="padding:4px" onclick="event.stopPropagation();printPackage(\''+p.id+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg></button></div></td></tr>'}).join('');
 };
 
-/* ==================== PACKAGE DETAIL MODAL ==================== */
+/* ==================== PACKAGE DETAIL / PREVIEW ==================== */
 window.openPackageDetail=async function(pkgId){
   const pkg=allPackages.find(p=>p.id===pkgId);
-  if(!pkg)return;
+  if(!pkg){console.error('Package not found in allPackages');return}
   const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
   const prods=products||[];
   const total=prods.reduce((s,p)=>s+(parseFloat(p.msrp)||0),0);
   const cust=pkg.speciq_projects?.customer_name||'—';
   const proj=pkg.speciq_projects?.project_name||'—';
 
-  let html='<div class="modal-overlay" onclick="if(event.target===this)closePackageDetail()">';
-  html+='<div class="modal-panel">';
-  html+='<div style="padding:20px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">';
-  html+='<div><h2 style="font-size:20px">'+esc(pkg.package_name)+'</h2><div style="font-size:13px;color:var(--steel);margin-top:2px">'+esc(proj)+' · '+esc(cust)+'</div></div>';
-  html+='<div class="flex" style="gap:8px"><button class="btn btn-s" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print PDF</button><button class="btn btn-g" onclick="closePackageDetail()"><svg class="icon"><use href="#i-x"/></svg></button></div>';
-  html+='</div>';
-
-  html+='<div style="padding:24px">';
-  html+='<div class="grid4" style="margin-bottom:24px">';
-  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Status</div><div style="margin-top:4px">'+statusBadge(pkg.status)+'</div></div>';
-  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Items</div><div style="font-weight:600;margin-top:4px">'+prods.length+'</div></div>';
-  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Total MSRP</div><div style="font-weight:700;font-family:Sora;margin-top:4px">$'+total.toLocaleString()+'</div></div>';
-  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Created</div><div style="font-weight:500;margin-top:4px">'+fmtDate(pkg.created_at)+'</div></div>';
-  html+='</div>';
-
-  if(prods.length){
-    html+='<table class="tbl"><thead><tr><th>Product</th><th>Model</th><th>Category</th><th>Finish</th><th>Dimensions</th><th class="r">MSRP</th></tr></thead><tbody>';
-    prods.forEach(p=>{
-      const dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(d=>d+'"').join(' × ');
-      html+='<tr><td style="font-weight:600">'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+esc(p.category)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>';
-    });
-    html+='</tbody></table>';
+  // Fetch retailer settings for branding
+  if(!retailerSettings){
+    const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();
+    retailerSettings=rs;
   }
-  html+='</div></div></div>';
+
+  const fullPkg={...pkg,customer_name:cust,project_name:proj,property_address:pkg.speciq_projects?.property_address};
+  const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings);
+
+  let html='<div class="modal-overlay" onclick="if(event.target===this)closePackageDetail()">';
+  html+='<div class="modal-panel" style="max-width:1000px">';
+
+  // Header bar
+  html+='<div style="padding:16px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10;border-radius:12px 12px 0 0">';
+  html+='<div class="flex" style="gap:16px"><h2 style="font-size:18px">'+esc(pkg.package_name)+'</h2>'+statusBadge(pkg.status)+'</div>';
+  html+='<div class="flex" style="gap:8px">';
+  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / Save PDF</button>';
+  html+='<button class="btn btn-g" onclick="closePackageDetail()"><svg class="icon"><use href="#i-x"/></svg></button>';
+  html+='</div></div>';
+
+  // Quick stats bar
+  html+='<div style="padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:32px">';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Customer</span><div style="font-weight:600;margin-top:2px">'+esc(cust)+'</div></div>';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Items</span><div style="font-weight:600;margin-top:2px">'+prods.length+'</div></div>';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Total MSRP</span><div style="font-weight:700;font-family:Sora;margin-top:2px">$'+total.toLocaleString()+'</div></div>';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Created</span><div style="font-weight:500;margin-top:2px">'+fmtDate(pkg.created_at)+'</div></div>';
+  html+='</div>';
+
+  // Rendered package preview
+  html+='<div style="padding:24px;background:#e8ecf1;max-height:70vh;overflow-y:auto">';
+  html+='<div style="background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;max-width:800px;margin:0 auto">';
+  html+='<div style="padding:40px 48px;font-size:11pt;color:#000;line-height:1.5">'+previewHTML+'</div>';
+  html+='</div></div>';
+
+  // Footer
+  html+='<div style="padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:0 0 12px 12px">';
+  html+='<div class="flex" style="gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora;font-weight:600;font-size:12px;color:var(--steel)">ApplianceIQ</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel)">applianceiq.ai</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel);font-style:italic">Spec. Compare. Price verified.</span></div>';
+  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / Save PDF</button>';
+  html+='</div>';
+
+  html+='</div></div>';
 
   el('pkg-detail-modal').innerHTML=html;
   el('pkg-detail-modal').classList.remove('hidden');
