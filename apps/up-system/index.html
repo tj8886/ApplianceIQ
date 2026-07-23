@@ -173,6 +173,40 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .chart-bar .cb-lbl{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--steel);white-space:nowrap}
 .chart-bar .cb-val{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--ink)}
 
+/* My Status Bar */
+.my-status-bar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.my-status-bar .msb-label{font-weight:700;font-size:13px;white-space:nowrap}
+.my-status-bar .msb-current{display:flex;align-items:center;gap:6px}
+.my-status-bar .msb-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.msb-dot.green{background:#22c55e}.msb-dot.amber{background:#f59e0b}.msb-dot.red{background:#ef4444}.msb-dot.purple{background:#8b5cf6}.msb-dot.gray{background:#94a3b8}
+.msb-btns{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.msb-btn{padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap;transition:all .15s}
+.msb-btn:hover{border-color:var(--accent);color:var(--accent)}
+.msb-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.msb-btn.break-btn{border-color:#d8b4fe;color:#7c3aed}.msb-btn.break-btn:hover,.msb-btn.break-btn.active{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.msb-btn.danger-btn{border-color:#fca5a5;color:var(--danger)}.msb-btn.danger-btn:hover,.msb-btn.danger-btn.active{background:var(--danger);color:#fff}
+.msb-timer{font-size:12px;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:4px}
+
+/* Break/lunch timer on rep cards */
+.rc-break-timer{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#7c3aed;margin-top:4px;padding:2px 8px;background:#f3e8ff;border-radius:6px}
+.rc-break-timer.over{color:var(--danger);background:#fdecea}
+
+/* Multi-store overview */
+.multi-store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.store-overview-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;cursor:pointer;transition:all .15s}
+.store-overview-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);border-color:var(--accent)}
+.store-overview-card.active-store{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+.soc-name{font-weight:800;font-size:15px;margin-bottom:6px}
+.soc-metrics{display:flex;gap:16px;flex-wrap:wrap}
+.soc-m{text-align:center}.soc-m .sv{font-size:20px;font-weight:800;color:var(--navy)}.soc-m .sl{font-size:10px;color:var(--steel);text-transform:uppercase}
+.soc-reps{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
+.soc-rep-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.soc-rep-dot.dot-green{background:#22c55e}.soc-rep-dot.dot-amber{background:#f59e0b}.soc-rep-dot.dot-purple{background:#8b5cf6}.soc-rep-dot.dot-gray{background:#94a3b8}
+
+/* Role badge */
+.role-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:6px;margin-left:6px}
+.role-badge.mgr{background:#fef3cd;color:#856404}.role-badge.rep{background:#e0f2fe;color:#0369a1}
+
 @media(max-width:860px){.shell{grid-template-columns:1fr}aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5;padding:8px}aside .mark{margin:0 8px 0 0}.spacer,.nav-sep,.nav-label{display:none}.queue-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.queue-grid{grid-template-columns:1fr}.field-row,.field-row-3{grid-template-columns:1fr}}
 </style>
@@ -238,6 +272,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <div class="mark"><span class="pill">UP</span><span class="wm">IQ Up<small>Floor Intelligence</small></span></div>
 <select id="storeSelect" class="store-sel" aria-label="Store"></select>
 <div class="nav-label">Operations</div>
+<button class="nav-btn" data-view="dashboard">🏬 All Stores</button>
 <button class="nav-btn active" data-view="floor">🔄 Floor Board</button>
 <button class="nav-btn" data-view="customers">👋 Customers</button>
 <button class="nav-btn" data-view="shifts">⏱ Shifts</button>
@@ -345,36 +380,106 @@ async function render(){
   if(!currentStore){mainEl.innerHTML='<div class="empty">No store configured. Add stores in CRM settings.</div>';return;}
   mainEl.innerHTML='<div class="empty">Loading…</div>';
   try{
-    const views={floor:renderFloor,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,managers:renderManagers,analytics:renderAnalytics,traffic:renderTraffic,staffing:renderStaffing,notifications:renderNotifications,audit:renderAudit,settings:renderSettings};
+    const views={dashboard:renderDashboard,floor:renderFloor,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,managers:renderManagers,analytics:renderAnalytics,traffic:renderTraffic,staffing:renderStaffing,notifications:renderNotifications,audit:renderAudit,settings:renderSettings};
     await(views[currentView]||renderFloor)();
   }catch(err){mainEl.innerHTML=`<div class="empty">Error: ${esc(err.message)}</div>`;console.error(err);}
 }
 
 // ═══════════════════════════════
-// FLOOR BOARD
+// MULTI-STORE DASHBOARD
+// ═══════════════════════════════
+async function renderDashboard(){
+  const{data:locs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).eq('location_type','store').order('name');
+  const stores=locs??[];
+  // Fetch summary data for each store
+  const storeData=await Promise.all(stores.map(async s=>{
+    const[{data:shifts},{data:waiting}]=await Promise.all([
+      sb.from('iq_shift_records').select('user_id,is_active').eq('store_id',s.id).eq('is_active',true),
+      sb.from('iq_customer_waiting_queue').select('id,status').eq('store_id',s.id).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee'])
+    ]);
+    const shiftIds=(shifts??[]).map(sh=>sh.user_id);
+    let statusList=[];
+    if(shiftIds.length){const{data:ss}=await sb.from('iq_status_sessions').select('user_id,status').in('user_id',shiftIds).is('ended_at',null);statusList=ss??[];}
+    const onFloor=(shifts??[]).length;
+    const withCust=statusList.filter(x=>x.status==='with_customer').length;
+    const avail=statusList.filter(x=>x.status==='available').length;
+    const onBreak=statusList.filter(x=>['break','lunch'].includes(x.status)).length;
+    return{...s,onFloor,withCust,avail,onBreak,waitCount:(waiting??[]).length,statusList};
+  }));
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🏬 All Stores Overview</h1><div class="sub">${stores.length} stores · ${storeData.reduce((a,s)=>a+s.onFloor,0)} reps on floor</div></div></div>
+    <div class="multi-store-grid">${storeData.map(s=>`<div class="store-overview-card ${s.id===currentStore.id?'active-store':''}" data-switchstore="${s.id}">
+      <div class="soc-name">${esc(s.name)}</div>
+      <div class="soc-metrics">
+        <div class="soc-m"><div class="sv num">${s.onFloor}</div><div class="sl">On Floor</div></div>
+        <div class="soc-m"><div class="sv num" style="${s.withCust?'color:var(--amber)':''}">${s.withCust}</div><div class="sl">w/ Cust</div></div>
+        <div class="soc-m"><div class="sv num" style="color:var(--verified)">${s.avail}</div><div class="sl">Available</div></div>
+        <div class="soc-m"><div class="sv num" style="${s.waitCount?'color:var(--danger)':''}">${s.waitCount}</div><div class="sl">Waiting</div></div>
+      </div>
+      <div class="soc-reps">${s.statusList.map(r=>{const dc=r.status==='available'?'dot-green':r.status==='with_customer'?'dot-amber':['break','lunch'].includes(r.status)?'dot-purple':'dot-gray';return`<div class="soc-rep-dot ${dc}" title="${pName(r.user_id)} — ${STATUS_LABELS[r.status]||r.status}">${(pName(r.user_id)||'?')[0]}</div>`;}).join('')||'<span style="font-size:11px;color:var(--steel)">No reps on floor</span>'}</div>
+    </div>`).join('')}</div>`;
+  $$('[data-switchstore]').forEach(c=>{c.onclick=()=>{
+    const sid=c.dataset.switchstore;
+    const sel=$('#storeSelect');sel.value=sid;
+    currentStore=(locs??[]).find(s=>s.id===sid)||currentStore;
+    $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='floor'));
+    currentView='floor';render();
+  };});
+}
+
+// ═══════════════════════════════
+// FLOOR BOARD (enhanced)
 // ═══════════════════════════════
 async function renderFloor(){
   const sid=currentStore.id;
-  const[{data:queue},{data:shifts},{data:waiting},{data:openRot}]=await Promise.all([
+  const[{data:queue},{data:shifts},{data:waiting},{data:openRot},{data:storeSettings}]=await Promise.all([
     sb.from('iq_up_queue_entries').select('*').eq('store_id',sid).eq('is_in_queue',true).order('queue_position'),
     sb.from('iq_shift_records').select('*').eq('store_id',sid).eq('is_active',true).order('login_at'),
     sb.from('iq_customer_waiting_queue').select('*').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee']).order('arrival_time'),
-    sb.from('iq_open_rotation_sessions').select('*').eq('store_id',sid).eq('is_active',true).maybeSingle()
+    sb.from('iq_open_rotation_sessions').select('*').eq('store_id',sid).eq('is_active',true).maybeSingle(),
+    sb.from('iq_store_settings').select('*').eq('store_id',sid).maybeSingle()
   ]);
   const queueEntries=queue??[],activeShifts=shifts??[],waitingCustomers=waiting??[];
+  const ss=storeSettings||{};
+  const breakMinutes=ss.paid_break_minutes||15;const lunchMinutes=ss.lunch_minutes||30;const maxBreaks=ss.break_max_per_shift||2;
   const repData=activeShifts.map(sh=>{const qe=queueEntries.find(q=>q.user_id===sh.user_id);return{...sh,queue:qe};});
-  // Current status from sessions
   const shiftIds=activeShifts.map(s=>s.id);
   let statusMap={};
-  if(shiftIds.length){const{data:ss}=await sb.from('iq_status_sessions').select('*').in('shift_id',shiftIds).is('ended_at',null).order('started_at',{ascending:false});(ss??[]).forEach(s=>{if(!statusMap[s.user_id])statusMap[s.user_id]=s;});}
+  if(shiftIds.length){const{data:ssList}=await sb.from('iq_status_sessions').select('*').in('shift_id',shiftIds).is('ended_at',null).order('started_at',{ascending:false});(ssList??[]).forEach(s=>{if(!statusMap[s.user_id])statusMap[s.user_id]=s;});}
   const getStatus=uid=>statusMap[uid]?.status||'available';
   const onFloor=repData.filter(r=>!['ended_shift','off_sales_floor'].includes(getStatus(r.user_id)));
   const withCust=repData.filter(r=>getStatus(r.user_id)==='with_customer');
   const avail=repData.filter(r=>getStatus(r.user_id)==='available');
+  const onBreak=repData.filter(r=>['break','lunch'].includes(getStatus(r.user_id)));
+
+  // My status bar — find current user's shift
+  const myShift=activeShifts.find(s=>s.user_id===currentUser.id);
+  const mySt=myShift?getStatus(currentUser.id):'off';
+  const myRole=myShift?.role_name||'';
+  const isManager=myRole==='manager'||myRole==='sales_manager'||myRole==='assistant_manager';
+  const dotColor=mySt==='available'?'green':mySt==='with_customer'?'amber':['break','lunch'].includes(mySt)?'purple':mySt==='off'?'gray':'red';
+  const breakElapsed=['break','lunch'].includes(mySt)?elapsed(statusMap[currentUser.id]?.started_at):'';
+  const breakLimit=mySt==='lunch'?lunchMinutes:breakMinutes;
+  const breakSecs=['break','lunch'].includes(mySt)?Math.floor((Date.now()-new Date(statusMap[currentUser.id]?.started_at).getTime())/1000):0;
+  const breakOver=breakSecs>breakLimit*60;
+  const breakRemaining=Math.max(0,breakLimit*60-breakSecs);
 
   mainEl.innerHTML=`
+    ${myShift?`<div class="my-status-bar">
+      <div class="msb-label">My Status</div>
+      <div class="msb-current"><div class="msb-dot ${dotColor}"></div><span style="font-weight:600;font-size:13px">${STATUS_LABELS[mySt]||mySt}</span><span class="role-badge ${isManager?'mgr':'rep'}">${isManager?'Manager':'Sales'}</span></div>
+      ${['break','lunch'].includes(mySt)?`<div class="msb-timer ${breakOver?'rc-break-timer over':''}">⏱ ${fmtTime(breakSecs)}${breakOver?' — OVER LIMIT':' / '+breakLimit+'m'}</div>`:''}
+      <div class="msb-btns">
+        <button class="msb-btn ${mySt==='available'?'active':''}" data-myst="available">✅ Available</button>
+        <button class="msb-btn ${mySt==='with_customer'?'active':''}" data-myst="with_customer">🤝 With Customer</button>
+        <button class="msb-btn ${mySt==='on_phone'?'active':''}" data-myst="on_phone">📞 On Phone</button>
+        <button class="msb-btn ${mySt==='preparing_quote'?'active':''}" data-myst="preparing_quote">📝 Quote</button>
+        <button class="msb-btn break-btn ${mySt==='break'?'active':''}" data-myst="break">☕ Break</button>
+        <button class="msb-btn break-btn ${mySt==='lunch'?'active':''}" data-myst="lunch">🍽 Lunch</button>
+        <button class="msb-btn danger-btn ${['temporarily_unavailable','personal_matter','off_sales_floor'].includes(mySt)?'active':''}" data-myst="temporarily_unavailable">⛔ Away</button>
+      </div>
+    </div>`:''}
     <div class="floor-banner"><div class="fb-left"><div class="fb-status">${openRot?'🔥':'🏪'}</div><div><div class="fb-title">${esc(currentStore.name)}</div><div class="fb-sub">${new Date().toLocaleDateString('en-CA',{weekday:'long',month:'short',day:'numeric'})}</div></div></div>
-    <div class="fb-metrics"><div class="fb-m"><div class="fv num">${onFloor.length}</div><div class="fl">On Floor</div></div><div class="fb-m"><div class="fv num">${withCust.length}</div><div class="fl">With Cust</div></div><div class="fb-m"><div class="fv num">${avail.length}</div><div class="fl">Available</div></div><div class="fb-m"><div class="fv num">${waitingCustomers.length}</div><div class="fl">Waiting</div></div></div></div>
+    <div class="fb-metrics"><div class="fb-m"><div class="fv num">${onFloor.length}</div><div class="fl">On Floor</div></div><div class="fb-m"><div class="fv num">${withCust.length}</div><div class="fl">With Cust</div></div><div class="fb-m"><div class="fv num">${avail.length}</div><div class="fl">Available</div></div><div class="fb-m"><div class="fv num" style="${onBreak.length?'color:#8b5cf6':''}">${onBreak.length}</div><div class="fl">On Break</div></div><div class="fb-m"><div class="fv num" style="${waitingCustomers.length?'color:var(--danger)':''}">${waitingCustomers.length}</div><div class="fl">Waiting</div></div></div></div>
     ${openRot?`<div class="or-banner"><span>🔥 Open Rotation Active — ${esc(openRot.reason||'Demand surge')} · Started ${elapsed(openRot.start_at)} ago</span><button class="btn btn-sm" id="endOR">End Open Rotation</button></div>`:''}
     <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${!openRot?`<button class="btn btn-danger btn-sm" id="startOR">🔥 Open Rotation</button>`:''}<button class="btn btn-primary" id="logWalkIn">👋 Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button></div></div>
     ${waitingCustomers.length?`<div class="customer-queue"><h3>🔔 Waiting Customers (${waitingCustomers.length})</h3>${waitingCustomers.map(c=>`<div class="cq-item"><div class="cq-icon">👤</div><div class="cq-info"><div class="cq-name">${esc(c.customer_display_name||'Walk-in')}${c.customer_group_size>1?' · '+c.customer_group_size+' people':''}${c.is_returning_customer?' <span class="chip b">Returning</span>':''}${c.referred_by?` <span class="chip p">Ref: ${esc(c.referred_by)}</span>`:''}</div><div class="cq-detail">${esc(c.customer_category?.replace(/_/g,' ')||'Walk-in')}${c.requested_employee_user_id?' · Requested '+pName(c.requested_employee_user_id):''} · ${waitChip(c.status)} · Priority ${c.priority}</div></div><div class="cq-wait">${elapsed(c.arrival_time)}</div><button class="btn btn-primary btn-sm" data-assign="${c.id}">Assign</button></div>`).join('')}</div>`:''}
@@ -384,13 +489,22 @@ async function renderFloor(){
       const pos=r.queue?.queue_position;
       const isUp=r.queue?.is_current_up;const isNext=r.queue?.is_next_in_line;
       const held=r.queue?.hold_count||0;const susp=r.queue?.is_suspended;
-      return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''} ${susp?'unavailable':''}">
+      const isMe=r.user_id===currentUser.id;
+      const rRole=r.role_name||'salesperson';
+      const rIsManager=rRole==='manager'||rRole==='sales_manager';
+      // Break/lunch timer
+      const onBrk=['break','lunch'].includes(st);
+      const brkSecs=onBrk?Math.floor((Date.now()-new Date(statusMap[r.user_id]?.started_at).getTime())/1000):0;
+      const brkLimit=(st==='lunch'?lunchMinutes:breakMinutes)*60;
+      const brkOver=brkSecs>brkLimit;
+      return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''} ${susp?'unavailable':''} ${isMe?'current-up':''}">
         ${pos?`<div class="rc-pos">#${pos}</div>`:''}
-        <div class="rc-name">${pName(r.user_id)}</div>
+        <div class="rc-name">${pName(r.user_id)}${isMe?' <span style="font-size:10px;color:var(--accent)">(You)</span>':''}<span class="role-badge ${rIsManager?'mgr':'rep'}">${rIsManager?'Mgr':'Sales'}</span></div>
         <div class="rc-status ${st}">${isUp?'🟢 ':isNext?'🔵 ':''}${STATUS_LABELS[st]||st}</div>
         ${susp?'<div style="font-size:10px;color:var(--danger);margin-top:2px">⏸ Suspended</div>':''}
         ${held?`<div style="font-size:10px;color:var(--amber);margin-top:2px">Held ${held}×</div>`:''}
-        <div class="rc-timer">${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):'On floor '+elapsed(r.login_at)}</div>
+        ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}${st==='lunch'?' 🍽':' ☕'}</div>`:''}
+        <div class="rc-timer">${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):onBrk?'':st==='on_phone'?'On call '+elapsed(statusMap[r.user_id]?.started_at):'On floor '+elapsed(r.login_at)}</div>
         <div class="rc-stats"><span>Ups: <b>${r.ups_accepted}</b></span><span>Sold: <b>${r.closed_sales}</b></span><span>Cust: <b>${r.customers_served}</b></span></div>
         <div class="rc-actions">
           <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}">Status</button>
@@ -398,6 +512,19 @@ async function renderFloor(){
           ${st==='with_customer'?`<button class="btn btn-ghost btn-sm" data-handoff="${r.user_id}">🤝 Hand Off</button>`:''}
         </div></div>`;}).join(''):'<div class="empty" style="grid-column:1/-1">No reps clocked in. Tap Clock In to start a shift.</div>'}</div>`;
   
+  // Wire My Status quick buttons
+  $$('[data-myst]').forEach(b=>{b.onclick=async()=>{
+    if(!myShift)return;
+    const newSt=b.dataset.myst;
+    if(newSt===mySt)return;// already in this status
+    const now=new Date().toISOString();
+    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',myShift.id).eq('user_id',currentUser.id).is('ended_at',null);
+    await sb.from('iq_status_sessions').insert({shift_id:myShift.id,organization_id:currentOrg.id,store_id:sid,user_id:currentUser.id,status:newSt,started_at:now});
+    const isAvail=STATUS_GROUPS.selling.includes(newSt)&&newSt!=='with_customer';
+    await sb.from('iq_up_queue_entries').update({status_code:newSt,is_available_for_assignment:isAvail}).eq('store_id',sid).eq('user_id',currentUser.id).eq('is_in_queue',true);
+    await takeSnapshot('status_change',currentUser.id);
+    render();
+  };});
   $('#logWalkIn')?.addEventListener('click',openWalkInModal);
   $('#clockInBtn')?.addEventListener('click',openClockInModal);
   $('#startOR')?.addEventListener('click',openStartORModal);
