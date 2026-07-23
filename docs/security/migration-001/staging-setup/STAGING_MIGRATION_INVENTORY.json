@@ -1,0 +1,1256 @@
+{
+  "metadata": {
+    "environment": "STAGING",
+    "repository_commit": "a181999ac18d8651d3c2e24dda010289306797d9",
+    "generated_from": "static repository review; no migration executed",
+    "migration_001_filename": "20260722194405_manufacturer_authorization_migration_001.sql",
+    "pre_migration_001_count": 54
+  },
+  "summary": {
+    "earliest": "20260718131521_academy_seed_v1.sql",
+    "latest_pre_migration_001": "20260722191325_brand_academy_quizzes_and_launch.sql",
+    "duplicate_timestamps": [],
+    "classification_counts": {
+      "REQUIRES_MANUAL_REVIEW": 16,
+      "SAFE_WITH_PRECONDITIONS": 7,
+      "NOT_SAFE_TO_REPLAY": 31
+    },
+    "bootstrap_recommendation": "BLOCKED_MIGRATION_HISTORY_INCOMPLETE"
+  },
+  "records": [
+    {
+      "filename": "20260718131521_academy_seed_v1.sql",
+      "timestamp": "20260718131521",
+      "relative_order": 1,
+      "purpose": "academy seed v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "hard-coded URL/project reference review required",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260718131629_foundation_schema_v1.sql",
+      "timestamp": "20260718131629",
+      "relative_order": 2,
+      "purpose": "foundation schema v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH",
+        "EXTENSION"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "extension availability",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "extension availability",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260718131647_memory_schema_v1.sql",
+      "timestamp": "20260718131647",
+      "relative_order": 3,
+      "purpose": "memory schema v1",
+      "statement_types": [
+        "DDL",
+        "RLS_POLICY"
+      ],
+      "dependencies": [
+        "RLS helper ordering"
+      ],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "requires RLS helper ordering"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "RLS helper ordering"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260718131708_privacy_schema_v1.sql",
+      "timestamp": "20260718131708",
+      "relative_order": 4,
+      "purpose": "privacy schema v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION"
+      ],
+      "dependencies": [
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260718131846_security_hardening_v1.sql",
+      "timestamp": "20260718131846",
+      "relative_order": 5,
+      "purpose": "security hardening v1",
+      "statement_types": [
+        "DDL",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "RLS helper ordering"
+      ],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "requires Supabase Auth, RLS helper ordering"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "RLS helper ordering"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260718140815_daily_metrics_v1.sql",
+      "timestamp": "20260718140815",
+      "relative_order": 6,
+      "purpose": "daily metrics v1",
+      "statement_types": [
+        "DDL",
+        "RLS_POLICY",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "RLS helper ordering"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "RLS helper ordering"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260718141148_metrics_import_v1.sql",
+      "timestamp": "20260718141148",
+      "relative_order": 7,
+      "purpose": "metrics import v1",
+      "statement_types": [
+        "DDL",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260718230316_aiq_kernel_foundations_crm.sql",
+      "timestamp": "20260718230316",
+      "relative_order": 8,
+      "purpose": "aiq kernel foundations crm",
+      "statement_types": [
+        "DDL",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH",
+        "EXTENSION"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "extension availability",
+        "function/trigger ordering",
+        "RLS helper ordering"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "extension availability",
+        "function/trigger ordering",
+        "RLS helper ordering"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260718230510_aiq_kernel_ai_layer.sql",
+      "timestamp": "20260718230510",
+      "relative_order": 9,
+      "purpose": "aiq kernel ai layer",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260719011509_aiq_seeds_branding_assistants.sql",
+      "timestamp": "20260719011509",
+      "relative_order": 10,
+      "purpose": "aiq seeds branding assistants",
+      "statement_types": [
+        "SEED_DATA"
+      ],
+      "dependencies": [
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260719011720_aiq_security_hardening.sql",
+      "timestamp": "20260719011720",
+      "relative_order": 11,
+      "purpose": "aiq security hardening",
+      "statement_types": [
+        "FUNCTION"
+      ],
+      "dependencies": [
+        "function/trigger ordering"
+      ],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "requires function/trigger ordering"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "function/trigger ordering"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260719012140_aiq_join_demo_org.sql",
+      "timestamp": "20260719012140",
+      "relative_order": 12,
+      "purpose": "aiq join demo org",
+      "statement_types": [
+        "SEED_DATA",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260719115706_aiq_activity_capture_layer.sql",
+      "timestamp": "20260719115706",
+      "relative_order": 13,
+      "purpose": "aiq activity capture layer",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "STORAGE",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "Supabase Storage",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "Supabase Storage",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260719123219_sales_recording_capture_fields.sql",
+      "timestamp": "20260719123219",
+      "relative_order": 14,
+      "purpose": "sales recording capture fields",
+      "statement_types": [
+        "DDL",
+        "STORAGE"
+      ],
+      "dependencies": [
+        "Supabase Storage"
+      ],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "requires Supabase Storage"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Storage"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260720002359_closeout_security_fixes.sql",
+      "timestamp": "20260720002359",
+      "relative_order": 15,
+      "purpose": "closeout security fixes",
+      "statement_types": [
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering"
+      ],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "requires Supabase Auth, function/trigger ordering"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260720002435_closeout_index_tuning.sql",
+      "timestamp": "20260720002435",
+      "relative_order": 16,
+      "purpose": "closeout index tuning",
+      "statement_types": [
+        "DDL"
+      ],
+      "dependencies": [],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "schema ordering and empty-database validation"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260720003822_kpi_events_v1.sql",
+      "timestamp": "20260720003822",
+      "relative_order": 17,
+      "purpose": "kpi events v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION"
+      ],
+      "dependencies": [
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260720004211_email_dispatch_v1.sql",
+      "timestamp": "20260720004211",
+      "relative_order": 18,
+      "purpose": "email dispatch v1",
+      "statement_types": [
+        "DDL"
+      ],
+      "dependencies": [],
+      "replay_classification": "SAFE_WITH_PRECONDITIONS",
+      "staging_risks": [
+        "schema ordering and empty-database validation"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Replay only after approved baseline strategy."
+    },
+    {
+      "filename": "20260720140201_applianceiq_access_helpers_recovery.sql",
+      "timestamp": "20260720140201",
+      "relative_order": 19,
+      "purpose": "Core access helpers (private schema)",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720140445_applianceiq_profiles_compatibility.sql",
+      "timestamp": "20260720140445",
+      "relative_order": 20,
+      "purpose": "Profiles compatibility layer",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720140606_phase_3_aicrm_import_foundation_recovery.sql",
+      "timestamp": "20260720140606",
+      "relative_order": 21,
+      "purpose": "AI CRM import system",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720140746_phase_4_aicrm_account_views_and_tags_recovery.sql",
+      "timestamp": "20260720140746",
+      "relative_order": 22,
+      "purpose": "AI CRM accounts, tags, saved views",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720140952_phase_6_aicrm_operating_layer_recovery.sql",
+      "timestamp": "20260720140952",
+      "relative_order": 23,
+      "purpose": "AI CRM operating layer",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720141106_phase_7_aicrm_enrichment_framework_recovery.sql",
+      "timestamp": "20260720141106",
+      "relative_order": 24,
+      "purpose": "AI CRM enrichment",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720141124_phase_8_aicrm_scoring_engine_recovery.sql",
+      "timestamp": "20260720141124",
+      "relative_order": 25,
+      "purpose": "AI CRM scoring engine",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720141318_phase_9_aicrm_outreach_framework_recovery.sql",
+      "timestamp": "20260720141318",
+      "relative_order": 26,
+      "purpose": "AI CRM outreach",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720141435_applianceiq_ai_research_expansion.sql",
+      "timestamp": "20260720141435",
+      "relative_order": 27,
+      "purpose": "AI research expansion",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720141621_phase_10_aicrm_executive_dashboard_recovery.sql",
+      "timestamp": "20260720141621",
+      "relative_order": 28,
+      "purpose": "AI CRM executive dashboard",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720141941_phase_11_aicrm_anthropic_intelligence_recovery.sql",
+      "timestamp": "20260720141941",
+      "relative_order": 29,
+      "purpose": "AI CRM Anthropic intelligence",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142043_phase_11_5_aicrm_product_fit_matrix_recovery.sql",
+      "timestamp": "20260720142043",
+      "relative_order": 30,
+      "purpose": "AI CRM product fit matrix",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142355_phase_11_6_platform_configuration_engine_recovery.sql",
+      "timestamp": "20260720142355",
+      "relative_order": 31,
+      "purpose": "Platform configuration engine",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142557_phase_12_market_intelligence_engine_recovery.sql",
+      "timestamp": "20260720142557",
+      "relative_order": 32,
+      "purpose": "Market intelligence engine",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142652_phase_13_relationship_intelligence_engine_recovery.sql",
+      "timestamp": "20260720142652",
+      "relative_order": 33,
+      "purpose": "Relationship intelligence",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142901_phase_14_execution_intelligence_engine_recovery.sql",
+      "timestamp": "20260720142901",
+      "relative_order": 34,
+      "purpose": "Execution intelligence",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142930_phase_15_forecasting_revenue_intelligence_recovery.sql",
+      "timestamp": "20260720142930",
+      "relative_order": 35,
+      "purpose": "Forecasting and revenue intelligence",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720142954_phase_16_learning_intelligence_engine_recovery.sql",
+      "timestamp": "20260720142954",
+      "relative_order": 36,
+      "purpose": "Learning intelligence",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720143401_phase_17_territory_coverage_intelligence_recovery_v2.sql",
+      "timestamp": "20260720143401",
+      "relative_order": 37,
+      "purpose": "Territory and coverage intelligence",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720143435_phase_20_industry_knowledge_graph_engine_recovery.sql",
+      "timestamp": "20260720143435",
+      "relative_order": 38,
+      "purpose": "Industry knowledge graph",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720143614_phase_21_ecosystem_collaboration_platform_recovery.sql",
+      "timestamp": "20260720143614",
+      "relative_order": 39,
+      "purpose": "Ecosystem collaboration",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720144156_applianceiq_industry_intelligence_recovery.sql",
+      "timestamp": "20260720144156",
+      "relative_order": 40,
+      "purpose": "Industry intelligence (first pass)",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720144655_applianceiq_industry_intelligence_recovery_2.sql",
+      "timestamp": "20260720144655",
+      "relative_order": 41,
+      "purpose": "Industry intelligence (second pass)",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260720145408_applianceiq_industry_intelligence_version_security.sql",
+      "timestamp": "20260720145408",
+      "relative_order": 42,
+      "purpose": "Industry intelligence version security",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260721020000_billing_schema_v1.sql",
+      "timestamp": "20260721020000",
+      "relative_order": 43,
+      "purpose": "billing schema v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION"
+      ],
+      "dependencies": [
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260721023123_custom_kpis_and_roleplay_v1.sql",
+      "timestamp": "20260721023123",
+      "relative_order": 44,
+      "purpose": "custom kpis and roleplay v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260721025031_ai_personas_v1.sql",
+      "timestamp": "20260721025031",
+      "relative_order": 45,
+      "purpose": "AI personas",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260721181644_team_invites_v1.sql",
+      "timestamp": "20260721181644",
+      "relative_order": 46,
+      "purpose": "team invites v1",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "FUNCTION",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review",
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "function/trigger ordering",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260721195759_budget_metrics_hierarchy_v1.sql",
+      "timestamp": "20260721195759",
+      "relative_order": 47,
+      "purpose": "Budget, metrics, and hierarchy",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260721234042_brands_margin_periods_v1.sql",
+      "timestamp": "20260721234042",
+      "relative_order": 48,
+      "purpose": "Brands, manufacturers, vendor assets",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260722002119_speciq_core_tables.sql",
+      "timestamp": "20260722002119",
+      "relative_order": 49,
+      "purpose": "speciq core tables",
+      "statement_types": [
+        "DDL",
+        "RLS_POLICY",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "RLS helper ordering"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "Auth/identifier dependency review required"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "RLS helper ordering"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260722021852_speciq_rls_policies.sql",
+      "timestamp": "20260722021852",
+      "relative_order": 50,
+      "purpose": "Spec IQ RLS policies",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260722023727_speciq_retailer_settings.sql",
+      "timestamp": "20260722023727",
+      "relative_order": 51,
+      "purpose": "speciq retailer settings",
+      "statement_types": [
+        "DDL",
+        "SEED_DATA",
+        "RLS_POLICY",
+        "STORAGE",
+        "AUTH"
+      ],
+      "dependencies": [
+        "Supabase Auth",
+        "Supabase Storage",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "replay_classification": "REQUIRES_MANUAL_REVIEW",
+      "staging_risks": [
+        "seed data requires synthetic review"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy",
+        "Supabase Auth",
+        "Supabase Storage",
+        "RLS helper ordering",
+        "seed data"
+      ],
+      "recommended_action": "Review for synthetic-data and environment-safe replay."
+    },
+    {
+      "filename": "20260722123959_create_brand_training_cards.sql",
+      "timestamp": "20260722123959",
+      "relative_order": 52,
+      "purpose": "Brand training cards",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260722142835_brand_academy_phase1_schema.sql",
+      "timestamp": "20260722142835",
+      "relative_order": 53,
+      "purpose": "Brand Academy phase 1",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    },
+    {
+      "filename": "20260722191325_brand_academy_quizzes_and_launch.sql",
+      "timestamp": "20260722191325",
+      "relative_order": 54,
+      "purpose": "Brand Academy quizzes",
+      "statement_types": [
+        "HISTORICAL_MARKER"
+      ],
+      "dependencies": [],
+      "replay_classification": "NOT_SAFE_TO_REPLAY",
+      "staging_risks": [
+        "historical marker; original executable SQL unavailable"
+      ],
+      "preconditions": [
+        "explicit staging target",
+        "approved baseline strategy"
+      ],
+      "recommended_action": "Require approved reproducible baseline artifact."
+    }
+  ]
+}
