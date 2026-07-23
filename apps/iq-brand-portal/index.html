@@ -25,7 +25,8 @@ textarea{resize:vertical;min-height:60px}
 select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 5 5-5' stroke='%237e8fa6' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 .num{font-variant-numeric:tabular-nums}
 
-#shell{display:flex;height:100dvh}
+#shell{min-height:100vh}
+.cnav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%}
 #sidebar{width:220px;background:var(--navy);color:#fff;padding:20px 16px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
 #sidebar .logo{font-family:Sora;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:20px;padding:8px 0;color:#fff}
 #sidebar .logo span{color:var(--accent)}
@@ -133,19 +134,127 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </head>
 <body>
 
-<div id="login">
-  <h1>IQ Brand <span>Marketing</span></h1>
-  <p class="sub">Manufacturer Intelligence Portal</p>
-  <div class="form">
-    <div class="fg"><label>Email</label><input type="email" id="loginEmail" placeholder="you@manufacturer.com" value="demo@applianceiq.com"></div>
-    <div class="fg"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" value="DemoIQ2026!"></div>
-    <div class="err" id="loginErr"></div>
-    <button class="btn btn-primary" style="width:100%;padding:14px" onclick="doLogin()">Sign In</button>
-    <p class="demo-hint">Demo: demo@applianceiq.com / DemoIQ2026!</p>
+<!-- LANDING PAGE -->
+<div id="landing">
+<nav class="cnav"><div class="cnav-inner" style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 5%">
+  <div style="font-family:Sora;font-weight:800;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:9px"><span style="background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800">IQ</span>Brand Marketing</div>
+  <div style="display:flex;align-items:center;gap:24px">
+    <a href="#bm-features" style="color:var(--steel);font-size:13px;text-decoration:none;font-weight:500">Features</a>
+    <a href="#bm-pricing" style="color:var(--steel);font-size:13px;text-decoration:none;font-weight:500">Pricing</a>
+    <a href="#bm-coverage" style="color:var(--steel);font-size:13px;text-decoration:none;font-weight:500">Coverage</a>
+    <a href="#" onclick="event.preventDefault();toggleLogin()" style="border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:Sora;font-weight:600">Log In</a>
+    <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;cursor:pointer">Request a Demo →</button>
+  </div>
+</div></nav>
+
+<section style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px;position:relative;overflow:hidden">
+<div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)"></div>
+<div style="max-width:1200px;margin:0 auto;width:100%">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">IQ Brand Marketing — Manufacturer Portal</span></div>
+  <h1 style="font-family:Sora;font-size:clamp(38px,5.5vw,72px);font-weight:800;letter-spacing:-2.5px;color:var(--navy);margin-bottom:24px;max-width:800px;line-height:1.03">See your brand.<br>On every <em style="font-style:normal;color:var(--accent)">floor</em>.<br>In real time.</h1>
+  <p style="font-size:18px;color:var(--steel);max-width:580px;line-height:1.65;margin-bottom:40px">AI-powered store audits. Trained field reps. Product condition tracking. Action management. Competitive intelligence. One dashboard for everything happening at retail — across Canada and the United States.</p>
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:60px;flex-wrap:wrap">
+    <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:15px;padding:14px 32px;border-radius:999px;border:none;cursor:pointer">Request a Brand Audit →</button>
+    <a href="#bm-features" style="border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:Sora;font-weight:600">See How It Works</a>
+  </div>
+  <div style="background:var(--navy);border-radius:16px;padding:28px;color:#fff">
+    <div style="font-family:Sora;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.4);margin-bottom:20px">Live Dashboard — July 2026 · All Stores</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-family:Sora;font-size:28px;font-weight:800;letter-spacing:-1px">81</div><div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">Avg Brand Score</div><div style="font-size:12px;font-weight:700;margin-top:6px;color:#34d399">▲ 3 vs prior</div></div>
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-family:Sora;font-size:28px;font-weight:800;letter-spacing:-1px">8</div><div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">Visits Completed</div><div style="font-size:12px;font-weight:700;margin-top:6px;color:#34d399">▲ On track</div></div>
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-family:Sora;font-size:28px;font-weight:800;letter-spacing:-1px">5</div><div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">Open Actions</div><div style="font-size:12px;font-weight:700;margin-top:6px;color:#f87171">3 critical</div></div>
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-family:Sora;font-size:28px;font-weight:800;letter-spacing:-1px">14</div><div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px">Staff Trained</div><div style="font-size:12px;font-weight:700;margin-top:6px;color:#34d399">6 sessions</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:48px;border-top:1px solid var(--line);padding-top:40px;margin-top:48px;flex-wrap:wrap">
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-1px">8</div><div style="font-size:12px;color:var(--steel);margin-top:2px">Stores Covered</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-1px">2</div><div style="font-size:12px;color:var(--steel);margin-top:2px">Countries</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-1px">7</div><div style="font-size:12px;color:var(--steel);margin-top:2px">Retailers</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-1px">15</div><div style="font-size:12px;color:var(--steel);margin-top:2px">Status Stages</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-1px">AI</div><div style="font-size:12px;color:var(--steel);margin-top:2px">Photo Analysis</div></div>
+  </div>
+</div>
+</section>
+
+<section style="padding:100px 5%;background:#fff" id="bm-features"><div style="max-width:1200px;margin:0 auto">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">Features</span></div>
+  <h2 style="font-family:Sora;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px">Everything manufacturers need to<br>see the retail floor clearly.</h2>
+  <p style="font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px">AI-assisted audits, trained field reps, and a resolution workflow that turns observations into accountability.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📸</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">AI-Powered Store Audits</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Field reps capture photos and video. AI identifies broken displays, missing signage, pricing errors. Reps confirm each finding before submission.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📊</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Brand Execution Scoring</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Every visit generates a score across visibility, condition, signage, pricing, and competitive positioning. Track trends over time by store, region, or country.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">⚡</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Action Management</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Every issue becomes a trackable action with 15 status stages, time-stamped audit trails, assignments, due dates, and full resolution measurement.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">🎓</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Product Training</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Reps train retail staff during visits. Knowledge scores, topics covered, employee names, and follow-up needs — all connected to your dashboard.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">🆚</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Competitive Intelligence</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Floor presence, display sizes, promotions, new models spotted, staff preferences, customer objections — captured at every visit across every store.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📱</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Drill-Down Dashboard</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Country → Region → Retailer → Store → Product → Issue. Real-time issue tracking, resolution metrics, service requests, replacement tracking, and CSV exports.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">💬</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Tiered Comments</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Internal, manufacturer, retailer, and service provider comment permissions on every action. Sensitive notes stay private. Shared updates go to the right people.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📦</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Service &amp; Replacement Tracking</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Service requests, replacement approvals, part orders, technician deployments — every step tracked with time-to-resolution metrics and full audit history.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📤</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Export Everything</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Actions, findings, visits, training, competitive intel, store summaries — downloadable CSV exports with custom filters by store, status, and priority.</p></div>
+  </div>
+</div></section>
+
+<section style="padding:100px 5%" id="bm-pricing"><div style="max-width:1200px;margin:0 auto">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">Pricing</span></div>
+  <h2 style="font-family:Sora;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px">Real visibility.<br>Priced for real operations.</h2>
+  <p style="font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px">All plans include AI photo analysis, manufacturer dashboard, action management, and competitive intelligence.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)">Regional</div>
+      <div style="font-family:Sora;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px">$2,500<span style="font-size:16px;font-weight:400">/mo</span></div>
+      <div style="font-size:13px;color:var(--steel)">Up to 15 stores · 1 region</div>
+      <ul style="list-style:none;padding:0;margin:18px 0;flex:1"><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Monthly store visits</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ AI-assisted audits</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Brand execution scoring</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Manufacturer dashboard</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Action tracking</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ CSV exports</li><li style="font-size:13px;color:var(--ink);padding:6px 0">✓ Email support</li></ul>
+      <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Request a Quote</button>
+    </div>
+    <div style="background:#fff;border:1px solid var(--accent);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(99,102,241,0.12)">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent)">National <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;margin-left:6px">Popular</span></div>
+      <div style="font-family:Sora;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px">$7,500<span style="font-size:16px;font-weight:400">/mo</span></div>
+      <div style="font-size:13px;color:var(--steel)">Up to 50 stores · multi-region</div>
+      <ul style="list-style:none;padding:0;margin:18px 0;flex:1"><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Everything in Regional</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Biweekly visits</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Product training</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Competitive intelligence</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Full action management</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Service escalation</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Executive reports</li><li style="font-size:13px;color:var(--ink);padding:6px 0">✓ Dedicated account manager</li></ul>
+      <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Request a Quote</button>
+    </div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)">Enterprise</div>
+      <div style="font-family:Sora;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px">Custom</div>
+      <div style="font-size:13px;color:var(--steel)">Unlimited stores · CA + US</div>
+      <ul style="list-style:none;padding:0;margin:18px 0;flex:1"><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Everything in National</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Weekly visits</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Multi-brand support</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Mystery shopping</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Launch execution</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ API integrations</li><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Custom reporting</li><li style="font-size:13px;color:var(--ink);padding:6px 0">✓ Dedicated field team</li></ul>
+      <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Contact Sales</button>
+    </div>
+  </div>
+</div></section>
+
+<section style="padding:100px 5%;background:#fff" id="bm-coverage"><div style="max-width:1200px;margin:0 auto">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">Coverage</span></div>
+  <h2 style="font-family:Sora;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:40px">Boots on the ground.<br>Canada and the United States.</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:700px">
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:32px;text-align:center"><div style="font-size:40px;margin-bottom:10px">🇨🇦</div><h3 style="font-family:Sora;font-size:22px;font-weight:800;color:var(--navy);margin-bottom:6px">Canada</h3><p style="font-size:14px;color:var(--steel)">National and regional field coverage. Active programs across Ontario, British Columbia, Alberta, and Quebec.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:32px;text-align:center"><div style="font-size:40px;margin-bottom:10px">🇺🇸</div><h3 style="font-family:Sora;font-size:22px;font-weight:800;color:var(--navy);margin-bottom:6px">United States</h3><p style="font-size:14px;color:var(--steel)">Phased regional coverage through ApplianceIQ-managed field teams and partner networks.</p></div>
+  </div>
+</div></section>
+
+<footer style="background:var(--navy);color:rgba(255,255,255,0.55);text-align:center;padding:32px 5%;font-size:13px">
+  <p>© 2026 IQ Brand Marketing · <a href="#bm-features" style="color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600">Features</a> · <a href="#bm-pricing" style="color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600">Pricing</a> · <a href="#" onclick="event.preventDefault();toggleLogin()" style="color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600">Log In</a></p>
+  <p style="margin-top:8px;font-size:11px;opacity:0.6">Field execution powered by real retail intelligence. Part of the <a href="https://applianceiq.ai" style="color:rgba(255,255,255,0.7);text-decoration:none">ApplianceIQ</a> platform.</p>
+</footer>
+</div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" style="position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45);position:relative">
+    <button onclick="toggleLogin()" style="position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;color:var(--steel);cursor:pointer">&times;</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span style="background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">IQ</span>
+      <h2 style="font-family:Sora;font-size:20px;font-weight:800;color:var(--navy);margin:0">Brand Marketing</h2>
+    </div>
+    <div style="font-size:13px;color:var(--steel);margin-bottom:18px">Manufacturer Intelligence Portal</div>
+    <div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Email</label><input id="loginEmail" type="email" placeholder="you@manufacturer.com" value="demo@applianceiq.com" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px"></div>
+    <div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Password</label><input id="loginPass" type="password" value="DemoIQ2026!" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px"></div>
+    <div id="loginErr" style="color:var(--red);font-size:13px;min-height:18px;margin-bottom:6px"></div>
+    <button onclick="doLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Sign In</button>
+    <div style="font-size:12px;color:var(--steel);text-align:center;margin-top:14px">Demo: demo@applianceiq.com / DemoIQ2026!</div>
   </div>
 </div>
 
-<div id="shell" style="display:none">
+<div id="shell" style="display:none;grid-template-columns:220px 1fr;min-height:100vh">
   <div id="sidebar">
     <div class="logo"><span class="logo-pill">IQ</span>Brand <span>Marketing</span></div>
     <nav id="sidebarNav">
@@ -175,6 +284,8 @@ const sb = createClient(SB_URL, SB_KEY);
 let user = null, D = {}, currentView = 'dashboard';
 
 // ─── Auth ──────────────────────────────────────
+window.toggleLogin=()=>{const o=document.getElementById('loginOverlay');o.style.display=o.style.display==='flex'?'none':'flex'};
+
 window.doLogin = async () => {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -189,8 +300,9 @@ window.doLogout = async()=>{await sb.auth.signOut();location.reload()};
 async function checkAuth(){const{data:{user:u}}=await sb.auth.getUser();if(u){user=u;boot()}}
 
 async function boot(){
-  document.getElementById('login').style.display='none';
-  document.getElementById('shell').style.display='flex';
+  document.getElementById('landing').style.display='none';
+  document.getElementById('loginOverlay').style.display='none';
+  document.getElementById('shell').style.display='grid';
   const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
   document.getElementById('userName').textContent=p?.full_name||user.email;
   await loadAll();
