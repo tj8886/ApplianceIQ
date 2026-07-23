@@ -109,32 +109,110 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 .empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.4}
 .empty p{font-size:14px}
 
-/* Login */
-#login{position:fixed;inset:0;background:rgba(15,31,61,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:24px;text-align:center;z-index:200}
-#login h1{font-family:Sora;font-size:24px;font-weight:800;margin-bottom:4px;color:var(--navy)}
-#login .sub{color:var(--steel);margin-bottom:24px;font-size:14px}
-#login .form-group{width:100%;max-width:340px}
-#login .btn{max-width:340px}
-#login .err{color:var(--red);font-size:13px;margin-bottom:12px;min-height:18px}
-#login .demo-hint{font-size:12px;color:var(--steel);margin-top:12px;max-width:340px}
-#login .login-card{background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
-
-/* Back button */
-.back-btn{display:flex;align-items:center;gap:6px;color:var(--txt2);font-size:13px;font-weight:600;margin-bottom:16px;padding:4px 0}
+/* Login overlay */
+#loginOverlay{position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:none;align-items:center;justify-content:center}
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--steel);font-size:13px;font-weight:600;margin-bottom:16px;padding:4px 0}
 </style>
 </head>
 <body>
 
-<!-- Login Screen -->
-<div id="login">
-  <div class="login-card">
-  <h1>IQ <span style="color:var(--accent)">Field</span></h1>
-  <p class="sub">Store visit intelligence</p>
-  <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="you@applianceiq.com" value="demo@applianceiq.com"></div>
-  <div class="form-group"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" value="DemoIQ2026!"></div>
-  <div class="err" id="loginErr"></div>
-  <button class="btn btn-primary" onclick="doLogin()" style="max-width:340px;margin-bottom:12px;border-radius:999px;width:100%">Sign In</button>
-  <p class="demo-hint">Demo: demo@applianceiq.com / DemoIQ2026!</p>
+<!-- LANDING PAGE -->
+<div id="landing">
+<nav style="position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%"><div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px">
+  <div style="font-family:Sora;font-weight:800;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:9px"><span style="background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800">IQ</span>IQ Field</div>
+  <div style="display:flex;align-items:center;gap:24px">
+    <a href="#f-features" style="color:var(--steel);font-size:13px;text-decoration:none;font-weight:500">Features</a>
+    <a href="#f-pricing" style="color:var(--steel);font-size:13px;text-decoration:none;font-weight:500">Pricing</a>
+    <a href="#" onclick="event.preventDefault();toggleLogin()" style="border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:Sora;font-weight:600">Log In</a>
+    <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;cursor:pointer">Start Free Trial →</button>
+  </div>
+</div></nav>
+
+<section style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px;position:relative"><div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)"></div><div style="max-width:1200px;margin:0 auto;width:100%">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">IQ Brand Marketing — Field App</span></div>
+  <h1 style="font-family:Sora;font-size:clamp(38px,5.5vw,72px);font-weight:800;letter-spacing:-2.5px;color:var(--navy);margin-bottom:24px;max-width:800px;line-height:1.03">Every store visit<br>creates <em style="font-style:normal;color:var(--accent)">intelligence</em>.</h1>
+  <p style="font-size:18px;color:var(--steel);max-width:580px;line-height:1.65;margin-bottom:40px">The mobile app for field representatives. Capture photos, record findings, train staff, track competitive activity — all from your iPad or phone. AI analyzes every image. You confirm before it ships.</p>
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:60px;flex-wrap:wrap">
+    <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:15px;padding:14px 32px;border-radius:999px;border:none;cursor:pointer">Start Free Trial →</button>
+    <a href="#f-features" style="border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:Sora;font-weight:600">See How It Works</a>
+  </div>
+  <div style="background:var(--navy);border-radius:16px;padding:28px;color:#fff">
+    <div style="font-family:Sora;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.4);margin-bottom:20px">Field Rep Dashboard — Live Visit Data</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-size:24px;margin-bottom:4px">📋</div><div style="font-family:Sora;font-size:20px;font-weight:800">5</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">Assigned Stores</div></div>
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-size:24px;margin-bottom:4px">📸</div><div style="font-family:Sora;font-size:20px;font-weight:800">AI</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">Photo Analysis</div></div>
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-size:24px;margin-bottom:4px">✅</div><div style="font-family:Sora;font-size:20px;font-weight:800">16</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">Findings Captured</div></div>
+      <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center"><div style="font-size:24px;margin-bottom:4px">🎓</div><div style="font-family:Sora;font-size:20px;font-weight:800">14</div><div style="font-size:11px;color:rgba(255,255,255,0.5)">Staff Trained</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:48px;border-top:1px solid var(--line);padding-top:40px;margin-top:48px;flex-wrap:wrap">
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy)">iPad</div><div style="font-size:12px;color:var(--steel)">Optimized</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy)">GPS</div><div style="font-size:12px;color:var(--steel)">Verified</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy)">20+</div><div style="font-size:12px;color:var(--steel)">Issue Types</div></div>
+    <div><div style="font-family:Sora;font-size:32px;font-weight:800;color:var(--navy)">Offline</div><div style="font-size:12px;color:var(--steel)">Capable</div></div>
+  </div>
+</div></section>
+
+<section style="padding:100px 5%;background:#fff" id="f-features"><div style="max-width:1200px;margin:0 auto">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">Features</span></div>
+  <h2 style="font-family:Sora;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px">Built for the floor.<br>Not the office.</h2>
+  <p style="font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px">Large buttons. Minimal typing. Photo-first workflows. Complete a full store visit without a laptop.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📍</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">GPS Check-In</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Arrival time, GPS coordinates, visit purpose, and open issues from prior visits — captured automatically when you start.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📸</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">AI Photo Analysis</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Capture photos by category. AI identifies broken displays, missing tags, dirty units. Confirm or reject each finding.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">🔍</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Manual Findings</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">20+ issue categories, 7 condition levels, 17 recommended actions. Record brand, model, severity, and comments.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">🎓</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Staff Training</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Record training topic, models covered, employee names, duration, and knowledge scores. Flag follow-ups.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">🆚</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Competitive Intel</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">Competitor floor presence, display sizes, promotions, new models, staff preferences — captured at every visit.</p></div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px"><div style="font-size:28px;margin-bottom:12px">📊</div><h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)">Store Scoring</h3><p style="font-size:14px;color:var(--steel);line-height:1.6">AI generates a brand execution score at visit completion. See current vs previous score and delta.</p></div>
+  </div>
+</div></section>
+
+<section style="padding:100px 5%" id="f-pricing"><div style="max-width:1200px;margin:0 auto">
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:20px"><span style="width:24px;height:1px;background:var(--accent)"></span><span style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600">Pricing</span></div>
+  <h2 style="font-family:Sora;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px">Field intelligence.<br>Priced per rep.</h2>
+  <p style="font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px">Included with every IQ Brand Marketing plan. Standalone licensing available for organizations running their own field teams.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px">
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)">Starter</div>
+      <div style="font-family:Sora;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px">$49<span style="font-size:16px;font-weight:400">/rep/mo</span></div>
+      <div style="font-size:13px;color:var(--steel)">Up to 5 reps</div>
+      <ul style="list-style:none;padding:0;margin:18px 0;flex:1"><li style="font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8">✓ GPS check-in/check-out</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Photo capture</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Manual findings</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Visit checklists</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Store scoring</li><li style="font-size:13px;padding:6px 0">✓ Visit history</li></ul>
+      <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Start Free Trial</button>
+    </div>
+    <div style="background:#fff;border:1px solid var(--accent);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(99,102,241,0.12)">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent)">Professional <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;margin-left:6px">Popular</span></div>
+      <div style="font-family:Sora;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px">$99<span style="font-size:16px;font-weight:400">/rep/mo</span></div>
+      <div style="font-size:13px;color:var(--steel)">Unlimited reps</div>
+      <ul style="list-style:none;padding:0;margin:18px 0;flex:1"><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Everything in Starter</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ AI photo analysis</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Competitive intelligence</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Staff training</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Auto-action creation</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Portal integration</li><li style="font-size:13px;padding:6px 0">✓ Priority support</li></ul>
+      <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Start Free Trial</button>
+    </div>
+    <div style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)">Enterprise</div>
+      <div style="font-family:Sora;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px">Custom</div>
+      <div style="font-size:13px;color:var(--steel)">Volume + multi-country</div>
+      <ul style="list-style:none;padding:0;margin:18px 0;flex:1"><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Everything in Professional</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Custom issue categories</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Multi-brand programs</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ Offline mode</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ API access</li><li style="font-size:13px;padding:6px 0;border-bottom:1px solid #f3f5f8">✓ SSO / SAML</li><li style="font-size:13px;padding:6px 0">✓ Dedicated onboarding</li></ul>
+      <button onclick="toggleLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Contact Sales</button>
+    </div>
+  </div>
+</div></section>
+
+<footer style="background:var(--navy);color:rgba(255,255,255,0.55);text-align:center;padding:32px 5%;font-size:13px">
+  <p>© 2026 IQ Brand Marketing · <a href="#f-features" style="color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600">Features</a> · <a href="#f-pricing" style="color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600">Pricing</a> · <a href="#" onclick="event.preventDefault();toggleLogin()" style="color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600">Log In</a></p>
+  <p style="margin-top:8px;font-size:11px;opacity:0.6">Mobile field intelligence. Part of the <a href="https://applianceiq.ai" style="color:rgba(255,255,255,0.7);text-decoration:none">ApplianceIQ</a> platform.</p>
+</footer>
+</div>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" style="position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45);position:relative">
+    <button onclick="toggleLogin()" style="position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;color:var(--steel);cursor:pointer">&times;</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><span style="background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">IQ</span><h2 style="font-family:Sora;font-size:20px;font-weight:800;color:var(--navy);margin:0">IQ Field</h2></div>
+    <div style="font-size:13px;color:var(--steel);margin-bottom:18px">Store visit intelligence</div>
+    <div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Email</label><input id="loginEmail" type="email" value="demo@applianceiq.com" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px"></div>
+    <div style="margin-bottom:14px"><label style="display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Password</label><input id="loginPass" type="password" value="DemoIQ2026!" style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px"></div>
+    <div id="loginErr" style="color:var(--red);font-size:13px;min-height:18px;margin-bottom:6px"></div>
+    <button onclick="doLogin()" style="background:var(--navy);color:#fff;font-family:Sora;font-weight:700;font-size:13px;padding:12px;border-radius:999px;border:none;cursor:pointer;width:100%">Sign In</button>
+    <div style="font-size:12px;color:var(--steel);text-align:center;margin-top:14px">Demo: demo@applianceiq.com / DemoIQ2026!</div>
   </div>
 </div>
 
@@ -151,8 +229,29 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
     <!-- Assignments View -->
     <div class="view active" id="v-assignments">
       <h2 style="font-family:Sora;font-size:20px;font-weight:800;margin-bottom:4px">Today's Visits</h2>
-      <p style="font-size:13px;color:var(--txt2);margin-bottom:16px" id="todayDate"></p>
+      <p style="font-size:13px;color:var(--steel);margin-bottom:16px" id="todayDate"></p>
       <div id="assignmentsList"></div>
+    </div>
+
+    <!-- Schedule View -->
+    <div class="view" id="v-schedule">
+      <h2 style="font-family:Sora;font-size:20px;font-weight:800;margin-bottom:4px">Visit Schedule</h2>
+      <p style="font-size:13px;color:var(--steel);margin-bottom:16px">Upcoming store visits and calendar sync</p>
+      <div id="calendarSync" style="margin-bottom:16px">
+        <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div><strong style="font-size:14px">Calendar Sync</strong><p style="font-size:12px;color:var(--steel)">Add visits to your calendar</p></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" style="background:#4285f4;color:#fff;border-radius:999px;padding:8px 16px;font-size:12px" onclick="syncCalendar('google')">📅 Google</button>
+            <button class="btn btn-sm" style="background:#0078d4;color:#fff;border-radius:999px;padding:8px 16px;font-size:12px" onclick="syncCalendar('outlook')">📧 Outlook</button>
+            <button class="btn btn-sm" style="background:#333;color:#fff;border-radius:999px;padding:8px 16px;font-size:12px" onclick="syncCalendar('apple')">🍎 Apple</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background:var(--navy);color:#fff;padding:14px 18px;margin-bottom:16px;border:none">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">⏱️</span><span style="font-family:Sora;font-size:13px;font-weight:700">Time Tracking Active</span></div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.6);margin-top:4px">Check-in and check-out times are GPS-verified and recorded for every visit. Duration is calculated automatically.</p>
+      </div>
+      <div id="scheduleList"></div>
     </div>
 
     <!-- Active Visit View -->
@@ -198,7 +297,11 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
   <div id="nav">
     <button class="active" onclick="navTo('v-assignments',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-      Visits
+      Today
+    </button>
+    <button onclick="navTo('v-schedule',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Schedule
     </button>
     <button onclick="navTo('v-history',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
@@ -224,6 +327,8 @@ let activeAssignment = null;
 let visitFindings = [];
 
 // ─── Auth ──────────────────────────────────────
+window.toggleLogin=()=>{const o=document.getElementById('loginOverlay');o.style.display=o.style.display==='flex'?'none':'flex'};
+
 window.doLogin = async () => {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -241,16 +346,18 @@ window.doLogout = async () => { await sb.auth.signOut(); location.reload(); };
 async function checkAuth() {
   const { data: { user } } = await sb.auth.getUser();
   if (user) { currentUser = user; boot(); }
-  else { document.getElementById('login').style.display = 'flex'; }
+  else { /* landing page visible by default */ }
 }
 
 async function boot() {
-  document.getElementById('login').style.display = 'none';
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   const { data: prof } = await sb.from('profiles').select('full_name').eq('user_id', currentUser.id).single();
   document.getElementById('repName').textContent = prof?.full_name || currentUser.email;
   document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   loadAssignments();
+  loadSchedule();
   loadHistory();
   loadActions();
 }
@@ -275,14 +382,123 @@ async function loadAssignments() {
     return `<div class="card" style="cursor:pointer" onclick='startVisit(${JSON.stringify(a)})'>
       <div class="card-header"><h3>${a.store?.store_name || 'Store'}</h3>${badge}</div>
       <p style="font-size:13px">${a.store?.retailer?.name || ''} · ${a.store?.city || ''}, ${a.store?.province_state || ''}</p>
-      <p class="meta">${a.client?.client_name || ''} · ${a.program?.name || ''}</p>
-      <p class="meta">${a.frequency} · Due ${due ? due.toLocaleDateString() : 'TBD'}</p>
-      <button class="btn btn-primary" style="margin-top:12px" onclick="event.stopPropagation();startVisit(${JSON.stringify(a).replace(/"/g,'&quot;')})">
-        Start Visit
+      <p style="font-size:12px;color:var(--steel)">${a.store?.address || ''}</p>
+      <p class="meta" style="margin-top:6px"><strong>Client:</strong> ${a.client?.client_name || ''}</p>
+      <p class="meta"><strong>Program:</strong> ${a.program?.name || ''}</p>
+      <p class="meta"><strong>Frequency:</strong> ${a.frequency} · <strong>Due:</strong> ${due ? due.toLocaleDateString() : 'TBD'}</p>
+      <div style="background:#ede9fe;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#6366f1;display:flex;align-items:center;gap:6px">
+        <span>⏱️</span> Check-in &amp; check-out times will be GPS-verified and tracked
+      </div>
+      <button class="btn btn-primary" style="margin-top:12px;border-radius:999px" onclick="event.stopPropagation();startVisit(${JSON.stringify(a).replace(/"/g,'&quot;')})">
+        Start Visit →
       </button>
     </div>`;
   }).join('');
 }
+
+// ─── Schedule ──────────────────────────────────
+async function loadSchedule() {
+  const { data: assignments } = await sb.from('field_assignments')
+    .select('*, client:field_clients(client_name), program:field_programs(name,description), store:field_stores(store_name, address, city, province_state, retailer:field_retailers(name))')
+    .eq('status', 'active')
+    .order('next_visit_due');
+
+  const el = document.getElementById('scheduleList');
+  if (!assignments?.length) { el.innerHTML = '<div class="empty"><p>No scheduled visits</p></div>'; return; }
+
+  // Group by week
+  const weeks = {};
+  assignments.forEach(a => {
+    const due = a.next_visit_due ? new Date(a.next_visit_due + 'T00:00:00') : new Date();
+    const weekStart = new Date(due);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const key = weekStart.toISOString().split('T')[0];
+    if (!weeks[key]) weeks[key] = [];
+    weeks[key].push(a);
+  });
+
+  el.innerHTML = Object.entries(weeks).sort().map(([weekKey, items]) => {
+    const weekDate = new Date(weekKey + 'T00:00:00');
+    const weekEnd = new Date(weekDate);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const weekLabel = `${weekDate.toLocaleDateString('en-US', {month:'short',day:'numeric'})} — ${weekEnd.toLocaleDateString('en-US', {month:'short',day:'numeric'})}`;
+    
+    return `<div style="margin-bottom:20px">
+      <div style="font-family:Sora;font-size:13px;font-weight:700;color:var(--navy);padding:8px 0;border-bottom:2px solid var(--line);margin-bottom:10px">📅 Week of ${weekLabel}</div>
+      ${items.map(a => {
+        const due = a.next_visit_due ? new Date(a.next_visit_due + 'T00:00:00') : null;
+        const dayName = due ? due.toLocaleDateString('en-US', {weekday:'long'}) : '';
+        const isOverdue = due && due < new Date(new Date().toDateString());
+        return `<div class="card" style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <div style="font-family:Sora;font-size:14px;font-weight:700;color:var(--navy)">${a.store?.store_name || ''}</div>
+              <div style="font-size:12px;color:var(--steel)">${a.store?.retailer?.name || ''} · ${a.store?.city || ''}, ${a.store?.province_state || ''}</div>
+              <div style="font-size:12px;color:var(--steel);margin-top:4px">${a.store?.address || ''}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-family:Sora;font-size:12px;font-weight:700;color:${isOverdue?'var(--red)':'var(--navy)'}">${dayName}</div>
+              <div style="font-size:11px;color:var(--steel)">${due ? due.toLocaleDateString() : ''}</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #f3f5f8">
+            <div style="font-size:12px"><strong>Program:</strong> ${a.program?.name || '—'}</div>
+            ${a.program?.description ? `<div style="font-size:12px;color:var(--steel);margin-top:2px">${a.program.description}</div>` : ''}
+            <div style="font-size:12px;margin-top:2px"><strong>Client:</strong> ${a.client?.client_name || ''} · <strong>Cadence:</strong> ${a.frequency}</div>
+          </div>
+          ${isOverdue ? `<div style="background:#fdecea;border-radius:6px;padding:6px 10px;margin-top:8px;font-size:11px;color:#8c2f22;font-weight:600">⚠ Overdue — was due ${due.toLocaleDateString()}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ─── Calendar Sync ─────────────────────────────
+window.syncCalendar = async (provider) => {
+  const { data: assignments } = await sb.from('field_assignments')
+    .select('*, client:field_clients(client_name), program:field_programs(name), store:field_stores(store_name, address, city, province_state)')
+    .eq('status', 'active')
+    .order('next_visit_due');
+
+  if (!assignments?.length) { alert('No upcoming visits to sync'); return; }
+
+  if (provider === 'google') {
+    // Open Google Calendar for each assignment
+    assignments.forEach(a => {
+      const due = a.next_visit_due || new Date().toISOString().split('T')[0];
+      const title = encodeURIComponent(`Store Visit: ${a.store?.store_name || 'Store'}`);
+      const details = encodeURIComponent(`Client: ${a.client?.client_name || ''}\nProgram: ${a.program?.name || ''}\nStore: ${a.store?.store_name || ''}\n${a.store?.address || ''}, ${a.store?.city || ''} ${a.store?.province_state || ''}\n\n⏱️ Check-in and check-out times are GPS-verified.\nOpen IQ Field to start your visit.`);
+      const location = encodeURIComponent(`${a.store?.address || ''}, ${a.store?.city || ''} ${a.store?.province_state || ''}`);
+      const dateStr = due.replace(/-/g, '');
+      const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}T090000/${dateStr}T120000&details=${details}&location=${location}`;
+      window.open(url, '_blank');
+    });
+  } else if (provider === 'outlook') {
+    assignments.forEach(a => {
+      const due = a.next_visit_due || new Date().toISOString().split('T')[0];
+      const title = encodeURIComponent(`Store Visit: ${a.store?.store_name || 'Store'}`);
+      const body = encodeURIComponent(`Client: ${a.client?.client_name}\nProgram: ${a.program?.name}\n\n⏱️ Check-in/out tracked via IQ Field`);
+      const location = encodeURIComponent(`${a.store?.address || ''}, ${a.store?.city || ''}`);
+      const url = `https://outlook.live.com/calendar/0/action/compose?subject=${title}&body=${body}&location=${location}&startdt=${due}T09:00:00&enddt=${due}T12:00:00`;
+      window.open(url, '_blank');
+    });
+  } else if (provider === 'apple') {
+    // Generate .ics file
+    let ics = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//IQ Field//EN\n';
+    assignments.forEach(a => {
+      const due = (a.next_visit_due || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+      ics += `BEGIN:VEVENT\nDTSTART:${due}T090000\nDTEND:${due}T120000\nSUMMARY:Store Visit: ${a.store?.store_name || 'Store'}\nDESCRIPTION:Client: ${a.client?.client_name || ''}\\nProgram: ${a.program?.name || ''}\\n\\nCheck-in/out tracked via IQ Field\nLOCATION:${a.store?.address || ''}, ${a.store?.city || ''} ${a.store?.province_state || ''}\nEND:VEVENT\n`;
+    });
+    ics += 'END:VCALENDAR';
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'iq-field-visits.ics';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+};
 
 // ─── Start Visit ───────────────────────────────
 window.startVisit = async (assignment) => {
@@ -814,6 +1030,7 @@ window.navTo = (viewId, btn) => {
   document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   showView(viewId);
+  if (viewId === 'v-schedule') loadSchedule();
   if (viewId === 'v-history') loadHistory();
   if (viewId === 'v-actions') loadActions();
 };
