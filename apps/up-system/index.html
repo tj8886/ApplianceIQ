@@ -262,12 +262,26 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 </div></div>
 <div id="modalRoot"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const SB_URL='https://fumwwhyozeouoqscolke.supabase.co';
-const SB_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const sb=supabase.createClient(SB_URL,SB_KEY);
+// ─── UI wiring first — no dependencies, always works ───
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+
+function toggleLogin(mode){
+  const o=$('#loginOverlay');
+  if(o.classList.contains('show')){o.classList.remove('show');}
+  else{o.classList.add('show');$('#upEmail')?.focus();if(mode==='signup')upNote('Enter email and password, then tap Create an account.',true);}
+}
+function upNote(msg,ok){const el=$('#upNotice');el.textContent=msg;el.className='ulogin-notice '+(ok?'ok':'err');}
+
+// Wire every login trigger button by ID — zero inline onclick anywhere
+document.getElementById('navLogin').addEventListener('click',e=>{e.preventDefault();toggleLogin();});
+document.getElementById('navTrial').addEventListener('click',()=>toggleLogin('signup'));
+document.getElementById('heroTrial').addEventListener('click',()=>toggleLogin('signup'));
+document.getElementById('footerLogin').addEventListener('click',e=>{e.preventDefault();toggleLogin();});
+document.getElementById('loginOverlay').addEventListener('click',e=>{if(e.target.id==='loginOverlay')toggleLogin();});
+
+// ─── Now load Supabase and wire auth ───
+let sb=null;
 const mainEl=$('#main'),modalRoot=$('#modalRoot');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtTime=s=>{if(!s&&s!==0)return'—';const m=Math.floor(s/60),sec=s%60;return m>=60?Math.floor(m/60)+'h '+m%60+'m':`${m}:${String(sec).padStart(2,'0')}`;};
@@ -284,18 +298,19 @@ const waitChip=s=>{const m={waiting_for_assignment:'a',assignment_sent:'b',assig
 
 let currentUser=null,currentOrg=null,currentStore=null,currentView='floor',profiles={};
 
-// Auth — all via IDs, no inline onclick
-function toggleLogin(mode){const o=$('#loginOverlay');if(o.classList.contains('show'))o.classList.remove('show');else{o.classList.add('show');$('#upEmail')?.focus();if(mode==='signup')upNote('Enter email and password, then tap Create an account.',true);}}
-function upNote(msg,ok){const el=$('#upNotice');el.textContent=msg;el.className='ulogin-notice '+(ok?'ok':'err');}
-// Wire up all login trigger buttons
-$('#navLogin').onclick=e=>{e.preventDefault();toggleLogin();};
-$('#navTrial').onclick=()=>toggleLogin('signup');
-$('#heroTrial').onclick=()=>toggleLogin('signup');
-$('#footerLogin').onclick=e=>{e.preventDefault();toggleLogin();};
-$('#upSigninBtn').onclick=async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');const{error}=await sb.auth.signInWithPassword({email,password:pw});if(error)return upNote(error.message);upNote('Signed in!',true);boot();};
-$('#upSignupLink').onclick=async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');const{error}=await sb.auth.signUp({email,password:pw});if(error)return upNote(error.message);upNote('Account created! Sign in now.',true);};
-$('#loginOverlay').onclick=e=>{if(e.target===$('#loginOverlay'))toggleLogin();};
-$('#signoutBtn').onclick=async()=>{await sb.auth.signOut();$('#app').style.display='none';$('#landing').style.display='block';};
+// Init Supabase via dynamic import (works in all browsers, no CDN dependency)
+async function initSupabase(){
+  try{
+    const mod=await import('https://esm.sh/@supabase/supabase-js@2');
+    sb=mod.createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
+  }catch(e){console.error('Supabase init failed:',e);upNote('Connection error — please refresh.',false);return;}
+  // Wire auth buttons AFTER supabase is ready
+  document.getElementById('upSigninBtn').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signInWithPassword({email,password:pw});if(error)return upNote(error.message);upNote('Signed in!',true);boot();}catch(e){upNote('Connection error: '+e.message);}});
+  document.getElementById('upSignupLink').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signUp({email,password:pw});if(error)return upNote(error.message);upNote('Account created! Sign in now.',true);}catch(e){upNote('Connection error: '+e.message);}});
+  document.getElementById('signoutBtn').addEventListener('click',async()=>{await sb.auth.signOut();$('#app').style.display='none';$('#landing').style.display='block';});
+  boot();
+}
+initSupabase();
 
 async function boot(){
   const{data:{session}}=await sb.auth.getSession();
