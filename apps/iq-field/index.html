@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#0f1f3d"/>
+<title>IQ Field — Store Visit App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0f1f3d;--navy-2:#16294e;--teal:#2f7d72;
+  --ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#fff;
+  --accent:#6366f1;--verified:#1a9e56;--amber:#e8590c;--red:#c02d1e;
+  --radius:14px;--radius-sm:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' fill='none' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.num{font-variant-numeric:tabular-nums}
+
+/* Layout */
+#app{display:flex;flex-direction:column;height:100dvh;max-width:480px;margin:0 auto}
+#header{padding:12px 16px;background:#0f1f3d;border-bottom:none;display:flex;align-items:center;gap:12px;flex-shrink:0}
+#header h1{font-family:Sora,sans-serif;font-size:18px;font-weight:700;flex:1;color:#fff}
+#header .accent{color:var(--accent)}
+#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
+#nav{display:flex;background:#0f1f3d;border-top:none;flex-shrink:0}
+#nav button{flex:1;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:600;color:rgba(255,255,255,.5);transition:.15s}
+#nav button.active{color:var(--accent)}
+#nav button svg{width:22px;height:22px}
+
+/* Cards */
+.card{background:#fff;border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.card h3{font-family:Sora,sans-serif;font-size:15px;font-weight:700}
+.badge{display:inline-flex;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.badge-green{background:#e8f5e9;color:#2e7d32}
+.badge-amber{background:#fff8e6;color:#b8860b}
+.badge-red{background:#fdecea;color:#8c2f22}
+.badge-blue{background:#ede9fe;color:#6366f1}
+.meta{font-size:12px;color:var(--txt2);margin-top:6px}
+
+/* Buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:16px 24px;border-radius:var(--radius);font-weight:700;font-size:15px;transition:.15s;width:100%;min-height:56px}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:active{background:var(--navy-2);transform:scale(.98)}
+.btn-secondary{background:var(--surface);color:var(--txt);border:1px solid var(--line)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-sm{padding:10px 16px;font-size:13px;min-height:40px;width:auto}
+.btn-row{display:flex;gap:8px}
+.btn-row .btn{flex:1}
+
+/* Score circle */
+.score-ring{width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Sora;font-weight:800;font-size:28px;margin:0 auto 8px;position:relative}
+.score-ring::before{content:'';position:absolute;inset:0;border-radius:50%;border:4px solid var(--line)}
+.score-ring::after{content:'';position:absolute;inset:0;border-radius:50%;border:4px solid var(--accent);border-color:var(--accent) transparent transparent transparent;transform:rotate(-45deg)}
+.score-ring small{font-size:11px;font-weight:600;color:var(--txt2)}
+.score-delta{text-align:center;font-size:12px;font-weight:600}
+.score-up{color:var(--accent)}
+.score-down{color:var(--red)}
+
+/* Grid */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;text-align:center}
+.stat-box .val{font-family:Sora;font-size:22px;font-weight:800;color:var(--navy)}
+.stat-box .label{font-size:11px;color:var(--steel);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+
+/* Finding card */
+.finding{border-left:3px solid var(--line);padding-left:12px;margin-bottom:14px}
+.finding.sev-critical{border-color:var(--red)}
+.finding.sev-high{border-color:var(--amber)}
+.finding.sev-medium{border-color:#60a5fa}
+.finding.sev-low{border-color:var(--accent)}
+.finding h4{font-size:14px;font-weight:700}
+.finding p{font-size:12px;color:var(--txt2);margin-top:3px}
+
+/* Photo grid */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:12px 0}
+.photo-grid .ph{aspect-ratio:1;background:var(--surface);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;border:1px solid var(--line);overflow:hidden;position:relative}
+.photo-grid .ph img{width:100%;height:100%;object-fit:cover}
+.photo-grid .ph-add{border-style:dashed;color:var(--accent)}
+
+/* View transitions */
+.view{display:none;animation:fadeIn .2s ease}
+.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Form */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%}
+
+/* Checklist */
+.check-item{display:flex;align-items:center;gap:12px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer}
+.check-item .ck{width:24px;height:24px;border-radius:6px;border:2px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.check-item.done .ck{background:var(--accent);border-color:var(--accent);color:#fff}
+.check-item.done{opacity:.6}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--txt2)}
+.empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.4}
+.empty p{font-size:14px}
+
+/* Login */
+#login{position:fixed;inset:0;background:rgba(15,31,61,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100dvh;padding:24px;text-align:center;z-index:200}
+#login h1{font-family:Sora;font-size:24px;font-weight:800;margin-bottom:4px;color:var(--navy)}
+#login .sub{color:var(--steel);margin-bottom:24px;font-size:14px}
+#login .form-group{width:100%;max-width:340px}
+#login .btn{max-width:340px}
+#login .err{color:var(--red);font-size:13px;margin-bottom:12px;min-height:18px}
+#login .demo-hint{font-size:12px;color:var(--steel);margin-top:12px;max-width:340px}
+#login .login-card{background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
+
+/* Back button */
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--txt2);font-size:13px;font-weight:600;margin-bottom:16px;padding:4px 0}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login">
+  <div class="login-card">
+  <h1>IQ <span style="color:var(--accent)">Field</span></h1>
+  <p class="sub">Store visit intelligence</p>
+  <div class="form-group"><label>Email</label><input type="email" id="loginEmail" placeholder="you@applianceiq.com" value="demo@applianceiq.com"></div>
+  <div class="form-group"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" value="DemoIQ2026!"></div>
+  <div class="err" id="loginErr"></div>
+  <button class="btn btn-primary" onclick="doLogin()" style="max-width:340px;margin-bottom:12px;border-radius:999px;width:100%">Sign In</button>
+  <p class="demo-hint">Demo: demo@applianceiq.com / DemoIQ2026!</p>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div id="app" style="display:none">
+  <div id="header">
+    <h1>IQ <span class="accent">Field</span></h1>
+    <div id="headerRight" style="display:flex;align-items:center;gap:8px">
+      <span id="repName" style="font-size:12px;color:var(--txt2)"></span>
+      <button onclick="doLogout()" style="font-size:11px;color:var(--red);font-weight:600">Out</button>
+    </div>
+  </div>
+  <div id="main">
+    <!-- Assignments View -->
+    <div class="view active" id="v-assignments">
+      <h2 style="font-family:Sora;font-size:20px;font-weight:800;margin-bottom:4px">Today's Visits</h2>
+      <p style="font-size:13px;color:var(--txt2);margin-bottom:16px" id="todayDate"></p>
+      <div id="assignmentsList"></div>
+    </div>
+
+    <!-- Active Visit View -->
+    <div class="view" id="v-visit">
+      <button class="back-btn" onclick="showView('v-assignments')">← Back to Assignments</button>
+      <div id="visitHeader"></div>
+      <div id="visitTabs" style="display:flex;gap:4px;margin:12px 0;overflow-x:auto">
+        <button class="btn btn-sm btn-secondary vtab active" data-tab="tasks" onclick="switchTab(this,'tasks')">Tasks</button>
+        <button class="btn btn-sm btn-secondary vtab" data-tab="findings" onclick="switchTab(this,'findings')">Findings</button>
+        <button class="btn btn-sm btn-secondary vtab" data-tab="photos" onclick="switchTab(this,'photos')">Photos</button>
+        <button class="btn btn-sm btn-secondary vtab" data-tab="training" onclick="switchTab(this,'training')">Training</button>
+        <button class="btn btn-sm btn-secondary vtab" data-tab="competitive" onclick="switchTab(this,'competitive')">Intel</button>
+      </div>
+      <div id="tabContent"></div>
+    </div>
+
+    <!-- New Finding Form -->
+    <div class="view" id="v-finding">
+      <button class="back-btn" onclick="showVisitTab('findings')">← Back to Findings</button>
+      <h2 style="font-family:Sora;font-size:18px;font-weight:700;margin-bottom:16px">New Finding</h2>
+      <div id="findingForm"></div>
+    </div>
+
+    <!-- Visit Summary / Complete -->
+    <div class="view" id="v-summary">
+      <button class="back-btn" onclick="showView('v-visit')">← Back to Visit</button>
+      <div id="summaryContent"></div>
+    </div>
+
+    <!-- History View -->
+    <div class="view" id="v-history">
+      <h2 style="font-family:Sora;font-size:20px;font-weight:800;margin-bottom:16px">Visit History</h2>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- Actions View -->
+    <div class="view" id="v-actions">
+      <h2 style="font-family:Sora;font-size:20px;font-weight:800;margin-bottom:16px">Open Actions</h2>
+      <div id="actionsList"></div>
+    </div>
+  </div>
+
+  <div id="nav">
+    <button class="active" onclick="navTo('v-assignments',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Visits
+    </button>
+    <button onclick="navTo('v-history',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      History
+    </button>
+    <button onclick="navTo('v-actions',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>
+      Actions
+    </button>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentVisit = null;
+let activeAssignment = null;
+let visitFindings = [];
+
+// ─── Auth ──────────────────────────────────────
+window.doLogin = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  if (!email || !pass) { err.textContent = 'Enter email and password'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { err.textContent = error.message; return; }
+  currentUser = data.user;
+  boot();
+};
+
+window.doLogout = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function checkAuth() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) { currentUser = user; boot(); }
+  else { document.getElementById('login').style.display = 'flex'; }
+}
+
+async function boot() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  const { data: prof } = await sb.from('profiles').select('full_name').eq('user_id', currentUser.id).single();
+  document.getElementById('repName').textContent = prof?.full_name || currentUser.email;
+  document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  loadAssignments();
+  loadHistory();
+  loadActions();
+}
+
+// ─── Assignments ───────────────────────────────
+async function loadAssignments() {
+  const { data: assignments } = await sb.from('field_assignments')
+    .select('*, client:field_clients(client_name), program:field_programs(name), store:field_stores(store_name, address, city, province_state, retailer:field_retailers(name))')
+    .eq('status', 'active')
+    .order('next_visit_due');
+
+  const el = document.getElementById('assignmentsList');
+  if (!assignments?.length) {
+    el.innerHTML = '<div class="empty"><p>No assignments scheduled</p></div>';
+    return;
+  }
+  el.innerHTML = assignments.map(a => {
+    const due = a.next_visit_due ? new Date(a.next_visit_due + 'T00:00:00') : null;
+    const isOverdue = due && due < new Date(new Date().toDateString());
+    const isToday = due && due.toDateString() === new Date().toDateString();
+    const badge = isOverdue ? '<span class="badge badge-red">Overdue</span>' : isToday ? '<span class="badge badge-amber">Due Today</span>' : '<span class="badge badge-green">Upcoming</span>';
+    return `<div class="card" style="cursor:pointer" onclick='startVisit(${JSON.stringify(a)})'>
+      <div class="card-header"><h3>${a.store?.store_name || 'Store'}</h3>${badge}</div>
+      <p style="font-size:13px">${a.store?.retailer?.name || ''} · ${a.store?.city || ''}, ${a.store?.province_state || ''}</p>
+      <p class="meta">${a.client?.client_name || ''} · ${a.program?.name || ''}</p>
+      <p class="meta">${a.frequency} · Due ${due ? due.toLocaleDateString() : 'TBD'}</p>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="event.stopPropagation();startVisit(${JSON.stringify(a).replace(/"/g,'&quot;')})">
+        Start Visit
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ─── Start Visit ───────────────────────────────
+window.startVisit = async (assignment) => {
+  activeAssignment = assignment;
+  // Create visit record
+  const visitData = {
+    assignment_id: assignment.id,
+    client_id: assignment.client_id,
+    program_id: assignment.program_id,
+    store_id: assignment.store_id,
+    rep_user_id: currentUser.id,
+    visit_date: new Date().toISOString().split('T')[0],
+    arrival_time: new Date().toISOString(),
+    visit_purpose: assignment.program?.name || 'Store visit',
+    status: 'in_progress'
+  };
+
+  // Try to get GPS
+  if (navigator.geolocation) {
+    try {
+      const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }));
+      visitData.gps_lat = pos.coords.latitude;
+      visitData.gps_lng = pos.coords.longitude;
+    } catch(e) {}
+  }
+
+  const { data, error } = await sb.from('field_visits').insert(visitData).select().single();
+  if (error) { alert('Error starting visit: ' + error.message); return; }
+  currentVisit = data;
+  visitFindings = [];
+
+  // Load previous score
+  const { data: prevScores } = await sb.from('field_store_scores')
+    .select('overall_score')
+    .eq('store_id', assignment.store_id)
+    .eq('client_id', assignment.client_id)
+    .order('score_date', { ascending: false })
+    .limit(1);
+  if (prevScores?.length) {
+    currentVisit.previous_score = prevScores[0].overall_score;
+  }
+
+  // Load open actions for this store
+  const { data: openActions } = await sb.from('field_actions')
+    .select('*, finding:field_findings(model_number, issue_category)')
+    .eq('store_id', assignment.store_id)
+    .not('status', 'in', '("resolved","closed","rejected")');
+  currentVisit._openActions = openActions || [];
+
+  renderVisitView();
+  showView('v-visit');
+};
+
+function renderVisitView() {
+  const a = activeAssignment;
+  const v = currentVisit;
+  document.getElementById('visitHeader').innerHTML = `
+    <div class="card" style="border-color:var(--accent)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <h3 style="font-family:Sora;font-size:17px;font-weight:700">${a.store?.store_name || 'Store Visit'}</h3>
+          <p style="font-size:13px;color:var(--txt2)">${a.store?.retailer?.name || ''} · ${a.client?.client_name || ''}</p>
+          <p class="meta">${a.store?.address || ''}, ${a.store?.city || ''}</p>
+        </div>
+        <span class="badge badge-green">In Progress</span>
+      </div>
+      <p class="meta" style="margin-top:8px">Arrived ${new Date(v.arrival_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+      ${v._openActions?.length ? `<p style="font-size:12px;color:var(--amber);margin-top:6px;font-weight:600">⚠ ${v._openActions.length} open action${v._openActions.length>1?'s':''} from prior visits</p>` : ''}
+    </div>`;
+  switchTab(document.querySelector('.vtab.active'), document.querySelector('.vtab.active')?.dataset.tab || 'tasks');
+}
+
+// ─── Tab System ────────────────────────────────
+window.switchTab = (btn, tab) => {
+  document.querySelectorAll('.vtab').forEach(b => { b.classList.remove('active'); b.style.background = ''; b.style.color = ''; });
+  btn.classList.add('active');
+  btn.style.background = 'var(--accent)';
+  btn.style.color = '#0d1b2a';
+  const tc = document.getElementById('tabContent');
+  if (tab === 'tasks') renderTasks(tc);
+  else if (tab === 'findings') renderFindings(tc);
+  else if (tab === 'photos') renderPhotos(tc);
+  else if (tab === 'training') renderTraining(tc);
+  else if (tab === 'competitive') renderCompetitive(tc);
+};
+
+function renderTasks(tc) {
+  const tasks = [
+    { text: 'Inspect all brand displays', done: false },
+    { text: 'Check pricing accuracy', done: false },
+    { text: 'Verify promotional signage', done: false },
+    { text: 'Photograph full floor layout', done: false },
+    { text: 'Record competitive display sizes', done: false },
+    { text: 'Train staff on new models', done: false }
+  ];
+  if (currentVisit._openActions?.length) {
+    currentVisit._openActions.forEach(a => {
+      tasks.unshift({ text: `Follow up: ${a.title}`, done: false, priority: true });
+    });
+  }
+  if (!currentVisit._tasks) currentVisit._tasks = tasks;
+
+  tc.innerHTML = `
+    <h3 style="font-family:Sora;font-size:15px;margin-bottom:12px">Visit Checklist</h3>
+    ${currentVisit._tasks.map((t, i) => `
+      <div class="check-item ${t.done ? 'done' : ''}" onclick="toggleTask(${i})" style="${t.priority ? 'border-left:3px solid var(--amber)' : ''}">
+        <div class="ck">${t.done ? '✓' : ''}</div>
+        <span style="font-size:14px">${t.text}</span>
+      </div>
+    `).join('')}
+    <div style="margin-top:16px">
+      <button class="btn btn-primary" onclick="showSummary()">Complete Visit</button>
+    </div>`;
+}
+
+window.toggleTask = (i) => {
+  currentVisit._tasks[i].done = !currentVisit._tasks[i].done;
+  renderTasks(document.getElementById('tabContent'));
+};
+
+function renderFindings(tc) {
+  tc.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="font-family:Sora;font-size:15px">Findings (${visitFindings.length})</h3>
+      <button class="btn btn-sm btn-primary" onclick="showFindingForm()">+ Add Finding</button>
+    </div>
+    ${visitFindings.length === 0 ? '<div class="empty"><p>No findings yet. Tap + to add one.</p></div>' : ''}
+    ${visitFindings.map((f, i) => `
+      <div class="finding sev-${f.severity}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h4>${f.brand_name || ''} ${f.model_number || ''}</h4>
+          <span class="badge ${f.severity === 'critical' ? 'badge-red' : f.severity === 'high' ? 'badge-amber' : 'badge-blue'}">${f.severity}</span>
+        </div>
+        <p>${f.issue_category}</p>
+        <p style="margin-top:4px;color:var(--txt)">${f.rep_comments || ''}</p>
+      </div>
+    `).join('')}`;
+}
+
+window.showFindingForm = () => {
+  const tc = document.getElementById('findingForm');
+  const conditions = ['excellent','good','fair','service_required','replacement_recommended','missing','unable_to_inspect'];
+  const categories = ['Physical damage','Product not functioning','Display lighting failure','Missing signage','Incorrect signage','Missing price','Incorrect price','Dirty display','Missing part','Installation issue','Outdated model','Discontinued model','Poor placement','Competitive obstruction','Inventory concern','Training required','Promotion not displayed','Retailer follow-up required','Manufacturer follow-up required','Other'];
+  const actions = ['No action','Clean display','Repair','Replace','Reprice','Reposition','Install signage','Replace signage','Order part','Schedule service','Confirm inventory','Contact retailer','Contact manufacturer','Schedule training','Escalate to account manager','Remove discontinued product','Follow up on next visit'];
+
+  tc.innerHTML = `
+    <div class="form-group"><label>Brand</label><input id="fBrand" placeholder="e.g. Whirlpool"></div>
+    <div class="form-group"><label>Product Category</label>
+      <select id="fCategory"><option value="">Select...</option>
+        ${['Cooking','Refrigeration','Dishwasher','Laundry','Small Appliance','Other'].map(c => `<option>${c}</option>`).join('')}
+      </select></div>
+    <div class="form-group"><label>Model Number</label><input id="fModel" placeholder="e.g. WFG505M0MS"></div>
+    <div class="form-group"><label>Condition</label>
+      <select id="fCondition"><option value="">Select...</option>${conditions.map(c => `<option value="${c}">${c.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Issue Category</label>
+      <select id="fIssue"><option value="">Select...</option>${categories.map(c => `<option>${c}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Severity</label>
+      <select id="fSeverity"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div>
+    <div class="form-group"><label>Recommended Action</label>
+      <select id="fAction"><option value="">Select...</option>${actions.map(a => `<option>${a}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Comments</label><textarea id="fComments" placeholder="Describe what you found..." rows="3"></textarea></div>
+    <div class="form-group"><label>Photo</label>
+      <input type="file" id="fPhoto" accept="image/*" capture="environment" style="padding:12px">
+    </div>
+    <button class="btn btn-primary" onclick="saveFinding()">Save Finding</button>
+  `;
+  showView('v-finding');
+};
+
+window.saveFinding = async () => {
+  const f = {
+    visit_id: currentVisit.id,
+    client_id: currentVisit.client_id,
+    store_id: currentVisit.store_id,
+    brand_name: document.getElementById('fBrand').value,
+    product_category: document.getElementById('fCategory').value,
+    model_number: document.getElementById('fModel').value,
+    condition: document.getElementById('fCondition').value || null,
+    issue_category: document.getElementById('fIssue').value,
+    severity: document.getElementById('fSeverity').value,
+    recommended_action: document.getElementById('fAction').value,
+    rep_comments: document.getElementById('fComments').value,
+    source: 'manual',
+    status: 'new'
+  };
+
+  const { data, error } = await sb.from('field_findings').insert(f).select().single();
+  if (error) { alert('Error: ' + error.message); return; }
+
+  // Upload photo if present
+  const photoInput = document.getElementById('fPhoto');
+  if (photoInput.files.length > 0) {
+    const file = photoInput.files[0];
+    const path = `${currentVisit.id}/${Date.now()}_${file.name}`;
+    await sb.storage.from('field-media').upload(path, file);
+    await sb.from('field_media').insert({
+      visit_id: currentVisit.id,
+      media_type: 'photo',
+      storage_path: path,
+      file_name: file.name,
+      file_size: file.size,
+      mime_type: file.type,
+      capture_context: 'product'
+    });
+  }
+
+  visitFindings.push(data);
+  showVisitTab('findings');
+};
+
+window.showVisitTab = (tab) => {
+  showView('v-visit');
+  const btn = document.querySelector(`.vtab[data-tab="${tab}"]`);
+  if (btn) switchTab(btn, tab);
+};
+
+function renderPhotos(tc) {
+  tc.innerHTML = `
+    <h3 style="font-family:Sora;font-size:15px;margin-bottom:12px">Photos & Media</h3>
+    <div class="photo-grid">
+      <div class="ph ph-add" onclick="capturePhoto('floor')">📷<br><span style="font-size:10px">Floor</span></div>
+      <div class="ph ph-add" onclick="capturePhoto('brand_section')">🏷️<br><span style="font-size:10px">Brand</span></div>
+      <div class="ph ph-add" onclick="capturePhoto('signage')">📋<br><span style="font-size:10px">Signs</span></div>
+      <div class="ph ph-add" onclick="capturePhoto('pricing')">💲<br><span style="font-size:10px">Price</span></div>
+      <div class="ph ph-add" onclick="capturePhoto('competitive')">🆚<br><span style="font-size:10px">Competitor</span></div>
+      <div class="ph ph-add" onclick="capturePhoto('other')">➕<br><span style="font-size:10px">Other</span></div>
+    </div>
+    <input type="file" id="photoCapture" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoCapture(event)">
+    <p class="meta" style="text-align:center">Tap a category to capture a photo</p>`;
+}
+
+let captureContext = 'other';
+window.capturePhoto = (ctx) => {
+  captureContext = ctx;
+  document.getElementById('photoCapture').click();
+};
+
+window.handlePhotoCapture = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const path = `${currentVisit.id}/${Date.now()}_${file.name}`;
+  await sb.storage.from('field-media').upload(path, file);
+  const { data: mediaRec } = await sb.from('field_media').insert({
+    visit_id: currentVisit.id,
+    media_type: 'photo',
+    storage_path: path,
+    file_name: file.name,
+    file_size: file.size,
+    mime_type: file.type,
+    capture_context: captureContext
+  }).select().single();
+  currentVisit.photos_count = (currentVisit.photos_count || 0) + 1;
+
+  // Send to AI analyzer
+  try {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      const { data: session } = await sb.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/field-photo-analyzer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.session.access_token}` },
+        body: JSON.stringify({ media_id: mediaRec?.id, visit_id: currentVisit.id, image_base64: base64 })
+      });
+      const result = await res.json();
+      if (result.detections?.length > 0) {
+        if (!currentVisit._aiDetections) currentVisit._aiDetections = [];
+        currentVisit._aiDetections.push(...result.detections);
+        showAIDetections(result.detections);
+      }
+    };
+    reader.readAsDataURL(file);
+  } catch(err) { console.log('AI analysis skipped:', err); }
+};
+
+function showAIDetections(detections) {
+  if (!detections.length) return;
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:999;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `<div style="background:var(--card);border-radius:var(--radius);padding:20px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;border:1px solid var(--accent)">
+    <h3 style="font-family:Sora;font-size:16px;font-weight:700;margin-bottom:4px;color:var(--accent)">AI Findings Detected</h3>
+    <p style="font-size:12px;color:var(--txt2);margin-bottom:16px">Review and confirm each finding</p>
+    ${detections.map((d, i) => `
+      <div class="card" style="margin-bottom:10px;border-color:${d.suggested_severity==='critical'?'var(--red)':d.suggested_severity==='high'?'var(--amber)':'var(--line)'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="badge ${d.suggested_severity==='critical'?'badge-red':d.suggested_severity==='high'?'badge-amber':'badge-blue'}">${d.suggested_severity}</span>
+          <span style="font-size:11px;color:var(--txt2)">${d.confidence}% confidence</span>
+        </div>
+        <p style="font-size:13px;margin-bottom:8px">${d.description}</p>
+        <p style="font-size:11px;color:var(--txt2)">Category: ${d.suggested_category}</p>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="acceptAIDetection(${i}, this)">✓ Confirm</button>
+          <button class="btn btn-sm" style="flex:1;background:var(--surface);border:1px solid var(--line)" onclick="rejectAIDetection(${i}, this)">✕ Reject</button>
+        </div>
+      </div>
+    `).join('')}
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px;background:var(--surface);border:1px solid var(--line)" onclick="this.closest('div[style*=fixed]').remove()">Done</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+window.acceptAIDetection = async (idx, btn) => {
+  const d = currentVisit._aiDetections[idx];
+  if (!d) return;
+  await sb.from('field_ai_detections').update({ accepted: true, accepted_at: new Date().toISOString() }).eq('id', d.id);
+  // Create finding from detection
+  const finding = {
+    visit_id: currentVisit.id, client_id: currentVisit.client_id, store_id: currentVisit.store_id,
+    ai_detection_id: d.id, issue_category: d.suggested_category, severity: d.suggested_severity,
+    rep_comments: d.description, source: 'ai_confirmed', status: 'new',
+    brand_name: d.bounding_box?.brand || '', model_number: d.bounding_box?.model_hint || ''
+  };
+  const { data } = await sb.from('field_findings').insert(finding).select().single();
+  if (data) visitFindings.push(data);
+  btn.parentElement.innerHTML = '<span style="color:var(--accent);font-weight:700;font-size:13px">✓ Confirmed & added to findings</span>';
+};
+
+window.rejectAIDetection = async (idx, btn) => {
+  const d = currentVisit._aiDetections[idx];
+  if (!d) return;
+  await sb.from('field_ai_detections').update({ accepted: false, rejected_reason: 'Rep rejected' }).eq('id', d.id);
+  btn.parentElement.innerHTML = '<span style="color:var(--txt2);font-size:13px">Rejected</span>';
+};
+
+function renderTraining(tc) {
+  tc.innerHTML = `
+    <h3 style="font-family:Sora;font-size:15px;margin-bottom:12px">Staff Training</h3>
+    <div class="form-group"><label>Training Topic</label><input id="tTopic" placeholder="e.g. 2026 Laundry Lineup"></div>
+    <div class="form-group"><label>Brand</label><input id="tBrand" placeholder="e.g. Whirlpool"></div>
+    <div class="form-group"><label>Product Category</label>
+      <select id="tCat"><option value="">Select...</option>
+        ${['Cooking','Refrigeration','Dishwasher','Laundry','Small Appliance'].map(c => `<option>${c}</option>`).join('')}
+      </select></div>
+    <div class="form-group"><label>Employees Trained</label><input type="number" id="tCount" value="0" min="0"></div>
+    <div class="form-group"><label>Employee Names</label><input id="tNames" placeholder="Comma-separated names"></div>
+    <div class="form-group"><label>Duration (minutes)</label><input type="number" id="tDuration" value="15" min="1"></div>
+    <div class="form-group"><label>Knowledge Score (0–100)</label><input type="number" id="tScore" value="" min="0" max="100" placeholder="Optional"></div>
+    <div class="form-group"><label>Notes</label><textarea id="tNotes" placeholder="Areas of strength and weakness..." rows="3"></textarea></div>
+    <button class="btn btn-primary" onclick="saveTraining()">Save Training</button>`;
+}
+
+window.saveTraining = async () => {
+  const names = document.getElementById('tNames').value.split(',').map(s => s.trim()).filter(Boolean);
+  const { error } = await sb.from('field_training_sessions').insert({
+    visit_id: currentVisit.id,
+    client_id: currentVisit.client_id,
+    store_id: currentVisit.store_id,
+    training_topic: document.getElementById('tTopic').value,
+    brand_name: document.getElementById('tBrand').value,
+    product_category: document.getElementById('tCat').value,
+    employees_trained: parseInt(document.getElementById('tCount').value) || 0,
+    employee_names: names,
+    duration_minutes: parseInt(document.getElementById('tDuration').value) || 0,
+    knowledge_score: parseFloat(document.getElementById('tScore').value) || null,
+    rep_comments: document.getElementById('tNotes').value
+  });
+  if (error) { alert('Error: ' + error.message); return; }
+  currentVisit.training_completed = true;
+  currentVisit.people_trained = parseInt(document.getElementById('tCount').value) || 0;
+  alert('Training saved');
+};
+
+function renderCompetitive(tc) {
+  tc.innerHTML = `
+    <h3 style="font-family:Sora;font-size:15px;margin-bottom:12px">Competitive Intelligence</h3>
+    <div class="form-group"><label>Competitor Brand</label><input id="cBrand" placeholder="e.g. Samsung"></div>
+    <div class="form-group"><label>Floor Presence %</label><input type="number" id="cFloor" min="0" max="100" placeholder="e.g. 30"></div>
+    <div class="form-group"><label>Display Size</label><input id="cDisplay" placeholder="e.g. 5 bays"></div>
+    <div class="form-group"><label>Active Promotions</label><input id="cPromos" placeholder="Describe current promos"></div>
+    <div class="form-group"><label>New Models Spotted</label><input id="cModels" placeholder="Any new competitor models?"></div>
+    <div class="form-group"><label>Staff Preference Notes</label><textarea id="cStaff" placeholder="Which brand do staff prefer selling?" rows="2"></textarea></div>
+    <div class="form-group"><label>Common Customer Objections</label><textarea id="cObjections" placeholder="What objections do customers raise?" rows="2"></textarea></div>
+    <button class="btn btn-primary" onclick="saveCompetitive()">Save Intel</button>`;
+}
+
+window.saveCompetitive = async () => {
+  const { error } = await sb.from('field_competitive_intel').insert({
+    visit_id: currentVisit.id,
+    store_id: currentVisit.store_id,
+    competitor_brand: document.getElementById('cBrand').value,
+    floor_presence_pct: parseFloat(document.getElementById('cFloor').value) || null,
+    display_size: document.getElementById('cDisplay').value,
+    promotions_active: document.getElementById('cPromos').value,
+    new_models_spotted: document.getElementById('cModels').value,
+    staff_preference_notes: document.getElementById('cStaff').value,
+    common_objections: document.getElementById('cObjections').value
+  });
+  if (error) { alert('Error: ' + error.message); return; }
+  alert('Competitive intel saved');
+};
+
+// ─── Visit Summary ─────────────────────────────
+window.showSummary = () => {
+  const v = currentVisit;
+  const critCount = visitFindings.filter(f => f.severity === 'critical').length;
+  const score = Math.max(50, 100 - (visitFindings.length * 3) - (critCount * 10));
+  const delta = v.previous_score ? score - v.previous_score : null;
+
+  document.getElementById('summaryContent').innerHTML = `
+    <h2 style="font-family:Sora;font-size:20px;font-weight:800;margin-bottom:16px">Visit Summary</h2>
+    <div class="card" style="text-align:center">
+      <div class="score-ring">${score}<small>/ 100</small></div>
+      ${delta !== null ? `<p class="score-delta ${delta >= 0 ? 'score-up' : 'score-down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(0)} from last visit</p>` : ''}
+    </div>
+    <div class="grid-2">
+      <div class="stat-box"><div class="val">${visitFindings.length}</div><div class="label">Findings</div></div>
+      <div class="stat-box"><div class="val" style="${critCount > 0 ? 'color:var(--red)' : ''}">${critCount}</div><div class="label">Critical</div></div>
+      <div class="stat-box"><div class="val">${v.photos_count || 0}</div><div class="label">Photos</div></div>
+      <div class="stat-box"><div class="val">${v.people_trained || 0}</div><div class="label">Trained</div></div>
+    </div>
+    <div class="form-group" style="margin-top:16px">
+      <label>Visit Summary (your notes)</label>
+      <textarea id="repSummary" placeholder="Describe the overall visit..." rows="4">${v.rep_summary || ''}</textarea>
+    </div>
+    <button class="btn btn-primary" onclick="completeVisit(${score})" style="margin-bottom:12px">Complete Visit</button>
+    <button class="btn btn-secondary" onclick="showView('v-visit')">Continue Visit</button>`;
+  showView('v-summary');
+};
+
+window.completeVisit = async (score) => {
+  const now = new Date().toISOString();
+  const arrival = new Date(currentVisit.arrival_time);
+  const duration = Math.round((new Date() - arrival) / 60000);
+  const critCount = visitFindings.filter(f => f.severity === 'critical').length;
+
+  const updates = {
+    departure_time: now,
+    duration_minutes: duration,
+    status: 'completed',
+    findings_count: visitFindings.length,
+    critical_count: critCount,
+    photos_count: currentVisit.photos_count || 0,
+    training_completed: currentVisit.training_completed || false,
+    people_trained: currentVisit.people_trained || 0,
+    rep_summary: document.getElementById('repSummary').value,
+    store_score: score,
+    brand_score: score,
+    previous_score: currentVisit.previous_score || null
+  };
+
+  await sb.from('field_visits').update(updates).eq('id', currentVisit.id);
+
+  // Save store score
+  await sb.from('field_store_scores').insert({
+    visit_id: currentVisit.id,
+    store_id: currentVisit.store_id,
+    client_id: currentVisit.client_id,
+    overall_score: score,
+    score_date: new Date().toISOString().split('T')[0]
+  });
+
+  // Create actions for findings
+  for (const f of visitFindings) {
+    if (f.recommended_action && f.recommended_action !== 'No action') {
+      await sb.from('field_actions').insert({
+        finding_id: f.id,
+        visit_id: currentVisit.id,
+        client_id: currentVisit.client_id,
+        store_id: currentVisit.store_id,
+        title: `${f.brand_name || ''} ${f.model_number || ''} — ${f.issue_category}`,
+        description: f.rep_comments,
+        action_type: f.recommended_action,
+        status: 'new',
+        priority: f.severity === 'critical' ? 'critical' : f.severity === 'high' ? 'high' : 'normal'
+      });
+    }
+  }
+
+  currentVisit = null;
+  visitFindings = [];
+  activeAssignment = null;
+  loadAssignments();
+  loadHistory();
+  loadActions();
+  showView('v-assignments');
+  navTo('v-assignments', document.querySelector('#nav button'));
+};
+
+// ─── History ───────────────────────────────────
+async function loadHistory() {
+  const { data: visits } = await sb.from('field_visits')
+    .select('*, store:field_stores(store_name, retailer:field_retailers(name)), client:field_clients(client_name)')
+    .eq('status', 'completed')
+    .order('visit_date', { ascending: false })
+    .limit(20);
+
+  const el = document.getElementById('historyList');
+  if (!visits?.length) { el.innerHTML = '<div class="empty"><p>No completed visits yet</p></div>'; return; }
+  el.innerHTML = visits.map(v => `
+    <div class="card">
+      <div class="card-header">
+        <h3>${v.store?.store_name || 'Store'}</h3>
+        <span class="badge badge-green">Score ${v.store_score || '—'}</span>
+      </div>
+      <p style="font-size:13px">${v.store?.retailer?.name || ''} · ${v.client?.client_name || ''}</p>
+      <p class="meta">${new Date(v.visit_date + 'T00:00:00').toLocaleDateString()} · ${v.duration_minutes || 0} min · ${v.findings_count || 0} findings</p>
+      ${v.critical_count > 0 ? `<p style="font-size:12px;color:var(--red);font-weight:600">${v.critical_count} critical</p>` : ''}
+    </div>
+  `).join('');
+}
+
+// ─── Actions ───────────────────────────────────
+async function loadActions() {
+  const { data: actions } = await sb.from('field_actions')
+    .select('*, store:field_stores(store_name, retailer:field_retailers(name)), client:field_clients(client_name)')
+    .not('status', 'in', '("resolved","closed","rejected")')
+    .order('created_at', { ascending: false })
+    .limit(30);
+
+  const el = document.getElementById('actionsList');
+  if (!actions?.length) { el.innerHTML = '<div class="empty"><p>No open actions</p></div>'; return; }
+  el.innerHTML = actions.map(a => {
+    const badge = a.priority === 'critical' ? 'badge-red' : a.priority === 'high' ? 'badge-amber' : 'badge-blue';
+    return `<div class="card">
+      <div class="card-header"><h3 style="font-size:14px">${a.title}</h3><span class="badge ${badge}">${a.priority}</span></div>
+      <p style="font-size:13px">${a.store?.store_name || ''} · ${a.store?.retailer?.name || ''}</p>
+      <p class="meta">Status: ${a.status.replace(/_/g,' ')} · ${a.due_date ? 'Due ' + new Date(a.due_date + 'T00:00:00').toLocaleDateString() : ''}</p>
+    </div>`;
+  }).join('');
+}
+
+// ─── Navigation ────────────────────────────────
+window.showView = (id) => {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+};
+
+window.navTo = (viewId, btn) => {
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showView(viewId);
+  if (viewId === 'v-history') loadHistory();
+  if (viewId === 'v-actions') loadActions();
+};
+
+checkAuth();
+</script>
+</body>
+</html>

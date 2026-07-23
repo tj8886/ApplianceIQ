@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#0f1f3d"/>
+<title>IQ Brand Marketing — Manufacturer Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0f1f3d;--navy-2:#16294e;--teal:#2f7d72;--teal-tint:#e6f0ed;
+  --ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#fff;
+  --accent:#6366f1;--verified:#1a9e56;--amber:#e8590c;--red:#c02d1e;--blue:#2f6fed;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font:inherit;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:60px}
+select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 5 5-5' stroke='%237e8fa6' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.num{font-variant-numeric:tabular-nums}
+
+#shell{display:flex;height:100dvh}
+#sidebar{width:220px;background:var(--navy);color:#fff;padding:20px 16px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+#sidebar .logo{font-family:Sora;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;margin-bottom:20px;padding:8px 0;color:#fff}
+#sidebar .logo span{color:var(--accent)}
+#sidebar .logo-pill{background:linear-gradient(135deg,var(--navy-2),var(--accent));width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:-.3px}
+#sidebar nav{flex:1;padding:0;overflow-y:auto}
+#sidebar nav button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;color:rgba(255,255,255,.6);transition:all .15s;text-align:left}
+#sidebar nav button:hover{background:rgba(255,255,255,.1);color:#fff}
+#sidebar nav button.active{background:rgba(255,255,255,.1);color:#fff}
+#sidebar nav button svg{width:18px;height:18px;flex-shrink:0;stroke:currentColor}
+#sidebar .user-area{margin-top:auto;padding:12px 0 0;border-top:1px solid rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.5)}
+
+#content{flex:1;overflow-y:auto;padding:24px 32px;max-height:100vh}
+#content h2{font-family:Sora;font-size:22px;font-weight:800;margin-bottom:4px;color:var(--navy)}
+#content .subtitle{color:var(--steel);font-size:13px;margin-bottom:24px}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+.card h3{font-family:Sora;font-size:15px;font-weight:700;margin-bottom:12px;color:var(--navy)}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}
+.stat .val{font-family:Sora;font-size:24px;font-weight:800;color:var(--navy)}
+.stat .label{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+
+.tbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--steel);padding:8px 10px;border-bottom:2px solid var(--line);font-weight:600}
+.tbl td{padding:8px 10px;border-bottom:1px solid #f3f5f8;font-size:13px;vertical-align:middle}
+.tbl tr:hover td{background:#f0f0ff}
+.tbl .clickable{cursor:pointer}
+.tbl .clickable:hover td{background:#f0f0ff}
+
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.badge-green{background:#e8f5e9;color:#2e7d32}
+.badge-amber{background:#fff8e6;color:#b8860b}
+.badge-red{background:#fdecea;color:#8c2f22}
+.badge-blue{background:#ede9fe;color:#6366f1}
+.badge-gray{background:#f1f5f9;color:var(--steel)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 24px;border-radius:999px;font-family:Sora;font-weight:700;font-size:13px;transition:all .15s}
+.btn-primary{background:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy-2)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-ghost{color:var(--txt2)}
+.btn-ghost:hover{color:var(--txt);background:var(--surface)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+.filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filters select,.filters input{font-size:13px;padding:8px 12px}
+
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px;margin-top:12px}
+.bar{flex:1;border-radius:4px 4px 0 0;position:relative;min-width:20px;transition:.3s}
+.bar .bar-label{position:absolute;bottom:-20px;font-size:9px;color:var(--txt2);text-align:center;width:100%;white-space:nowrap}
+.bar .bar-val{position:absolute;top:-18px;font-size:10px;font-weight:700;text-align:center;width:100%}
+
+.view{display:none}.view.active{display:block}
+
+.back-btn{display:flex;align-items:center;gap:6px;color:var(--txt2);font-size:13px;font-weight:600;margin-bottom:16px;padding:4px 0;cursor:pointer}
+.back-btn:hover{color:var(--txt)}
+
+.timeline{position:relative;padding-left:24px;margin-top:12px}
+.timeline::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:2px;background:var(--line)}
+.tl-item{position:relative;margin-bottom:16px}
+.tl-item::before{content:'';position:absolute;left:-21px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+.tl-item.critical::before{background:var(--red)}
+.tl-item .tl-time{font-size:11px;color:var(--txt2)}
+.tl-item .tl-text{font-size:13px;margin-top:2px}
+.tl-item .tl-user{font-size:11px;color:var(--accent);margin-top:1px}
+
+.comment{background:var(--surface);border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid var(--line)}
+.comment .c-header{display:flex;justify-content:space-between;margin-bottom:6px}
+.comment .c-author{font-weight:600;font-size:13px}
+.comment .c-time{font-size:11px;color:var(--txt2)}
+.comment .c-vis{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--surface);border:1px solid var(--line)}
+.comment .c-body{font-size:13px;color:var(--txt)}
+
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%}
+
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);margin-bottom:16px;flex-wrap:wrap}
+.breadcrumb a{color:var(--accent);cursor:pointer}
+.breadcrumb span{color:var(--txt2)}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+
+/* Login */
+#login{position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:flex;align-items:center;justify-content:center}
+#login .form{background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
+#login h1{font-family:Sora;font-size:20px;font-weight:800;color:var(--navy);margin-bottom:4px}
+#login h1 span{color:var(--accent)}
+#login .sub{color:var(--steel);font-size:13px;margin-bottom:20px}
+#login .fg{margin-bottom:14px}
+#login .fg label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+#login .fg input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px;color:var(--ink);background:#fff}
+#login .err{color:var(--red);font-size:13px;min-height:18px;margin-bottom:8px}
+#login .demo-hint{font-size:12px;color:var(--steel);margin-top:12px;text-align:center}
+
+@media(max-width:768px){
+  #sidebar{display:none}
+  #content{padding:16px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h1>IQ Brand <span>Marketing</span></h1>
+  <p class="sub">Manufacturer Intelligence Portal</p>
+  <div class="form">
+    <div class="fg"><label>Email</label><input type="email" id="loginEmail" placeholder="you@manufacturer.com" value="demo@applianceiq.com"></div>
+    <div class="fg"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" value="DemoIQ2026!"></div>
+    <div class="err" id="loginErr"></div>
+    <button class="btn btn-primary" style="width:100%;padding:14px" onclick="doLogin()">Sign In</button>
+    <p class="demo-hint">Demo: demo@applianceiq.com / DemoIQ2026!</p>
+  </div>
+</div>
+
+<div id="shell" style="display:none">
+  <div id="sidebar">
+    <div class="logo"><span class="logo-pill">IQ</span>Brand <span>Marketing</span></div>
+    <nav id="sidebarNav">
+      <button class="active" onclick="navTo('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</button>
+      <button onclick="navTo('visits',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>Store Visits</button>
+      <button onclick="navTo('actions',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg>Actions</button>
+      <button onclick="navTo('stores',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>Stores</button>
+      <button onclick="navTo('training',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>Training</button>
+      <button onclick="navTo('competitive',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Competitive</button>
+      <button onclick="navTo('exports',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exports</button>
+    </nav>
+    <div class="user-area">
+      <div id="userName" style="font-weight:600;color:#fff"></div>
+      <button onclick="doLogout()" style="color:#ef4444;font-size:11px;font-weight:600;margin-top:4px">Sign Out</button>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb = createClient(SB_URL, SB_KEY);
+
+let user = null, D = {}, currentView = 'dashboard';
+
+// ─── Auth ──────────────────────────────────────
+window.doLogin = async () => {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  if (!email||!pass){err.textContent='Enter email and password';return;}
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  if(error){err.textContent=error.message;return;}
+  user = data.user; boot();
+};
+window.doLogout = async()=>{await sb.auth.signOut();location.reload()};
+async function checkAuth(){const{data:{user:u}}=await sb.auth.getUser();if(u){user=u;boot()}}
+
+async function boot(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('shell').style.display='flex';
+  const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
+  document.getElementById('userName').textContent=p?.full_name||user.email;
+  await loadAll();
+  render();
+}
+
+async function loadAll(){
+  const[v,a,f,s,t,c,sc,cl,ah]=await Promise.all([
+    sb.from('field_visits').select('*,store:field_stores(store_name,city,province_state,region,country,retailer:field_retailers(name)),client:field_clients(client_name)').order('visit_date',{ascending:false}),
+    sb.from('field_actions').select('*,store:field_stores(store_name,retailer:field_retailers(name)),client:field_clients(client_name),finding:field_findings(model_number,brand_name,issue_category,rep_comments,severity,condition)').order('created_at',{ascending:false}),
+    sb.from('field_findings').select('*').order('created_at',{ascending:false}),
+    sb.from('field_stores').select('*,retailer:field_retailers(name)').order('store_name'),
+    sb.from('field_training_sessions').select('*,store:field_stores(store_name)').order('created_at',{ascending:false}),
+    sb.from('field_competitive_intel').select('*,store:field_stores(store_name)').order('created_at',{ascending:false}),
+    sb.from('field_store_scores').select('*').order('score_date',{ascending:false}),
+    sb.from('field_clients').select('*'),
+    sb.from('field_action_status_history').select('*').order('created_at',{ascending:true})
+  ]);
+  D={visits:v.data||[],actions:a.data||[],findings:f.data||[],stores:s.data||[],training:t.data||[],competitive:c.data||[],scores:sc.data||[],clients:cl.data||[],history:ah.data||[]};
+}
+
+function render(){
+  const el=document.getElementById('content');
+  if(currentView==='dashboard')renderDashboard(el);
+  else if(currentView==='visits')renderVisits(el);
+  else if(currentView==='actions')renderActions(el);
+  else if(currentView==='stores')renderStores(el);
+  else if(currentView==='training')renderTraining(el);
+  else if(currentView==='competitive')renderCompetitive(el);
+  else if(currentView==='exports')renderExports(el);
+  else if(currentView.startsWith('action:'))renderActionDetail(el,currentView.split(':')[1]);
+  else if(currentView.startsWith('store:'))renderStoreDetail(el,currentView.split(':')[1]);
+  else if(currentView.startsWith('visit:'))renderVisitDetail(el,currentView.split(':')[1]);
+}
+
+window.navTo=(view,btn)=>{
+  if(btn){document.querySelectorAll('#sidebarNav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  currentView=view;render();
+};
+window.goTo=(view)=>{currentView=view;render()};
+
+function badgePri(p){return p==='critical'?'badge-red':p==='high'?'badge-amber':'badge-blue'}
+function badgeScore(s){return s>=85?'badge-green':s>=70?'badge-amber':'badge-red'}
+function badgeStatus(s){return['resolved','closed'].includes(s)?'badge-green':['service_requested','service_deployed','assigned'].includes(s)?'badge-amber':s==='rejected'?'badge-gray':'badge-blue'}
+function fmtDate(d){return d?new Date(d+'T00:00:00').toLocaleDateString():'—'}
+function fmtTime(t){return t?new Date(t).toLocaleString():'—'}
+function openCount(storeId){return D.actions.filter(a=>a.store_id===storeId&&!['resolved','closed','rejected'].includes(a.status)).length}
+
+// ─── Dashboard ─────────────────────────────────
+function renderDashboard(el){
+  const completed=D.visits.filter(v=>v.status==='completed');
+  const openActs=D.actions.filter(a=>!['resolved','closed','rejected'].includes(a.status));
+  const critActs=openActs.filter(a=>a.priority==='critical');
+  const avgScore=D.scores.length?(D.scores.reduce((s,x)=>s+(x.overall_score||0),0)/D.scores.length).toFixed(0):'—';
+  const totalTrained=D.training.reduce((s,t)=>s+(t.employees_trained||0),0);
+
+  // Store scores for chart
+  const ssMap={};
+  D.scores.forEach(s=>{const st=D.stores.find(x=>x.id===s.store_id);if(st){if(!ssMap[st.store_name])ssMap[st.store_name]=[];ssMap[st.store_name].push(s.overall_score)}});
+
+  // Issue cats
+  const cats={};D.findings.forEach(f=>{cats[f.issue_category]=(cats[f.issue_category]||0)+1});
+
+  // Region breakdown
+  const regions={};D.visits.filter(v=>v.status==='completed').forEach(v=>{const r=v.store?.region||'Unknown';if(!regions[r])regions[r]={visits:0,totalScore:0,cnt:0};regions[r].visits++;if(v.store_score){regions[r].totalScore+=v.store_score;regions[r].cnt++}});
+
+  el.innerHTML=`
+    <h2>Brand Execution Dashboard</h2>
+    <p class="subtitle">Real-time field intelligence across all stores and regions</p>
+    <div class="stats">
+      <div class="stat"><div class="val" style="color:var(--accent)">${avgScore}</div><div class="label">Overall Brand Score</div></div>
+      <div class="stat"><div class="val">${completed.length}</div><div class="label">Visits Completed</div></div>
+      <div class="stat"><div class="val" style="color:${openActs.length>0?'var(--amber)':'var(--accent)'}">${openActs.length}</div><div class="label">Open Actions</div></div>
+      <div class="stat"><div class="val" style="color:${critActs.length>0?'var(--red)':'var(--accent)'}">${critActs.length}</div><div class="label">Critical Issues</div></div>
+      <div class="stat"><div class="val">${D.actions.filter(a=>a.status==='resolved'||a.status==='closed').length}</div><div class="label">Resolved</div></div>
+      <div class="stat"><div class="val">${D.findings.length}</div><div class="label">Total Findings</div></div>
+      <div class="stat"><div class="val">${D.training.length}</div><div class="label">Training Sessions</div></div>
+      <div class="stat"><div class="val">${totalTrained}</div><div class="label">Staff Trained</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Store Scores</h3>
+        <div class="bar-chart">
+          ${Object.entries(ssMap).slice(0,8).map(([n,scores])=>{const avg=scores.reduce((a,b)=>a+b,0)/scores.length;const color=avg>=85?'var(--accent)':avg>=70?'var(--amber)':'var(--red)';return`<div class="bar" style="height:${avg}%;background:${color}"><div class="bar-val">${avg.toFixed(0)}</div><div class="bar-label">${n.split(' ').slice(-1)[0]}</div></div>`}).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h3>Issue Categories</h3>
+        ${Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,7).map(([c,n])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><span>${c}</span><span class="num" style="font-weight:700">${n}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:0">
+      <div class="card">
+        <h3>Regional Performance</h3>
+        ${Object.entries(regions).map(([r,d])=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="font-weight:600">${r}</span><span>${d.visits} visits · Avg ${d.cnt?(d.totalScore/d.cnt).toFixed(0):'—'}</span></div>`).join('')}
+      </div>
+      <div class="card">
+        <h3>Critical Actions</h3>
+        ${critActs.length===0?'<p style="color:var(--txt2);font-size:13px;padding:12px 0">No critical actions</p>':critActs.map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="goTo('action:${a.id}')"><div style="font-weight:600;font-size:13px">${a.title}</div><div style="font-size:12px;color:var(--txt2)">${a.store?.store_name||''} · ${a.status.replace(/_/g,' ')}</div></div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <h3>Recent Visits</h3>
+      <table class="tbl"><thead><tr><th>Store</th><th>Retailer</th><th>Date</th><th>Score</th><th>Findings</th><th>Critical</th></tr></thead><tbody>
+        ${completed.slice(0,8).map(v=>`<tr class="clickable" onclick="goTo('visit:${v.id}')"><td style="font-weight:600">${v.store?.store_name||''}</td><td>${v.store?.retailer?.name||''}</td><td class="num">${fmtDate(v.visit_date)}</td><td><span class="badge ${badgeScore(v.store_score||0)}">${v.store_score||'—'}</span></td><td class="num">${v.findings_count||0}</td><td>${v.critical_count>0?`<span class="badge badge-red">${v.critical_count}</span>`:'—'}</td></tr>`).join('')}
+      </tbody></table>
+    </div>`;
+}
+
+// ─── Visits ────────────────────────────────────
+function renderVisits(el){
+  el.innerHTML=`
+    <h2>Store Visits</h2><p class="subtitle">${D.visits.length} total visits</p>
+    <div class="filters">
+      <select onchange="window._vFilter=this.value;renderVisits(document.getElementById('content'))">
+        <option value="">All Regions</option>
+        ${[...new Set(D.visits.map(v=>v.store?.region).filter(Boolean))].map(r=>`<option value="${r}" ${window._vFilter===r?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>
+    <table class="tbl"><thead><tr><th>Store</th><th>Retailer</th><th>Region</th><th>Date</th><th>Duration</th><th>Score</th><th>Findings</th><th>Status</th></tr></thead><tbody>
+      ${D.visits.filter(v=>!window._vFilter||v.store?.region===window._vFilter).map(v=>`<tr class="clickable" onclick="goTo('visit:${v.id}')"><td style="font-weight:600">${v.store?.store_name||''}</td><td>${v.store?.retailer?.name||''}</td><td>${v.store?.region||''}</td><td class="num">${fmtDate(v.visit_date)}</td><td class="num">${v.duration_minutes||'—'}m</td><td><span class="badge ${badgeScore(v.store_score||0)}">${v.store_score||'—'}</span></td><td class="num">${v.findings_count||0}</td><td><span class="badge ${v.status==='completed'?'badge-green':'badge-amber'}">${v.status}</span></td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ─── Visit Detail ──────────────────────────────
+function renderVisitDetail(el,id){
+  const v=D.visits.find(x=>x.id===id);if(!v){el.innerHTML='Visit not found';return}
+  const findings=D.findings.filter(f=>f.visit_id===id);
+  const actions=D.actions.filter(a=>a.visit_id===id);
+  const training=D.training.filter(t=>t.visit_id===id);
+  const compet=D.competitive.filter(c=>c.visit_id===id);
+
+  el.innerHTML=`
+    <div class="breadcrumb"><a onclick="navTo('visits')">Visits</a><span>›</span><span>${v.store?.store_name||''}</span></div>
+    <button class="back-btn" onclick="navTo('visits')">← Back to Visits</button>
+    <h2>${v.store?.store_name||'Visit Detail'}</h2>
+    <p class="subtitle">${v.store?.retailer?.name||''} · ${fmtDate(v.visit_date)} · ${v.duration_minutes||0} minutes</p>
+
+    <div class="stats" style="grid-template-columns:repeat(5,1fr)">
+      <div class="stat"><div class="val" style="color:var(--accent)">${v.store_score||'—'}</div><div class="label">Score</div></div>
+      <div class="stat"><div class="val">${v.findings_count||0}</div><div class="label">Findings</div></div>
+      <div class="stat"><div class="val" style="color:${v.critical_count>0?'var(--red)':'var(--accent)'}">${v.critical_count||0}</div><div class="label">Critical</div></div>
+      <div class="stat"><div class="val">${v.photos_count||0}</div><div class="label">Photos</div></div>
+      <div class="stat"><div class="val">${v.people_trained||0}</div><div class="label">Trained</div></div>
+    </div>
+
+    ${v.rep_summary?`<div class="card"><h3>Rep Summary</h3><p style="font-size:13px">${v.rep_summary}</p></div>`:''}
+    ${v.ai_summary?`<div class="card"><h3>AI Summary</h3><p style="font-size:13px">${v.ai_summary}</p></div>`:''}
+
+    <div class="card">
+      <h3>Findings (${findings.length})</h3>
+      <table class="tbl"><thead><tr><th>Brand</th><th>Model</th><th>Issue</th><th>Severity</th><th>Condition</th><th>Action</th></tr></thead><tbody>
+        ${findings.map(f=>`<tr><td style="font-weight:600">${f.brand_name||''}</td><td class="num">${f.model_number||''}</td><td>${f.issue_category||''}</td><td><span class="badge ${badgePri(f.severity)}">${f.severity}</span></td><td>${(f.condition||'').replace(/_/g,' ')}</td><td>${f.recommended_action||''}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+
+    ${actions.length?`<div class="card"><h3>Actions Created (${actions.length})</h3>
+      ${actions.map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="goTo('action:${a.id}')"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;font-size:13px">${a.title}</span><span class="badge ${badgeStatus(a.status)}">${a.status.replace(/_/g,' ')}</span></div></div>`).join('')}
+    </div>`:''}
+
+    ${training.length?`<div class="card"><h3>Training</h3>
+      ${training.map(t=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-weight:600;font-size:13px">${t.training_topic}</div><div style="font-size:12px;color:var(--txt2)">${t.employees_trained} trained · Score: ${t.knowledge_score||'—'} · ${t.duration_minutes}min</div></div>`).join('')}
+    </div>`:''}
+
+    ${compet.length?`<div class="card"><h3>Competitive Intel</h3>
+      ${compet.map(c=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div style="font-weight:600;font-size:13px">${c.competitor_brand}</div><div style="font-size:12px;color:var(--txt2)">Floor: ${c.floor_presence_pct||'—'}% · ${c.display_size||''} · ${c.promotions_active||'No promos'}</div></div>`).join('')}
+    </div>`:''}
+
+    <div class="card" style="font-size:12px;color:var(--txt2)">
+      <h3>Visit Details</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>Arrived: ${fmtTime(v.arrival_time)}</div>
+        <div>Departed: ${fmtTime(v.departure_time)}</div>
+        <div>Previous Score: ${v.previous_score||'—'}</div>
+        <div>Purpose: ${v.visit_purpose||'—'}</div>
+      </div>
+    </div>`;
+}
+
+// ─── Actions ───────────────────────────────────
+function renderActions(el){
+  const open=D.actions.filter(a=>!['resolved','closed','rejected'].includes(a.status));
+  const statuses=['new','reviewed','action_required','assigned','service_requested','service_deployed','waiting_retailer','waiting_manufacturer','waiting_parts','replacement_approved','replacement_deployed','follow_up_required','resolved','closed','rejected'];
+
+  el.innerHTML=`
+    <h2>Action Management</h2><p class="subtitle">${open.length} open · ${D.actions.length} total</p>
+    <div class="filters">
+      <select id="fSt" onchange="applyActionFilters()"><option value="">All Statuses</option>${statuses.map(s=>`<option value="${s}">${s.replace(/_/g,' ')}</option>`).join('')}</select>
+      <select id="fPr" onchange="applyActionFilters()"><option value="">All Priorities</option><option value="critical">Critical</option><option value="high">High</option><option value="normal">Normal</option><option value="low">Low</option></select>
+      <select id="fStore" onchange="applyActionFilters()"><option value="">All Stores</option>${D.stores.map(s=>`<option value="${s.id}">${s.store_name}</option>`).join('')}</select>
+    </div>
+    <div id="actionsBody">${actionsTable(D.actions)}</div>`;
+}
+
+function actionsTable(list){
+  return`<table class="tbl"><thead><tr><th>Action</th><th>Store</th><th>Priority</th><th>Status</th><th>Due</th><th>Created</th></tr></thead><tbody>
+    ${list.map(a=>`<tr class="clickable" onclick="goTo('action:${a.id}')"><td><div style="font-weight:600;font-size:13px">${a.title}</div><div style="font-size:11px;color:var(--txt2)">${a.finding?.brand_name||''} ${a.finding?.model_number||''}</div></td><td>${a.store?.store_name||''}</td><td><span class="badge ${badgePri(a.priority)}">${a.priority}</span></td><td><span class="badge ${badgeStatus(a.status)}">${a.status.replace(/_/g,' ')}</span></td><td class="num">${fmtDate(a.due_date)}</td><td class="num">${fmtDate(a.created_at?.split('T')[0])}</td></tr>`).join('')}
+  </tbody></table>`;
+}
+
+window.applyActionFilters=()=>{
+  let f=D.actions;
+  const st=document.getElementById('fSt')?.value;
+  const pr=document.getElementById('fPr')?.value;
+  const store=document.getElementById('fStore')?.value;
+  if(st)f=f.filter(a=>a.status===st);
+  if(pr)f=f.filter(a=>a.priority===pr);
+  if(store)f=f.filter(a=>a.store_id===store);
+  document.getElementById('actionsBody').innerHTML=actionsTable(f);
+};
+
+// ─── Action Detail with Timeline + Comments ────
+async function renderActionDetail(el,id){
+  const a=D.actions.find(x=>x.id===id);if(!a){el.innerHTML='Action not found';return}
+  const history=D.history.filter(h=>h.action_id===id);
+
+  // Load comments
+  const{data:comments}=await sb.from('field_action_comments').select('*').or(`action_id.eq.${id}`).order('created_at',{ascending:true});
+
+  // Time metrics
+  const created=new Date(a.created_at);
+  const firstReview=history.find(h=>h.new_status==='reviewed');
+  const firstAction=history.find(h=>['action_required','assigned','service_requested'].includes(h.new_status));
+  const resolved=a.resolved_at?new Date(a.resolved_at):null;
+  const hoursTo=(from,to)=>to&&from?((to-from)/3600000).toFixed(1):null;
+
+  const statuses=['reviewed','action_required','assigned','service_requested','service_deployed','waiting_retailer','waiting_manufacturer','waiting_parts','replacement_approved','replacement_deployed','follow_up_required','resolved','closed','rejected'];
+
+  el.innerHTML=`
+    <div class="breadcrumb"><a onclick="navTo('actions')">Actions</a><span>›</span><span>${a.title}</span></div>
+    <button class="back-btn" onclick="navTo('actions')">← Back to Actions</button>
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+      <div>
+        <h2 style="font-size:20px">${a.title}</h2>
+        <p class="subtitle" style="margin-bottom:0">${a.store?.store_name||''} · ${a.store?.retailer?.name||''} · ${a.client?.client_name||''}</p>
+      </div>
+      <span class="badge ${badgePri(a.priority)}" style="font-size:13px;padding:6px 16px">${a.priority}</span>
+    </div>
+
+    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat"><div class="val" style="font-size:20px"><span class="badge ${badgeStatus(a.status)}" style="font-size:13px;padding:6px 14px">${a.status.replace(/_/g,' ')}</span></div><div class="label">Current Status</div></div>
+      <div class="stat"><div class="val" style="font-size:18px">${hoursTo(created,firstReview?new Date(firstReview.created_at):null)||'—'}h</div><div class="label">Discovery → Review</div></div>
+      <div class="stat"><div class="val" style="font-size:18px">${hoursTo(firstReview?new Date(firstReview.created_at):null,firstAction?new Date(firstAction.created_at):null)||'—'}h</div><div class="label">Review → Action</div></div>
+      <div class="stat"><div class="val" style="font-size:18px">${hoursTo(created,resolved)||'—'}h</div><div class="label">Total Resolution</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Finding Details</h3>
+        <div style="font-size:13px">
+          <div style="margin-bottom:8px"><strong>Brand:</strong> ${a.finding?.brand_name||'—'}</div>
+          <div style="margin-bottom:8px"><strong>Model:</strong> ${a.finding?.model_number||'—'}</div>
+          <div style="margin-bottom:8px"><strong>Issue:</strong> ${a.finding?.issue_category||'—'}</div>
+          <div style="margin-bottom:8px"><strong>Severity:</strong> <span class="badge ${badgePri(a.finding?.severity||'low')}">${a.finding?.severity||'—'}</span></div>
+          <div style="margin-bottom:8px"><strong>Condition:</strong> ${(a.finding?.condition||'').replace(/_/g,' ')}</div>
+          <div><strong>Rep Comments:</strong> ${a.finding?.rep_comments||'—'}</div>
+        </div>
+        <div style="margin-top:16px"><strong>Description:</strong><p style="font-size:13px;margin-top:4px">${a.description||'—'}</p></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--txt2)">
+          <div>Due: ${fmtDate(a.due_date)}</div>
+          <div>Created: ${fmtTime(a.created_at)}</div>
+          ${a.resolved_at?`<div>Resolved: ${fmtTime(a.resolved_at)}</div>`:''}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Action Timeline</h3>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-time">${fmtTime(a.created_at)}</div><div class="tl-text">Action created</div></div>
+          ${history.map(h=>`<div class="tl-item ${h.new_status==='service_requested'||h.new_status==='replacement_approved'?'critical':''}"><div class="tl-time">${fmtTime(h.created_at)}</div><div class="tl-text">Status → <strong>${h.new_status.replace(/_/g,' ')}</strong>${h.notes?` — ${h.notes}`:''}</div><div class="tl-user">${h.changed_by_name||'System'}</div></div>`).join('')}
+          ${a.resolved_at?`<div class="tl-item" style="--accent:var(--accent)"><div class="tl-time">${fmtTime(a.resolved_at)}</div><div class="tl-text" style="color:var(--accent);font-weight:700">Resolved</div></div>`:''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Update Status</h3>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <select id="newStatus" style="flex:1;min-width:180px"><option value="">Select new status...</option>${statuses.map(s=>`<option value="${s}">${s.replace(/_/g,' ')}</option>`).join('')}</select>
+        <input id="statusNote" placeholder="Add a note (optional)" style="flex:2;min-width:200px">
+        <button class="btn btn-primary btn-sm" onclick="updateActionStatus('${a.id}')">Update</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Comments (${(comments||[]).length})</h3>
+      <div id="commentsList">
+        ${(comments||[]).map(c=>`<div class="comment"><div class="c-header"><span class="c-author">${c.author_name||'Unknown'}</span><span class="c-time">${fmtTime(c.created_at)}</span></div><div class="c-body">${c.comment_text}</div><span class="c-vis">${c.visibility}</span></div>`).join('')}
+        ${!(comments||[]).length?'<p style="color:var(--txt2);font-size:13px">No comments yet</p>':''}
+      </div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <textarea id="commentText" placeholder="Write a comment..." style="flex:2;min-width:200px;min-height:50px"></textarea>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <select id="commentVis" style="font-size:12px;padding:6px 10px">
+            <option value="internal">Internal</option>
+            <option value="manufacturer">Manufacturer</option>
+            <option value="retailer">Retailer-visible</option>
+            <option value="service_provider">Service Provider</option>
+            <option value="all">All</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="postComment('${a.id}')">Post</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+window.updateActionStatus=async(actionId)=>{
+  const newStatus=document.getElementById('newStatus').value;
+  if(!newStatus)return;
+  const note=document.getElementById('statusNote').value;
+  const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
+  const action=D.actions.find(a=>a.id===actionId);
+  const updates={status:newStatus};
+  if(newStatus==='resolved')updates.resolved_at=new Date().toISOString();
+  if(newStatus==='closed')updates.closed_at=new Date().toISOString();
+  await sb.from('field_actions').update(updates).eq('id',actionId);
+  await sb.from('field_action_status_history').insert({action_id:actionId,old_status:action?.status,new_status:newStatus,changed_by_user_id:user.id,changed_by_name:p?.full_name||user.email,notes:note||null});
+  await loadAll();
+  goTo('action:'+actionId);
+};
+
+window.postComment=async(actionId)=>{
+  const text=document.getElementById('commentText').value.trim();
+  if(!text)return;
+  const vis=document.getElementById('commentVis').value;
+  const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
+  await sb.from('field_action_comments').insert({action_id:actionId,author_user_id:user.id,author_name:p?.full_name||user.email,comment_text:text,visibility:vis});
+  goTo('action:'+actionId);
+};
+
+// ─── Stores with Drill-Down ───────────────────
+function renderStores(el){
+  // Group by country → region → retailer
+  const countries={};
+  D.stores.forEach(s=>{
+    const c=s.country||'CA';const r=s.region||'Unknown';
+    if(!countries[c])countries[c]={};
+    if(!countries[c][r])countries[c][r]=[];
+    countries[c][r].push(s);
+  });
+
+  const latestScore=(storeId)=>{const s=D.scores.find(x=>x.store_id===storeId);return s?.overall_score||null};
+
+  el.innerHTML=`
+    <h2>Store Performance</h2><p class="subtitle">${D.stores.length} stores across ${Object.keys(countries).length} countries</p>
+    ${Object.entries(countries).map(([country,regions])=>`
+      <div class="card">
+        <h3>${country==='CA'?'🇨🇦 Canada':'🇺🇸 United States'}</h3>
+        ${Object.entries(regions).map(([region,stores])=>`
+          <div style="margin-bottom:16px">
+            <div style="font-weight:700;font-size:13px;color:var(--accent);margin-bottom:8px;padding:6px 0;border-bottom:1px solid var(--line)">${region} (${stores.length} stores)</div>
+            <table class="tbl" style="margin-top:0"><thead><tr><th>Store</th><th>Retailer</th><th>City</th><th>Score</th><th>Open Actions</th></tr></thead><tbody>
+              ${stores.map(s=>{const sc=latestScore(s.id);const oc=openCount(s.id);return`<tr class="clickable" onclick="goTo('store:${s.id}')"><td style="font-weight:600">${s.store_name}</td><td>${s.retailer?.name||''}</td><td>${s.city||''}, ${s.province_state||''}</td><td>${sc?`<span class="badge ${badgeScore(sc)}">${sc}</span>`:'—'}</td><td>${oc>0?`<span style="color:var(--amber);font-weight:700">${oc}</span>`:'0'}</td></tr>`}).join('')}
+            </tbody></table>
+          </div>
+        `).join('')}
+      </div>
+    `).join('')}`;
+}
+
+// ─── Store Detail ──────────────────────────────
+function renderStoreDetail(el,id){
+  const s=D.stores.find(x=>x.id===id);if(!s){el.innerHTML='Store not found';return}
+  const visits=D.visits.filter(v=>v.store_id===id);
+  const actions=D.actions.filter(a=>a.store_id===id);
+  const open=actions.filter(a=>!['resolved','closed','rejected'].includes(a.status));
+  const scores=D.scores.filter(x=>x.store_id===id).sort((a,b)=>new Date(a.score_date)-new Date(b.score_date));
+  const findings=D.findings.filter(f=>f.store_id===id);
+  const training=D.training.filter(t=>t.store_id===id);
+
+  el.innerHTML=`
+    <div class="breadcrumb"><a onclick="navTo('stores')">Stores</a><span>›</span><span>${s.store_name}</span></div>
+    <button class="back-btn" onclick="navTo('stores')">← Back to Stores</button>
+    <h2>${s.store_name}</h2>
+    <p class="subtitle">${s.retailer?.name||''} · ${s.address||''}, ${s.city||''}, ${s.province_state||''} ${s.postal_zip||''}</p>
+
+    <div class="stats">
+      <div class="stat"><div class="val" style="color:var(--accent)">${scores.length?scores[scores.length-1].overall_score:'—'}</div><div class="label">Latest Score</div></div>
+      <div class="stat"><div class="val">${visits.length}</div><div class="label">Total Visits</div></div>
+      <div class="stat"><div class="val" style="color:${open.length>0?'var(--amber)':'var(--accent)'}">${open.length}</div><div class="label">Open Actions</div></div>
+      <div class="stat"><div class="val">${findings.length}</div><div class="label">Findings</div></div>
+      <div class="stat"><div class="val">${training.reduce((s,t)=>s+(t.employees_trained||0),0)}</div><div class="label">Staff Trained</div></div>
+    </div>
+
+    ${scores.length>1?`<div class="card"><h3>Score History</h3><div class="bar-chart">${scores.map(sc=>{const color=sc.overall_score>=85?'var(--accent)':sc.overall_score>=70?'var(--amber)':'var(--red)';return`<div class="bar" style="height:${sc.overall_score}%;background:${color}"><div class="bar-val">${sc.overall_score}</div><div class="bar-label">${new Date(sc.score_date+'T00:00:00').toLocaleDateString('en',{month:'short',day:'numeric'})}</div></div>`}).join('')}</div></div>`:''}
+
+    <div class="card">
+      <h3>Visit History</h3>
+      <table class="tbl"><thead><tr><th>Date</th><th>Duration</th><th>Score</th><th>Findings</th><th>Critical</th></tr></thead><tbody>
+        ${visits.map(v=>`<tr class="clickable" onclick="goTo('visit:${v.id}')"><td class="num">${fmtDate(v.visit_date)}</td><td class="num">${v.duration_minutes||'—'}m</td><td><span class="badge ${badgeScore(v.store_score||0)}">${v.store_score||'—'}</span></td><td class="num">${v.findings_count||0}</td><td>${v.critical_count>0?`<span class="badge badge-red">${v.critical_count}</span>`:'—'}</td></tr>`).join('')}
+      </tbody></table>
+    </div>
+
+    ${open.length?`<div class="card"><h3>Open Actions (${open.length})</h3>
+      ${open.map(a=>`<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="goTo('action:${a.id}')"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;font-size:13px">${a.title}</span><div><span class="badge ${badgePri(a.priority)}">${a.priority}</span> <span class="badge ${badgeStatus(a.status)}">${a.status.replace(/_/g,' ')}</span></div></div></div>`).join('')}
+    </div>`:''}`;
+}
+
+// ─── Training ──────────────────────────────────
+function renderTraining(el){
+  const t=D.training;
+  const total=t.reduce((s,x)=>s+(x.employees_trained||0),0);
+  const avgS=t.filter(x=>x.knowledge_score).length?(t.filter(x=>x.knowledge_score).reduce((s,x)=>s+x.knowledge_score,0)/t.filter(x=>x.knowledge_score).length).toFixed(0):'—';
+  el.innerHTML=`
+    <h2>Training Report</h2><p class="subtitle">${t.length} sessions · ${total} staff trained · Avg score: ${avgS}</p>
+    <table class="tbl"><thead><tr><th>Topic</th><th>Store</th><th>Brand</th><th>Category</th><th>Trained</th><th>Score</th><th>Duration</th><th>Follow-up</th></tr></thead><tbody>
+      ${t.map(s=>`<tr><td style="font-weight:600">${s.training_topic}</td><td>${s.store?.store_name||''}</td><td>${s.brand_name||''}</td><td>${s.product_category||''}</td><td class="num">${s.employees_trained||0}</td><td>${s.knowledge_score?`<span class="badge ${s.knowledge_score>=80?'badge-green':s.knowledge_score>=60?'badge-amber':'badge-red'}">${s.knowledge_score}</span>`:'—'}</td><td class="num">${s.duration_minutes||0}m</td><td>${s.follow_up_required?'<span class="badge badge-amber">Required</span>':'—'}</td></tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ─── Competitive ───────────────────────────────
+function renderCompetitive(el){
+  const c=D.competitive;
+  const brands={};c.forEach(x=>{if(!brands[x.competitor_brand])brands[x.competitor_brand]={n:0,floor:0,cnt:0};brands[x.competitor_brand].n++;if(x.floor_presence_pct){brands[x.competitor_brand].floor+=x.floor_presence_pct;brands[x.competitor_brand].cnt++}});
+  el.innerHTML=`
+    <h2>Competitive Intelligence</h2><p class="subtitle">${c.length} observations · ${Object.keys(brands).length} competitors</p>
+    <div class="stats">
+      ${Object.entries(brands).map(([b,d])=>`<div class="stat"><div style="font-weight:700;font-size:15px;margin-bottom:6px">${b}</div><div style="font-size:12px;color:var(--txt2)">Avg Floor: <strong style="color:var(--amber)">${d.cnt?(d.floor/d.cnt).toFixed(0):'—'}%</strong></div><div style="font-size:12px;color:var(--txt2)">Sightings: ${d.n}</div></div>`).join('')}
+    </div>
+    <div class="card"><h3>All Observations</h3>
+    <table class="tbl"><thead><tr><th>Competitor</th><th>Store</th><th>Floor %</th><th>Display</th><th>Promotions</th><th>New Models</th><th>Staff Notes</th></tr></thead><tbody>
+      ${c.map(x=>`<tr><td style="font-weight:600">${x.competitor_brand}</td><td>${x.store?.store_name||''}</td><td class="num">${x.floor_presence_pct?x.floor_presence_pct+'%':'—'}</td><td>${x.display_size||'—'}</td><td style="max-width:180px;font-size:12px">${x.promotions_active||'—'}</td><td style="font-size:12px">${x.new_models_spotted||'—'}</td><td style="font-size:12px;max-width:180px">${x.staff_preference_notes||'—'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// ─── Exports ───────────────────────────────────
+function renderExports(el){
+  el.innerHTML=`
+    <h2>Export Reports</h2><p class="subtitle">Generate downloadable reports from your field data</p>
+    <div class="grid-2">
+      <div class="card" style="cursor:pointer" onclick="exportCSV('actions')">
+        <h3>📊 Action Tracker (CSV)</h3>
+        <p style="font-size:13px;color:var(--txt2)">All actions with status, priority, store, dates, and resolution times</p>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="exportCSV('findings')">
+        <h3>🔍 Findings Export (CSV)</h3>
+        <p style="font-size:13px;color:var(--txt2)">All findings with brand, model, severity, condition, and recommendations</p>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="exportCSV('visits')">
+        <h3>📋 Visit History (CSV)</h3>
+        <p style="font-size:13px;color:var(--txt2)">All visits with scores, findings counts, duration, and training data</p>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="exportCSV('training')">
+        <h3>🎓 Training Report (CSV)</h3>
+        <p style="font-size:13px;color:var(--txt2)">All training sessions with topics, scores, and employee counts</p>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="exportCSV('competitive')">
+        <h3>🆚 Competitive Intel (CSV)</h3>
+        <p style="font-size:13px;color:var(--txt2)">Competitor floor presence, promotions, and staff preference data</p>
+      </div>
+      <div class="card" style="cursor:pointer" onclick="exportCSV('stores')">
+        <h3>🏪 Store Summary (CSV)</h3>
+        <p style="font-size:13px;color:var(--txt2)">All stores with latest scores, open actions, and visit counts</p>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Custom Export</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <select id="expType" style="min-width:160px"><option value="actions">Actions</option><option value="findings">Findings</option><option value="visits">Visits</option></select>
+        <select id="expStore" style="min-width:160px"><option value="">All Stores</option>${D.stores.map(s=>`<option value="${s.id}">${s.store_name}</option>`).join('')}</select>
+        <select id="expStatus" style="min-width:160px"><option value="">All Statuses</option><option value="open">Open Only</option><option value="resolved">Resolved Only</option><option value="critical">Critical Only</option></select>
+        <button class="btn btn-primary" onclick="exportCustom()">Export CSV</button>
+      </div>
+    </div>`;
+}
+
+window.exportCSV=(type)=>{
+  let rows=[],headers=[];
+  if(type==='actions'){
+    headers=['Title','Store','Retailer','Brand','Model','Issue','Priority','Status','Due Date','Created','Resolved','Description'];
+    rows=D.actions.map(a=>[a.title,a.store?.store_name,a.store?.retailer?.name,a.finding?.brand_name,a.finding?.model_number,a.finding?.issue_category,a.priority,a.status,a.due_date||'',a.created_at?.split('T')[0],a.resolved_at?.split('T')[0]||'',a.description||'']);
+  } else if(type==='findings'){
+    headers=['Brand','Model','Category','Issue','Severity','Condition','Recommended Action','Comments','Source','Status','Created'];
+    rows=D.findings.map(f=>[f.brand_name,f.model_number,f.product_category,f.issue_category,f.severity,f.condition,f.recommended_action,f.rep_comments,f.source,f.status,f.created_at?.split('T')[0]]);
+  } else if(type==='visits'){
+    headers=['Store','Retailer','Date','Duration (min)','Score','Previous Score','Findings','Critical','Photos','People Trained','Purpose','Status'];
+    rows=D.visits.map(v=>[v.store?.store_name,v.store?.retailer?.name,v.visit_date,v.duration_minutes,v.store_score,v.previous_score,v.findings_count,v.critical_count,v.photos_count,v.people_trained,v.visit_purpose,v.status]);
+  } else if(type==='training'){
+    headers=['Topic','Store','Brand','Category','Employees Trained','Score','Duration (min)','Follow-up Required','Comments'];
+    rows=D.training.map(t=>[t.training_topic,t.store?.store_name,t.brand_name,t.product_category,t.employees_trained,t.knowledge_score,t.duration_minutes,t.follow_up_required?'Yes':'No',t.rep_comments]);
+  } else if(type==='competitive'){
+    headers=['Competitor','Store','Floor %','Display Size','Promotions','New Models','Staff Preference','Common Objections'];
+    rows=D.competitive.map(c=>[c.competitor_brand,c.store?.store_name,c.floor_presence_pct,c.display_size,c.promotions_active,c.new_models_spotted,c.staff_preference_notes,c.common_objections]);
+  } else if(type==='stores'){
+    headers=['Store','Retailer','City','Province/State','Country','Region','Latest Score','Open Actions','Total Visits'];
+    rows=D.stores.map(s=>{const sc=D.scores.find(x=>x.store_id===s.id);return[s.store_name,s.retailer?.name,s.city,s.province_state,s.country,s.region,sc?.overall_score||'',openCount(s.id),D.visits.filter(v=>v.store_id===s.id).length]});
+  }
+  downloadCSV(headers,rows,type);
+};
+
+window.exportCustom=()=>{
+  const type=document.getElementById('expType').value;
+  const storeId=document.getElementById('expStore').value;
+  const statusFilter=document.getElementById('expStatus').value;
+  // Build filtered export
+  let data;
+  if(type==='actions'){
+    data=D.actions;
+    if(storeId)data=data.filter(a=>a.store_id===storeId);
+    if(statusFilter==='open')data=data.filter(a=>!['resolved','closed','rejected'].includes(a.status));
+    if(statusFilter==='resolved')data=data.filter(a=>a.status==='resolved'||a.status==='closed');
+    if(statusFilter==='critical')data=data.filter(a=>a.priority==='critical');
+    const headers=['Title','Store','Priority','Status','Due Date','Created','Resolved'];
+    const rows=data.map(a=>[a.title,a.store?.store_name,a.priority,a.status,a.due_date||'',a.created_at?.split('T')[0],a.resolved_at?.split('T')[0]||'']);
+    downloadCSV(headers,rows,'custom_actions');
+  } else if(type==='findings'){
+    data=D.findings;
+    if(storeId)data=data.filter(f=>f.store_id===storeId);
+    if(statusFilter==='critical')data=data.filter(f=>f.severity==='critical');
+    const headers=['Brand','Model','Issue','Severity','Condition','Action','Comments'];
+    const rows=data.map(f=>[f.brand_name,f.model_number,f.issue_category,f.severity,f.condition,f.recommended_action,f.rep_comments]);
+    downloadCSV(headers,rows,'custom_findings');
+  } else {
+    data=D.visits;
+    if(storeId)data=data.filter(v=>v.store_id===storeId);
+    const headers=['Store','Date','Score','Findings','Critical','Duration'];
+    const rows=data.map(v=>[v.store?.store_name,v.visit_date,v.store_score,v.findings_count,v.critical_count,v.duration_minutes]);
+    downloadCSV(headers,rows,'custom_visits');
+  }
+};
+
+function downloadCSV(headers,rows,filename){
+  const esc=v=>{const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s};
+  const csv=[headers.join(','),...rows.map(r=>r.map(esc).join(','))].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`iq_brand_marketing_${filename}_${new Date().toISOString().split('T')[0]}.csv`;a.click();
+  URL.revokeObjectURL(url);
+  // Log export
+  sb.from('field_exports').insert({export_type:filename,export_format:'csv',generated_by_user_id:user.id});
+}
+
+checkAuth();
+</script>
+</body>
+</html>
