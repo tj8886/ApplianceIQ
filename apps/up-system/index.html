@@ -657,7 +657,7 @@ async function renderManagers(){
   const{data}=await sb.from('iq_floor_managers').select('*').eq('store_id',currentStore.id).order('coverage_start',{ascending:false}).limit(30);
   mainEl.innerHTML=`<div class="page-head"><div><h1>👔 Floor Managers</h1><div class="sub">${(data??[]).filter(m=>m.is_active).length} active</div></div><div class="head-actions"><button class="btn btn-primary" id="addMgr">+ Add Manager</button></div></div>
     <table><thead><tr><th>Manager</th><th>Role</th><th>Coverage</th><th>Status</th><th>Remote</th><th>Replacement</th><th>Action</th></tr></thead><tbody>
-    ${(data??[]).map(m=>`<tr><td><b>${pName(m.manager_user_id)}</b></td><td>${esc(m.role_name)}</td><td>${fmtDt(m.coverage_start)}${m.coverage_end?' — '+fmtDt(m.coverage_end):' — ongoing'}</td><td>${m.is_active?`<span class="chip g">Active</span>${m.status_text?`<div class="sub">${esc(m.status_text)}</div>`:''}':'<span class="chip n">Ended</span>'}</td><td>${m.is_remote?'<span class="chip b">Remote</span>':'On-site'}</td><td>${m.replacement_user_id?pName(m.replacement_user_id):'—'}</td><td>${m.is_active?`<button class="btn btn-sm btn-ghost" data-endmgr="${m.id}">End</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No floor managers assigned.</td></tr>'}</tbody></table>`;
+    ${(data??[]).map(m=>{const badge=m.is_active?(`<span class="chip g">Active</span>`+(m.status_text?`<div class="sub">${esc(m.status_text)}</div>`:'')):'<span class="chip n">Ended</span>';return`<tr><td><b>${pName(m.manager_user_id)}</b></td><td>${esc(m.role_name)}</td><td>${fmtDt(m.coverage_start)}${m.coverage_end?' — '+fmtDt(m.coverage_end):' — ongoing'}</td><td>${badge}</td><td>${m.is_remote?'<span class="chip b">Remote</span>':'On-site'}</td><td>${m.replacement_user_id?pName(m.replacement_user_id):'—'}</td><td>${m.is_active?`<button class="btn btn-sm btn-ghost" data-endmgr="${m.id}">End</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="7" class="empty">No floor managers assigned.</td></tr>'}</tbody></table>`;
   $('#addMgr')?.addEventListener('click',()=>{
     openModal(`<h2>👔 Assign Floor Manager</h2>
       <div class="field"><label>Manager</label><select id="mg_user">${repOptions(currentUser.id)}</select></div>
@@ -877,8 +877,6 @@ async function logIntel(eventType,payload){
 async function logAudit(eventType,payload){
   try{await sb.from('iq_audit_events').insert({organization_id:currentOrg.id,user_id:currentUser.id,event_type:eventType,resource_type:'iq_store',resource_id:currentStore.id,after_state:payload||{},severity:'info'});}catch(e){console.warn('Audit log failed:',e);}
 }
-
-boot();
 </script>
 </body>
 </html>
