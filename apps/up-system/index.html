@@ -3,1200 +3,452 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<meta name="theme-color" content="#0f1f3d"/>
-<title>IQ Up System — Floor Intelligence & Live Sales Rotation</title>
+<meta name="theme-color" content="#042a2a"/>
+<title>IQ Up System — Floor Intelligence &amp; Live Sales Rotation</title>
+<meta name="description" content="Live up rotation, customer flow tracking, and floor intelligence for appliance retail. Know who's next, who's with a customer, and who's closing — in real time."/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --navy:#0f1f3d;--navy-2:#16294e;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;
   --ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#ffffff;
-  --accent:#6366f1;--accent-dark:#4f46e5;--accent-tint:#eef2ff;
-  --verified:#1a9e56;--danger:#c02d1e;--amber:#e8590c;--radius:14px;
+  --accent:#0ea5e9;--accent-dark:#0284c7;--accent-tint:#e0f2fe;
+  --verified:#1a9e56;--danger:#c02d1e;
 }
 html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
-button{font:inherit;cursor:pointer}input,select,textarea{font:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.num{font-variant-numeric:tabular-nums}
 
-/* ===== LANDING PAGE ===== */
-#landing{display:block}#app{display:none}
-.unav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%}
+/* NAV */
+.unav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%}
 .unav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
 .unav-logo{font-family:'Sora',sans-serif;font-weight:800;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:9px}
-.unav-pill{background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.unav-pill{background:var(--teal);color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:-.3px}
 .unav-links{display:flex;align-items:center;gap:24px}
-.unav-links a{color:var(--steel);font-size:13px;text-decoration:none;font-weight:500}
-.ubtn{background:var(--navy);color:#fff;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;display:inline-block;text-decoration:none}
-.ubtn:hover{background:var(--navy-2)}
-.ubtn-o{border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:'Sora',sans-serif;font-weight:600;display:inline-block;background:0 0}
-.usection{padding:100px 5%}.usection-inner{max-width:1200px;margin:0 auto}
+.unav-links a{color:var(--steel);font-size:13px;text-decoration:none;font-weight:500;transition:color .15s}
+.unav-links a:hover{color:var(--navy)}
+.ubtn{background:var(--teal);color:#fff;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;cursor:pointer;text-decoration:none;display:inline-block;transition:background .15s}
+.ubtn:hover{background:var(--teal-dark)}
+.ubtn-o{border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:'Sora',sans-serif;font-weight:600;display:inline-block;background:transparent;transition:all .15s}
+.ubtn-o:hover{border-color:var(--teal);background:var(--teal-tint);color:var(--teal)}
+
+/* SECTIONS */
+.usection{padding:100px 5%}
+.usection-inner{max-width:1200px;margin:0 auto}
 .ueyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:20px}
-.ueyebrow-line{width:24px;height:1px;background:var(--accent)}.ueyebrow-text{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600}
-.uhero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px}
+.ueyebrow-line{width:24px;height:1px;background:var(--teal)}
+.ueyebrow-text{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--teal);font-weight:600}
+
+/* HERO */
+.uhero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px;position:relative;overflow:hidden}
+.uhero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--teal),transparent)}
+.uhero::after{content:'';position:absolute;top:25%;right:-5%;width:600px;height:600px;background:radial-gradient(ellipse at right,rgba(47,125,114,0.07) 0%,transparent 70%);pointer-events:none}
 .uhero-inner{max-width:1200px;margin:0 auto;width:100%}
 .uhero h1{font-size:clamp(40px,5.5vw,76px);font-weight:800;letter-spacing:-2.5px;color:var(--navy);margin-bottom:24px;max-width:820px;line-height:1.03}
-.uhero h1 em{font-style:normal;color:var(--accent)}
+.uhero h1 em{font-style:normal;color:var(--teal)}
 .uhero-sub{font-size:18px;color:var(--steel);max-width:560px;line-height:1.65;margin-bottom:40px}
 .uhero-ctas{display:flex;align-items:center;gap:16px;margin-bottom:72px;flex-wrap:wrap}
 .uhero-stats{display:flex;gap:48px;border-top:1px solid var(--line);padding-top:40px;flex-wrap:wrap}
 .ustat-num{font-family:'Sora',sans-serif;font-size:36px;font-weight:800;color:var(--navy);letter-spacing:-1px}
 .ustat-lbl{font-size:12px;color:var(--steel);margin-top:2px}
-.utitle{font-family:'Sora',sans-serif;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px}
+
+/* FLOOR VIZ */
+.ufloor-demo{background:var(--navy);border-radius:16px;padding:32px;margin-top:60px;color:#fff;position:relative;overflow:hidden}
+.ufloor-demo::after{content:'';position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(47,125,114,0.3),transparent);pointer-events:none}
+.ufloor-title{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.5);margin-bottom:20px}
+.ufloor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.ufloor-rep{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px;text-align:center;transition:all .2s}
+.ufloor-rep.up-next{border-color:var(--teal);background:rgba(47,125,114,0.15)}
+.ufloor-rep.with-customer{border-color:rgba(14,165,233,0.4);background:rgba(14,165,233,0.1)}
+.ufloor-rep .urep-status{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.ufloor-rep.up-next .urep-status{color:var(--teal)}
+.ufloor-rep.with-customer .urep-status{color:var(--accent)}
+.ufloor-rep.on-break .urep-status{color:rgba(255,255,255,0.3)}
+.ufloor-rep .urep-name{font-family:'Sora',sans-serif;font-weight:700;font-size:15px}
+.ufloor-rep .urep-time{font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px}
+
+/* TITLES */
+.utitle{font-family:'Sora',sans-serif;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-0.8px;color:var(--navy);margin-bottom:14px}
 .usub{font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px}
-.ufeat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
-.ufeat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px 24px}
-.ufeat-icon{font-size:28px;margin-bottom:12px}.ufeat h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)}.ufeat p{font-size:14px;color:var(--steel);line-height:1.6}
-.ufooter{background:var(--navy);color:rgba(255,255,255,.7);text-align:center;padding:40px 5%;font-size:13px}
-.ufooter a{color:#fff;text-decoration:none;font-weight:600}
-.login-overlay{position:fixed;inset:0;background:rgba(9,17,35,.55);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
-.login-overlay.show{display:flex}
-.ulogin-card{background:#fff;border-radius:16px;padding:32px 28px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.4)}
-.ulogin-card h2{font-size:18px;margin-bottom:4px}.ulogin-card p{color:var(--steel);font-size:13px;margin-bottom:16px}
-.ufield{margin-bottom:12px}.ufield label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px}
-.ufield input,.ufield select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe}
-.ulogin-notice{margin-top:10px;font-size:13px;border-radius:8px;padding:8px 12px;display:none}
-.ulogin-notice.err{display:block;background:#fdecea;color:#8c2f22}
-.ulogin-notice.ok{display:block;background:#e8f6ee;color:#14663a}
-.ulogin-alt{margin-top:14px;text-align:center;font-size:13px;color:var(--steel)}
-.ulogin-alt a{color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline}
-@media(max-width:768px){.unav-links a:not(.ubtn){display:none}.uhero-stats{gap:24px}}
 
-/* ===== APP SHELL ===== */
-.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-aside{background:var(--navy);color:#cdd8ec;padding:16px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
-aside .mark{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-aside .pill{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--navy-2),var(--accent));color:#fff;font-weight:800;font-size:11px}
-aside .wm{font-weight:800;font-size:15px;color:#fff}
-aside .wm small{display:block;font-weight:500;font-size:10px;color:#8fa3c8;text-transform:uppercase;letter-spacing:.05em}
-.nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:0 0;border:0;color:#cdd8ec;padding:8px 12px;border-radius:8px;font-weight:500;font-size:13px}
-.nav-btn:hover{background:rgba(255,255,255,.07)}.nav-btn.active{background:rgba(255,255,255,.13);color:#fff;font-weight:600}
-.nav-sep{height:1px;background:rgba(255,255,255,.1);margin:8px 4px}
-.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#6b82a8;padding:8px 12px 4px;font-weight:600}
-.spacer{flex:1}
-.signout{background:0 0;border:1px solid rgba(255,255,255,.2);color:#cdd8ec;border-radius:8px;padding:8px 12px;font-size:12px}
-.store-sel{width:100%;background:var(--navy-2);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;font-size:12px;margin-bottom:10px}
-main{display:flex;flex-direction:column;min-width:0;min-height:0}
-.main-content{padding:22px 26px;flex:1;overflow-y:auto}
-.page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
-.sub{color:var(--steel);font-size:13px}
-.head-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* FEATURES */
+.ufeat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.ufeat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;transition:border-color .15s}
+.ufeat:hover{border-color:var(--teal)}
+.ufeat-icon{font-size:28px;margin-bottom:12px}
+.ufeat h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)}
+.ufeat p{font-size:14px;color:var(--steel);line-height:1.6}
 
-/* Buttons */
-.btn{border:0;border-radius:999px;padding:10px 18px;font-weight:600;font-size:13px}
-.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{background:var(--navy-2)}
-.btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{background:var(--accent-dark)}
-.btn-ghost{background:0 0;color:var(--ink);border:1px solid var(--line)}
-.btn-danger{background:0 0;color:var(--danger);border:1px solid #f0c9c4}
-.btn-sm{padding:6px 12px;font-size:12px}
-.btn-block{width:100%}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+/* HOW IT WORKS */
+.uhow-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.ustep{position:relative;padding:24px;background:#fff;border:1px solid var(--line);border-radius:14px}
+.ustep-num{font-family:'Sora',sans-serif;font-size:40px;font-weight:800;color:var(--teal-tint);line-height:1}
+.ustep h3{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin:10px 0 6px;color:var(--navy)}
+.ustep p{font-size:13px;color:var(--steel);line-height:1.6}
 
-/* Modal */
-.overlay{position:fixed;inset:0;background:rgba(9,17,35,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
-.sheet{background:var(--card);width:100%;max-width:520px;border-radius:var(--radius);padding:24px;max-height:88vh;overflow-y:auto}
-.sheet h2{margin:0 0 14px;font-size:16px;font-weight:800}
-.sheet-actions{display:flex;gap:8px;margin-top:16px}.sheet-actions .btn{flex:1}
-.form-err{color:var(--danger);font-size:12px;margin-top:8px;display:none}.form-err.show{display:block}
-.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px}
-.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe}
-.field textarea{min-height:60px;resize:vertical}
-.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+/* PRICING */
+.upricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.uprice-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column;transition:border-color .15s}
+.uprice-card:hover{border-color:var(--teal)}
+.uprice-card.pop{border-color:var(--teal);box-shadow:0 4px 24px rgba(47,125,114,0.12)}
+.uprice-tier{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)}
+.uprice-amt{font-family:'Sora',sans-serif;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px}
+.uprice-per{font-size:13px;color:var(--steel)}
+.uprice-list{list-style:none;padding:0;margin:18px 0;flex:1}
+.uprice-list li{font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8}
+.uprice-list li::before{content:'✓ ';color:var(--teal);font-weight:700}
 
-/* Floor board */
-.floor-banner{background:linear-gradient(135deg,var(--navy),#1e3a6e);color:#fff;padding:14px 20px;border-radius:12px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.fb-left{display:flex;align-items:center;gap:14px}
-.fb-left .fb-status{font-size:24px}.fb-left .fb-title{font-weight:800;font-size:16px}
-.fb-left .fb-sub{font-size:12px;color:#8fa3c8}
-.fb-metrics{display:flex;gap:20px}
-.fb-m{text-align:center}.fb-m .fv{font-size:22px;font-weight:800}.fb-m .fl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.7}
-.or-banner{background:linear-gradient(135deg,#e8590c,#dc2626);color:#fff;padding:10px 16px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:13px}
-.or-banner .btn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)}
-.queue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:20px}
-.rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative;transition:all .15s;cursor:pointer}
-.rep-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.06)}
-.rep-card.current-up{border-color:var(--verified);box-shadow:0 0 0 3px #d1fae5}
-.rep-card.next-up{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
-.rep-card.with-customer{border-color:var(--amber);background:#fffbf5}
-.rep-card.on-break{opacity:.6;border-style:dashed}
-.rep-card.unavailable{opacity:.5;border-style:dashed}
-.rep-card .rc-name{font-weight:700;font-size:15px;margin-bottom:2px}
-.rep-card .rc-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
-.rc-status.available{background:#d1fae5;color:#065f46}
-.rc-status.current_up{background:#d1fae5;color:#065f46}
-.rc-status.next_in_line{background:var(--accent-tint);color:var(--accent-dark)}
-.rc-status.with_customer{background:#fef3cd;color:#856404}
-.rc-status.on_break,.rc-status.lunch,.rc-status.break{background:#f3e8ff;color:#7c3aed}
-.rc-status.unavailable,.rc-status.off{background:#f1f5f9;color:#64748b}
-.rep-card .rc-stats{margin-top:8px;display:flex;gap:12px;font-size:11px;color:var(--steel)}
-.rep-card .rc-stats b{color:var(--ink)}
-.rep-card .rc-pos{position:absolute;top:8px;right:10px;font-size:20px;font-weight:800;color:var(--accent);opacity:.3}
-.rep-card.current-up .rc-pos{opacity:1;color:var(--verified)}
-.rep-card .rc-timer{font-size:11px;color:var(--steel);margin-top:4px}
-.rep-card .rc-actions{margin-top:8px;display:flex;gap:4px;flex-wrap:wrap}
+/* CRM CONNECT */
+.uconnect{background:var(--navy);padding:80px 5%;color:#fff;text-align:center}
+.uconnect-inner{max-width:700px;margin:0 auto}
+.uconnect h2{font-family:'Sora',sans-serif;font-size:clamp(24px,3vw,36px);font-weight:700;margin-bottom:16px;color:#fff}
+.uconnect p{color:rgba(255,255,255,0.65);font-size:15px;line-height:1.6;margin-bottom:28px}
+.uconnect .ubtn{background:var(--teal);font-size:15px;padding:14px 32px}
 
-.customer-queue{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
-.customer-queue h3{margin:0 0 10px;font-size:14px;font-weight:700}
-.cq-item{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
-.cq-item .cq-icon{font-size:20px}.cq-item .cq-info{flex:1}
-.cq-item .cq-name{font-weight:600;font-size:13px}.cq-item .cq-detail{font-size:11px;color:var(--steel)}
-.cq-item .cq-wait{font-size:12px;font-weight:700;color:var(--amber)}
+/* FOOTER */
+.ufooter{background:var(--navy);color:rgba(255,255,255,0.55);text-align:center;padding:32px 5%;font-size:13px;border-top:1px solid rgba(255,255,255,0.08)}
+.ufooter a{color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600}
 
-/* Tables */
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-th{background:#f0f3f9;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);padding:9px 12px}
-td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top;font-size:13px}
-tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
-.chip{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px}
-.chip.g{background:#e8f6ee;color:#14663a}.chip.a{background:#fdeee3;color:#9a3d09}.chip.n{background:#e9eef7;color:#33518a}.chip.r{background:#fdecea;color:#8c2f22}.chip.p{background:#f3e8ff;color:#7c3aed}.chip.b{background:var(--accent-tint);color:var(--accent-dark)}
+/* LOGIN MODAL */
+.ulogin-overlay{position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:none;align-items:center;justify-content:center}
+.ulogin-overlay.show{display:flex}
+.ulogin-card{background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
+.ulogin-card h2{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;margin-bottom:4px;color:var(--navy)}
+.ulogin-card .utagline{font-size:13px;color:var(--steel);margin-bottom:20px}
+.ulogin-field{margin-bottom:14px}
+.ulogin-field label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.ulogin-field input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+.ulogin-field input:focus{outline:none;border-color:var(--teal)}
+.ulogin-actions{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.ulogin-alt{font-size:13px;color:var(--steel);text-align:center;margin-top:14px}
+.ulogin-alt a{color:var(--teal);font-weight:600;cursor:pointer;text-decoration:none}
+.ulogin-notice{font-size:13px;margin-top:10px;text-align:center;display:none}
+.ulogin-notice.err{display:block;color:var(--danger)}
+.ulogin-notice.ok{display:block;color:var(--verified)}
+.ulogin-close{position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;color:var(--steel);cursor:pointer}
 
-/* Stats */
-.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
-.stat-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
-.stat-card .val{font-size:26px;font-weight:800;margin-top:4px;color:var(--navy)}.stat-card .lbl{font-size:12px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
-.dash-panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
-.dash-panel h3{margin:0 0 6px;font-size:15px}
-.empty{color:var(--steel);padding:30px;text-align:center}
-
-/* Tabs */
-.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
-.tab{padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;background:0 0;border:1px solid var(--line);color:var(--steel);cursor:pointer}
-.tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-
-/* Traffic chart */
-.chart-bar-wrap{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px 0}
-.chart-bar{flex:1;border-radius:4px 4px 0 0;background:var(--accent);min-width:8px;position:relative;transition:height .3s}
-.chart-bar .cb-lbl{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--steel);white-space:nowrap}
-.chart-bar .cb-val{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:var(--ink)}
-
-/* My Status Bar */
-.my-status-bar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.my-status-bar .msb-label{font-weight:700;font-size:13px;white-space:nowrap}
-.my-status-bar .msb-current{display:flex;align-items:center;gap:6px}
-.my-status-bar .msb-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.msb-dot.green{background:#22c55e}.msb-dot.amber{background:#f59e0b}.msb-dot.red{background:#ef4444}.msb-dot.purple{background:#8b5cf6}.msb-dot.gray{background:#94a3b8}
-.msb-btns{display:flex;gap:4px;flex-wrap:wrap;flex:1}
-.msb-btn{padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;white-space:nowrap;transition:all .15s}
-.msb-btn:hover{border-color:var(--accent);color:var(--accent)}
-.msb-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-.msb-btn.break-btn{border-color:#d8b4fe;color:#7c3aed}.msb-btn.break-btn:hover,.msb-btn.break-btn.active{background:#7c3aed;color:#fff;border-color:#7c3aed}
-.msb-btn.danger-btn{border-color:#fca5a5;color:var(--danger)}.msb-btn.danger-btn:hover,.msb-btn.danger-btn.active{background:var(--danger);color:#fff}
-.msb-timer{font-size:12px;font-weight:700;color:var(--amber);display:flex;align-items:center;gap:4px}
-
-/* Break/lunch timer on rep cards */
-.rc-break-timer{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#7c3aed;margin-top:4px;padding:2px 8px;background:#f3e8ff;border-radius:6px}
-.rc-break-timer.over{color:var(--danger);background:#fdecea}
-
-/* Multi-store overview */
-.multi-store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:20px}
-.store-overview-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;cursor:pointer;transition:all .15s}
-.store-overview-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.08);border-color:var(--accent)}
-.store-overview-card.active-store{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
-.soc-name{font-weight:800;font-size:15px;margin-bottom:6px}
-.soc-metrics{display:flex;gap:16px;flex-wrap:wrap}
-.soc-m{text-align:center}.soc-m .sv{font-size:20px;font-weight:800;color:var(--navy)}.soc-m .sl{font-size:10px;color:var(--steel);text-transform:uppercase}
-.soc-reps{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
-.soc-rep-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-.soc-rep-dot.dot-green{background:#22c55e}.soc-rep-dot.dot-amber{background:#f59e0b}.soc-rep-dot.dot-purple{background:#8b5cf6}.soc-rep-dot.dot-gray{background:#94a3b8}
-
-/* Role badge */
-.role-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:6px;margin-left:6px}
-.role-badge.mgr{background:#fef3cd;color:#856404}.role-badge.rep{background:#e0f2fe;color:#0369a1}
-
-@media(max-width:860px){.shell{grid-template-columns:1fr}aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5;padding:8px}aside .mark{margin:0 8px 0 0}.spacer,.nav-sep,.nav-label{display:none}.queue-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.queue-grid{grid-template-columns:1fr}.field-row,.field-row-3{grid-template-columns:1fr}}
+@media(max-width:860px){
+  .unav-links a:not(.ubtn):not(.ubtn-o){display:none}
+  .uhero-stats{gap:24px}
+  .uhow-grid{grid-template-columns:1fr 1fr}
+  .ufloor-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:520px){
+  .uhow-grid{grid-template-columns:1fr}
+  .ufloor-grid{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 </head>
 <body>
 
-<!-- ===== LANDING PAGE ===== -->
-<div id="landing">
-<nav class="unav"><div class="unav-inner">
-<div class="unav-logo"><span class="unav-pill">UP</span>IQ Up System</div>
-<div class="unav-links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#" id="navLogin" class="ubtn-o">Log In</a><button class="ubtn" id="navTrial">Start Free Trial →</button></div>
-</div></nav>
-<section class="uhero"><div class="uhero-inner">
-<div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">ApplianceIQ — Up System</span></div>
-<h1>Your Floor.<br><em>Managed in<br>Real Time.</em></h1>
-<p class="uhero-sub">Live up rotation, customer flow tracking, and floor intelligence for appliance retail. Know who's next, who's with a customer, and who's closing — without shouting across the showroom.</p>
-<div class="uhero-ctas"><button class="ubtn" id="heroTrial" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button><a href="#features" class="ubtn-o">See How It Works</a></div>
-<div class="uhero-stats">
-<div><div class="ustat-num">Fair</div><div class="ustat-lbl">Turn Distribution</div></div>
-<div><div class="ustat-num">Live</div><div class="ustat-lbl">Floor Status</div></div>
-<div><div class="ustat-num">0 sec</div><div class="ustat-lbl">Wait Guessing</div></div>
-<div><div class="ustat-num">100%</div><div class="ustat-lbl">Accountability</div></div>
-</div></div></section>
-<section class="usection" id="features" style="background:#fff"><div class="usection-inner">
-<div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">Features</span></div>
-<h2 class="utitle">Everything the floor needs. Nothing it doesn't.</h2>
-<p class="usub">No more "whose turn is it?" arguments. No more cherry-picking customers. Just a clean, fair rotation everyone can see.</p>
-<div class="ufeat-grid">
-<div class="ufeat"><div class="ufeat-icon">🔄</div><h3>Live Rotation Queue</h3><p>Fair up order visible to everyone. Auto-advances when a rep takes a customer. Queue position, hold counts, and bump-up controls.</p></div>
-<div class="ufeat"><div class="ufeat-icon">👋</div><h3>Walk-In Logging</h3><p>Log customers as they arrive — name, group size, category, requested rep. Track 9 wait statuses from arrival through assignment.</p></div>
-<div class="ufeat"><div class="ufeat-icon">🏷️</div><h3>21 Status Types</h3><p>From "Available" to "Preparing Quote" to "Lunch." Every minute categorized — customer-facing, admin, break, selling.</p></div>
-<div class="ufeat"><div class="ufeat-icon">⚡</div><h3>Disputes & Missed Ups</h3><p>File disputes with queue snapshots. Track missed ups with manager review, excused flags, and KPI impact tracking.</p></div>
-<div class="ufeat"><div class="ufeat-icon">📊</div><h3>Traffic Intelligence</h3><p>Hourly traffic summaries, staffing predictions, open rotation triggers. Know when you're understaffed before it happens.</p></div>
-<div class="ufeat"><div class="ufeat-icon">📈</div><h3>Floor Analytics</h3><p>Conversion rates, average wait times, rep performance, shift time breakdowns. Every up, every outcome, every minute tracked.</p></div>
-</div></div></section>
-<section class="usection" id="pricing"><div class="usection-inner">
-<div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">Pricing</span></div>
-<h2 class="utitle">Per store. Not per seat.</h2>
-<div class="ufeat-grid">
-<div class="ufeat" style="border-top:3px solid var(--line)"><h3>Solo Store</h3><div style="font-size:36px;font-weight:800;margin:8px 0">$49<span style="font-size:14px;font-weight:500;color:var(--steel)">/mo</span></div><p>1 store, up to 10 reps. Live rotation, walk-in logging, basic analytics.</p></div>
-<div class="ufeat" style="border-top:3px solid var(--accent)"><h3>Multi-Store</h3><div style="font-size:36px;font-weight:800;margin:8px 0">$99<span style="font-size:14px;font-weight:500;color:var(--steel)">/mo</span></div><p>Up to 5 stores. Manager dashboard, cross-store analytics, staffing predictions.</p></div>
-<div class="ufeat" style="border-top:3px solid var(--navy)"><h3>Enterprise</h3><div style="font-size:36px;font-weight:800;margin:8px 0">$199<span style="font-size:14px;font-weight:500;color:var(--steel)">/mo</span></div><p>Unlimited stores. CRM integration, custom rules, priority support, API access.</p></div>
-</div></div></section>
-<footer class="ufooter"><p>© 2026 ApplianceIQ · <a href="#" id="footerLogin">Log In</a> · <a href="https://crmaiiq.netlify.app">CRM</a> · <a href="https://applianceiq-aiacademy.netlify.app">Academy</a></p></footer>
-</div>
+<nav class="unav">
+  <div class="unav-inner">
+    <div class="unav-logo"><span class="unav-pill">UP</span>IQ Up System</div>
+    <div class="unav-links">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#up-pricing">Pricing</a>
+      <a href="#" onclick="event.preventDefault();toggleLogin()" class="ubtn-o">Log In</a>
+      <button class="ubtn" onclick="toggleLogin('signup')">Start Free Trial →</button>
+    </div>
+  </div>
+</nav>
 
-<!-- ===== LOGIN OVERLAY ===== -->
-<div class="login-overlay" id="loginOverlay">
-<div class="ulogin-card">
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="unav-pill" style="width:28px;height:28px;font-size:10px">UP</span><span style="font-weight:800;font-size:16px">IQ Up System</span></div>
-<p>Floor intelligence for your team.</p>
-<div class="ufield"><label>Email</label><input id="upEmail" type="email" value="sarah.m@applianceiq.ai"></div>
-<div class="ufield"><label>Password</label><input id="upPassword" type="password" value="Demo1234!"></div>
-<button class="ubtn" style="width:100%;padding:12px;font-size:14px;border-radius:10px" id="upSigninBtn">Sign In</button>
-<div class="ulogin-alt">New here? <a id="upSignupLink">Create an account</a></div>
-<div class="ulogin-notice" id="upNotice"></div>
-</div>
-</div>
+<!-- HERO -->
+<section class="uhero">
+  <div class="uhero-inner">
+    <div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">ApplianceIQ — Up System</span></div>
+    <h1>Your Floor.<br><em>Managed</em> in<br>Real Time.</h1>
+    <p class="uhero-sub">Live up rotation, customer flow tracking, and floor intelligence for appliance retail. Know who's next, who's with a customer, and who's closing — without shouting across the showroom.</p>
+    <div class="uhero-ctas">
+      <button class="ubtn" onclick="toggleLogin('signup')" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button>
+      <a href="#how-it-works" class="ubtn-o">See How It Works</a>
+    </div>
 
-<!-- ===== APP ===== -->
-<div id="app"><div class="shell">
-<aside>
-<div class="mark"><span class="pill">UP</span><span class="wm">IQ Up<small>Floor Intelligence</small></span></div>
-<select id="storeSelect" class="store-sel" aria-label="Store"></select>
-<div class="nav-label">Operations</div>
-<button class="nav-btn" data-view="dashboard">🏬 All Stores</button>
-<button class="nav-btn active" data-view="floor">🔄 Floor Board</button>
-<button class="nav-btn" data-view="customers">👋 Customers</button>
-<button class="nav-btn" data-view="shifts">⏱ Shifts</button>
-<div class="nav-sep"></div>
-<div class="nav-label">Management</div>
-<button class="nav-btn" data-view="disputes">⚡ Disputes</button>
-<button class="nav-btn" data-view="missed">🚫 Missed Ups</button>
-<button class="nav-btn" data-view="managers">👔 Floor Managers</button>
-<div class="nav-sep"></div>
-<div class="nav-label">Intelligence</div>
-<button class="nav-btn" data-view="analytics">📈 Analytics</button>
-<button class="nav-btn" data-view="traffic">🚗 Traffic</button>
-<button class="nav-btn" data-view="staffing">📋 Staffing</button>
-<div class="nav-sep"></div>
-<button class="nav-btn" data-view="notifications">🔔 Notifications</button>
-<button class="nav-btn" data-view="audit">📜 Audit Log</button>
-<button class="nav-btn" data-view="settings">⚙️ Settings</button>
-<div class="spacer"></div>
-<button class="signout" id="signoutBtn">Sign out</button>
-</aside>
-<main><div class="main-content" id="main"></div></main>
-</div></div>
-<div id="modalRoot"></div>
+    <!-- LIVE FLOOR DEMO -->
+    <div class="ufloor-demo">
+      <div class="ufloor-title">Live Floor — Saturday 2:14 PM</div>
+      <div class="ufloor-grid">
+        <div class="ufloor-rep up-next">
+          <div class="urep-status">● Up Next</div>
+          <div class="urep-name">Marcus</div>
+          <div class="urep-time">Waiting 12 min</div>
+        </div>
+        <div class="ufloor-rep with-customer">
+          <div class="urep-status">● With Customer</div>
+          <div class="urep-name">Sarah</div>
+          <div class="urep-time">Kitchen pkg · 34 min</div>
+        </div>
+        <div class="ufloor-rep with-customer">
+          <div class="urep-status">● With Customer</div>
+          <div class="urep-name">James</div>
+          <div class="urep-time">Washer/dryer · 18 min</div>
+        </div>
+        <div class="ufloor-rep on-break">
+          <div class="urep-status">○ On Break</div>
+          <div class="urep-name">Priya</div>
+          <div class="urep-time">Back in 8 min</div>
+        </div>
+        <div class="ufloor-rep">
+          <div class="urep-status" style="color:rgba(255,255,255,0.4)">● Available</div>
+          <div class="urep-name">Devon</div>
+          <div class="urep-time">Up after Marcus</div>
+        </div>
+        <div class="ufloor-rep with-customer">
+          <div class="urep-status">● With Customer</div>
+          <div class="urep-name">Lisa</div>
+          <div class="urep-time">Be-back · range · 9 min</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="uhero-stats" style="margin-top:48px">
+      <div><div class="ustat-num">< 30s</div><div class="ustat-lbl">Customer Greeting Time</div></div>
+      <div><div class="ustat-num">0</div><div class="ustat-lbl">Missed Walk-Ins</div></div>
+      <div><div class="ustat-num">Fair</div><div class="ustat-lbl">Turn Distribution</div></div>
+      <div><div class="ustat-num">Live</div><div class="ustat-lbl">Manager Visibility</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="usection" id="features" style="background:#fff">
+  <div class="usection-inner">
+    <div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">Features</span></div>
+    <h2 class="utitle">Floor intelligence that<br>actually works.</h2>
+    <p class="usub">No clipboards. No whiteboards. No arguments about whose turn it is. Just a clean rotation that runs itself.</p>
+    <div class="ufeat-grid">
+      <div class="ufeat">
+        <div class="ufeat-icon">🔄</div>
+        <h3>Live Up Rotation</h3>
+        <p>Automatic queue that every rep can see. When a customer walks in, the next rep up gets the notification. No cherry-picking, no skipped turns, no disputes.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">👥</div>
+        <h3>Customer Flow Tracking</h3>
+        <p>Log walk-ins, be-backs, phone-ups, and appointments. See traffic patterns by day, hour, and season. Know when to staff up and when to cut.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">📍</div>
+        <h3>Floor Coverage Map</h3>
+        <p>Who's with a customer, who's available, who's on break, who stepped out. Managers see the floor from anywhere — phone, tablet, or office screen.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">⚖️</div>
+        <h3>Fair Turn Rules</h3>
+        <p>Configurable rotation rules per store. Handle split shifts, appointment-only reps, team leads, and part-timers without manual overrides.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">📊</div>
+        <h3>Floor Analytics</h3>
+        <p>Walk-in to close ratio. Average time with customer. Ups taken vs. ups available. Conversion by rep, by shift, by day of week. Real numbers, not guesses.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">🔔</div>
+        <h3>Smart Notifications</h3>
+        <p>You're up — phone buzzes. Be-back just walked in — the original rep gets alerted. Manager gets a ping when nobody's on the floor. Quiet when nothing needs attention.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">📱</div>
+        <h3>Works on Any Device</h3>
+        <p>Browser-based. No app to install. Works on the phone in your pocket, the tablet on the counter, or the screen behind the register. Set up in 5 minutes.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">🏬</div>
+        <h3>Multi-Store Dashboard</h3>
+        <p>Run 2 stores or 20 — see every floor from one dashboard. Compare traffic, conversion, and staffing across locations in real time.</p>
+      </div>
+      <div class="ufeat">
+        <div class="ufeat-icon">🔗</div>
+        <h3>CRM Integration</h3>
+        <p>Connects to ApplianceIQ CRM. When a rep takes an up, a deal record is created automatically. Coaching scores, recordings, and pipeline — all linked.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="usection" id="how-it-works">
+  <div class="usection-inner">
+    <div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">How It Works</span></div>
+    <h2 class="utitle">Set up in minutes. Runs itself after that.</h2>
+    <p class="usub">No training needed. If your team can use a phone, they can use the Up System.</p>
+    <div class="uhow-grid">
+      <div class="ustep">
+        <div class="ustep-num">01</div>
+        <h3>Add Your Team</h3>
+        <p>Enter your reps' names and shifts. They get a link to join — tap it, and they're on the board.</p>
+      </div>
+      <div class="ustep">
+        <div class="ustep-num">02</div>
+        <h3>Open the Floor</h3>
+        <p>Manager opens the floor for the day. The rotation starts. Everyone sees who's up on their phone or the floor screen.</p>
+      </div>
+      <div class="ustep">
+        <div class="ustep-num">03</div>
+        <h3>Take the Up</h3>
+        <p>Customer walks in → rep taps "Take Up" → they're with a customer. The queue advances automatically. No shouting needed.</p>
+      </div>
+      <div class="ustep">
+        <div class="ustep-num">04</div>
+        <h3>Track &amp; Improve</h3>
+        <p>Every up, every outcome, every minute tracked. Weekly reports show who's converting, when traffic peaks, and where you're losing walk-ins.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="usection" id="up-pricing" style="background:#fff">
+  <div class="usection-inner">
+    <div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">Pricing</span></div>
+    <h2 class="utitle">Per store. Not per seat.</h2>
+    <p class="usub">Every rep on the floor is included. 14-day free trial, no credit card required.</p>
+    <div class="upricing-grid">
+      <div class="uprice-card">
+        <div class="uprice-tier">Solo Store</div>
+        <div class="uprice-amt">$49<span style="font-size:16px;font-weight:400">/mo</span></div>
+        <div class="uprice-per">1 store · all reps included</div>
+        <ul class="uprice-list">
+          <li>Up to 10 reps on rotation</li>
+          <li>Live up queue + floor map</li>
+          <li>Customer flow tracking</li>
+          <li>Walk-in / be-back logging</li>
+          <li>Basic floor analytics</li>
+          <li>Mobile + tablet + screen</li>
+          <li>Smart notifications</li>
+        </ul>
+        <button class="ubtn" onclick="toggleLogin('signup')" style="width:100%;text-align:center">Start Free Trial</button>
+      </div>
+      <div class="uprice-card pop">
+        <div class="uprice-tier" style="color:var(--teal)">Multi-Store <span style="background:var(--teal);color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;margin-left:6px">Popular</span></div>
+        <div class="uprice-amt">$99<span style="font-size:16px;font-weight:400">/mo</span></div>
+        <div class="uprice-per">up to 5 stores · all reps included</div>
+        <ul class="uprice-list">
+          <li>Everything in Solo Store</li>
+          <li>Up to 25 reps per store</li>
+          <li>Multi-store dashboard</li>
+          <li>Cross-store analytics</li>
+          <li>Manager remote monitoring</li>
+          <li>Custom rotation rules</li>
+          <li>Shift + schedule integration</li>
+          <li>CRM deal auto-creation</li>
+        </ul>
+        <button class="ubtn" onclick="toggleLogin('signup')" style="width:100%;text-align:center">Start Free Trial</button>
+      </div>
+      <div class="uprice-card">
+        <div class="uprice-tier">Enterprise</div>
+        <div class="uprice-amt">$199<span style="font-size:16px;font-weight:400">/mo</span></div>
+        <div class="uprice-per">unlimited stores · volume pricing available</div>
+        <ul class="uprice-list">
+          <li>Everything in Multi-Store</li>
+          <li>Unlimited reps per store</li>
+          <li>Full CRM integration</li>
+          <li>Custom floor rules engine</li>
+          <li>API access</li>
+          <li>Regional + district views</li>
+          <li>Priority support</li>
+          <li>Dedicated onboarding</li>
+        </ul>
+        <button class="ubtn" onclick="toggleLogin('signup')" style="width:100%;text-align:center">Start Free Trial</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CRM CONNECT -->
+<section class="uconnect">
+  <div class="uconnect-inner">
+    <h2>Better together with ApplianceIQ CRM</h2>
+    <p>When a rep takes an up, the IQ Up System can create a deal in the CRM automatically. Record the pitch, get AI coaching, track the pipeline — all from one ecosystem. The floor and the CRM finally speak the same language.</p>
+    <a href="https://appliceiq-crm.netlify.app" class="ubtn">Explore the CRM →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="ufooter">
+  <p>© 2026 ApplianceIQ · <a href="#features">Features</a> · <a href="#up-pricing">Pricing</a> · <a href="#" onclick="event.preventDefault();toggleLogin()">Log In</a> · <a href="https://appliceiq-crm.netlify.app">CRM</a></p>
+  <p style="margin-top:8px;font-size:11px;opacity:0.6">Floor intelligence for appliance retail. Part of the ApplianceIQ platform.</p>
+</footer>
+
+<!-- LOGIN MODAL -->
+<div class="ulogin-overlay" id="loginOverlay">
+  <div class="ulogin-card" style="position:relative">
+    <button class="ulogin-close" onclick="toggleLogin()">&times;</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span class="unav-pill" style="width:34px;height:34px;font-size:12px">UP</span>
+      <h2 style="font-family:'Sora',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin:0">IQ Up System</h2>
+    </div>
+    <div class="utagline">Floor intelligence for your team.</div>
+    <div class="ulogin-field">
+      <label for="upEmail">Email</label>
+      <input id="upEmail" type="email" autocomplete="email" placeholder="you@store.com">
+    </div>
+    <div class="ulogin-field">
+      <label for="upPassword">Password</label>
+      <input id="upPassword" type="password" autocomplete="current-password">
+    </div>
+    <div class="ulogin-actions">
+      <button class="ubtn" id="upSigninBtn" style="width:100%;text-align:center;padding:12px">Sign In</button>
+    </div>
+    <div class="ulogin-alt">New here? <a id="upSignupLink">Create an account</a></div>
+    <div class="ulogin-notice" id="upNotice"></div>
+  </div>
+</div>
 
 <script>
-// ─── UI wiring first — no dependencies, always works ───
-const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
-
 function toggleLogin(mode){
-  const o=$('#loginOverlay');
-  if(o.classList.contains('show')){o.classList.remove('show');}
-  else{o.classList.add('show');$('#upEmail')?.focus();if(mode==='signup')upNote('Enter email and password, then tap Create an account.',true);}
-}
-function upNote(msg,ok){const el=$('#upNotice');el.textContent=msg;el.className='ulogin-notice '+(ok?'ok':'err');}
-
-// Wire every login trigger button by ID — zero inline onclick anywhere
-document.getElementById('navLogin').addEventListener('click',e=>{e.preventDefault();toggleLogin();});
-document.getElementById('navTrial').addEventListener('click',()=>toggleLogin('signup'));
-document.getElementById('heroTrial').addEventListener('click',()=>toggleLogin('signup'));
-document.getElementById('footerLogin').addEventListener('click',e=>{e.preventDefault();toggleLogin();});
-document.getElementById('loginOverlay').addEventListener('click',e=>{if(e.target.id==='loginOverlay')toggleLogin();});
-
-// ─── Now load Supabase and wire auth ───
-let sb=null;
-const mainEl=$('#main'),modalRoot=$('#modalRoot');
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtTime=s=>{if(!s&&s!==0)return'—';const m=Math.floor(s/60),sec=s%60;return m>=60?Math.floor(m/60)+'h '+m%60+'m':`${m}:${String(sec).padStart(2,'0')}`;};
-const elapsed=ts=>{if(!ts)return'';const s=Math.floor((Date.now()-new Date(ts).getTime())/1000);return s<60?s+'s':s<3600?Math.floor(s/60)+'m':Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';};
-const fmtDt=ts=>ts?new Date(ts).toLocaleString('en-CA',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
-const fmtDate=ts=>ts?new Date(ts).toLocaleDateString('en-CA'):'—';
-const today=()=>new Date().toISOString().split('T')[0];
-
-const STATUS_LABELS={available:'Available',current_up:'You\'re Up!',next_in_line:'Next Up',with_customer:'With Customer',scheduled_appointment:'Appointment',client_meeting:'Meeting',follow_up_activity:'Follow-Up',on_phone:'On Phone',preparing_quote:'Preparing Quote',sending_specifications:'Sending Specs',product_research:'Research',administrative_work:'Admin',product_training:'Training',manager_meeting:'Mgr Meeting',store_task:'Store Task',service_issue:'Service Issue',delivery_issue:'Delivery Issue',break:'Break',lunch:'Lunch',temporarily_unavailable:'Temp Unavail',personal_matter:'Personal',off_sales_floor:'Off Floor',ended_shift:'Shift Ended'};
-const STATUS_GROUPS={selling:['available','current_up','next_in_line','with_customer','scheduled_appointment','client_meeting','follow_up_activity'],working:['on_phone','preparing_quote','sending_specifications','product_research','administrative_work','product_training','manager_meeting','store_task','service_issue','delivery_issue'],away:['break','lunch','temporarily_unavailable','personal_matter','off_sales_floor','ended_shift']};
-const statusClass=s=>{if(['available'].includes(s))return'available';if(s==='current_up')return'current_up';if(s==='next_in_line')return'next_in_line';if(STATUS_GROUPS.selling.includes(s)&&s!=='available')return'with_customer';if(['break','lunch'].includes(s))return'on_break';return'unavailable';};
-const WAIT_LABELS={waiting_for_assignment:'Waiting',assignment_sent:'Notified',assignment_accepted:'Accepted',escalated:'Escalated',with_salesperson:'With Rep',left_unserved:'Left',appointment:'Appointment',requested_employee:'Requested',cancelled:'Cancelled'};
-const waitChip=s=>{const m={waiting_for_assignment:'a',assignment_sent:'b',assignment_accepted:'g',escalated:'r',with_salesperson:'g',left_unserved:'r',appointment:'p',requested_employee:'n',cancelled:'n'};return`<span class="chip ${m[s]||'n'}">${WAIT_LABELS[s]||s}</span>`;};
-
-let currentUser=null,currentOrg=null,currentStore=null,currentView='floor',profiles={};
-
-// Init Supabase via dynamic import (works in all browsers, no CDN dependency)
-async function initSupabase(){
-  try{
-    const mod=await import('https://esm.sh/@supabase/supabase-js@2');
-    sb=mod.createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
-  }catch(e){console.error('Supabase init failed:',e);upNote('Connection error — please refresh.',false);return;}
-  // Wire auth buttons AFTER supabase is ready
-  document.getElementById('upSigninBtn').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signInWithPassword({email,password:pw});if(error)return upNote(error.message);upNote('Signed in!',true);boot();}catch(e){upNote('Connection error: '+e.message);}});
-  document.getElementById('upSignupLink').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signUp({email,password:pw});if(error)return upNote(error.message);upNote('Account created! Sign in now.',true);}catch(e){upNote('Connection error: '+e.message);}});
-  document.getElementById('signoutBtn').addEventListener('click',async()=>{await sb.auth.signOut();$('#app').style.display='none';$('#landing').style.display='block';});
-  boot();
-}
-initSupabase();
-
-async function boot(){
-  const{data:{session}}=await sb.auth.getSession();
-  if(!session){$('#landing').style.display='block';$('#app').style.display='none';return;}
-  currentUser=session.user;
-  const{data:memberships}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('user_id',currentUser.id).eq('status','active');
-  const orgs=(memberships??[]).map(m=>m.organizations).filter(Boolean);
-  if(!orgs.length){mainEl.innerHTML='<div class="empty">No organization found.</div>';$('#landing').style.display='none';$('#app').style.display='block';return;}
-  currentOrg=orgs[0];
-  const{data:locs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).eq('location_type','store').order('name');
-  const stores=locs??[];
-  if(stores.length)currentStore=stores[0];
-  const sel=$('#storeSelect');
-  sel.innerHTML=stores.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')||'<option>No stores</option>';
-  sel.onchange=()=>{currentStore=stores.find(s=>s.id===sel.value);render();};
-  // Load profiles
-  const{data:members}=await sb.from('organization_members').select('user_id').eq('organization_id',currentOrg.id).eq('status','active');
-  if(members?.length){const uids=(members).map(m=>m.user_id);const{data:profs}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids);(profs??[]).forEach(p=>profiles[p.user_id]=p.full_name||p.email?.split('@')[0]||'Unknown');}
-  // Nav
-  $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;if(currentView==='dashboard')dashScope={level:'corporate',id:null};render();};});
-  $('#landing').style.display='none';$('#loginOverlay').classList.remove('show');$('#app').style.display='block';
-  render();
-}
-
-function pName(uid){return profiles[uid]||uid?.slice(0,8)+'…'||'Unknown';}
-function openModal(html){modalRoot.innerHTML=`<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`;$('#ovl').addEventListener('click',e=>{if(e.target.id==='ovl')closeModal();});}
-function closeModal(){modalRoot.innerHTML='';}
-function formErr(msg){const el=$('#formErr');if(el){el.textContent=msg;el.classList.add('show');}}
-function repOptions(selected){return Object.entries(profiles).map(([id,n])=>`<option value="${id}" ${id===selected?'selected':''}>${esc(n)}</option>`).join('');}
-
-let floorTickerId=null;
-async function render(){
-  if(!currentStore){mainEl.innerHTML='<div class="empty">No store configured. Add stores in CRM settings.</div>';return;}
-  if(floorTickerId){clearInterval(floorTickerId);floorTickerId=null;}
-  mainEl.innerHTML='<div class="empty">Loading…</div>';
-  try{
-    const views={dashboard:renderDashboard,floor:renderFloor,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,managers:renderManagers,analytics:renderAnalytics,traffic:renderTraffic,staffing:renderStaffing,notifications:renderNotifications,audit:renderAudit,settings:renderSettings};
-    await(views[currentView]||renderFloor)();
-  }catch(err){mainEl.innerHTML=`<div class="empty">Error: ${esc(err.message)}</div>`;console.error(err);}
-}
-
-// ═══════════════════════════════
-// MULTI-STORE DASHBOARD
-// ═══════════════════════════════
-let dashScope={level:'corporate',id:null};
-async function renderDashboard(){
-  const{data:allLocs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).order('name');
-  const locs=allLocs??[];
-  const corporate=locs.find(l=>l.location_type==='corporate');
-  const regions=locs.filter(l=>l.location_type==='region');
-  const stores=locs.filter(l=>l.location_type==='store');
-
-  const childType=dashScope.level==='corporate'?'region':'store';
-  const childNodes=dashScope.level==='corporate'?regions:stores.filter(s=>s.parent_id===dashScope.id);
-  const currentRegion=dashScope.level==='region'?regions.find(r=>r.id===dashScope.id):null;
-
-  const childData=await Promise.all(childNodes.map(async node=>{
-    const storeIds=childType==='store'?[node.id]:stores.filter(s=>s.parent_id===node.id).map(s=>s.id);
-    if(!storeIds.length)return{...node,onFloor:0,withCust:0,avail:0,waitCount:0,statusList:[],storeCount:0};
-    const[{data:shifts},{data:waiting}]=await Promise.all([
-      sb.from('iq_shift_records').select('user_id,is_active').in('store_id',storeIds).eq('is_active',true),
-      sb.from('iq_customer_waiting_queue').select('id,status').in('store_id',storeIds).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee'])
-    ]);
-    const shiftIds=(shifts??[]).map(sh=>sh.user_id);
-    let statusList=[];
-    if(shiftIds.length){const{data:ssl}=await sb.from('iq_status_sessions').select('user_id,status').in('user_id',shiftIds).is('ended_at',null);statusList=ssl??[];}
-    const onFloor=(shifts??[]).length;
-    const withCust=statusList.filter(x=>x.status==='with_customer').length;
-    const avail=statusList.filter(x=>x.status==='available').length;
-    return{...node,onFloor,withCust,avail,waitCount:(waiting??[]).length,statusList,storeCount:storeIds.length};
-  }));
-
-  mainEl.innerHTML=`<div class="page-head"><div><h1>🏬 ${dashScope.level==='corporate'?'Corporate Overview':(currentRegion?.name||'Region')+' — Stores'}</h1>
-    <div class="sub"><span class="chip ${dashScope.level==='corporate'?'b':'n'}" style="cursor:pointer" data-crumb="corporate">${esc(corporate?.name||'Corporate')}</span>${currentRegion?` → <span class="chip b" style="cursor:pointer">${esc(currentRegion.name)}</span>`:''}</div></div></div>
-    <div class="multi-store-grid">${childData.length?childData.map(n=>`
-      <div class="store-overview-card ${childType==='store'&&n.id===currentStore.id?'active-store':''}" data-drill="${childType}:${n.id}">
-        <div class="soc-name">${esc(n.name)}${childType==='region'?` <span style="font-size:11px;color:var(--steel);font-weight:500">(${n.storeCount} store${n.storeCount!==1?'s':''})</span>`:''}</div>
-        <div class="soc-metrics">
-          <div class="soc-m"><div class="sv num">${n.onFloor}</div><div class="sl">On Floor</div></div>
-          <div class="soc-m"><div class="sv num" style="${n.withCust?'color:var(--amber)':''}">${n.withCust}</div><div class="sl">w/ Cust</div></div>
-          <div class="soc-m"><div class="sv num" style="color:var(--verified)">${n.avail}</div><div class="sl">Available</div></div>
-          <div class="soc-m"><div class="sv num" style="${n.waitCount?'color:var(--danger)':''}">${n.waitCount}</div><div class="sl">Waiting</div></div>
-        </div>
-        <div class="soc-reps">${n.statusList.map(r=>{const dc=r.status==='available'?'dot-green':r.status==='with_customer'?'dot-amber':['break','lunch'].includes(r.status)?'dot-purple':'dot-gray';return`<div class="soc-rep-dot ${dc}" title="${pName(r.user_id)} — ${STATUS_LABELS[r.status]||r.status}">${(pName(r.user_id)||'?')[0]}</div>`;}).join('')||'<span style="font-size:11px;color:var(--steel)">No reps on floor</span>'}</div>
-      </div>`).join(''):'<div class="empty">No data at this level.</div>'}
-    </div>`;
-
-  $$('[data-crumb]').forEach(c=>{c.onclick=()=>{dashScope={level:'corporate',id:null};render();};});
-  $$('[data-drill]').forEach(c=>{c.onclick=()=>{
-    const[type,id]=c.dataset.drill.split(':');
-    if(type==='region'){dashScope={level:'region',id};render();}
-    else{
-      const sel=$('#storeSelect');sel.value=id;
-      currentStore=stores.find(s=>s.id===id)||currentStore;
-      $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='floor'));
-      currentView='floor';render();
-    }
-  };});
-}
-
-// ═══════════════════════════════
-// FLOOR BOARD (enhanced)
-// ═══════════════════════════════
-async function renderFloor(){
-  const sid=currentStore.id;
-  const[{data:queue},{data:shifts},{data:waiting},{data:openRot},{data:storeSettings}]=await Promise.all([
-    sb.from('iq_up_queue_entries').select('*').eq('store_id',sid).eq('is_in_queue',true).order('queue_position'),
-    sb.from('iq_shift_records').select('*').eq('store_id',sid).eq('is_active',true).order('login_at'),
-    sb.from('iq_customer_waiting_queue').select('*').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee']).order('arrival_time'),
-    sb.from('iq_open_rotation_sessions').select('*').eq('store_id',sid).eq('is_active',true).maybeSingle(),
-    sb.from('iq_store_settings').select('*').eq('store_id',sid).maybeSingle()
-  ]);
-  const queueEntries=queue??[],activeShifts=shifts??[],waitingCustomers=waiting??[];
-  const ss=storeSettings||{};
-  const breakMinutes=ss.paid_break_minutes||15;const lunchMinutes=ss.lunch_minutes||30;const maxBreaks=ss.break_max_per_shift||2;
-  const repData=activeShifts.map(sh=>{const qe=queueEntries.find(q=>q.user_id===sh.user_id);return{...sh,queue:qe};});
-  const shiftIds=activeShifts.map(s=>s.id);
-  let statusMap={};
-  if(shiftIds.length){const{data:ssList}=await sb.from('iq_status_sessions').select('*').in('shift_id',shiftIds).is('ended_at',null).order('started_at',{ascending:false});(ssList??[]).forEach(s=>{if(!statusMap[s.user_id])statusMap[s.user_id]=s;});}
-  const getStatus=uid=>statusMap[uid]?.status||'available';
-  const onFloor=repData.filter(r=>!['ended_shift','off_sales_floor'].includes(getStatus(r.user_id)));
-  const withCust=repData.filter(r=>getStatus(r.user_id)==='with_customer');
-  const avail=repData.filter(r=>getStatus(r.user_id)==='available');
-  const onBreak=repData.filter(r=>['break','lunch'].includes(getStatus(r.user_id)));
-
-  // My status bar — find current user's shift
-  const myShift=activeShifts.find(s=>s.user_id===currentUser.id);
-  const mySt=myShift?getStatus(currentUser.id):'off';
-  const myRole=myShift?.role_name||'';
-  const isManager=myRole==='manager'||myRole==='sales_manager'||myRole==='assistant_manager';
-  const dotColor=mySt==='available'?'green':mySt==='with_customer'?'amber':['break','lunch'].includes(mySt)?'purple':mySt==='off'?'gray':'red';
-  const breakElapsed=['break','lunch'].includes(mySt)?elapsed(statusMap[currentUser.id]?.started_at):'';
-  const breakLimit=mySt==='lunch'?lunchMinutes:breakMinutes;
-  const breakSecs=['break','lunch'].includes(mySt)?Math.floor((Date.now()-new Date(statusMap[currentUser.id]?.started_at).getTime())/1000):0;
-  const breakOver=breakSecs>breakLimit*60;
-  const breakRemaining=Math.max(0,breakLimit*60-breakSecs);
-
-  mainEl.innerHTML=`
-    ${myShift?`<div class="my-status-bar">
-      <div class="msb-label">My Status</div>
-      <div class="msb-current"><div class="msb-dot ${dotColor}"></div><span style="font-weight:600;font-size:13px">${STATUS_LABELS[mySt]||mySt}</span><span class="role-badge ${isManager?'mgr':'rep'}">${isManager?'Manager':'Sales'}</span></div>
-      ${['break','lunch'].includes(mySt)?`<div class="msb-timer ${breakOver?'rc-break-timer over':''}">⏱ ${fmtTime(breakSecs)}${breakOver?' — OVER LIMIT':' / '+breakLimit+'m'}</div>`:''}
-      <div class="msb-btns">
-        <button class="msb-btn ${mySt==='available'?'active':''}" data-myst="available">✅ Available</button>
-        <button class="msb-btn ${mySt==='with_customer'?'active':''}" data-myst="with_customer">🤝 With Customer</button>
-        <button class="msb-btn ${mySt==='on_phone'?'active':''}" data-myst="on_phone">📞 On Phone</button>
-        <button class="msb-btn ${mySt==='preparing_quote'?'active':''}" data-myst="preparing_quote">📝 Quote</button>
-        <button class="msb-btn break-btn ${mySt==='break'?'active':''}" data-myst="break">☕ Break</button>
-        <button class="msb-btn break-btn ${mySt==='lunch'?'active':''}" data-myst="lunch">🍽 Lunch</button>
-        <button class="msb-btn danger-btn ${['temporarily_unavailable','personal_matter','off_sales_floor'].includes(mySt)?'active':''}" data-myst="temporarily_unavailable">⛔ Away</button>
-      </div>
-    </div>`:''}
-    <div class="floor-banner"><div class="fb-left"><div class="fb-status">${openRot?'🔥':'🏪'}</div><div><div class="fb-title">${esc(currentStore.name)}</div><div class="fb-sub">${new Date().toLocaleDateString('en-CA',{weekday:'long',month:'short',day:'numeric'})}</div></div></div>
-    <div class="fb-metrics"><div class="fb-m"><div class="fv num">${onFloor.length}</div><div class="fl">On Floor</div></div><div class="fb-m"><div class="fv num">${withCust.length}</div><div class="fl">With Cust</div></div><div class="fb-m"><div class="fv num">${avail.length}</div><div class="fl">Available</div></div><div class="fb-m"><div class="fv num" style="${onBreak.length?'color:#8b5cf6':''}">${onBreak.length}</div><div class="fl">On Break</div></div><div class="fb-m"><div class="fv num" style="${waitingCustomers.length?'color:var(--danger)':''}">${waitingCustomers.length}</div><div class="fl">Waiting</div></div></div></div>
-    ${openRot?`<div class="or-banner"><span>🔥 Open Rotation Active — ${esc(openRot.reason||'Demand surge')} · Started ${elapsed(openRot.start_at)} ago</span><button class="btn btn-sm" id="endOR">End Open Rotation</button></div>`:''}
-    <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${!openRot?`<button class="btn btn-danger btn-sm" id="startOR">🔥 Open Rotation</button>`:''}<button class="btn btn-primary" id="logWalkIn">👋 Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button></div></div>
-    ${waitingCustomers.length?`<div class="customer-queue"><h3>🔔 Waiting Customers (${waitingCustomers.length})</h3>${waitingCustomers.map(c=>`<div class="cq-item"><div class="cq-icon">👤</div><div class="cq-info"><div class="cq-name">${esc(c.customer_display_name||'Walk-in')}${c.customer_group_size>1?' · '+c.customer_group_size+' people':''}${c.is_returning_customer?' <span class="chip b">Returning</span>':''}${c.referred_by?` <span class="chip p">Ref: ${esc(c.referred_by)}</span>`:''}</div><div class="cq-detail">${esc(c.customer_category?.replace(/_/g,' ')||'Walk-in')}${c.requested_employee_user_id?' · Requested '+pName(c.requested_employee_user_id):''} · ${waitChip(c.status)} · Priority ${c.priority}</div></div><div class="cq-wait">${elapsed(c.arrival_time)}</div><button class="btn btn-primary btn-sm" data-assign="${c.id}">Assign</button></div>`).join('')}</div>`:''}
-    ${ss.greeter_enabled&&ss.greeter_user_id&&repData.some(r=>r.user_id===ss.greeter_user_id)?(()=>{const g=repData.find(r=>r.user_id===ss.greeter_user_id);const gst=getStatus(g.user_id);return`<div class="customer-queue" style="border-color:var(--accent);background:var(--accent-tint)"><h3>🚪 Greeter — ${pName(g.user_id)} <span class="role-badge rep" style="background:#fff">${STATUS_LABELS[gst]||gst}</span></h3><div style="font-size:12px;color:var(--steel)">Not in up-rotation · Logs walk-ins and routes customers to the queue · On floor ${elapsed(g.login_at)}</div></div>`;})():''}
-    <div class="queue-grid">${repData.filter(r=>!(ss.greeter_enabled&&r.user_id===ss.greeter_user_id)).length?repData.filter(r=>!(ss.greeter_enabled&&r.user_id===ss.greeter_user_id)).map(r=>{
-      const st=getStatus(r.user_id);
-      const cls=statusClass(st);
-      const pos=r.queue?.queue_position;
-      const isUp=r.queue?.is_current_up;const isNext=r.queue?.is_next_in_line;
-      const held=r.queue?.hold_count||0;const susp=r.queue?.is_suspended;
-      const isMe=r.user_id===currentUser.id;
-      const rRole=r.role_name||'salesperson';
-      const rIsManager=rRole==='manager'||rRole==='sales_manager';
-      // Break/lunch timer
-      const onBrk=['break','lunch'].includes(st);
-      const brkSecs=onBrk?Math.floor((Date.now()-new Date(statusMap[r.user_id]?.started_at).getTime())/1000):0;
-      const brkLimit=(st==='lunch'?lunchMinutes:breakMinutes)*60;
-      const brkOver=brkSecs>brkLimit;
-      // Accept-up countdown — only the current_up rep has an active offer
-      const upTimeout=ss.accept_up_timeout_seconds||60;
-      const offeredAt=r.queue?.up_offered_at;
-      const upSecsLeft=isUp&&offeredAt?Math.max(0,upTimeout-Math.floor((Date.now()-new Date(offeredAt).getTime())/1000)):null;
-      return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''} ${susp?'unavailable':''}">
-        ${pos?`<div class="rc-pos">#${pos}</div>`:''}
-        <div class="rc-name">${pName(r.user_id)}${isMe?' <span style="font-size:10px;color:var(--accent)">(You)</span>':''}<span class="role-badge ${rIsManager?'mgr':'rep'}">${rIsManager?'Mgr':'Sales'}</span></div>
-        <div class="rc-status ${st}">${isUp?'🟢 ':isNext?'🔵 ':''}${STATUS_LABELS[st]||st}</div>
-        ${susp?'<div style="font-size:10px;color:var(--danger);margin-top:2px">⏸ Suspended</div>':''}
-        ${held?`<div style="font-size:10px;color:var(--amber);margin-top:2px">Held ${held}×</div>`:''}
-        ${upSecsLeft!==null?`<div class="rc-break-timer ${upSecsLeft<15?'over':''}" style="background:#d1fae5;color:#065f46">⏱ Accept up: ${upSecsLeft}s</div>`:''}
-        ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}${st==='lunch'?' 🍽':' ☕'}</div>`:''}
-        <div class="rc-timer">${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):onBrk?'':st==='on_phone'?'On call '+elapsed(statusMap[r.user_id]?.started_at):'On floor '+elapsed(r.login_at)}</div>
-        <div class="rc-stats"><span>Ups: <b>${r.ups_accepted}</b></span><span>Sold: <b>${r.closed_sales}</b></span><span>Cust: <b>${r.customers_served}</b></span></div>
-        <div class="rc-actions">
-          <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}">Status</button>
-          ${st==='available'&&!isUp?`<button class="btn btn-accent btn-sm" data-bump="${r.user_id}">Bump Up</button>`:''}
-          ${st==='with_customer'?`<button class="btn btn-ghost btn-sm" data-handoff="${r.user_id}">🤝 Hand Off</button>`:''}
-          ${upSecsLeft!==null?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue.id}">✅ Accept</button>`:''}
-        </div></div>`;}).join(''):'<div class="empty" style="grid-column:1/-1">No reps clocked in. Tap Clock In to start a shift.</div>'}</div>`;
-  
-  // Accept-up watchdog: on each render pass, check if the current_up rep's countdown has
-  // expired and auto-advance the queue if so (logs a missed up per store settings)
-  const currentUpEntry=queueEntries.find(e=>e.is_current_up&&e.up_offered_at);
-  if(currentUpEntry){
-    const upTimeout=ss.accept_up_timeout_seconds||60;
-    const secsSince=Math.floor((Date.now()-new Date(currentUpEntry.up_offered_at).getTime())/1000);
-    if(secsSince>=upTimeout){handleAcceptUpTimeout(sid,currentUpEntry).then(render);}
-  }
-  // Live-refresh ticker so countdowns/timers stay accurate without manual reload
-  floorTickerId=setInterval(()=>{if(currentView==='floor')render();},5000);
-  // Wire My Status quick buttons
-  $$('[data-myst]').forEach(b=>{b.onclick=async()=>{
-    if(!myShift)return;
-    const newSt=b.dataset.myst;
-    if(newSt===mySt)return;// already in this status
-    const now=new Date().toISOString();
-    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',myShift.id).eq('user_id',currentUser.id).is('ended_at',null);
-    await sb.from('iq_status_sessions').insert({shift_id:myShift.id,organization_id:currentOrg.id,store_id:sid,user_id:currentUser.id,status:newSt,started_at:now});
-    const isAvail=STATUS_GROUPS.selling.includes(newSt)&&newSt!=='with_customer';
-    await sb.from('iq_up_queue_entries').update({status_code:newSt,is_available_for_assignment:isAvail}).eq('store_id',sid).eq('user_id',currentUser.id).eq('is_in_queue',true);
-    // Finishing with a customer sends you to the back of the line — fair rotation
-    if(mySt==='with_customer'&&newSt!=='with_customer'){await rotateToBackOfQueue(sid,currentUser.id);}
-    else{await recalcQueueOrder(sid);}
-    await takeSnapshot('status_change',currentUser.id);
-    render();
-  };});
-  $$('[data-acceptup]').forEach(b=>{b.onclick=()=>acceptUp(b.dataset.acceptup);});
-  $('#logWalkIn')?.addEventListener('click',openWalkInModal);
-  $('#clockInBtn')?.addEventListener('click',openClockInModal);
-  $('#startOR')?.addEventListener('click',openStartORModal);
-  $('#endOR')?.addEventListener('click',async()=>{
-    await sb.from('iq_open_rotation_sessions').update({is_active:false,end_at:new Date().toISOString(),closed_by:currentUser.id}).eq('id',openRot.id);
-    render();
-  });
-  $$('[data-status]').forEach(b=>{b.onclick=()=>openStatusModal(b.dataset.status,b.dataset.shift);});
-  $$('[data-assign]').forEach(b=>{b.onclick=()=>openAssignModal(b.dataset.assign);});
-  $$('[data-handoff]').forEach(b=>{b.onclick=()=>openHandoffModal(b.dataset.handoff);});
-  $$('[data-bump]').forEach(b=>{b.onclick=async()=>{
-    const uid=b.dataset.bump;
-    await sb.from('iq_up_queue_entries').update({queue_position:0}).eq('store_id',sid).eq('user_id',uid).eq('is_in_queue',true);
-    await recalcQueueOrder(sid);
-    await takeSnapshot('bump_up',uid);
-    render();
-  };});
-}
-
-// ---- Modals ----
-function openWalkInModal(){
-  openModal(`<h2>👋 Log Walk-In</h2>
-    <div class="field"><label>Customer name (optional)</label><input id="wi_name" placeholder="First name or description"></div>
-    <div class="field-row"><div class="field"><label>Group size</label><input id="wi_size" type="number" value="1" min="1" max="10"></div>
-    <div class="field"><label>Category</label><select id="wi_cat"><option value="walk_in">Walk-in</option><option value="be_back">Be-back</option><option value="appointment">Appointment</option><option value="phone_inquiry">Phone</option><option value="delivery_issue">Delivery Issue</option><option value="referral">Referral</option></select></div></div>
-    <div class="field" id="wi_refby_wrap" style="display:none"><label>Referred by</label><input id="wi_refby" placeholder="Name of person who referred them"></div>
-    <div class="field"><label style="display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)"><input type="checkbox" id="wi_return" style="width:auto"> Returning customer</label></div>
-    <div class="field-row"><div class="field"><label>Requested rep</label><select id="wi_rep"><option value="">No preference</option>${repOptions()}</select><div style="font-size:11px;color:var(--steel);margin-top:3px">Assigned immediately if that rep is free right now.</div></div>
-    <div class="field"><label>Priority</label><select id="wi_pri"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select></div></div>
-    <div class="field"><label>Description</label><textarea id="wi_desc" placeholder="Notes about the customer…"></textarea></div>
-    <div class="form-err" id="formErr"></div>
-    <div class="sheet-actions"><button class="btn btn-ghost" id="wi_cancel">Cancel</button><button class="btn btn-primary" id="wi_save">Log & Queue</button></div>`);
-  $('#wi_cancel').onclick=closeModal;
-  $('#wi_cat').onchange=()=>{$('#wi_refby_wrap').style.display=$('#wi_cat').value==='referral'?'block':'none';};
-  $('#wi_save').onclick=async()=>{
-    const repId=$('#wi_rep').value||null;
-    const isReturning=$('#wi_return').checked;
-    const referredBy=$('#wi_cat').value==='referral'?($('#wi_refby').value.trim()||null):null;
-    const baseRow={organization_id:currentOrg.id,store_id:currentStore.id,entered_by:currentUser.id,customer_display_name:$('#wi_name').value.trim()||null,customer_group_size:Number($('#wi_size').value)||1,customer_category:$('#wi_cat').value,customer_description:$('#wi_desc').value.trim()||null,is_returning_customer:isReturning,referred_by:referredBy,requested_employee_user_id:repId,requested_salesperson_reason:repId?'customer_request':null,priority:Number($('#wi_pri').value),arrival_time:new Date().toISOString(),timer_started_at:new Date().toISOString()};
-
-    // Check if requested rep is currently free for immediate auto-assign
-    let repIsFree=false;
-    if(repId){
-      const{data:qe}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true).eq('status_code','available').eq('is_available_for_assignment',true).maybeSingle();
-      repIsFree=!!qe;
-    }
-
-    if(repId&&repIsFree){
-      // Auto-assign immediately
-      const{data:newRow,error}=await sb.from('iq_customer_waiting_queue').insert({...baseRow,status:'with_salesperson',assigned_user_id:repId}).select().single();
-      if(error)return formErr(error.message);
-      await assignCustomerToRep(newRow.id,repId,{countsAsUp:true,source:isReturning?'returning_customer':'requested_rep'});
-      await logIntel('customer_logged',{category:baseRow.customer_category,auto_assigned:true});
-    }else if(repId){
-      // Requested rep not free — queue and notify
-      const{data:newRow,error}=await sb.from('iq_customer_waiting_queue').insert({...baseRow,status:'requested_employee'}).select().single();
-      if(error)return formErr(error.message);
-      const{data:qe}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true).maybeSingle();
-      if(qe){await sb.from('iq_queue_notifications').insert({organization_id:currentOrg.id,store_id:currentStore.id,waiting_customer_id:newRow.id,queue_entry_id:qe.id,assigned_user_id:repId,status:'created',delivery_channel:['in_app']});}
-      await logIntel('customer_logged',{category:baseRow.customer_category,requested_rep_busy:true});
-    }else{
-      const{error}=await sb.from('iq_customer_waiting_queue').insert({...baseRow,status:'waiting_for_assignment'});
-      if(error)return formErr(error.message);
-      await logIntel('customer_logged',{category:baseRow.customer_category});
-    }
-    closeModal();render();
-  };
-}
-
-// Shared assignment pipeline — used by manual Assign, auto-assign on walk-in, and handoff acceptance
-async function assignCustomerToRep(waitingId,repId,opts={}){
-  const now=new Date().toISOString();
-  const countsAsUp=opts.countsAsUp!==false;
-  await sb.from('iq_customer_waiting_queue').update({assigned_user_id:repId,status:'with_salesperson',updated_at:now}).eq('id',waitingId);
-  const{data:sh}=await sb.from('iq_shift_records').select('id,ups_accepted,customers_served').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_active',true).maybeSingle();
-  if(sh){
-    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',sh.id).eq('user_id',repId).is('ended_at',null);
-    await sb.from('iq_status_sessions').insert({shift_id:sh.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:repId,status:'with_customer',started_at:now});
-    await sb.from('iq_up_queue_entries').update({status_code:'with_customer',is_available_for_assignment:false,last_assignment_at:now}).eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true);
-    await sb.from('iq_shift_records').update({ups_accepted:(sh.ups_accepted||0)+(countsAsUp?1:0),customers_served:(sh.customers_served||0)+1}).eq('id',sh.id);
-    // Taking a customer removes them from up-eligibility until they finish — recalc promotes next_in_line to current_up
-    await recalcQueueOrder(currentStore.id);
-  }
-  await sb.from('iq_customer_interactions').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:sh?.id,customer_waiting_id:waitingId,salesperson_user_id:repId,interaction_source:opts.source||'walk_in',handoff_from_user_id:opts.handoffFrom||null,started_at:now,accepted_at:now});
-  await takeSnapshot(opts.handoffFrom?'customer_handoff':'customer_assigned',repId);
-}
-
-function openClockInModal(){
-  openModal(`<h2>⏱ Clock In</h2>
-    <div class="field"><label>Who's clocking in?</label><select id="ci_user">${repOptions(currentUser.id)}</select></div>
-    <div class="field-row"><div class="field"><label>Role</label><select id="ci_role"><option value="salesperson">Salesperson</option><option value="senior_salesperson">Senior Salesperson</option><option value="manager">Manager</option></select></div>
-    <div class="field"><label>Scheduled start</label><input id="ci_sched" type="time"></div></div>
-    <div class="field"><label style="display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)"><input type="checkbox" id="ci_greeter" style="width:auto"> Clock in as Greeter (not in up-rotation)</label></div>
-    <div class="form-err" id="formErr"></div>
-    <div class="sheet-actions"><button class="btn btn-ghost" id="ci_cancel">Cancel</button><button class="btn btn-primary" id="ci_save">Clock In</button></div>`);
-  $('#ci_cancel').onclick=closeModal;
-  $('#ci_save').onclick=async()=>{
-    const uid=$('#ci_user').value;
-    const schedTime=$('#ci_sched').value;
-    const asGreeter=$('#ci_greeter').checked;
-    const now=new Date();
-    let scheduled_start=null,late_or_on_time=null;
-    if(schedTime){const[h,m]=schedTime.split(':');scheduled_start=new Date(now);scheduled_start.setHours(h,m,0,0);scheduled_start=scheduled_start.toISOString();late_or_on_time=now>new Date(scheduled_start)?'late':'on_time';}
-    const{data:shift,error}=await sb.from('iq_shift_records').insert({organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,role_name:$('#ci_role').value,initial_status:'available',scheduled_start,late_or_on_time,is_greeter:asGreeter}).select().single();
-    if(error)return formErr(error.message);
-    // Add to queue at the back — recalcQueueOrder resolves positions, current_up, and next_in_line
-    const{data:maxPos}=await sb.from('iq_up_queue_entries').select('queue_position').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position',{ascending:false}).limit(1);
-    const nextPos=(maxPos?.[0]?.queue_position??0)+1;
-    await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:shift.id,user_id:uid,queue_position:nextPos,is_in_queue:!asGreeter,is_current_up:false,is_next_in_line:false,status_code:'available'});
-    await sb.from('iq_status_sessions').insert({shift_id:shift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,status:'available',started_at:now.toISOString()});
-    if(asGreeter)await sb.from('iq_store_settings').update({greeter_enabled:true,greeter_user_id:uid}).eq('store_id',currentStore.id);
-    await recalcQueueOrder(currentStore.id);
-    await takeSnapshot('clock_in',uid);
-    closeModal();render();
-  };
-}
-
-function openStatusModal(userId,shiftId){
-  const groups=[{label:'Selling',items:STATUS_GROUPS.selling},{label:'Working',items:STATUS_GROUPS.working},{label:'Away',items:STATUS_GROUPS.away}];
-  const opts=groups.map(g=>`<optgroup label="${g.label}">${g.items.map(k=>`<option value="${k}">${STATUS_LABELS[k]}</option>`).join('')}</optgroup>`).join('');
-  openModal(`<h2>Change Status — ${pName(userId)}</h2>
-    <div class="field"><label>New status</label><select id="st_s">${opts}</select></div>
-    <div class="field"><label>Notes</label><input id="st_n" placeholder="Optional reason"></div>
-    <div class="form-err" id="formErr"></div>
-    <div class="sheet-actions"><button class="btn btn-ghost" id="st_cancel">Cancel</button><button class="btn btn-danger" id="st_clock_out">Clock Out</button><button class="btn btn-primary" id="st_save">Update</button></div>`);
-  $('#st_cancel').onclick=closeModal;
-  $('#st_save').onclick=async()=>{
-    const newStatus=$('#st_s').value;const now=new Date().toISOString();
-    const{data:prevSession}=await sb.from('iq_status_sessions').select('status').eq('shift_id',shiftId).eq('user_id',userId).is('ended_at',null).maybeSingle();
-    const prevStatus=prevSession?.status||'available';
-    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',shiftId).eq('user_id',userId).is('ended_at',null);
-    await sb.from('iq_status_sessions').insert({shift_id:shiftId,organization_id:currentOrg.id,store_id:currentStore.id,user_id:userId,status:newStatus,started_at:now,reason_note:$('#st_n').value.trim()||null});
-    const isAvail=STATUS_GROUPS.selling.includes(newStatus)&&newStatus!=='with_customer';
-    await sb.from('iq_up_queue_entries').update({status_code:newStatus,is_available_for_assignment:isAvail}).eq('store_id',currentStore.id).eq('user_id',userId).eq('is_in_queue',true);
-    if(prevStatus==='with_customer'&&newStatus!=='with_customer'){await rotateToBackOfQueue(currentStore.id,userId);}
-    else{await recalcQueueOrder(currentStore.id);}
-    await takeSnapshot('status_change',userId);
-    closeModal();render();
-  };
-  $('#st_clock_out').onclick=async()=>{
-    const now=new Date().toISOString();
-    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',shiftId).eq('user_id',userId).is('ended_at',null);
-    await sb.from('iq_status_sessions').insert({shift_id:shiftId,organization_id:currentOrg.id,store_id:currentStore.id,user_id:userId,status:'ended_shift',started_at:now});
-    await sb.from('iq_shift_records').update({is_active:false,logout_at:now,closed_at:now,shift_end_reason:'normal'}).eq('id',shiftId);
-    await sb.from('iq_up_queue_entries').update({is_in_queue:false,is_current_up:false,is_next_in_line:false}).eq('shift_id',shiftId);
-    await recalcQueueOrder(currentStore.id);
-    await takeSnapshot('clock_out',userId);
-    closeModal();render();
-  };
-}
-
-function openAssignModal(waitingId){
-  openModal(`<h2>Assign Customer</h2>
-    <div class="field"><label>Assign to</label><select id="as_rep">${repOptions()}</select></div>
-    <div class="form-err" id="formErr"></div>
-    <div class="sheet-actions"><button class="btn btn-ghost" id="as_cancel">Cancel</button><button class="btn btn-primary" id="as_save">Assign</button></div>`);
-  $('#as_cancel').onclick=closeModal;
-  $('#as_save').onclick=async()=>{
-    await assignCustomerToRep(waitingId,$('#as_rep').value,{source:'walk_in'});
-    closeModal();render();
-  };
-}
-
-// Hand off an active customer from one rep to another
-async function openHandoffModal(fromUserId){
-  const{data:activeCust}=await sb.from('iq_customer_waiting_queue').select('*').eq('store_id',currentStore.id).eq('assigned_user_id',fromUserId).eq('status','with_salesperson').order('updated_at',{ascending:false}).limit(1).maybeSingle();
-  if(!activeCust){openModal(`<h2>Hand Off</h2><p class="sub">No active customer found for ${pName(fromUserId)}.</p><div class="sheet-actions"><button class="btn btn-primary" id="ho_close">Close</button></div>`);$('#ho_close').onclick=closeModal;return;}
-  const{data:onFloor}=await sb.from('iq_up_queue_entries').select('user_id').eq('store_id',currentStore.id).eq('is_in_queue',true).neq('user_id',fromUserId);
-  const targets=(onFloor||[]).map(o=>o.user_id);
-  openModal(`<h2>🤝 Hand Off Customer</h2>
-    <p class="sub" style="margin-bottom:12px">${esc(activeCust.customer_display_name||'This customer')} — currently with ${pName(fromUserId)}</p>
-    <div class="field"><label>Hand off to</label><select id="ho_rep">${targets.length?targets.map(id=>`<option value="${id}">${esc(pName(id))}</option>`).join(''):'<option value="">No other reps on floor</option>'}</select></div>
-    <div class="field"><label>Reason (optional)</label><input id="ho_reason" placeholder="e.g. going on break, specialist needed"></div>
-    <div class="form-err" id="formErr"></div>
-    <div class="sheet-actions"><button class="btn btn-ghost" id="ho_cancel">Cancel</button><button class="btn btn-primary" id="ho_save">Hand Off</button></div>`);
-  $('#ho_cancel').onclick=closeModal;
-  $('#ho_save').onclick=async()=>{
-    const toRep=$('#ho_rep').value;
-    if(!toRep)return formErr('No rep selected.');
-    const reason=$('#ho_reason').value.trim();
-    const now=new Date().toISOString();
-    // Close the origin rep's current interaction
-    await sb.from('iq_customer_interactions').update({ended_at:now,outcome:'handed_off',notes:reason||null}).eq('customer_waiting_id',activeCust.id).eq('salesperson_user_id',fromUserId).is('ended_at',null);
-    // Free up the origin rep — sent to the back of the queue (fair rotation, no cutting back in)
-    const{data:fromShift}=await sb.from('iq_shift_records').select('id').eq('store_id',currentStore.id).eq('user_id',fromUserId).eq('is_active',true).maybeSingle();
-    if(fromShift){
-      await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',fromShift.id).eq('user_id',fromUserId).is('ended_at',null);
-      await sb.from('iq_status_sessions').insert({shift_id:fromShift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:fromUserId,status:'available',started_at:now,reason_note:reason?'Handed off: '+reason:'Handed off customer'});
-      await sb.from('iq_up_queue_entries').update({status_code:'available',is_available_for_assignment:true}).eq('store_id',currentStore.id).eq('user_id',fromUserId).eq('is_in_queue',true);
-      await rotateToBackOfQueue(currentStore.id,fromUserId);
-    }
-    // Transfer to the new rep via shared pipeline (does not count as a fresh "up")
-    await assignCustomerToRep(activeCust.id,toRep,{countsAsUp:false,source:'handoff',handoffFrom:fromUserId});
-    await logAudit('customer_handoff',{from:fromUserId,to:toRep,reason:reason||null,customer_waiting_id:activeCust.id});
-    closeModal();render();
-  };
-}
-
-function openStartORModal(){
-  openModal(`<h2>🔥 Start Open Rotation</h2>
-    <p style="color:var(--steel);font-size:13px;margin-bottom:14px">When open rotation is active, the queue order is suspended. Any available rep can take any customer.</p>
-    <div class="field"><label>Reason</label><select id="or_reason"><option value="demand_surge">Demand Surge</option><option value="understaffed">Understaffed</option><option value="event">Event / Sale</option><option value="manager_decision">Manager Decision</option></select></div>
-    <div class="field"><label>Notes</label><input id="or_notes" placeholder="Optional"></div>
-    <div class="form-err" id="formErr"></div>
-    <div class="sheet-actions"><button class="btn btn-ghost" id="or_cancel">Cancel</button><button class="btn btn-danger" id="or_save">Activate Open Rotation</button></div>`);
-  $('#or_cancel').onclick=closeModal;
-  $('#or_save').onclick=async()=>{
-    const{error}=await sb.from('iq_open_rotation_sessions').insert({organization_id:currentOrg.id,store_id:currentStore.id,started_by:currentUser.id,reason:$('#or_reason').value,notes:$('#or_notes').value.trim()||null});
-    if(error)return formErr(error.message);
-    await logIntel('open_rotation_started',{reason:$('#or_reason').value});
-    closeModal();render();
-  };
-}
-
-// ═══════════════════════════════
-// CUSTOMERS
-// ═══════════════════════════════
-async function renderCustomers(){
-  const{data}=await sb.from('iq_customer_waiting_queue').select('*').eq('store_id',currentStore.id).order('arrival_time',{ascending:false}).limit(100);
-  const{data:interactions}=await sb.from('iq_customer_interactions').select('*').eq('store_id',currentStore.id).order('started_at',{ascending:false}).limit(50);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>👋 Customers</h1><div class="sub">${(data??[]).length} entries today</div></div><div class="head-actions"><button class="btn btn-primary" id="logWI2">+ Log Walk-In</button></div></div>
-    <div class="tabs"><button class="tab active" data-tab="queue">Waiting Queue</button><button class="tab" data-tab="interactions">Interactions</button></div>
-    <div id="tabContent"></div>`;
-  const showTab=tab=>{
-    $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
-    if(tab==='queue'){
-      $('#tabContent').innerHTML=`<table><thead><tr><th>Customer</th><th>Category</th><th>Size</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Wait</th><th>Arrived</th></tr></thead><tbody>
-      ${(data??[]).map(c=>`<tr><td><b>${esc(c.customer_display_name||'Walk-in')}</b>${c.is_returning_customer?' <span class="chip b">Returning</span>':''}${c.referred_by?` <span class="chip p">Ref: ${esc(c.referred_by)}</span>`:''}${c.customer_description?`<div class="sub">${esc(c.customer_description)}</div>`:''}</td><td>${esc(c.customer_category?.replace(/_/g,' ')||'—')}</td><td class="num">${c.customer_group_size}</td><td>${waitChip(c.status)}</td><td class="num">${c.priority}</td><td>${c.assigned_user_id?pName(c.assigned_user_id):'—'}</td><td class="num">${elapsed(c.arrival_time)}</td><td style="font-size:12px">${fmtDt(c.arrival_time)}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No customers logged.</td></tr>'}</tbody></table>`;
-    }else{
-      $('#tabContent').innerHTML=`<table><thead><tr><th>Rep</th><th>Source</th><th>Type</th><th>Started</th><th>Duration</th><th>Outcome</th><th>CRM Sync</th></tr></thead><tbody>
-      ${(interactions??[]).map(i=>`<tr><td><b>${pName(i.salesperson_user_id)}</b>${i.handoff_from_user_id?`<div class="sub">🤝 from ${pName(i.handoff_from_user_id)}</div>`:''}</td><td>${esc(i.interaction_source||'—')}</td><td>${esc(i.interaction_type||'—')}</td><td style="font-size:12px">${fmtDt(i.started_at)}</td><td class="num">${i.ended_at?fmtTime(Math.floor((new Date(i.ended_at)-new Date(i.started_at))/1000)):'In progress'}</td><td>${i.outcome?`<span class="chip ${i.outcome==='sale'?'g':i.outcome==='handed_off'?'p':'n'}">${esc(i.outcome)}</span>`:'—'}</td><td><span class="chip ${i.crm_sync_status==='synced'?'g':i.crm_sync_status==='pending'?'a':'n'}">${esc(i.crm_sync_status)}</span></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No interactions.</td></tr>'}</tbody></table>`;
-    }
-  };
-  showTab('queue');
-  $$('.tab').forEach(t=>{t.onclick=()=>showTab(t.dataset.tab);});
-  $('#logWI2')?.addEventListener('click',openWalkInModal);
-}
-
-// ═══════════════════════════════
-// SHIFTS
-// ═══════════════════════════════
-async function renderShifts(){
-  const{data}=await sb.from('iq_shift_records').select('*').eq('store_id',currentStore.id).order('login_at',{ascending:false}).limit(50);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>⏱ Shifts</h1><div class="sub">${(data??[]).filter(s=>s.is_active).length} active now</div></div><div class="head-actions"><button class="btn btn-primary" id="ciBtn2">+ Clock In</button></div></div>
-    <table><thead><tr><th>Rep</th><th>Role</th><th>Status</th><th>In</th><th>Out</th><th>Ups</th><th>Missed</th><th>Sales</th><th>Avail</th><th>w/ Cust</th><th>Break</th></tr></thead><tbody>
-    ${(data??[]).map(s=>`<tr><td><b>${pName(s.user_id)}</b>${s.late_or_on_time==='late'?'<span class="chip r" style="margin-left:4px">Late</span>':''}</td><td style="font-size:12px">${esc(s.role_name)}</td><td>${s.is_active?'<span class="chip g">Active</span>':'<span class="chip n">Ended</span>'}</td><td class="num" style="font-size:12px">${new Date(s.login_at).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'})}</td><td class="num" style="font-size:12px">${s.logout_at?new Date(s.logout_at).toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit'}):'—'}</td><td class="num">${s.ups_accepted}</td><td class="num">${s.ups_missed}</td><td class="num">${s.closed_sales}</td><td class="num">${fmtTime(s.available_seconds)}</td><td class="num">${fmtTime(s.customer_facing_seconds)}</td><td class="num">${fmtTime(s.break_seconds+s.lunch_seconds)}</td></tr>`).join('')||'<tr><td colspan="11" class="empty">No shift records.</td></tr>'}</tbody></table>`;
-  $('#ciBtn2')?.addEventListener('click',openClockInModal);
-}
-
-// ═══════════════════════════════
-// DISPUTES
-// ═══════════════════════════════
-async function renderDisputes(){
-  const{data}=await sb.from('iq_up_disputes').select('*').eq('store_id',currentStore.id).order('created_at',{ascending:false}).limit(50);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>⚡ Disputes</h1><div class="sub">${(data??[]).filter(d=>d.status==='open').length} open</div></div><div class="head-actions"><button class="btn btn-primary" id="newDispute">+ File Dispute</button></div></div>
-    <table><thead><tr><th>Filed By</th><th>Affected Rep</th><th>Reason</th><th>Status</th><th>Decision</th><th>Filed</th><th>Action</th></tr></thead><tbody>
-    ${(data??[]).map(d=>`<tr><td><b>${pName(d.disputed_by)}</b></td><td>${d.affected_employee_id?pName(d.affected_employee_id):'—'}</td><td>${esc(d.reason||'—')}</td><td><span class="chip ${d.status==='open'?'a':d.status==='resolved'?'g':'n'}">${esc(d.status)}</span></td><td>${esc(d.manager_decision||'—')}${d.manager_notes?`<div class="sub">${esc(d.manager_notes)}</div>`:''}</td><td style="font-size:12px">${fmtDt(d.created_at)}</td><td>${d.status==='open'?`<button class="btn btn-sm btn-ghost" data-resolve="${d.id}">Resolve</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No disputes filed.</td></tr>'}</tbody></table>`;
-  $('#newDispute')?.addEventListener('click',()=>{
-    openModal(`<h2>⚡ File Dispute</h2>
-      <div class="field"><label>Filed by</label><select id="dp_by">${repOptions(currentUser.id)}</select></div>
-      <div class="field"><label>Affected rep (who was wronged)</label><select id="dp_aff"><option value="">Select…</option>${repOptions()}</select></div>
-      <div class="field"><label>Reason</label><textarea id="dp_reason" placeholder="Describe what happened…"></textarea></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="dp_cancel">Cancel</button><button class="btn btn-primary" id="dp_save">File Dispute</button></div>`);
-    $('#dp_cancel').onclick=closeModal;
-    $('#dp_save').onclick=async()=>{
-      const reason=$('#dp_reason').value.trim();
-      if(!reason)return formErr('Describe the dispute.');
-      // Snapshot current queue
-      const{data:q}=await sb.from('iq_up_queue_entries').select('*').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position');
-      const{error}=await sb.from('iq_up_disputes').insert({organization_id:currentOrg.id,store_id:currentStore.id,disputed_by:$('#dp_by').value,affected_employee_id:$('#dp_aff').value||null,reason,queue_snapshot_before:q||[]});
-      if(error)return formErr(error.message);
-      await logAudit('dispute_filed',{reason});
-      closeModal();render();
-    };
-  });
-  $$('[data-resolve]').forEach(b=>{b.onclick=()=>{
-    openModal(`<h2>Resolve Dispute</h2>
-      <div class="field"><label>Decision</label><select id="rv_dec"><option value="upheld">Upheld — rep was wronged</option><option value="dismissed">Dismissed — no violation</option><option value="partial">Partial — adjust queue</option></select></div>
-      <div class="field"><label>Manager notes</label><textarea id="rv_notes" placeholder="Explain the decision…"></textarea></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="rv_cancel">Cancel</button><button class="btn btn-primary" id="rv_save">Resolve</button></div>`);
-    $('#rv_cancel').onclick=closeModal;
-    $('#rv_save').onclick=async()=>{
-      const{data:q}=await sb.from('iq_up_queue_entries').select('*').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position');
-      await sb.from('iq_up_disputes').update({status:'resolved',manager_decision:$('#rv_dec').value,manager_notes:$('#rv_notes').value.trim()||null,manager_id:currentUser.id,resolved_at:new Date().toISOString(),queue_snapshot_after:q||[]}).eq('id',b.dataset.resolve);
-      closeModal();render();
-    };
-  };});
-}
-
-// ═══════════════════════════════
-// MISSED UPS
-// ═══════════════════════════════
-async function renderMissed(){
-  const{data}=await sb.from('iq_missed_and_potential_missed_ups').select('*').eq('store_id',currentStore.id).order('created_at',{ascending:false}).limit(50);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>🚫 Missed Ups</h1><div class="sub num">${(data??[]).length} records</div></div><div class="head-actions"><button class="btn btn-primary" id="newMissed">+ Report Missed Up</button></div></div>
-    <table><thead><tr><th>Rep</th><th>Reason</th><th>Type</th><th>Excused</th><th>KPI Impact</th><th>Reviewed</th><th>When</th><th>Action</th></tr></thead><tbody>
-    ${(data??[]).map(m=>`<tr><td><b>${pName(m.employee_user_id)}</b><div class="sub">Reported by ${pName(m.reported_by)}</div></td><td>${esc(m.reason||'—')}</td><td>${m.is_potential?'<span class="chip a">Potential</span>':'<span class="chip r">Missed</span>'}</td><td>${m.is_excused===true?'<span class="chip g">Yes</span>':m.is_excused===false?'<span class="chip r">No</span>':'<span class="chip n">Pending</span>'}</td><td>${m.affects_kpi?'<span class="chip r">Yes</span>':'<span class="chip g">No</span>'}</td><td>${m.manager_reviewed?`<span class="chip g">Reviewed</span><div class="sub">${pName(m.reviewed_by)} · ${fmtDt(m.reviewed_at)}</div>`:'<span class="chip a">Pending</span>'}</td><td style="font-size:12px">${fmtDt(m.created_at)}</td><td>${!m.manager_reviewed?`<button class="btn btn-sm btn-ghost" data-review="${m.id}" data-emp="${m.employee_user_id}">Review</button>`:''}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No missed ups.</td></tr>'}</tbody></table>`;
-  $('#newMissed')?.addEventListener('click',()=>{
-    openModal(`<h2>🚫 Report Missed Up</h2>
-      <div class="field"><label>Rep who missed</label><select id="mu_rep">${repOptions()}</select></div>
-      <div class="field"><label>Type</label><select id="mu_type"><option value="false">Actual Missed Up</option><option value="true">Potential Miss</option></select></div>
-      <div class="field"><label>Reason</label><textarea id="mu_reason" placeholder="What happened…"></textarea></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="mu_cancel">Cancel</button><button class="btn btn-primary" id="mu_save">Report</button></div>`);
-    $('#mu_cancel').onclick=closeModal;
-    $('#mu_save').onclick=async()=>{
-      const{error}=await sb.from('iq_missed_and_potential_missed_ups').insert({organization_id:currentOrg.id,store_id:currentStore.id,reported_by:currentUser.id,employee_user_id:$('#mu_rep').value,is_potential:$('#mu_type').value==='true',reason:$('#mu_reason').value.trim()||null});
-      if(error)return formErr(error.message);
-      // Increment ups_missed on active shift
-      const{data:sh}=await sb.from('iq_shift_records').select('id,ups_missed').eq('store_id',currentStore.id).eq('user_id',$('#mu_rep').value).eq('is_active',true).maybeSingle();
-      if(sh)await sb.from('iq_shift_records').update({ups_missed:(sh.ups_missed||0)+1}).eq('id',sh.id);
-      closeModal();render();
-    };
-  });
-  $$('[data-review]').forEach(b=>{b.onclick=()=>{
-    openModal(`<h2>Review Missed Up</h2><p class="sub" style="margin-bottom:12px">Rep: ${pName(b.dataset.emp)}</p>
-      <div class="field"><label>Excused?</label><select id="mr_ex"><option value="false">No — counts against KPI</option><option value="true">Yes — excused</option></select></div>
-      <div class="field"><label>Notes</label><input id="mr_notes" placeholder="Optional"></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="mr_cancel">Cancel</button><button class="btn btn-primary" id="mr_save">Submit Review</button></div>`);
-    $('#mr_cancel').onclick=closeModal;
-    $('#mr_save').onclick=async()=>{
-      const excused=$('#mr_ex').value==='true';
-      await sb.from('iq_missed_and_potential_missed_ups').update({manager_reviewed:true,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),is_excused:excused,affects_kpi:!excused,notes:$('#mr_notes').value.trim()||null}).eq('id',b.dataset.review);
-      closeModal();render();
-    };
-  };});
-}
-
-// ═══════════════════════════════
-// FLOOR MANAGERS
-// ═══════════════════════════════
-async function renderManagers(){
-  const{data}=await sb.from('iq_floor_managers').select('*').eq('store_id',currentStore.id).order('coverage_start',{ascending:false}).limit(30);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>👔 Floor Managers</h1><div class="sub">${(data??[]).filter(m=>m.is_active).length} active</div></div><div class="head-actions"><button class="btn btn-primary" id="addMgr">+ Add Manager</button></div></div>
-    <table><thead><tr><th>Manager</th><th>Role</th><th>Coverage</th><th>Status</th><th>Remote</th><th>Replacement</th><th>Action</th></tr></thead><tbody>
-    ${(data??[]).map(m=>{const badge=m.is_active?(`<span class="chip g">Active</span>`+(m.status_text?`<div class="sub">${esc(m.status_text)}</div>`:'')):'<span class="chip n">Ended</span>';return`<tr><td><b>${pName(m.manager_user_id)}</b></td><td>${esc(m.role_name)}</td><td>${fmtDt(m.coverage_start)}${m.coverage_end?' — '+fmtDt(m.coverage_end):' — ongoing'}</td><td>${badge}</td><td>${m.is_remote?'<span class="chip b">Remote</span>':'On-site'}</td><td>${m.replacement_user_id?pName(m.replacement_user_id):'—'}</td><td>${m.is_active?`<button class="btn btn-sm btn-ghost" data-endmgr="${m.id}">End</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="7" class="empty">No floor managers assigned.</td></tr>'}</tbody></table>`;
-  $('#addMgr')?.addEventListener('click',()=>{
-    openModal(`<h2>👔 Assign Floor Manager</h2>
-      <div class="field"><label>Manager</label><select id="mg_user">${repOptions(currentUser.id)}</select></div>
-      <div class="field-row"><div class="field"><label>Role</label><select id="mg_role"><option value="sales_manager">Sales Manager</option><option value="assistant_manager">Assistant Manager</option><option value="department_lead">Department Lead</option></select></div>
-      <div class="field"><label>Remote?</label><select id="mg_remote"><option value="false">On-site</option><option value="true">Remote</option></select></div></div>
-      <div class="field"><label>Status note</label><input id="mg_status" placeholder="e.g. Covering until 6pm"></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="mg_cancel">Cancel</button><button class="btn btn-primary" id="mg_save">Assign</button></div>`);
-    $('#mg_cancel').onclick=closeModal;
-    $('#mg_save').onclick=async()=>{
-      const{error}=await sb.from('iq_floor_managers').insert({organization_id:currentOrg.id,store_id:currentStore.id,manager_user_id:$('#mg_user').value,role_name:$('#mg_role').value,is_remote:$('#mg_remote').value==='true',status_text:$('#mg_status').value.trim()||null});
-      if(error)return formErr(error.message);
-      closeModal();render();
-    };
-  });
-  $$('[data-endmgr]').forEach(b=>{b.onclick=async()=>{
-    await sb.from('iq_floor_managers').update({is_active:false,coverage_end:new Date().toISOString()}).eq('id',b.dataset.endmgr);
-    render();
-  };});
-}
-
-// ═══════════════════════════════
-// ANALYTICS
-// ═══════════════════════════════
-async function renderAnalytics(){
-  const td=today();
-  const[{data:shifts},{data:interactions},{data:waiting},{data:hourly}]=await Promise.all([
-    sb.from('iq_shift_records').select('*').eq('store_id',currentStore.id).gte('login_at',td+'T00:00:00'),
-    sb.from('iq_customer_interactions').select('*').eq('store_id',currentStore.id).gte('started_at',td+'T00:00:00'),
-    sb.from('iq_customer_waiting_queue').select('*').eq('store_id',currentStore.id).gte('arrival_time',td+'T00:00:00'),
-    sb.from('iq_hourly_traffic_summaries').select('*').eq('store_id',currentStore.id).gte('bucket_start',td+'T00:00:00').order('bucket_start')
-  ]);
-  const sh=shifts??[],ix=interactions??[],wt=waiting??[],hr=hourly??[];
-  const totalUps=sh.reduce((s,r)=>s+r.ups_accepted,0);
-  const totalMissed=sh.reduce((s,r)=>s+r.ups_missed,0);
-  const totalSales=sh.reduce((s,r)=>s+r.closed_sales,0);
-  const totalCustomers=wt.length;
-  const served=wt.filter(w=>['with_salesperson','assignment_accepted'].includes(w.status)).length;
-  const conversion=totalCustomers?Math.round(served/totalCustomers*100):0;
-  const avgWait=(()=>{const waits=ix.filter(i=>i.started_at&&i.accepted_at).map(i=>(new Date(i.accepted_at)-new Date(i.started_at))/1000);return waits.length?Math.round(waits.reduce((a,b)=>a+b,0)/waits.length):0;})();
-  const leftUnserved=wt.filter(w=>w.status==='left_unserved').length;
-
-  mainEl.innerHTML=`<div class="page-head"><h1>📈 Floor Analytics</h1><div class="sub">Today — ${esc(currentStore.name)}</div></div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="lbl">Walk-Ins</div><div class="val num">${totalCustomers}</div></div>
-      <div class="stat-card"><div class="lbl">Served</div><div class="val num">${served}</div></div>
-      <div class="stat-card"><div class="lbl">Conversion</div><div class="val num">${conversion}%</div></div>
-      <div class="stat-card"><div class="lbl">Avg Wait</div><div class="val num">${fmtTime(avgWait)}</div></div>
-      <div class="stat-card"><div class="lbl">Ups Taken</div><div class="val num">${totalUps}</div></div>
-      <div class="stat-card"><div class="lbl">Ups Missed</div><div class="val num">${totalMissed}</div></div>
-      <div class="stat-card"><div class="lbl">Sales</div><div class="val num">${totalSales}</div></div>
-      <div class="stat-card"><div class="lbl">Left Unserved</div><div class="val num" style="${leftUnserved?'color:var(--danger)':''}">${leftUnserved}</div></div>
-    </div>
-    ${hr.length?`<div class="dash-panel"><h3>Hourly Traffic</h3><div class="chart-bar-wrap">${hr.map(h=>{const max=Math.max(...hr.map(x=>x.adjusted_traffic||1));const pct=Math.max(5,((h.adjusted_traffic||0)/max)*100);const hour=new Date(h.bucket_start).getHours();return`<div class="chart-bar" style="height:${pct}%"><div class="cb-val">${h.adjusted_traffic}</div><div class="cb-lbl">${hour}:00</div></div>`;}).join('')}</div></div>`:''}
-    <div class="dash-panel"><h3>Rep Performance Today</h3>
-    <table><thead><tr><th>Rep</th><th>Ups</th><th>Missed</th><th>Sales</th><th>Customers</th><th>Available</th><th>w/ Cust</th><th>On Floor</th></tr></thead><tbody>
-    ${sh.map(s=>`<tr><td><b>${pName(s.user_id)}</b></td><td class="num">${s.ups_accepted}</td><td class="num">${s.ups_missed}</td><td class="num">${s.closed_sales}</td><td class="num">${s.customers_served}</td><td class="num">${fmtTime(s.available_seconds)}</td><td class="num">${fmtTime(s.customer_facing_seconds)}</td><td class="num">${fmtTime(s.total_logged_in_seconds||Math.floor((Date.now()-new Date(s.login_at).getTime())/1000))}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No data.</td></tr>'}</tbody></table></div>`;
-}
-
-// ═══════════════════════════════
-// TRAFFIC
-// ═══════════════════════════════
-async function renderTraffic(){
-  const[{data:sources},{data:events}]=await Promise.all([
-    sb.from('iq_traffic_sources').select('*').eq('store_id',currentStore.id).order('source_name'),
-    sb.from('iq_traffic_events').select('*').eq('store_id',currentStore.id).order('captured_at',{ascending:false}).limit(50)
-  ]);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>🚗 Traffic Intelligence</h1></div><div class="head-actions"><button class="btn btn-primary" id="addSource">+ Add Source</button><button class="btn btn-ghost" id="logTraffic">+ Log Traffic</button></div></div>
-    <div class="tabs"><button class="tab active" data-tab="sources">Sources (${(sources??[]).length})</button><button class="tab" data-tab="events">Events (${(events??[]).length})</button></div>
-    <div id="tabContent"></div>`;
-  const showTab=tab=>{
-    $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
-    if(tab==='sources'){
-      $('#tabContent').innerHTML=`<table><thead><tr><th>Name</th><th>Kind</th><th>Provider</th><th>Entrance</th><th>Device</th><th>Active</th></tr></thead><tbody>
-      ${(sources??[]).map(s=>`<tr><td><b>${esc(s.source_name)}</b></td><td>${esc(s.source_kind||'—')}</td><td>${esc(s.provider||'—')}</td><td>${esc(s.entrance_name||'—')}</td><td style="font-size:11px">${esc(s.device_id||'—')}</td><td>${s.is_active?'<span class="chip g">Active</span>':'<span class="chip n">Inactive</span>'}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">No traffic sources configured.</td></tr>'}</tbody></table>`;
-    }else{
-      $('#tabContent').innerHTML=`<table><thead><tr><th>Source</th><th>Raw</th><th>Adjusted</th><th>Groups</th><th>Captured</th></tr></thead><tbody>
-      ${(events??[]).map(e=>{const src=(sources??[]).find(s=>s.id===e.traffic_source_id);return`<tr><td>${esc(src?.source_name||'Unknown')}</td><td class="num">${e.raw_entries}</td><td class="num">${e.adjusted_entries}</td><td class="num">${e.customer_groups}</td><td style="font-size:12px">${fmtDt(e.captured_at)}</td></tr>`;}).join('')||'<tr><td colspan="5" class="empty">No traffic events.</td></tr>'}</tbody></table>`;
-    }
-  };
-  showTab('sources');
-  $$('.tab').forEach(t=>{t.onclick=()=>showTab(t.dataset.tab);});
-  $('#addSource')?.addEventListener('click',()=>{
-    openModal(`<h2>Add Traffic Source</h2>
-      <div class="field"><label>Source name</label><input id="ts_name" placeholder="e.g. Main Entrance Counter"></div>
-      <div class="field-row"><div class="field"><label>Kind</label><select id="ts_kind"><option value="door_counter">Door Counter</option><option value="camera">Camera</option><option value="manual">Manual</option><option value="wifi">WiFi Tracker</option></select></div>
-      <div class="field"><label>Provider</label><input id="ts_prov" placeholder="e.g. SensorCo"></div></div>
-      <div class="field-row"><div class="field"><label>Entrance name</label><input id="ts_ent" placeholder="Front door"></div>
-      <div class="field"><label>Device ID</label><input id="ts_dev" placeholder="Optional"></div></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="ts_cancel">Cancel</button><button class="btn btn-primary" id="ts_save">Add Source</button></div>`);
-    $('#ts_cancel').onclick=closeModal;
-    $('#ts_save').onclick=async()=>{
-      const name=$('#ts_name').value.trim();if(!name)return formErr('Enter a source name.');
-      const{error}=await sb.from('iq_traffic_sources').insert({organization_id:currentOrg.id,store_id:currentStore.id,source_name:name,source_kind:$('#ts_kind').value,provider:$('#ts_prov').value.trim()||null,entrance_name:$('#ts_ent').value.trim()||null,device_id:$('#ts_dev').value.trim()||null});
-      if(error)return formErr(error.message);closeModal();render();
-    };
-  });
-  $('#logTraffic')?.addEventListener('click',()=>{
-    openModal(`<h2>Log Traffic Event</h2>
-      <div class="field"><label>Source</label><select id="te_src">${(sources??[]).map(s=>`<option value="${s.id}">${esc(s.source_name)}</option>`).join('')||'<option value="">No sources</option>'}</select></div>
-      <div class="field-row-3"><div class="field"><label>Raw entries</label><input id="te_raw" type="number" value="1"></div>
-      <div class="field"><label>Adjusted</label><input id="te_adj" type="number" value="1"></div>
-      <div class="field"><label>Groups</label><input id="te_grp" type="number" value="1"></div></div>
-      <div class="form-err" id="formErr"></div>
-      <div class="sheet-actions"><button class="btn btn-ghost" id="te_cancel">Cancel</button><button class="btn btn-primary" id="te_save">Log</button></div>`);
-    $('#te_cancel').onclick=closeModal;
-    $('#te_save').onclick=async()=>{
-      const srcId=$('#te_src').value;if(!srcId)return formErr('Add a source first.');
-      const{error}=await sb.from('iq_traffic_events').insert({organization_id:currentOrg.id,store_id:currentStore.id,traffic_source_id:srcId,raw_entries:Number($('#te_raw').value),adjusted_entries:Number($('#te_adj').value),customer_groups:Number($('#te_grp').value)});
-      if(error)return formErr(error.message);closeModal();render();
-    };
-  });
-}
-
-// ═══════════════════════════════
-// STAFFING
-// ═══════════════════════════════
-async function renderStaffing(){
-  const{data}=await sb.from('iq_staffing_predictions').select('*').eq('store_id',currentStore.id).order('bucket_start',{ascending:false}).limit(50);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>📋 Staffing Predictions</h1><div class="sub">AI-powered staffing recommendations</div></div></div>
-    <table><thead><tr><th>Time Slot</th><th>Predicted Groups</th><th>Min Staff</th><th>Recommended</th><th>Mgr Cover</th><th>Est Wait</th><th>Open Rot %</th><th>Confidence</th></tr></thead><tbody>
-    ${(data??[]).map(p=>`<tr><td>${fmtDt(p.bucket_start)} — ${fmtDt(p.bucket_end)}</td><td class="num">${p.predicted_customer_groups??'—'}</td><td class="num">${p.min_sales_staff}</td><td class="num" style="font-weight:700">${p.recommended_sales_staff}</td><td>${p.recommended_manager_cover?'<span class="chip a">Yes</span>':'No'}</td><td class="num">${p.expected_wait_seconds?fmtTime(p.expected_wait_seconds):'—'}</td><td class="num">${p.open_rotation_probability?Math.round(p.open_rotation_probability*100)+'%':'—'}</td><td class="num">${p.confidence?Math.round(p.confidence*100)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No staffing predictions available. Predictions are generated from traffic history.</td></tr>'}</tbody></table>`;
-}
-
-// ═══════════════════════════════
-// NOTIFICATIONS
-// ═══════════════════════════════
-async function renderNotifications(){
-  const{data}=await sb.from('iq_queue_notifications').select('*').eq('store_id',currentStore.id).order('generated_at',{ascending:false}).limit(50);
-  const NSTAT={created:'n',sent:'b',delivered:'b',opened:'a',accepted:'g',declined:'r',timed_out:'r',failed:'r',resolved:'g'};
-  mainEl.innerHTML=`<div class="page-head"><div><h1>🔔 Queue Notifications</h1><div class="sub">${(data??[]).length} notifications</div></div></div>
-    <table><thead><tr><th>Assigned To</th><th>Status</th><th>Channel</th><th>Generated</th><th>Sent</th><th>Response</th><th>Attempts</th></tr></thead><tbody>
-    ${(data??[]).map(n=>`<tr><td><b>${pName(n.assigned_user_id)}</b></td><td><span class="chip ${NSTAT[n.status]||'n'}">${esc(n.status)}</span></td><td>${(n.delivery_channel||[]).join(', ')}</td><td style="font-size:12px">${fmtDt(n.generated_at)}</td><td style="font-size:12px">${fmtDt(n.sent_at)}</td><td style="font-size:12px">${n.accepted_at?'Accepted '+fmtDt(n.accepted_at):n.declined_at?'Declined '+fmtDt(n.declined_at):n.timed_out_at?'Timed out':n.failed?'Failed':'Pending'}</td><td class="num">${n.attempts}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">No notifications.</td></tr>'}</tbody></table>`;
-}
-
-// ═══════════════════════════════
-// AUDIT LOG
-// ═══════════════════════════════
-async function renderAudit(){
-  const[{data:audits},{data:intel}]=await Promise.all([
-    sb.from('iq_audit_events').select('*').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(50),
-    sb.from('iq_intelligence_events').select('*').eq('store_id',currentStore.id).order('created_at',{ascending:false}).limit(50)
-  ]);
-  mainEl.innerHTML=`<div class="page-head"><div><h1>📜 Audit & Intelligence Log</h1></div></div>
-    <div class="tabs"><button class="tab active" data-tab="audit">Audit Events (${(audits??[]).length})</button><button class="tab" data-tab="intel">Intelligence Events (${(intel??[]).length})</button></div>
-    <div id="tabContent"></div>`;
-  const showTab=tab=>{
-    $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
-    if(tab==='audit'){
-      $('#tabContent').innerHTML=`<table><thead><tr><th>Event</th><th>Resource</th><th>User</th><th>Severity</th><th>Notes</th><th>When</th></tr></thead><tbody>
-      ${(audits??[]).map(a=>`<tr><td><b>${esc(a.event_type)}</b></td><td>${esc(a.resource_type)}${a.resource_id?` <span class="sub">${a.resource_id.slice(0,8)}…</span>`:''}</td><td>${a.user_id?pName(a.user_id):'System'}</td><td><span class="chip ${a.severity==='warning'?'a':a.severity==='error'?'r':'n'}">${esc(a.severity)}</span></td><td style="font-size:12px;max-width:200px">${esc(a.notes||'—')}</td><td style="font-size:12px">${fmtDt(a.created_at)}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">No audit events.</td></tr>'}</tbody></table>`;
-    }else{
-      $('#tabContent').innerHTML=`<table><thead><tr><th>Event Type</th><th>Actor</th><th>Payload</th><th>Observed</th></tr></thead><tbody>
-      ${(intel??[]).map(i=>`<tr><td><b>${esc(i.event_type)}</b></td><td>${i.actor_user_id?pName(i.actor_user_id):'System'}</td><td style="font-size:11px;max-width:300px;word-break:break-all">${esc(JSON.stringify(i.event_payload).slice(0,120))}</td><td style="font-size:12px">${fmtDt(i.observed_at)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty">No intelligence events.</td></tr>'}</tbody></table>`;
-    }
-  };
-  showTab('audit');
-  $$('.tab').forEach(t=>{t.onclick=()=>showTab(t.dataset.tab);});
-}
-
-// ═══════════════════════════════
-// SETTINGS
-// ═══════════════════════════════
-async function renderSettings(){
-  const{data:settings}=await sb.from('iq_store_settings').select('*').eq('store_id',currentStore.id).maybeSingle();
-  const s=settings||{};
-  const skipStatuses=s.queue_skip_statuses||['with_customer','break','lunch','temporarily_unavailable','off_sales_floor'];
-  mainEl.innerHTML=`<div class="page-head"><h1>⚙️ Store Settings</h1><div class="sub">${esc(currentStore.name)}</div></div>
-    <div class="dash-panel"><h3>Accept-Up Countdown</h3><p class="sub" style="margin-bottom:8px">When it becomes a rep's turn, they have this long to acknowledge before it rolls to the next person.</p>
-    <div class="field-row"><div class="field"><label>Timeout (seconds)</label><input id="ss_uptimeout" type="number" value="${s.accept_up_timeout_seconds??60}"></div>
-    <div class="field"><label>On timeout</label><select id="ss_upaction"><option value="next_in_line" ${s.accept_up_action==='next_in_line'?'selected':''}>Skip to next in line</option><option value="back_of_queue" ${s.accept_up_action==='back_of_queue'?'selected':''}>Send to back of queue</option></select></div></div></div>
-    <div class="dash-panel"><h3>Greeter</h3><p class="sub" style="margin-bottom:8px">A dedicated greeter logs walk-ins and routes customers, but doesn't take ups themselves.</p>
-    <div class="field"><label><input type="checkbox" id="ss_greeter" ${s.greeter_enabled?'checked':''}> Enable dedicated greeter</label></div>
-    <div class="field"><label>Current greeter</label><select id="ss_greeter_user"><option value="">None assigned</option>${repOptions(s.greeter_user_id)}</select></div></div>
-    <div class="dash-panel"><h3>Queue Configuration</h3>
-    <div class="field-row"><div class="field"><label>Queue name</label><input id="ss_name" value="${esc(s.queue_name||'Main Floor')}"></div>
-    <div class="field"><label>Missed up rule</label><select id="ss_mr"><option value="end" ${s.missed_up_queue_rule==='end'?'selected':''}>Send to end</option><option value="back_of_queue" ${s.missed_up_queue_rule==='back_of_queue'?'selected':''}>Back of queue</option><option value="hold_position" ${s.missed_up_queue_rule==='hold_position'?'selected':''}>Hold position</option><option value="skip_once" ${s.missed_up_queue_rule==='skip_once'?'selected':''}>Skip once</option></select></div></div>
-    <div class="field"><label><input type="checkbox" id="ss_or" ${s.is_open_rotation_enabled?'checked':''}> Enable open rotation mode</label></div>
-    <div class="field"><label><input type="checkbox" id="ss_ret" ${s.return_to_queue_after_timeout!==false?'checked':''}> Return to queue after timeout</label></div></div>
-    <div class="dash-panel"><h3>Break & Lunch Rules</h3>
-    <div class="field-row-3"><div class="field"><label>Max breaks/shift</label><input id="ss_brk" type="number" value="${s.break_max_per_shift??2}"></div>
-    <div class="field"><label>Paid break (min)</label><input id="ss_pb" type="number" value="${s.paid_break_minutes??30}"></div>
-    <div class="field"><label>Lunch (min)</label><input id="ss_ln" type="number" value="${s.lunch_minutes??30}"></div></div>
-    <div class="field-row"><div class="field"><label>Min lunches/shift</label><input id="ss_lmin" type="number" value="${s.lunch_minimum_per_shift??1}"></div>
-    <div class="field"><label>Lunch alert grace (min)</label><input id="ss_lgrace" type="number" value="${s.lunch_alert_grace_minutes??5}"></div></div></div>
-    <div class="dash-panel"><h3>Open Rotation Threshold</h3>
-    <div class="field-row"><div class="field"><label>Auto-trigger wait (min)</label><input id="ss_orwait" type="number" value="${s.auto_open_rotation_wait_threshold??20}"></div>
-    <div class="field"><label>Default reason</label><select id="ss_orreason"><option value="demand_surge" ${s.open_rotation_reason_default==='demand_surge'?'selected':''}>Demand Surge</option><option value="understaffed" ${s.open_rotation_reason_default==='understaffed'?'selected':''}>Understaffed</option></select></div></div></div>
-    <div class="dash-panel"><h3>Queue Skip Statuses</h3><p class="sub" style="margin-bottom:8px">Reps in these statuses are skipped in the rotation.</p>
-    ${Object.entries(STATUS_LABELS).filter(([k])=>!['available','current_up','next_in_line','ended_shift'].includes(k)).map(([k,v])=>`<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px"><input type="checkbox" class="ss_skip" value="${k}" ${skipStatuses.includes(k)?'checked':''}>${v}</label>`).join('')}</div>
-    <button class="btn btn-primary" id="ss_save" style="margin-bottom:16px">Save All Settings</button>
-    <div class="dash-panel"><h3>Team Members</h3><p class="sub" style="margin-bottom:8px">Managed in CRM organization settings.</p>
-    ${Object.entries(profiles).map(([id,n])=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${esc(n)}</b> <span style="color:var(--steel);font-size:11px">${id.slice(0,8)}…</span></div>`).join('')}</div>`;
-  
-  $('#ss_save')?.addEventListener('click',async()=>{
-    const skipArr=[...$$('.ss_skip')].filter(c=>c.checked).map(c=>c.value);
-    const greeterUser=$('#ss_greeter_user').value||null;
-    const row={organization_id:currentOrg.id,store_id:currentStore.id,queue_name:$('#ss_name').value.trim(),missed_up_queue_rule:$('#ss_mr').value,is_open_rotation_enabled:$('#ss_or').checked,return_to_queue_after_timeout:$('#ss_ret').checked,break_max_per_shift:Number($('#ss_brk').value),paid_break_minutes:Number($('#ss_pb').value),lunch_minutes:Number($('#ss_ln').value),lunch_minimum_per_shift:Number($('#ss_lmin').value),lunch_alert_grace_minutes:Number($('#ss_lgrace').value),auto_open_rotation_wait_threshold:Number($('#ss_orwait').value),open_rotation_reason_default:$('#ss_orreason').value,queue_skip_statuses:skipArr,accept_up_timeout_seconds:Number($('#ss_uptimeout').value)||60,accept_up_action:$('#ss_upaction').value,greeter_enabled:$('#ss_greeter').checked,greeter_user_id:$('#ss_greeter').checked?greeterUser:null};
-    if(s.id){await sb.from('iq_store_settings').update(row).eq('id',s.id);}
-    else{await sb.from('iq_store_settings').insert(row);}
-    if(row.greeter_enabled&&row.greeter_user_id){await sb.from('iq_up_queue_entries').update({is_in_queue:false,is_current_up:false,is_next_in_line:false}).eq('store_id',currentStore.id).eq('user_id',row.greeter_user_id);}
-    await recalcQueueOrder(currentStore.id);
-    await logAudit('settings_updated',{queue_name:row.queue_name});
-    render();
-  });
-}
-
-// ═══════════════════════════════
-// QUEUE FAIRNESS ENGINE — recalc order, back-of-queue rotation, accept-up countdown
-// ═══════════════════════════════
-
-// Re-sequences queue_position 1..N with no gaps, recomputes is_current_up/is_next_in_line
-// from actual position, and starts a fresh accept-up countdown only when someone NEWLY
-// becomes current_up (never resets an existing countdown just because we recalced).
-// Greeters (if greeter mode is on) are excluded entirely — they don't take ups.
-async function recalcQueueOrder(storeId){
-  const{data:ss}=await sb.from('iq_store_settings').select('greeter_enabled,greeter_user_id').eq('store_id',storeId).maybeSingle();
-  let q=null;
-  ({data:q}=await sb.from('iq_up_queue_entries').select('id,user_id,queue_position,is_current_up').eq('store_id',storeId).eq('is_in_queue',true).order('queue_position'));
-  if(!q)return;
-  if(ss?.greeter_enabled&&ss.greeter_user_id){q=q.filter(e=>e.user_id!==ss.greeter_user_id);}
-  const now=new Date().toISOString();
-  for(let i=0;i<q.length;i++){
-    const isFirst=i===0,isSecond=i===1;
-    const wasFirst=q[i].is_current_up;
-    const patch={queue_position:i+1,is_current_up:isFirst,is_next_in_line:isSecond};
-    if(isFirst&&!wasFirst)patch.up_offered_at=now;
-    if(!isFirst)patch.up_offered_at=null;
-    await sb.from('iq_up_queue_entries').update(patch).eq('id',q[i].id);
+  const overlay = document.getElementById('loginOverlay');
+  if(overlay.classList.contains('show')){
+    overlay.classList.remove('show');
+  } else {
+    overlay.classList.add('show');
+    document.getElementById('upEmail').focus();
+    if(mode==='signup') upNote('Enter your email and password, then tap Create an account.', true);
   }
 }
 
-// Sends a rep to the back of the line — call this whenever someone finishes being
-// with_customer and returns to the rotation, so they can't cut back in ahead of
-// people who've been waiting. This is the core "first up, next up" fairness rule.
-async function rotateToBackOfQueue(storeId,userId){
-  await sb.from('iq_up_queue_entries').update({queue_position:99999,is_current_up:false,is_next_in_line:false,up_offered_at:null}).eq('store_id',storeId).eq('user_id',userId).eq('is_in_queue',true);
-  await recalcQueueOrder(storeId);
+function upNote(msg, ok){
+  const el = document.getElementById('upNotice');
+  el.textContent = msg;
+  el.className = 'ulogin-notice ' + (ok ? 'ok' : 'err');
 }
 
-// Called by the floor-board ticker when the current_up rep's countdown expires without
-// them accepting. Logs a missed up and advances the queue per store settings.
-async function handleAcceptUpTimeout(storeId,entry){
-  const{data:ss}=await sb.from('iq_store_settings').select('accept_up_action,accept_up_timeout_seconds').eq('store_id',storeId).maybeSingle();
-  const action=ss?.accept_up_action||'next_in_line';
-  // System-detected timeout: reported_by is NOT NULL on this table (no default), so the
-  // watchdog records itself as reporter. queue_entry_id links back to the exact queue row.
-  await sb.from('iq_missed_and_potential_missed_ups').insert({organization_id:currentOrg.id,store_id:storeId,reported_by:currentUser.id,employee_user_id:entry.user_id,queue_entry_id:entry.id,reason:'Did not accept up within '+(ss?.accept_up_timeout_seconds||60)+'s time limit',is_potential:false,affects_kpi:true});
-  const{data:sh}=await sb.from('iq_shift_records').select('id,ups_missed').eq('store_id',storeId).eq('user_id',entry.user_id).eq('is_active',true).maybeSingle();
-  if(sh)await sb.from('iq_shift_records').update({ups_missed:(sh.ups_missed||0)+1}).eq('id',sh.id);
-  if(action==='back_of_queue'){
-    await sb.from('iq_up_queue_entries').update({queue_position:99999,is_current_up:false,up_offered_at:null}).eq('id',entry.id);
-  }else{
-    // next_in_line: swap positions with whoever is directly behind — an integer-safe swap,
-    // not a fractional position, since queue_position is an integer NOT NULL column
-    const{data:behindEntry}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',storeId).eq('is_in_queue',true).eq('queue_position',entry.queue_position+1).maybeSingle();
-    if(behindEntry){
-      await sb.from('iq_up_queue_entries').update({queue_position:entry.queue_position}).eq('id',behindEntry.id);
-      await sb.from('iq_up_queue_entries').update({queue_position:entry.queue_position+1,is_current_up:false,up_offered_at:null}).eq('id',entry.id);
-    }else{
-      await sb.from('iq_up_queue_entries').update({is_current_up:false,up_offered_at:null}).eq('id',entry.id);
-    }
+document.getElementById('loginOverlay').onclick = (e) => {
+  if(e.target === document.getElementById('loginOverlay')) toggleLogin();
+};
+
+let sb = null;
+(async () => {
+  try {
+    const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+    sb = mod.createClient('https://fumwwhyozeouoqscolke.supabase.co', 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
+  } catch (e) {
+    console.error('Supabase init failed:', e);
+    upNote('Connection error — please refresh.', false);
+    return;
   }
-  await recalcQueueOrder(storeId);
-  await takeSnapshot('accept_up_timeout',entry.user_id);
-}
 
-// Rep taps "Accept" to confirm they're present and ready — clears the countdown.
-async function acceptUp(entryId){
-  await sb.from('iq_up_queue_entries').update({up_offered_at:null}).eq('id',entryId);
-  render();
-}
+  document.getElementById('upSigninBtn').onclick = async () => {
+    const email = document.getElementById('upEmail').value.trim();
+    const password = document.getElementById('upPassword').value;
+    if(!email || !password){ upNote('Enter email and password.'); return; }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ upNote(error.message); return; }
+    upNote('Signed in! Redirecting…', true);
+    setTimeout(()=>{ alert('Welcome to the IQ Up System! The floor app is coming soon — your account is ready.'); toggleLogin(); }, 800);
+  };
 
-
-async function takeSnapshot(eventType,triggerUserId){
-  try{
-    const{data:q}=await sb.from('iq_up_queue_entries').select('*').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position');
-    const currentUp=(q||[]).find(e=>e.is_current_up);
-    const nextUp=(q||[]).find(e=>e.is_next_in_line);
-    const{data:wt}=await sb.from('iq_customer_waiting_queue').select('id').eq('store_id',currentStore.id).in('status',['waiting_for_assignment','assignment_sent','escalated']);
-    await sb.from('iq_queue_snapshots').insert({organization_id:currentOrg.id,store_id:currentStore.id,event_type:eventType,queue_json:q||[],current_up_user_id:currentUp?.user_id||null,next_in_line_user_id:nextUp?.user_id||null,active_customer_count:(q||[]).filter(e=>e.status_code==='with_customer').length,waiting_customer_count:(wt||[]).length,trigger_user_id:triggerUserId||null,acting_user_id:currentUser.id,triggered_by:'app'});
-  }catch(e){console.warn('Snapshot failed:',e);}
-}
-
-async function logIntel(eventType,payload){
-  try{await sb.from('iq_intelligence_events').insert({organization_id:currentOrg.id,store_id:currentStore.id,event_type:eventType,event_payload:payload||{},actor_user_id:currentUser.id});}catch(e){console.warn('Intel log failed:',e);}
-}
-
-async function logAudit(eventType,payload){
-  try{await sb.from('iq_audit_events').insert({organization_id:currentOrg.id,user_id:currentUser.id,event_type:eventType,resource_type:'iq_store',resource_id:currentStore.id,after_state:payload||{},severity:'info'});}catch(e){console.warn('Audit log failed:',e);}
-}
+  document.getElementById('upSignupLink').onclick = async () => {
+    const email = document.getElementById('upEmail').value.trim();
+    const password = document.getElementById('upPassword').value;
+    if(!email || !password){ upNote('Enter email and password, then tap Create an account again.'); return; }
+    const { error } = await sb.auth.signUp({ email, password });
+    if(error){ upNote(error.message); return; }
+    upNote('Account created! Check your email to confirm, then sign in.', true);
+  };
+})();
 </script>
+
 </body>
 </html>
