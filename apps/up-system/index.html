@@ -365,7 +365,7 @@ async function boot(){
   const{data:members}=await sb.from('organization_members').select('user_id').eq('organization_id',currentOrg.id).eq('status','active');
   if(members?.length){const uids=(members).map(m=>m.user_id);const{data:profs}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids);(profs??[]).forEach(p=>profiles[p.user_id]=p.full_name||p.email?.split('@')[0]||'Unknown');}
   // Nav
-  $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;render();};});
+  $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;if(currentView==='dashboard')dashScope={level:'corporate',id:null};render();};});
   $('#landing').style.display='none';$('#loginOverlay').classList.remove('show');$('#app').style.display='block';
   render();
 }
@@ -376,8 +376,10 @@ function closeModal(){modalRoot.innerHTML='';}
 function formErr(msg){const el=$('#formErr');if(el){el.textContent=msg;el.classList.add('show');}}
 function repOptions(selected){return Object.entries(profiles).map(([id,n])=>`<option value="${id}" ${id===selected?'selected':''}>${esc(n)}</option>`).join('');}
 
+let floorTickerId=null;
 async function render(){
   if(!currentStore){mainEl.innerHTML='<div class="empty">No store configured. Add stores in CRM settings.</div>';return;}
+  if(floorTickerId){clearInterval(floorTickerId);floorTickerId=null;}
   mainEl.innerHTML='<div class="empty">Loading…</div>';
   try{
     const views={dashboard:renderDashboard,floor:renderFloor,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,managers:renderManagers,analytics:renderAnalytics,traffic:renderTraffic,staffing:renderStaffing,notifications:renderNotifications,audit:renderAudit,settings:renderSettings};
@@ -388,41 +390,59 @@ async function render(){
 // ═══════════════════════════════
 // MULTI-STORE DASHBOARD
 // ═══════════════════════════════
+let dashScope={level:'corporate',id:null};
 async function renderDashboard(){
-  const{data:locs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).eq('location_type','store').order('name');
-  const stores=locs??[];
-  // Fetch summary data for each store
-  const storeData=await Promise.all(stores.map(async s=>{
+  const{data:allLocs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).order('name');
+  const locs=allLocs??[];
+  const corporate=locs.find(l=>l.location_type==='corporate');
+  const regions=locs.filter(l=>l.location_type==='region');
+  const stores=locs.filter(l=>l.location_type==='store');
+
+  const childType=dashScope.level==='corporate'?'region':'store';
+  const childNodes=dashScope.level==='corporate'?regions:stores.filter(s=>s.parent_id===dashScope.id);
+  const currentRegion=dashScope.level==='region'?regions.find(r=>r.id===dashScope.id):null;
+
+  const childData=await Promise.all(childNodes.map(async node=>{
+    const storeIds=childType==='store'?[node.id]:stores.filter(s=>s.parent_id===node.id).map(s=>s.id);
+    if(!storeIds.length)return{...node,onFloor:0,withCust:0,avail:0,waitCount:0,statusList:[],storeCount:0};
     const[{data:shifts},{data:waiting}]=await Promise.all([
-      sb.from('iq_shift_records').select('user_id,is_active').eq('store_id',s.id).eq('is_active',true),
-      sb.from('iq_customer_waiting_queue').select('id,status').eq('store_id',s.id).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee'])
+      sb.from('iq_shift_records').select('user_id,is_active').in('store_id',storeIds).eq('is_active',true),
+      sb.from('iq_customer_waiting_queue').select('id,status').in('store_id',storeIds).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee'])
     ]);
     const shiftIds=(shifts??[]).map(sh=>sh.user_id);
     let statusList=[];
-    if(shiftIds.length){const{data:ss}=await sb.from('iq_status_sessions').select('user_id,status').in('user_id',shiftIds).is('ended_at',null);statusList=ss??[];}
+    if(shiftIds.length){const{data:ssl}=await sb.from('iq_status_sessions').select('user_id,status').in('user_id',shiftIds).is('ended_at',null);statusList=ssl??[];}
     const onFloor=(shifts??[]).length;
     const withCust=statusList.filter(x=>x.status==='with_customer').length;
     const avail=statusList.filter(x=>x.status==='available').length;
-    const onBreak=statusList.filter(x=>['break','lunch'].includes(x.status)).length;
-    return{...s,onFloor,withCust,avail,onBreak,waitCount:(waiting??[]).length,statusList};
+    return{...node,onFloor,withCust,avail,waitCount:(waiting??[]).length,statusList,storeCount:storeIds.length};
   }));
-  mainEl.innerHTML=`<div class="page-head"><div><h1>🏬 All Stores Overview</h1><div class="sub">${stores.length} stores · ${storeData.reduce((a,s)=>a+s.onFloor,0)} reps on floor</div></div></div>
-    <div class="multi-store-grid">${storeData.map(s=>`<div class="store-overview-card ${s.id===currentStore.id?'active-store':''}" data-switchstore="${s.id}">
-      <div class="soc-name">${esc(s.name)}</div>
-      <div class="soc-metrics">
-        <div class="soc-m"><div class="sv num">${s.onFloor}</div><div class="sl">On Floor</div></div>
-        <div class="soc-m"><div class="sv num" style="${s.withCust?'color:var(--amber)':''}">${s.withCust}</div><div class="sl">w/ Cust</div></div>
-        <div class="soc-m"><div class="sv num" style="color:var(--verified)">${s.avail}</div><div class="sl">Available</div></div>
-        <div class="soc-m"><div class="sv num" style="${s.waitCount?'color:var(--danger)':''}">${s.waitCount}</div><div class="sl">Waiting</div></div>
-      </div>
-      <div class="soc-reps">${s.statusList.map(r=>{const dc=r.status==='available'?'dot-green':r.status==='with_customer'?'dot-amber':['break','lunch'].includes(r.status)?'dot-purple':'dot-gray';return`<div class="soc-rep-dot ${dc}" title="${pName(r.user_id)} — ${STATUS_LABELS[r.status]||r.status}">${(pName(r.user_id)||'?')[0]}</div>`;}).join('')||'<span style="font-size:11px;color:var(--steel)">No reps on floor</span>'}</div>
-    </div>`).join('')}</div>`;
-  $$('[data-switchstore]').forEach(c=>{c.onclick=()=>{
-    const sid=c.dataset.switchstore;
-    const sel=$('#storeSelect');sel.value=sid;
-    currentStore=(locs??[]).find(s=>s.id===sid)||currentStore;
-    $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='floor'));
-    currentView='floor';render();
+
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🏬 ${dashScope.level==='corporate'?'Corporate Overview':(currentRegion?.name||'Region')+' — Stores'}</h1>
+    <div class="sub"><span class="chip ${dashScope.level==='corporate'?'b':'n'}" style="cursor:pointer" data-crumb="corporate">${esc(corporate?.name||'Corporate')}</span>${currentRegion?` → <span class="chip b" style="cursor:pointer">${esc(currentRegion.name)}</span>`:''}</div></div></div>
+    <div class="multi-store-grid">${childData.length?childData.map(n=>`
+      <div class="store-overview-card ${childType==='store'&&n.id===currentStore.id?'active-store':''}" data-drill="${childType}:${n.id}">
+        <div class="soc-name">${esc(n.name)}${childType==='region'?` <span style="font-size:11px;color:var(--steel);font-weight:500">(${n.storeCount} store${n.storeCount!==1?'s':''})</span>`:''}</div>
+        <div class="soc-metrics">
+          <div class="soc-m"><div class="sv num">${n.onFloor}</div><div class="sl">On Floor</div></div>
+          <div class="soc-m"><div class="sv num" style="${n.withCust?'color:var(--amber)':''}">${n.withCust}</div><div class="sl">w/ Cust</div></div>
+          <div class="soc-m"><div class="sv num" style="color:var(--verified)">${n.avail}</div><div class="sl">Available</div></div>
+          <div class="soc-m"><div class="sv num" style="${n.waitCount?'color:var(--danger)':''}">${n.waitCount}</div><div class="sl">Waiting</div></div>
+        </div>
+        <div class="soc-reps">${n.statusList.map(r=>{const dc=r.status==='available'?'dot-green':r.status==='with_customer'?'dot-amber':['break','lunch'].includes(r.status)?'dot-purple':'dot-gray';return`<div class="soc-rep-dot ${dc}" title="${pName(r.user_id)} — ${STATUS_LABELS[r.status]||r.status}">${(pName(r.user_id)||'?')[0]}</div>`;}).join('')||'<span style="font-size:11px;color:var(--steel)">No reps on floor</span>'}</div>
+      </div>`).join(''):'<div class="empty">No data at this level.</div>'}
+    </div>`;
+
+  $$('[data-crumb]').forEach(c=>{c.onclick=()=>{dashScope={level:'corporate',id:null};render();};});
+  $$('[data-drill]').forEach(c=>{c.onclick=()=>{
+    const[type,id]=c.dataset.drill.split(':');
+    if(type==='region'){dashScope={level:'region',id};render();}
+    else{
+      const sel=$('#storeSelect');sel.value=id;
+      currentStore=stores.find(s=>s.id===id)||currentStore;
+      $$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='floor'));
+      currentView='floor';render();
+    }
   };});
 }
 
@@ -483,7 +503,8 @@ async function renderFloor(){
     ${openRot?`<div class="or-banner"><span>🔥 Open Rotation Active — ${esc(openRot.reason||'Demand surge')} · Started ${elapsed(openRot.start_at)} ago</span><button class="btn btn-sm" id="endOR">End Open Rotation</button></div>`:''}
     <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${!openRot?`<button class="btn btn-danger btn-sm" id="startOR">🔥 Open Rotation</button>`:''}<button class="btn btn-primary" id="logWalkIn">👋 Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button></div></div>
     ${waitingCustomers.length?`<div class="customer-queue"><h3>🔔 Waiting Customers (${waitingCustomers.length})</h3>${waitingCustomers.map(c=>`<div class="cq-item"><div class="cq-icon">👤</div><div class="cq-info"><div class="cq-name">${esc(c.customer_display_name||'Walk-in')}${c.customer_group_size>1?' · '+c.customer_group_size+' people':''}${c.is_returning_customer?' <span class="chip b">Returning</span>':''}${c.referred_by?` <span class="chip p">Ref: ${esc(c.referred_by)}</span>`:''}</div><div class="cq-detail">${esc(c.customer_category?.replace(/_/g,' ')||'Walk-in')}${c.requested_employee_user_id?' · Requested '+pName(c.requested_employee_user_id):''} · ${waitChip(c.status)} · Priority ${c.priority}</div></div><div class="cq-wait">${elapsed(c.arrival_time)}</div><button class="btn btn-primary btn-sm" data-assign="${c.id}">Assign</button></div>`).join('')}</div>`:''}
-    <div class="queue-grid">${repData.length?repData.map(r=>{
+    ${ss.greeter_enabled&&ss.greeter_user_id&&repData.some(r=>r.user_id===ss.greeter_user_id)?(()=>{const g=repData.find(r=>r.user_id===ss.greeter_user_id);const gst=getStatus(g.user_id);return`<div class="customer-queue" style="border-color:var(--accent);background:var(--accent-tint)"><h3>🚪 Greeter — ${pName(g.user_id)} <span class="role-badge rep" style="background:#fff">${STATUS_LABELS[gst]||gst}</span></h3><div style="font-size:12px;color:var(--steel)">Not in up-rotation · Logs walk-ins and routes customers to the queue · On floor ${elapsed(g.login_at)}</div></div>`;})():''}
+    <div class="queue-grid">${repData.filter(r=>!(ss.greeter_enabled&&r.user_id===ss.greeter_user_id)).length?repData.filter(r=>!(ss.greeter_enabled&&r.user_id===ss.greeter_user_id)).map(r=>{
       const st=getStatus(r.user_id);
       const cls=statusClass(st);
       const pos=r.queue?.queue_position;
@@ -497,12 +518,17 @@ async function renderFloor(){
       const brkSecs=onBrk?Math.floor((Date.now()-new Date(statusMap[r.user_id]?.started_at).getTime())/1000):0;
       const brkLimit=(st==='lunch'?lunchMinutes:breakMinutes)*60;
       const brkOver=brkSecs>brkLimit;
-      return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''} ${susp?'unavailable':''} ${isMe?'current-up':''}">
+      // Accept-up countdown — only the current_up rep has an active offer
+      const upTimeout=ss.accept_up_timeout_seconds||60;
+      const offeredAt=r.queue?.up_offered_at;
+      const upSecsLeft=isUp&&offeredAt?Math.max(0,upTimeout-Math.floor((Date.now()-new Date(offeredAt).getTime())/1000)):null;
+      return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''} ${susp?'unavailable':''}">
         ${pos?`<div class="rc-pos">#${pos}</div>`:''}
         <div class="rc-name">${pName(r.user_id)}${isMe?' <span style="font-size:10px;color:var(--accent)">(You)</span>':''}<span class="role-badge ${rIsManager?'mgr':'rep'}">${rIsManager?'Mgr':'Sales'}</span></div>
         <div class="rc-status ${st}">${isUp?'🟢 ':isNext?'🔵 ':''}${STATUS_LABELS[st]||st}</div>
         ${susp?'<div style="font-size:10px;color:var(--danger);margin-top:2px">⏸ Suspended</div>':''}
         ${held?`<div style="font-size:10px;color:var(--amber);margin-top:2px">Held ${held}×</div>`:''}
+        ${upSecsLeft!==null?`<div class="rc-break-timer ${upSecsLeft<15?'over':''}" style="background:#d1fae5;color:#065f46">⏱ Accept up: ${upSecsLeft}s</div>`:''}
         ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}${st==='lunch'?' 🍽':' ☕'}</div>`:''}
         <div class="rc-timer">${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):onBrk?'':st==='on_phone'?'On call '+elapsed(statusMap[r.user_id]?.started_at):'On floor '+elapsed(r.login_at)}</div>
         <div class="rc-stats"><span>Ups: <b>${r.ups_accepted}</b></span><span>Sold: <b>${r.closed_sales}</b></span><span>Cust: <b>${r.customers_served}</b></span></div>
@@ -510,8 +536,19 @@ async function renderFloor(){
           <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}">Status</button>
           ${st==='available'&&!isUp?`<button class="btn btn-accent btn-sm" data-bump="${r.user_id}">Bump Up</button>`:''}
           ${st==='with_customer'?`<button class="btn btn-ghost btn-sm" data-handoff="${r.user_id}">🤝 Hand Off</button>`:''}
+          ${upSecsLeft!==null?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue.id}">✅ Accept</button>`:''}
         </div></div>`;}).join(''):'<div class="empty" style="grid-column:1/-1">No reps clocked in. Tap Clock In to start a shift.</div>'}</div>`;
   
+  // Accept-up watchdog: on each render pass, check if the current_up rep's countdown has
+  // expired and auto-advance the queue if so (logs a missed up per store settings)
+  const currentUpEntry=queueEntries.find(e=>e.is_current_up&&e.up_offered_at);
+  if(currentUpEntry){
+    const upTimeout=ss.accept_up_timeout_seconds||60;
+    const secsSince=Math.floor((Date.now()-new Date(currentUpEntry.up_offered_at).getTime())/1000);
+    if(secsSince>=upTimeout){handleAcceptUpTimeout(sid,currentUpEntry).then(render);}
+  }
+  // Live-refresh ticker so countdowns/timers stay accurate without manual reload
+  floorTickerId=setInterval(()=>{if(currentView==='floor')render();},5000);
   // Wire My Status quick buttons
   $$('[data-myst]').forEach(b=>{b.onclick=async()=>{
     if(!myShift)return;
@@ -522,9 +559,13 @@ async function renderFloor(){
     await sb.from('iq_status_sessions').insert({shift_id:myShift.id,organization_id:currentOrg.id,store_id:sid,user_id:currentUser.id,status:newSt,started_at:now});
     const isAvail=STATUS_GROUPS.selling.includes(newSt)&&newSt!=='with_customer';
     await sb.from('iq_up_queue_entries').update({status_code:newSt,is_available_for_assignment:isAvail}).eq('store_id',sid).eq('user_id',currentUser.id).eq('is_in_queue',true);
+    // Finishing with a customer sends you to the back of the line — fair rotation
+    if(mySt==='with_customer'&&newSt!=='with_customer'){await rotateToBackOfQueue(sid,currentUser.id);}
+    else{await recalcQueueOrder(sid);}
     await takeSnapshot('status_change',currentUser.id);
     render();
   };});
+  $$('[data-acceptup]').forEach(b=>{b.onclick=()=>acceptUp(b.dataset.acceptup);});
   $('#logWalkIn')?.addEventListener('click',openWalkInModal);
   $('#clockInBtn')?.addEventListener('click',openClockInModal);
   $('#startOR')?.addEventListener('click',openStartORModal);
@@ -537,8 +578,8 @@ async function renderFloor(){
   $$('[data-handoff]').forEach(b=>{b.onclick=()=>openHandoffModal(b.dataset.handoff);});
   $$('[data-bump]').forEach(b=>{b.onclick=async()=>{
     const uid=b.dataset.bump;
-    await sb.from('iq_up_queue_entries').update({is_current_up:false}).eq('store_id',sid).eq('is_current_up',true);
-    await sb.from('iq_up_queue_entries').update({is_current_up:true,queue_position:1}).eq('store_id',sid).eq('user_id',uid).eq('is_in_queue',true);
+    await sb.from('iq_up_queue_entries').update({queue_position:0}).eq('store_id',sid).eq('user_id',uid).eq('is_in_queue',true);
+    await recalcQueueOrder(sid);
     await takeSnapshot('bump_up',uid);
     render();
   };});
@@ -603,8 +644,10 @@ async function assignCustomerToRep(waitingId,repId,opts={}){
   if(sh){
     await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',sh.id).eq('user_id',repId).is('ended_at',null);
     await sb.from('iq_status_sessions').insert({shift_id:sh.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:repId,status:'with_customer',started_at:now});
-    await sb.from('iq_up_queue_entries').update({status_code:'with_customer',is_available_for_assignment:false,is_current_up:false,last_assignment_at:now}).eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true);
+    await sb.from('iq_up_queue_entries').update({status_code:'with_customer',is_available_for_assignment:false,last_assignment_at:now}).eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true);
     await sb.from('iq_shift_records').update({ups_accepted:(sh.ups_accepted||0)+(countsAsUp?1:0),customers_served:(sh.customers_served||0)+1}).eq('id',sh.id);
+    // Taking a customer removes them from up-eligibility until they finish — recalc promotes next_in_line to current_up
+    await recalcQueueOrder(currentStore.id);
   }
   await sb.from('iq_customer_interactions').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:sh?.id,customer_waiting_id:waitingId,salesperson_user_id:repId,interaction_source:opts.source||'walk_in',handoff_from_user_id:opts.handoffFrom||null,started_at:now,accepted_at:now});
   await takeSnapshot(opts.handoffFrom?'customer_handoff':'customer_assigned',repId);
@@ -615,23 +658,26 @@ function openClockInModal(){
     <div class="field"><label>Who's clocking in?</label><select id="ci_user">${repOptions(currentUser.id)}</select></div>
     <div class="field-row"><div class="field"><label>Role</label><select id="ci_role"><option value="salesperson">Salesperson</option><option value="senior_salesperson">Senior Salesperson</option><option value="manager">Manager</option></select></div>
     <div class="field"><label>Scheduled start</label><input id="ci_sched" type="time"></div></div>
+    <div class="field"><label style="display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)"><input type="checkbox" id="ci_greeter" style="width:auto"> Clock in as Greeter (not in up-rotation)</label></div>
     <div class="form-err" id="formErr"></div>
     <div class="sheet-actions"><button class="btn btn-ghost" id="ci_cancel">Cancel</button><button class="btn btn-primary" id="ci_save">Clock In</button></div>`);
   $('#ci_cancel').onclick=closeModal;
   $('#ci_save').onclick=async()=>{
     const uid=$('#ci_user').value;
     const schedTime=$('#ci_sched').value;
+    const asGreeter=$('#ci_greeter').checked;
     const now=new Date();
     let scheduled_start=null,late_or_on_time=null;
     if(schedTime){const[h,m]=schedTime.split(':');scheduled_start=new Date(now);scheduled_start.setHours(h,m,0,0);scheduled_start=scheduled_start.toISOString();late_or_on_time=now>new Date(scheduled_start)?'late':'on_time';}
-    const{data:shift,error}=await sb.from('iq_shift_records').insert({organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,role_name:$('#ci_role').value,initial_status:'available',scheduled_start,late_or_on_time}).select().single();
+    const{data:shift,error}=await sb.from('iq_shift_records').insert({organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,role_name:$('#ci_role').value,initial_status:'available',scheduled_start,late_or_on_time,is_greeter:asGreeter}).select().single();
     if(error)return formErr(error.message);
-    // Add to queue
+    // Add to queue at the back — recalcQueueOrder resolves positions, current_up, and next_in_line
     const{data:maxPos}=await sb.from('iq_up_queue_entries').select('queue_position').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position',{ascending:false}).limit(1);
     const nextPos=(maxPos?.[0]?.queue_position??0)+1;
-    const isFirst=nextPos===1;
-    await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:shift.id,user_id:uid,queue_position:nextPos,is_in_queue:true,is_current_up:isFirst,is_next_in_line:nextPos===2,status_code:'available'});
+    await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:shift.id,user_id:uid,queue_position:nextPos,is_in_queue:!asGreeter,is_current_up:false,is_next_in_line:false,status_code:'available'});
     await sb.from('iq_status_sessions').insert({shift_id:shift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,status:'available',started_at:now.toISOString()});
+    if(asGreeter)await sb.from('iq_store_settings').update({greeter_enabled:true,greeter_user_id:uid}).eq('store_id',currentStore.id);
+    await recalcQueueOrder(currentStore.id);
     await takeSnapshot('clock_in',uid);
     closeModal();render();
   };
@@ -648,10 +694,14 @@ function openStatusModal(userId,shiftId){
   $('#st_cancel').onclick=closeModal;
   $('#st_save').onclick=async()=>{
     const newStatus=$('#st_s').value;const now=new Date().toISOString();
+    const{data:prevSession}=await sb.from('iq_status_sessions').select('status').eq('shift_id',shiftId).eq('user_id',userId).is('ended_at',null).maybeSingle();
+    const prevStatus=prevSession?.status||'available';
     await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',shiftId).eq('user_id',userId).is('ended_at',null);
     await sb.from('iq_status_sessions').insert({shift_id:shiftId,organization_id:currentOrg.id,store_id:currentStore.id,user_id:userId,status:newStatus,started_at:now,reason_note:$('#st_n').value.trim()||null});
     const isAvail=STATUS_GROUPS.selling.includes(newStatus)&&newStatus!=='with_customer';
     await sb.from('iq_up_queue_entries').update({status_code:newStatus,is_available_for_assignment:isAvail}).eq('store_id',currentStore.id).eq('user_id',userId).eq('is_in_queue',true);
+    if(prevStatus==='with_customer'&&newStatus!=='with_customer'){await rotateToBackOfQueue(currentStore.id,userId);}
+    else{await recalcQueueOrder(currentStore.id);}
     await takeSnapshot('status_change',userId);
     closeModal();render();
   };
@@ -661,6 +711,7 @@ function openStatusModal(userId,shiftId){
     await sb.from('iq_status_sessions').insert({shift_id:shiftId,organization_id:currentOrg.id,store_id:currentStore.id,user_id:userId,status:'ended_shift',started_at:now});
     await sb.from('iq_shift_records').update({is_active:false,logout_at:now,closed_at:now,shift_end_reason:'normal'}).eq('id',shiftId);
     await sb.from('iq_up_queue_entries').update({is_in_queue:false,is_current_up:false,is_next_in_line:false}).eq('shift_id',shiftId);
+    await recalcQueueOrder(currentStore.id);
     await takeSnapshot('clock_out',userId);
     closeModal();render();
   };
@@ -698,12 +749,13 @@ async function openHandoffModal(fromUserId){
     const now=new Date().toISOString();
     // Close the origin rep's current interaction
     await sb.from('iq_customer_interactions').update({ended_at:now,outcome:'handed_off',notes:reason||null}).eq('customer_waiting_id',activeCust.id).eq('salesperson_user_id',fromUserId).is('ended_at',null);
-    // Free up the origin rep — back to available, keep their queue position
+    // Free up the origin rep — sent to the back of the queue (fair rotation, no cutting back in)
     const{data:fromShift}=await sb.from('iq_shift_records').select('id').eq('store_id',currentStore.id).eq('user_id',fromUserId).eq('is_active',true).maybeSingle();
     if(fromShift){
       await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',fromShift.id).eq('user_id',fromUserId).is('ended_at',null);
       await sb.from('iq_status_sessions').insert({shift_id:fromShift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:fromUserId,status:'available',started_at:now,reason_note:reason?'Handed off: '+reason:'Handed off customer'});
       await sb.from('iq_up_queue_entries').update({status_code:'available',is_available_for_assignment:true}).eq('store_id',currentStore.id).eq('user_id',fromUserId).eq('is_in_queue',true);
+      await rotateToBackOfQueue(currentStore.id,fromUserId);
     }
     // Transfer to the new rep via shared pipeline (does not count as a fresh "up")
     await assignCustomerToRep(activeCust.id,toRep,{countsAsUp:false,source:'handoff',handoffFrom:fromUserId});
@@ -1022,6 +1074,12 @@ async function renderSettings(){
   const s=settings||{};
   const skipStatuses=s.queue_skip_statuses||['with_customer','break','lunch','temporarily_unavailable','off_sales_floor'];
   mainEl.innerHTML=`<div class="page-head"><h1>⚙️ Store Settings</h1><div class="sub">${esc(currentStore.name)}</div></div>
+    <div class="dash-panel"><h3>Accept-Up Countdown</h3><p class="sub" style="margin-bottom:8px">When it becomes a rep's turn, they have this long to acknowledge before it rolls to the next person.</p>
+    <div class="field-row"><div class="field"><label>Timeout (seconds)</label><input id="ss_uptimeout" type="number" value="${s.accept_up_timeout_seconds??60}"></div>
+    <div class="field"><label>On timeout</label><select id="ss_upaction"><option value="next_in_line" ${s.accept_up_action==='next_in_line'?'selected':''}>Skip to next in line</option><option value="back_of_queue" ${s.accept_up_action==='back_of_queue'?'selected':''}>Send to back of queue</option></select></div></div></div>
+    <div class="dash-panel"><h3>Greeter</h3><p class="sub" style="margin-bottom:8px">A dedicated greeter logs walk-ins and routes customers, but doesn't take ups themselves.</p>
+    <div class="field"><label><input type="checkbox" id="ss_greeter" ${s.greeter_enabled?'checked':''}> Enable dedicated greeter</label></div>
+    <div class="field"><label>Current greeter</label><select id="ss_greeter_user"><option value="">None assigned</option>${repOptions(s.greeter_user_id)}</select></div></div>
     <div class="dash-panel"><h3>Queue Configuration</h3>
     <div class="field-row"><div class="field"><label>Queue name</label><input id="ss_name" value="${esc(s.queue_name||'Main Floor')}"></div>
     <div class="field"><label>Missed up rule</label><select id="ss_mr"><option value="end" ${s.missed_up_queue_rule==='end'?'selected':''}>Send to end</option><option value="back_of_queue" ${s.missed_up_queue_rule==='back_of_queue'?'selected':''}>Back of queue</option><option value="hold_position" ${s.missed_up_queue_rule==='hold_position'?'selected':''}>Hold position</option><option value="skip_once" ${s.missed_up_queue_rule==='skip_once'?'selected':''}>Skip once</option></select></div></div>
@@ -1044,17 +1102,84 @@ async function renderSettings(){
   
   $('#ss_save')?.addEventListener('click',async()=>{
     const skipArr=[...$$('.ss_skip')].filter(c=>c.checked).map(c=>c.value);
-    const row={organization_id:currentOrg.id,store_id:currentStore.id,queue_name:$('#ss_name').value.trim(),missed_up_queue_rule:$('#ss_mr').value,is_open_rotation_enabled:$('#ss_or').checked,return_to_queue_after_timeout:$('#ss_ret').checked,break_max_per_shift:Number($('#ss_brk').value),paid_break_minutes:Number($('#ss_pb').value),lunch_minutes:Number($('#ss_ln').value),lunch_minimum_per_shift:Number($('#ss_lmin').value),lunch_alert_grace_minutes:Number($('#ss_lgrace').value),auto_open_rotation_wait_threshold:Number($('#ss_orwait').value),open_rotation_reason_default:$('#ss_orreason').value,queue_skip_statuses:skipArr};
+    const greeterUser=$('#ss_greeter_user').value||null;
+    const row={organization_id:currentOrg.id,store_id:currentStore.id,queue_name:$('#ss_name').value.trim(),missed_up_queue_rule:$('#ss_mr').value,is_open_rotation_enabled:$('#ss_or').checked,return_to_queue_after_timeout:$('#ss_ret').checked,break_max_per_shift:Number($('#ss_brk').value),paid_break_minutes:Number($('#ss_pb').value),lunch_minutes:Number($('#ss_ln').value),lunch_minimum_per_shift:Number($('#ss_lmin').value),lunch_alert_grace_minutes:Number($('#ss_lgrace').value),auto_open_rotation_wait_threshold:Number($('#ss_orwait').value),open_rotation_reason_default:$('#ss_orreason').value,queue_skip_statuses:skipArr,accept_up_timeout_seconds:Number($('#ss_uptimeout').value)||60,accept_up_action:$('#ss_upaction').value,greeter_enabled:$('#ss_greeter').checked,greeter_user_id:$('#ss_greeter').checked?greeterUser:null};
     if(s.id){await sb.from('iq_store_settings').update(row).eq('id',s.id);}
     else{await sb.from('iq_store_settings').insert(row);}
+    if(row.greeter_enabled&&row.greeter_user_id){await sb.from('iq_up_queue_entries').update({is_in_queue:false,is_current_up:false,is_next_in_line:false}).eq('store_id',currentStore.id).eq('user_id',row.greeter_user_id);}
+    await recalcQueueOrder(currentStore.id);
     await logAudit('settings_updated',{queue_name:row.queue_name});
     render();
   });
 }
 
 // ═══════════════════════════════
-// HELPERS — Snapshots, Intel, Audit
+// QUEUE FAIRNESS ENGINE — recalc order, back-of-queue rotation, accept-up countdown
 // ═══════════════════════════════
+
+// Re-sequences queue_position 1..N with no gaps, recomputes is_current_up/is_next_in_line
+// from actual position, and starts a fresh accept-up countdown only when someone NEWLY
+// becomes current_up (never resets an existing countdown just because we recalced).
+// Greeters (if greeter mode is on) are excluded entirely — they don't take ups.
+async function recalcQueueOrder(storeId){
+  const{data:ss}=await sb.from('iq_store_settings').select('greeter_enabled,greeter_user_id').eq('store_id',storeId).maybeSingle();
+  let q=null;
+  ({data:q}=await sb.from('iq_up_queue_entries').select('id,user_id,queue_position,is_current_up').eq('store_id',storeId).eq('is_in_queue',true).order('queue_position'));
+  if(!q)return;
+  if(ss?.greeter_enabled&&ss.greeter_user_id){q=q.filter(e=>e.user_id!==ss.greeter_user_id);}
+  const now=new Date().toISOString();
+  for(let i=0;i<q.length;i++){
+    const isFirst=i===0,isSecond=i===1;
+    const wasFirst=q[i].is_current_up;
+    const patch={queue_position:i+1,is_current_up:isFirst,is_next_in_line:isSecond};
+    if(isFirst&&!wasFirst)patch.up_offered_at=now;
+    if(!isFirst)patch.up_offered_at=null;
+    await sb.from('iq_up_queue_entries').update(patch).eq('id',q[i].id);
+  }
+}
+
+// Sends a rep to the back of the line — call this whenever someone finishes being
+// with_customer and returns to the rotation, so they can't cut back in ahead of
+// people who've been waiting. This is the core "first up, next up" fairness rule.
+async function rotateToBackOfQueue(storeId,userId){
+  await sb.from('iq_up_queue_entries').update({queue_position:99999,is_current_up:false,is_next_in_line:false,up_offered_at:null}).eq('store_id',storeId).eq('user_id',userId).eq('is_in_queue',true);
+  await recalcQueueOrder(storeId);
+}
+
+// Called by the floor-board ticker when the current_up rep's countdown expires without
+// them accepting. Logs a missed up and advances the queue per store settings.
+async function handleAcceptUpTimeout(storeId,entry){
+  const{data:ss}=await sb.from('iq_store_settings').select('accept_up_action,accept_up_timeout_seconds').eq('store_id',storeId).maybeSingle();
+  const action=ss?.accept_up_action||'next_in_line';
+  // System-detected timeout: reported_by is NOT NULL on this table (no default), so the
+  // watchdog records itself as reporter. queue_entry_id links back to the exact queue row.
+  await sb.from('iq_missed_and_potential_missed_ups').insert({organization_id:currentOrg.id,store_id:storeId,reported_by:currentUser.id,employee_user_id:entry.user_id,queue_entry_id:entry.id,reason:'Did not accept up within '+(ss?.accept_up_timeout_seconds||60)+'s time limit',is_potential:false,affects_kpi:true});
+  const{data:sh}=await sb.from('iq_shift_records').select('id,ups_missed').eq('store_id',storeId).eq('user_id',entry.user_id).eq('is_active',true).maybeSingle();
+  if(sh)await sb.from('iq_shift_records').update({ups_missed:(sh.ups_missed||0)+1}).eq('id',sh.id);
+  if(action==='back_of_queue'){
+    await sb.from('iq_up_queue_entries').update({queue_position:99999,is_current_up:false,up_offered_at:null}).eq('id',entry.id);
+  }else{
+    // next_in_line: swap positions with whoever is directly behind — an integer-safe swap,
+    // not a fractional position, since queue_position is an integer NOT NULL column
+    const{data:behindEntry}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',storeId).eq('is_in_queue',true).eq('queue_position',entry.queue_position+1).maybeSingle();
+    if(behindEntry){
+      await sb.from('iq_up_queue_entries').update({queue_position:entry.queue_position}).eq('id',behindEntry.id);
+      await sb.from('iq_up_queue_entries').update({queue_position:entry.queue_position+1,is_current_up:false,up_offered_at:null}).eq('id',entry.id);
+    }else{
+      await sb.from('iq_up_queue_entries').update({is_current_up:false,up_offered_at:null}).eq('id',entry.id);
+    }
+  }
+  await recalcQueueOrder(storeId);
+  await takeSnapshot('accept_up_timeout',entry.user_id);
+}
+
+// Rep taps "Accept" to confirm they're present and ready — clears the countdown.
+async function acceptUp(entryId){
+  await sb.from('iq_up_queue_entries').update({up_offered_at:null}).eq('id',entryId);
+  render();
+}
+
+
 async function takeSnapshot(eventType,triggerUserId){
   try{
     const{data:q}=await sb.from('iq_up_queue_entries').select('*').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position');
