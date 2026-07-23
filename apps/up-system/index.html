@@ -377,7 +377,7 @@ async function renderFloor(){
     <div class="fb-metrics"><div class="fb-m"><div class="fv num">${onFloor.length}</div><div class="fl">On Floor</div></div><div class="fb-m"><div class="fv num">${withCust.length}</div><div class="fl">With Cust</div></div><div class="fb-m"><div class="fv num">${avail.length}</div><div class="fl">Available</div></div><div class="fb-m"><div class="fv num">${waitingCustomers.length}</div><div class="fl">Waiting</div></div></div></div>
     ${openRot?`<div class="or-banner"><span>🔥 Open Rotation Active — ${esc(openRot.reason||'Demand surge')} · Started ${elapsed(openRot.start_at)} ago</span><button class="btn btn-sm" id="endOR">End Open Rotation</button></div>`:''}
     <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${!openRot?`<button class="btn btn-danger btn-sm" id="startOR">🔥 Open Rotation</button>`:''}<button class="btn btn-primary" id="logWalkIn">👋 Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button></div></div>
-    ${waitingCustomers.length?`<div class="customer-queue"><h3>🔔 Waiting Customers (${waitingCustomers.length})</h3>${waitingCustomers.map(c=>`<div class="cq-item"><div class="cq-icon">👤</div><div class="cq-info"><div class="cq-name">${esc(c.customer_display_name||'Walk-in')}${c.customer_group_size>1?' · '+c.customer_group_size+' people':''}</div><div class="cq-detail">${esc(c.customer_category?.replace(/_/g,' ')||'Walk-in')}${c.requested_employee_user_id?' · Requested '+pName(c.requested_employee_user_id):''} · ${waitChip(c.status)} · Priority ${c.priority}</div></div><div class="cq-wait">${elapsed(c.arrival_time)}</div><button class="btn btn-primary btn-sm" data-assign="${c.id}">Assign</button></div>`).join('')}</div>`:''}
+    ${waitingCustomers.length?`<div class="customer-queue"><h3>🔔 Waiting Customers (${waitingCustomers.length})</h3>${waitingCustomers.map(c=>`<div class="cq-item"><div class="cq-icon">👤</div><div class="cq-info"><div class="cq-name">${esc(c.customer_display_name||'Walk-in')}${c.customer_group_size>1?' · '+c.customer_group_size+' people':''}${c.is_returning_customer?' <span class="chip b">Returning</span>':''}${c.referred_by?` <span class="chip p">Ref: ${esc(c.referred_by)}</span>`:''}</div><div class="cq-detail">${esc(c.customer_category?.replace(/_/g,' ')||'Walk-in')}${c.requested_employee_user_id?' · Requested '+pName(c.requested_employee_user_id):''} · ${waitChip(c.status)} · Priority ${c.priority}</div></div><div class="cq-wait">${elapsed(c.arrival_time)}</div><button class="btn btn-primary btn-sm" data-assign="${c.id}">Assign</button></div>`).join('')}</div>`:''}
     <div class="queue-grid">${repData.length?repData.map(r=>{
       const st=getStatus(r.user_id);
       const cls=statusClass(st);
@@ -395,6 +395,7 @@ async function renderFloor(){
         <div class="rc-actions">
           <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}">Status</button>
           ${st==='available'&&!isUp?`<button class="btn btn-accent btn-sm" data-bump="${r.user_id}">Bump Up</button>`:''}
+          ${st==='with_customer'?`<button class="btn btn-ghost btn-sm" data-handoff="${r.user_id}">🤝 Hand Off</button>`:''}
         </div></div>`;}).join(''):'<div class="empty" style="grid-column:1/-1">No reps clocked in. Tap Clock In to start a shift.</div>'}</div>`;
   
   $('#logWalkIn')?.addEventListener('click',openWalkInModal);
@@ -406,6 +407,7 @@ async function renderFloor(){
   });
   $$('[data-status]').forEach(b=>{b.onclick=()=>openStatusModal(b.dataset.status,b.dataset.shift);});
   $$('[data-assign]').forEach(b=>{b.onclick=()=>openAssignModal(b.dataset.assign);});
+  $$('[data-handoff]').forEach(b=>{b.onclick=()=>openHandoffModal(b.dataset.handoff);});
   $$('[data-bump]').forEach(b=>{b.onclick=async()=>{
     const uid=b.dataset.bump;
     await sb.from('iq_up_queue_entries').update({is_current_up:false}).eq('store_id',sid).eq('is_current_up',true);
@@ -421,20 +423,64 @@ function openWalkInModal(){
     <div class="field"><label>Customer name (optional)</label><input id="wi_name" placeholder="First name or description"></div>
     <div class="field-row"><div class="field"><label>Group size</label><input id="wi_size" type="number" value="1" min="1" max="10"></div>
     <div class="field"><label>Category</label><select id="wi_cat"><option value="walk_in">Walk-in</option><option value="be_back">Be-back</option><option value="appointment">Appointment</option><option value="phone_inquiry">Phone</option><option value="delivery_issue">Delivery Issue</option><option value="referral">Referral</option></select></div></div>
-    <div class="field-row"><div class="field"><label>Requested rep</label><select id="wi_rep"><option value="">No preference</option>${repOptions()}</select></div>
+    <div class="field" id="wi_refby_wrap" style="display:none"><label>Referred by</label><input id="wi_refby" placeholder="Name of person who referred them"></div>
+    <div class="field"><label style="display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)"><input type="checkbox" id="wi_return" style="width:auto"> Returning customer</label></div>
+    <div class="field-row"><div class="field"><label>Requested rep</label><select id="wi_rep"><option value="">No preference</option>${repOptions()}</select><div style="font-size:11px;color:var(--steel);margin-top:3px">Assigned immediately if that rep is free right now.</div></div>
     <div class="field"><label>Priority</label><select id="wi_pri"><option value="1">Normal</option><option value="2">High</option><option value="3">Urgent</option></select></div></div>
     <div class="field"><label>Description</label><textarea id="wi_desc" placeholder="Notes about the customer…"></textarea></div>
     <div class="form-err" id="formErr"></div>
     <div class="sheet-actions"><button class="btn btn-ghost" id="wi_cancel">Cancel</button><button class="btn btn-primary" id="wi_save">Log & Queue</button></div>`);
   $('#wi_cancel').onclick=closeModal;
+  $('#wi_cat').onchange=()=>{$('#wi_refby_wrap').style.display=$('#wi_cat').value==='referral'?'block':'none';};
   $('#wi_save').onclick=async()=>{
     const repId=$('#wi_rep').value||null;
-    const row={organization_id:currentOrg.id,store_id:currentStore.id,entered_by:currentUser.id,customer_display_name:$('#wi_name').value.trim()||null,customer_group_size:Number($('#wi_size').value)||1,customer_category:$('#wi_cat').value,customer_description:$('#wi_desc').value.trim()||null,requested_employee_user_id:repId,requested_salesperson_reason:repId?'customer_request':null,priority:Number($('#wi_pri').value),status:repId?'requested_employee':'waiting_for_assignment',arrival_time:new Date().toISOString(),timer_started_at:new Date().toISOString()};
-    const{error}=await sb.from('iq_customer_waiting_queue').insert(row);
-    if(error)return formErr(error.message);
-    await logIntel('customer_logged',{category:row.customer_category,group_size:row.customer_group_size});
+    const isReturning=$('#wi_return').checked;
+    const referredBy=$('#wi_cat').value==='referral'?($('#wi_refby').value.trim()||null):null;
+    const baseRow={organization_id:currentOrg.id,store_id:currentStore.id,entered_by:currentUser.id,customer_display_name:$('#wi_name').value.trim()||null,customer_group_size:Number($('#wi_size').value)||1,customer_category:$('#wi_cat').value,customer_description:$('#wi_desc').value.trim()||null,is_returning_customer:isReturning,referred_by:referredBy,requested_employee_user_id:repId,requested_salesperson_reason:repId?'customer_request':null,priority:Number($('#wi_pri').value),arrival_time:new Date().toISOString(),timer_started_at:new Date().toISOString()};
+
+    // Check if requested rep is currently free for immediate auto-assign
+    let repIsFree=false;
+    if(repId){
+      const{data:qe}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true).eq('status_code','available').eq('is_available_for_assignment',true).maybeSingle();
+      repIsFree=!!qe;
+    }
+
+    if(repId&&repIsFree){
+      // Auto-assign immediately
+      const{data:newRow,error}=await sb.from('iq_customer_waiting_queue').insert({...baseRow,status:'with_salesperson',assigned_user_id:repId}).select().single();
+      if(error)return formErr(error.message);
+      await assignCustomerToRep(newRow.id,repId,{countsAsUp:true,source:isReturning?'returning_customer':'requested_rep'});
+      await logIntel('customer_logged',{category:baseRow.customer_category,auto_assigned:true});
+    }else if(repId){
+      // Requested rep not free — queue and notify
+      const{data:newRow,error}=await sb.from('iq_customer_waiting_queue').insert({...baseRow,status:'requested_employee'}).select().single();
+      if(error)return formErr(error.message);
+      const{data:qe}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true).maybeSingle();
+      if(qe){await sb.from('iq_queue_notifications').insert({organization_id:currentOrg.id,store_id:currentStore.id,waiting_customer_id:newRow.id,queue_entry_id:qe.id,assigned_user_id:repId,status:'created',delivery_channel:['in_app']});}
+      await logIntel('customer_logged',{category:baseRow.customer_category,requested_rep_busy:true});
+    }else{
+      const{error}=await sb.from('iq_customer_waiting_queue').insert({...baseRow,status:'waiting_for_assignment'});
+      if(error)return formErr(error.message);
+      await logIntel('customer_logged',{category:baseRow.customer_category});
+    }
     closeModal();render();
   };
+}
+
+// Shared assignment pipeline — used by manual Assign, auto-assign on walk-in, and handoff acceptance
+async function assignCustomerToRep(waitingId,repId,opts={}){
+  const now=new Date().toISOString();
+  const countsAsUp=opts.countsAsUp!==false;
+  await sb.from('iq_customer_waiting_queue').update({assigned_user_id:repId,status:'with_salesperson',updated_at:now}).eq('id',waitingId);
+  const{data:sh}=await sb.from('iq_shift_records').select('id,ups_accepted,customers_served').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_active',true).maybeSingle();
+  if(sh){
+    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',sh.id).eq('user_id',repId).is('ended_at',null);
+    await sb.from('iq_status_sessions').insert({shift_id:sh.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:repId,status:'with_customer',started_at:now});
+    await sb.from('iq_up_queue_entries').update({status_code:'with_customer',is_available_for_assignment:false,is_current_up:false,last_assignment_at:now}).eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true);
+    await sb.from('iq_shift_records').update({ups_accepted:(sh.ups_accepted||0)+(countsAsUp?1:0),customers_served:(sh.customers_served||0)+1}).eq('id',sh.id);
+  }
+  await sb.from('iq_customer_interactions').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:sh?.id,customer_waiting_id:waitingId,salesperson_user_id:repId,interaction_source:opts.source||'walk_in',handoff_from_user_id:opts.handoffFrom||null,started_at:now,accepted_at:now});
+  await takeSnapshot(opts.handoffFrom?'customer_handoff':'customer_assigned',repId);
 }
 
 function openClockInModal(){
@@ -500,19 +546,41 @@ function openAssignModal(waitingId){
     <div class="sheet-actions"><button class="btn btn-ghost" id="as_cancel">Cancel</button><button class="btn btn-primary" id="as_save">Assign</button></div>`);
   $('#as_cancel').onclick=closeModal;
   $('#as_save').onclick=async()=>{
-    const repId=$('#as_rep').value;const now=new Date().toISOString();
-    await sb.from('iq_customer_waiting_queue').update({assigned_user_id:repId,status:'with_salesperson',updated_at:now}).eq('id',waitingId);
-    const{data:sh}=await sb.from('iq_shift_records').select('id').eq('store_id',currentStore.id).eq('user_id',repId).eq('is_active',true).maybeSingle();
-    if(sh){
-      await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',sh.id).eq('user_id',repId).is('ended_at',null);
-      await sb.from('iq_status_sessions').insert({shift_id:sh.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:repId,status:'with_customer',started_at:now});
-      await sb.from('iq_up_queue_entries').update({status_code:'with_customer',is_available_for_assignment:false,is_current_up:false,last_assignment_at:now}).eq('store_id',currentStore.id).eq('user_id',repId).eq('is_in_queue',true);
-      // Increment ups_accepted
-      const{data:sr}=await sb.from('iq_shift_records').select('ups_accepted,customers_served').eq('id',sh.id).single();
-      await sb.from('iq_shift_records').update({ups_accepted:(sr.ups_accepted||0)+1,customers_served:(sr.customers_served||0)+1}).eq('id',sh.id);
+    await assignCustomerToRep(waitingId,$('#as_rep').value,{source:'walk_in'});
+    closeModal();render();
+  };
+}
+
+// Hand off an active customer from one rep to another
+async function openHandoffModal(fromUserId){
+  const{data:activeCust}=await sb.from('iq_customer_waiting_queue').select('*').eq('store_id',currentStore.id).eq('assigned_user_id',fromUserId).eq('status','with_salesperson').order('updated_at',{ascending:false}).limit(1).maybeSingle();
+  if(!activeCust){openModal(`<h2>Hand Off</h2><p class="sub">No active customer found for ${pName(fromUserId)}.</p><div class="sheet-actions"><button class="btn btn-primary" id="ho_close">Close</button></div>`);$('#ho_close').onclick=closeModal;return;}
+  const{data:onFloor}=await sb.from('iq_up_queue_entries').select('user_id').eq('store_id',currentStore.id).eq('is_in_queue',true).neq('user_id',fromUserId);
+  const targets=(onFloor||[]).map(o=>o.user_id);
+  openModal(`<h2>🤝 Hand Off Customer</h2>
+    <p class="sub" style="margin-bottom:12px">${esc(activeCust.customer_display_name||'This customer')} — currently with ${pName(fromUserId)}</p>
+    <div class="field"><label>Hand off to</label><select id="ho_rep">${targets.length?targets.map(id=>`<option value="${id}">${esc(pName(id))}</option>`).join(''):'<option value="">No other reps on floor</option>'}</select></div>
+    <div class="field"><label>Reason (optional)</label><input id="ho_reason" placeholder="e.g. going on break, specialist needed"></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="ho_cancel">Cancel</button><button class="btn btn-primary" id="ho_save">Hand Off</button></div>`);
+  $('#ho_cancel').onclick=closeModal;
+  $('#ho_save').onclick=async()=>{
+    const toRep=$('#ho_rep').value;
+    if(!toRep)return formErr('No rep selected.');
+    const reason=$('#ho_reason').value.trim();
+    const now=new Date().toISOString();
+    // Close the origin rep's current interaction
+    await sb.from('iq_customer_interactions').update({ended_at:now,outcome:'handed_off',notes:reason||null}).eq('customer_waiting_id',activeCust.id).eq('salesperson_user_id',fromUserId).is('ended_at',null);
+    // Free up the origin rep — back to available, keep their queue position
+    const{data:fromShift}=await sb.from('iq_shift_records').select('id').eq('store_id',currentStore.id).eq('user_id',fromUserId).eq('is_active',true).maybeSingle();
+    if(fromShift){
+      await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',fromShift.id).eq('user_id',fromUserId).is('ended_at',null);
+      await sb.from('iq_status_sessions').insert({shift_id:fromShift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:fromUserId,status:'available',started_at:now,reason_note:reason?'Handed off: '+reason:'Handed off customer'});
+      await sb.from('iq_up_queue_entries').update({status_code:'available',is_available_for_assignment:true}).eq('store_id',currentStore.id).eq('user_id',fromUserId).eq('is_in_queue',true);
     }
-    await sb.from('iq_customer_interactions').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:sh?.id,customer_waiting_id:waitingId,salesperson_user_id:repId,interaction_source:'walk_in',started_at:now,accepted_at:now});
-    await takeSnapshot('customer_assigned',repId);
+    // Transfer to the new rep via shared pipeline (does not count as a fresh "up")
+    await assignCustomerToRep(activeCust.id,toRep,{countsAsUp:false,source:'handoff',handoffFrom:fromUserId});
+    await logAudit('customer_handoff',{from:fromUserId,to:toRep,reason:reason||null,customer_waiting_id:activeCust.id});
     closeModal();render();
   };
 }
@@ -546,10 +614,10 @@ async function renderCustomers(){
     $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
     if(tab==='queue'){
       $('#tabContent').innerHTML=`<table><thead><tr><th>Customer</th><th>Category</th><th>Size</th><th>Status</th><th>Priority</th><th>Assigned</th><th>Wait</th><th>Arrived</th></tr></thead><tbody>
-      ${(data??[]).map(c=>`<tr><td><b>${esc(c.customer_display_name||'Walk-in')}</b>${c.customer_description?`<div class="sub">${esc(c.customer_description)}</div>`:''}</td><td>${esc(c.customer_category?.replace(/_/g,' ')||'—')}</td><td class="num">${c.customer_group_size}</td><td>${waitChip(c.status)}</td><td class="num">${c.priority}</td><td>${c.assigned_user_id?pName(c.assigned_user_id):'—'}</td><td class="num">${elapsed(c.arrival_time)}</td><td style="font-size:12px">${fmtDt(c.arrival_time)}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No customers logged.</td></tr>'}</tbody></table>`;
+      ${(data??[]).map(c=>`<tr><td><b>${esc(c.customer_display_name||'Walk-in')}</b>${c.is_returning_customer?' <span class="chip b">Returning</span>':''}${c.referred_by?` <span class="chip p">Ref: ${esc(c.referred_by)}</span>`:''}${c.customer_description?`<div class="sub">${esc(c.customer_description)}</div>`:''}</td><td>${esc(c.customer_category?.replace(/_/g,' ')||'—')}</td><td class="num">${c.customer_group_size}</td><td>${waitChip(c.status)}</td><td class="num">${c.priority}</td><td>${c.assigned_user_id?pName(c.assigned_user_id):'—'}</td><td class="num">${elapsed(c.arrival_time)}</td><td style="font-size:12px">${fmtDt(c.arrival_time)}</td></tr>`).join('')||'<tr><td colspan="8" class="empty">No customers logged.</td></tr>'}</tbody></table>`;
     }else{
       $('#tabContent').innerHTML=`<table><thead><tr><th>Rep</th><th>Source</th><th>Type</th><th>Started</th><th>Duration</th><th>Outcome</th><th>CRM Sync</th></tr></thead><tbody>
-      ${(interactions??[]).map(i=>`<tr><td><b>${pName(i.salesperson_user_id)}</b></td><td>${esc(i.interaction_source||'—')}</td><td>${esc(i.interaction_type||'—')}</td><td style="font-size:12px">${fmtDt(i.started_at)}</td><td class="num">${i.ended_at?fmtTime(Math.floor((new Date(i.ended_at)-new Date(i.started_at))/1000)):'In progress'}</td><td>${i.outcome?`<span class="chip ${i.outcome==='sale'?'g':'n'}">${esc(i.outcome)}</span>`:'—'}</td><td><span class="chip ${i.crm_sync_status==='synced'?'g':i.crm_sync_status==='pending'?'a':'n'}">${esc(i.crm_sync_status)}</span></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No interactions.</td></tr>'}</tbody></table>`;
+      ${(interactions??[]).map(i=>`<tr><td><b>${pName(i.salesperson_user_id)}</b>${i.handoff_from_user_id?`<div class="sub">🤝 from ${pName(i.handoff_from_user_id)}</div>`:''}</td><td>${esc(i.interaction_source||'—')}</td><td>${esc(i.interaction_type||'—')}</td><td style="font-size:12px">${fmtDt(i.started_at)}</td><td class="num">${i.ended_at?fmtTime(Math.floor((new Date(i.ended_at)-new Date(i.started_at))/1000)):'In progress'}</td><td>${i.outcome?`<span class="chip ${i.outcome==='sale'?'g':i.outcome==='handed_off'?'p':'n'}">${esc(i.outcome)}</span>`:'—'}</td><td><span class="chip ${i.crm_sync_status==='synced'?'g':i.crm_sync_status==='pending'?'a':'n'}">${esc(i.crm_sync_status)}</span></td></tr>`).join('')||'<tr><td colspan="7" class="empty">No interactions.</td></tr>'}</tbody></table>`;
     }
   };
   showTab('queue');
