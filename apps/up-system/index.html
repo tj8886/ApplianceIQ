@@ -202,8 +202,33 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .greeter-nextup .gn-label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);font-weight:700}
 .greeter-nextup .gn-name{font-size:24px;font-weight:800;margin:6px 0}
 
+/* Shift Analysis — staff vs customers, hourly chart, predictions */
+.staff-vs-cust{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.svc-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;text-align:center}
+.svc-card .svc-val{font-size:40px;font-weight:800;color:var(--navy)}
+.svc-card .svc-lbl{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);margin-top:4px}
+.svc-card.gap-warn{border-color:var(--danger);background:#fff8f7}
+.svc-card.gap-warn .svc-val{color:var(--danger)}
+.chart-wrap{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+.chart-wrap h3{margin:0 0 4px;font-size:15px}
+.chart-bars{display:flex;align-items:flex-end;gap:10px;height:160px;padding:24px 4px 28px;position:relative}
+.chart-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;position:relative}
+.chart-bar{width:100%;max-width:36px;border-radius:5px 5px 0 0;background:var(--teal);position:relative;transition:height .3s}
+.chart-bar.staff-bar{background:var(--accent);opacity:.55;position:absolute;bottom:0;max-width:14px;left:50%;transform:translateX(-50%)}
+.chart-bar-col .cb-val{position:absolute;top:-18px;font-size:11px;font-weight:700;color:var(--ink)}
+.chart-bar-col .cb-lbl{position:absolute;bottom:-22px;font-size:10px;color:var(--steel);white-space:nowrap}
+.chart-legend{display:flex;gap:16px;font-size:11px;color:var(--steel);margin-top:8px}
+.chart-legend span{display:inline-flex;align-items:center;gap:5px}
+.chart-legend .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.predict-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.predict-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+.predict-card.needs-cover{border-color:var(--amber);background:#fffbf3}
+.predict-card .pc-hour{font-size:12px;font-weight:700;color:var(--steel)}
+.predict-card .pc-staff{font-size:20px;font-weight:800;color:var(--navy);margin:4px 0}
+.predict-card .pc-detail{font-size:11px;color:var(--steel)}
+
 @media(max-width:860px){.shell{grid-template-columns:1fr}aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5;padding:8px}aside .mark{margin:0 8px 0 0}.spacer,.nav-sep{display:none}.queue-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.queue-grid{grid-template-columns:1fr}.field-row{grid-template-columns:1fr}}
+@media(max-width:480px){.queue-grid{grid-template-columns:1fr}.field-row{grid-template-columns:1fr}.staff-vs-cust{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -274,6 +299,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="disputes">⚡ Disputes</button>
 <button class="nav-btn" data-view="missed">🚫 Missed Ups</button>
 <button class="nav-btn" data-view="analytics">📈 Analytics</button>
+<button class="nav-btn" data-view="staffing">📊 Shift Analysis</button>
 <button class="nav-btn" data-view="settings">⚙️ Settings</button>
 <div class="spacer"></div>
 <button class="signout" id="signoutBtn">Sign out</button>
@@ -365,7 +391,7 @@ let floorTickerId=null;
 async function render(){
   if(floorTickerId){clearInterval(floorTickerId);floorTickerId=null;}
   mainEl.innerHTML='<div class="empty">Loading…</div>';
-  const views={floor:renderFloor,greeter:renderGreeter,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,analytics:renderAnalytics,settings:renderSettings};
+  const views={floor:renderFloor,greeter:renderGreeter,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,analytics:renderAnalytics,staffing:renderStaffing,settings:renderSettings};
   try{await(views[currentView]||renderFloor)();}catch(err){mainEl.innerHTML=`<div class="empty">Error: ${esc(err.message)}</div>`;console.error(err);}
 }
 
@@ -533,14 +559,83 @@ function openWalkInModal(){
     const{data:newRow,error}=await sb.from('iq_customer_waiting_queue').insert(row).select().single();
     if(error)return formErr(error.message);
     const productRows=$$('.product-row');
+    const products=[];
     for(const pr of productRows){
       const productName=pr.querySelector('.pr-name').value.trim();
       const brand=pr.querySelector('.pr-brand').value.trim();
       if(!productName&&!brand)continue;
-      await sb.from('iq_customer_product_interest').insert({organization_id:currentOrg.id,store_id:currentStore.id,customer_waiting_id:newRow.id,category:pr.querySelector('.pr-cat').value,brand:brand||null,product_name:productName||null,price:pr.querySelector('.pr-price').value?Number(pr.querySelector('.pr-price').value):null,stock_status:pr.querySelector('.pr-stock').value,delivery_date:pr.querySelector('.pr-delivery').value||null});
+      const p={category:pr.querySelector('.pr-cat').value,brand:brand||null,product_name:productName||null,price:pr.querySelector('.pr-price').value?Number(pr.querySelector('.pr-price').value):null,stock_status:pr.querySelector('.pr-stock').value,delivery_date:pr.querySelector('.pr-delivery').value||null};
+      products.push(p);
+      await sb.from('iq_customer_product_interest').insert({organization_id:currentOrg.id,store_id:currentStore.id,customer_waiting_id:newRow.id,...p});
     }
+    await syncWalkInToCRM(newRow,products);
+    await syncFloorMetricsToCommandCenter(currentStore.id);
     closeModal();render();
   };
+}
+
+// ===== CROSS-APP SYNC — CRM contacts/deals & Command Center metrics =====
+// Best-effort: sync failures never block the floor workflow, they just log a warning.
+
+async function syncWalkInToCRM(waitingRow,products){
+  try{
+    const fullName=(waitingRow.customer_display_name||'Walk-in Customer').trim();
+    const parts=fullName.split(/\s+/);
+    const first_name=parts[0]||'Walk-in';
+    const last_name=parts.slice(1).join(' ')||null;
+    const sourceMap={walk_in:'walk_in',online_research:'website',referral:'referral',repeat_customer:'repeat_customer',advertisement:'advertising',social_media:'social_media',other:'other'};
+    const{data:contact,error:cErr}=await sb.from('contacts').insert({organization_id:currentOrg.id,first_name,last_name,email:waitingRow.customer_email||null,phone:waitingRow.customer_phone||null,mobile_phone:waitingRow.customer_phone||null,source:sourceMap[waitingRow.lead_source]||'walk_in',lifecycle_stage:'lead',assigned_salesperson_id:waitingRow.requested_employee_user_id||null,notes:waitingRow.customer_needs||null,metadata:{}}).select().single();
+    if(cErr)throw cErr;
+    const categories=[...new Set(products.map(p=>p.category).filter(Boolean))];
+    const valueAmount=products.reduce((s,p)=>s+(p.price||0),0)||null;
+    const{data:deal,error:dErr}=await sb.from('crm_deals').insert({organization_id:currentOrg.id,contact_id:contact.id,owner_user_id:waitingRow.requested_employee_user_id||currentUser.id,title:`${fullName} — Walk-In`,stage:'Floor Visit / Demo',value_amount:valueAmount,product_categories:categories.length?categories:null,source:'walk_in',traffic_source:waitingRow.lead_source||null,stage_entered_at:new Date().toISOString(),metadata:{store_id:currentStore.id,up_system_waiting_id:waitingRow.id}}).select().single();
+    if(dErr)throw dErr;
+    await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:null,to_stage:'Floor Visit / Demo',changed_by:currentUser.id,changed_at:new Date().toISOString(),notes:'Created from IQ Up System walk-in'});
+    await sb.from('iq_customer_waiting_queue').update({crm_contact_id:contact.id,crm_deal_id:deal.id}).eq('id',waitingRow.id);
+    await sb.from('iq_integration_links').insert({organization_id:currentOrg.id,store_id:currentStore.id,iq_system_record_type:'customer_waiting',iq_system_record_id:waitingRow.id,crmai_record_type:'deal',crmai_record_id:deal.id,external_system:'crm',sync_status:'synced',last_synced_at:new Date().toISOString()});
+  }catch(e){console.warn('CRM sync failed:',e);}
+}
+
+async function syncAfterSaleToCRM(waitingId,closed,reasonNotPurchased,followUpDate,noFollowUp){
+  try{
+    const{data:waitingRow}=await sb.from('iq_customer_waiting_queue').select('crm_deal_id,customer_display_name').eq('id',waitingId).maybeSingle();
+    if(!waitingRow?.crm_deal_id)return;
+    const now=new Date().toISOString();
+    const patch=closed
+      ?{stage:'Closed Won',closed_at:now,purchase_date:now.split('T')[0]}
+      :{next_action_date:noFollowUp?null:(followUpDate||null),follow_up_status:noFollowUp?'no_follow_up':(followUpDate?'scheduled':null),lost_reason:reasonNotPurchased||null,next_action:noFollowUp?null:'Follow up — '+(reasonNotPurchased||'no reason given').replace(/_/g,' ')};
+    await sb.from('crm_deals').update(patch).eq('id',waitingRow.crm_deal_id);
+    await sb.from('crm_stage_history').insert({deal_id:waitingRow.crm_deal_id,organization_id:currentOrg.id,from_stage:'Floor Visit / Demo',to_stage:closed?'Closed Won':'Floor Visit / Demo',changed_by:currentUser.id,changed_at:now,notes:closed?'Closed on floor via IQ Up System':'Not closed — '+(reasonNotPurchased||'')});
+  }catch(e){console.warn('CRM after-sale sync failed:',e);}
+}
+
+async function syncFloorMetricsToCommandCenter(storeId){
+  try{
+    const todayStr=new Date().toISOString().split('T')[0];
+    const[{data:waiting},{data:interactions}]=await Promise.all([
+      sb.from('iq_customer_waiting_queue').select('id,status,arrival_time').eq('store_id',storeId).gte('arrival_time',todayStr+'T00:00:00'),
+      sb.from('iq_customer_interactions').select('started_at,accepted_at,outcome').eq('store_id',storeId).gte('started_at',todayStr+'T00:00:00')
+    ]);
+    const w=waiting??[],ix=interactions??[];
+    const walkIns=w.length;
+    const served=w.filter(c=>['with_salesperson'].includes(c.status)).length+ix.filter(i=>i.outcome==='sale').length;
+    const conversion=walkIns?Math.min(100,Math.round((ix.filter(i=>i.outcome==='sale').length/walkIns)*100)):0;
+    const greetTimes=ix.filter(i=>i.started_at&&i.accepted_at).map(i=>(new Date(i.accepted_at)-new Date(i.started_at))/1000);
+    const avgGreet=greetTimes.length?Math.round(greetTimes.reduce((a,b)=>a+b,0)/greetTimes.length):0;
+    const metricsToWrite=[
+      {metric_key:'walk_ins',actual_value:walkIns},
+      {metric_key:'floor_conversion',actual_value:conversion},
+      {metric_key:'greeting_time',actual_value:avgGreet}
+    ];
+    for(const m of metricsToWrite){
+      const{data:existing}=await sb.from('metric_snapshots').select('id').eq('organization_id',currentOrg.id).eq('location_id',storeId).is('user_id',null).eq('period_type','daily').eq('period_key',todayStr).eq('metric_key',m.metric_key).maybeSingle();
+      if(existing){
+        await sb.from('metric_snapshots').update({actual_value:m.actual_value,computed_at:new Date().toISOString()}).eq('id',existing.id);
+      }else{
+        await sb.from('metric_snapshots').insert({organization_id:currentOrg.id,location_id:storeId,user_id:null,period_type:'daily',period_key:todayStr,metric_key:m.metric_key,actual_value:m.actual_value,computed_at:new Date().toISOString()});
+      }
+    }
+  }catch(e){console.warn('Command Center metric sync failed:',e);}
 }
 
 function openClockInModal(){
@@ -736,10 +831,14 @@ async function openEndVisitModal(repUserId){
   $('#ev_save').onclick=async()=>{
     const now=new Date().toISOString();
     const patch={ended_at:now,outcome:closed?'sale':'no_sale'};
+    let reasonNotPurchased=null,followUpDate=null,noFollowUp=false;
     if(!closed){
-      patch.reason_not_purchased=$('#ev_reason').value;
-      patch.no_follow_up=$('#ev_nofollowup').checked;
-      patch.follow_up_date=$('#ev_nofollowup').checked?null:($('#ev_followup').value||null);
+      reasonNotPurchased=$('#ev_reason').value;
+      noFollowUp=$('#ev_nofollowup').checked;
+      followUpDate=noFollowUp?null:($('#ev_followup').value||null);
+      patch.reason_not_purchased=reasonNotPurchased;
+      patch.no_follow_up=noFollowUp;
+      patch.follow_up_date=followUpDate;
     }
     await sb.from('iq_customer_interactions').update(patch).eq('customer_waiting_id',activeCust.id).eq('salesperson_user_id',repUserId).is('ended_at',null);
     await sb.from('iq_customer_waiting_queue').update({status:closed?'with_salesperson':'left_unserved',updated_at:now}).eq('id',activeCust.id);
@@ -754,6 +853,8 @@ async function openEndVisitModal(repUserId){
       await sb.from('iq_up_queue_entries').update({status_code:'available',is_available_for_assignment:true}).eq('store_id',currentStore.id).eq('user_id',repUserId).eq('is_in_queue',true);
       await rotateToBackOfQueue(currentStore.id,repUserId);
     }
+    await syncAfterSaleToCRM(activeCust.id,closed,reasonNotPurchased,followUpDate,noFollowUp);
+    await syncFloorMetricsToCommandCenter(currentStore.id);
     closeModal();render();
   };
 }
@@ -900,6 +1001,48 @@ async function renderAnalytics(){
     <div class="dash-panel"><h3>Rep Performance Today</h3>
     <table><thead><tr><th>Rep</th><th>Ups</th><th>Missed</th><th>Sales</th><th>Customers</th><th>Time on Floor</th></tr></thead><tbody>
     ${sh.map(s=>`<tr><td><b>${pName(s.user_id)}</b></td><td class="num">${s.ups_accepted}</td><td class="num">${s.ups_missed}</td><td class="num">${s.closed_sales}</td><td class="num">${s.customers_served}</td><td class="num">${fmtTime(s.total_logged_in_seconds||Math.floor((Date.now()-new Date(s.login_at).getTime())/1000))}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">No data.</td></tr>'}</tbody></table></div>`;
+}
+
+// ===== SHIFT ANALYSIS =====
+async function renderStaffing(){
+  if(!currentStore){mainEl.innerHTML='<div class="empty">No store selected.</div>';return;}
+  const sid=currentStore.id;
+  const todayStr=new Date().toISOString().split('T')[0];
+  const[{data:shifts},{data:waiting},{data:hourly},{data:predictions}]=await Promise.all([
+    sb.from('iq_shift_records').select('*').eq('store_id',sid).eq('is_active',true),
+    sb.from('iq_customer_waiting_queue').select('id').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee','with_salesperson']),
+    sb.from('iq_hourly_traffic_summaries').select('*').eq('store_id',sid).gte('bucket_start',todayStr+'T00:00:00').order('bucket_start'),
+    sb.from('iq_staffing_predictions').select('*').eq('store_id',sid).gte('bucket_start',todayStr+'T00:00:00').order('bucket_start')
+  ]);
+  const staffCount=(shifts??[]).length;
+  const custCount=(waiting??[]).length;
+  const gap=custCount>staffCount;
+  const hourlyData=hourly??[];
+  const maxTraffic=Math.max(1,...hourlyData.map(h=>h.adjusted_traffic||0));
+  const predData=(predictions??[]).filter(p=>new Date(p.bucket_end)>new Date());
+
+  mainEl.innerHTML=`<div class="page-head"><h1>📊 Shift Analysis</h1><div class="sub">${esc(currentStore.name)} — hour-by-hour staffing intelligence</div></div>
+    <div class="staff-vs-cust">
+      <div class="svc-card ${gap?'gap-warn':''}"><div class="svc-val num">${staffCount}</div><div class="svc-lbl">Staff Available Now</div></div>
+      <div class="svc-card ${gap?'gap-warn':''}"><div class="svc-val num">${custCount}</div><div class="svc-lbl">Customers In Store</div></div>
+    </div>
+    ${gap?`<div class="ai-insight"><div class="ai-icon">⚠️</div><div class="ai-text"><b>More customers than staff right now.</b> Consider open rotation or calling in backup.</div></div>`:''}
+    <div class="chart-wrap"><h3>Traffic by Hour — Today</h3><p class="sub" style="margin-bottom:4px">Bar height = customer groups · dot = recommended staff</p>
+      <div class="chart-bars">${hourlyData.length?hourlyData.map(h=>{
+        const pct=Math.max(6,Math.round((h.adjusted_traffic||0)/maxTraffic*100));
+        const hr=new Date(h.bucket_start).getHours();
+        const label=hr===0?'12am':hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm';
+        return`<div class="chart-bar-col"><span class="cb-val">${h.adjusted_traffic||0}</span><div class="chart-bar" style="height:${pct}%"><div class="chart-bar staff-bar" style="height:${Math.min(100,(h.staffing_recommended||0)*18)}%"></div></div><span class="cb-lbl">${label}</span></div>`;
+      }).join(''):'<div class="empty">No traffic data yet today.</div>'}</div>
+      <div class="chart-legend"><span><span class="dot" style="background:var(--teal)"></span>Customer groups</span><span><span class="dot" style="background:var(--accent)"></span>Recommended staff</span></div>
+    </div>
+    <div class="dash-panel"><h3>Upcoming Hours — Staffing Prediction</h3><p class="sub" style="margin-bottom:10px">Based on today's traffic pattern and historical trends</p>
+      <div class="predict-grid">${predData.length?predData.map(p=>{
+        const hr=new Date(p.bucket_start).getHours();
+        const label=hr===0?'12–1am':hr<12?hr+'–'+(hr+1)+'am':hr===12?'12–1pm':(hr-12)+'–'+(hr-11)+'pm';
+        return`<div class="predict-card ${p.recommended_manager_cover?'needs-cover':''}"><div class="pc-hour">${label}</div><div class="pc-staff">${p.recommended_sales_staff} staff</div><div class="pc-detail">${p.predicted_customer_groups||'—'} groups expected${p.recommended_manager_cover?' · Mgr cover recommended':''}</div><div class="pc-detail">Confidence ${Math.round((p.confidence||0)*100)}%</div></div>`;
+      }).join(''):'<div class="empty">No predictions available for the rest of today.</div>'}</div>
+    </div>`;
 }
 
 // ===== SETTINGS =====
