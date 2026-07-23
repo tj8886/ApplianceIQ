@@ -183,13 +183,13 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <div id="landing">
 <nav class="unav"><div class="unav-inner">
 <div class="unav-logo"><span class="unav-pill">UP</span>IQ Up System</div>
-<div class="unav-links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#" onclick="event.preventDefault();toggleLogin()" class="ubtn-o">Log In</a><button class="ubtn" onclick="toggleLogin('signup')">Start Free Trial →</button></div>
+<div class="unav-links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#" id="navLogin" class="ubtn-o">Log In</a><button class="ubtn" id="navTrial">Start Free Trial →</button></div>
 </div></nav>
 <section class="uhero"><div class="uhero-inner">
 <div class="ueyebrow"><span class="ueyebrow-line"></span><span class="ueyebrow-text">ApplianceIQ — Up System</span></div>
 <h1>Your Floor.<br><em>Managed in<br>Real Time.</em></h1>
 <p class="uhero-sub">Live up rotation, customer flow tracking, and floor intelligence for appliance retail. Know who's next, who's with a customer, and who's closing — without shouting across the showroom.</p>
-<div class="uhero-ctas"><button class="ubtn" onclick="toggleLogin('signup')" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button><a href="#features" class="ubtn-o">See How It Works</a></div>
+<div class="uhero-ctas"><button class="ubtn" id="heroTrial" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button><a href="#features" class="ubtn-o">See How It Works</a></div>
 <div class="uhero-stats">
 <div><div class="ustat-num">Fair</div><div class="ustat-lbl">Turn Distribution</div></div>
 <div><div class="ustat-num">Live</div><div class="ustat-lbl">Floor Status</div></div>
@@ -216,7 +216,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <div class="ufeat" style="border-top:3px solid var(--accent)"><h3>Multi-Store</h3><div style="font-size:36px;font-weight:800;margin:8px 0">$99<span style="font-size:14px;font-weight:500;color:var(--steel)">/mo</span></div><p>Up to 5 stores. Manager dashboard, cross-store analytics, staffing predictions.</p></div>
 <div class="ufeat" style="border-top:3px solid var(--navy)"><h3>Enterprise</h3><div style="font-size:36px;font-weight:800;margin:8px 0">$199<span style="font-size:14px;font-weight:500;color:var(--steel)">/mo</span></div><p>Unlimited stores. CRM integration, custom rules, priority support, API access.</p></div>
 </div></div></section>
-<footer class="ufooter"><p>© 2026 ApplianceIQ · <a href="#" onclick="event.preventDefault();toggleLogin()">Log In</a> · <a href="https://crmaiiq.netlify.app">CRM</a> · <a href="https://applianceiq-aiacademy.netlify.app">Academy</a></p></footer>
+<footer class="ufooter"><p>© 2026 ApplianceIQ · <a href="#" id="footerLogin">Log In</a> · <a href="https://crmaiiq.netlify.app">CRM</a> · <a href="https://applianceiq-aiacademy.netlify.app">Academy</a></p></footer>
 </div>
 
 <!-- ===== LOGIN OVERLAY ===== -->
@@ -262,11 +262,11 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 </div></div>
 <div id="modalRoot"></div>
 
-<script type="module">
-import{createClient}from'https://esm.sh/@supabase/supabase-js@2';
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
 const SB_URL='https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const sb=createClient(SB_URL,SB_KEY);
+const sb=supabase.createClient(SB_URL,SB_KEY);
 const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
 const mainEl=$('#main'),modalRoot=$('#modalRoot');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -284,9 +284,14 @@ const waitChip=s=>{const m={waiting_for_assignment:'a',assignment_sent:'b',assig
 
 let currentUser=null,currentOrg=null,currentStore=null,currentView='floor',profiles={};
 
-// Auth
-window.toggleLogin=function(mode){const o=$('#loginOverlay');if(o.classList.contains('show'))o.classList.remove('show');else{o.classList.add('show');$('#upEmail')?.focus();if(mode==='signup')upNote('Enter email and password, then tap Create an account.',true);}};
+// Auth — all via IDs, no inline onclick
+function toggleLogin(mode){const o=$('#loginOverlay');if(o.classList.contains('show'))o.classList.remove('show');else{o.classList.add('show');$('#upEmail')?.focus();if(mode==='signup')upNote('Enter email and password, then tap Create an account.',true);}}
 function upNote(msg,ok){const el=$('#upNotice');el.textContent=msg;el.className='ulogin-notice '+(ok?'ok':'err');}
+// Wire up all login trigger buttons
+$('#navLogin').onclick=e=>{e.preventDefault();toggleLogin();};
+$('#navTrial').onclick=()=>toggleLogin('signup');
+$('#heroTrial').onclick=()=>toggleLogin('signup');
+$('#footerLogin').onclick=e=>{e.preventDefault();toggleLogin();};
 $('#upSigninBtn').onclick=async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');const{error}=await sb.auth.signInWithPassword({email,password:pw});if(error)return upNote(error.message);upNote('Signed in!',true);boot();};
 $('#upSignupLink').onclick=async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');const{error}=await sb.auth.signUp({email,password:pw});if(error)return upNote(error.message);upNote('Account created! Sign in now.',true);};
 $('#loginOverlay').onclick=e=>{if(e.target===$('#loginOverlay'))toggleLogin();};
