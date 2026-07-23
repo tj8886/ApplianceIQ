@@ -1,3 +1,5 @@
 # Next task
 
-Readiness is `READY_FOR_BASELINE_STRATEGY_APPROVAL`, not baseline-generation or staging-bootstrap approval. Obtain explicit human approval of the schema-only strategy, generation method, object inclusion policy, exclusions, and security-review scope. After that, Priority 2D-6A-4 may generate a candidate outside `supabase/migrations`, parse and sanitize it, and stop before applying it.
+Priority 2D-6A-4 — generate a schema-only baseline candidate from production, sanitize and validate it, store it outside the migration directory, and stop before applying it.
+
+Candidate generation is authorized under the recorded conditions. Candidate execution and staging application are not authorized; production application is prohibited. Migration 001 remains excluded, and no production data, identities, Storage objects, secrets, or copied migration history may be included.
