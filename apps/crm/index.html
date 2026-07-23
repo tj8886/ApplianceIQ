@@ -277,7 +277,7 @@ function showLogin(){landingEl.style.display='none';authEl.style.display='flex';
 function showSignup(){showLogin();setTimeout(()=>note('Enter email and password, then tap Create an account.',true),100);}
 function showLanding(){landingEl.style.display='block';authEl.style.display='none';appEl.style.display='none';}
 function showApp(){landingEl.style.display='none';authEl.style.display='none';appEl.style.display='block';}
-window.showLogin=showLogin;window.showSignup=showSignup;
+window.showLogin=showLogin;window.showSignup=showSignup;window.closeModal=closeModal;
 
 let orgs=[],currentOrg=null,currentUser=null,currentView='pipeline',pipeView='active';
 let chatLog=[],coachLog=[],coachPersona=null,assistants=[],currentAssistant=null;
@@ -636,7 +636,7 @@ function renderCompanies(){
 function openCompanyModal(co){
   const isNew=!co;const cts=isNew?[]:cache.contacts.filter(c=>c.company_id===co?.id);const dls=isNew?[]:cache.deals.filter(d=>d.company_id===co?.id);
   openModal(`<h2>${isNew?'New Business':'Edit Business'}</h2>
-    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc(co?.display_name||co?.name??'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc(co?.display_name||co?.name||'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
     <div class="field-row"><div class="field"><label>Type</label><select id="co_t"><option value="">—</option><option ${co?.business_type==='property_management'?'selected':''}>Property Management</option><option ${co?.business_type==='builder'?'selected':''}>Builder</option><option ${co?.business_type==='contractor'?'selected':''}>Contractor</option><option ${co?.business_type==='designer'?'selected':''}>Designer</option><option ${co?.business_type==='developer'?'selected':''}>Developer</option><option ${co?.business_type==='other'?'selected':''}>Other</option></select></div><div class="field"><label>Industry</label><input id="co_ind" value="${esc(co?.industry??'')}"></div></div>
     <div class="field-row"><div class="field"><label>Phone</label><input id="co_ph" value="${esc(co?.main_phone??'')}"></div><div class="field"><label>Email</label><input id="co_em" value="${esc(co?.general_email??'')}"></div></div>
     <div class="field"><label>Website</label><input id="co_web" value="${esc(co?.website??'')}"></div>
