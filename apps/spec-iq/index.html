@@ -493,6 +493,12 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         </div>
         <div id="product-list"></div>
         <div id="product-total" class="hidden" style="text-align:right;margin-top:8px;font-family:Sora;font-size:18px;font-weight:700"></div>
+        <div id="ai-insights" class="hidden" style="margin-top:16px">
+          <div class="card" style="border-color:var(--focus);border-left:3px solid var(--focus)">
+            <div class="flex between" style="margin-bottom:12px"><div class="flex" style="gap:8px"><svg class="icon" style="color:var(--focus)"><use href="#i-zap"/></svg><h4 style="margin:0;font-size:14px;color:var(--focus)">AI Package Insights</h4></div><button class="btn btn-g" style="padding:2px 8px;font-size:11px" onclick="el('ai-insights').classList.add('hidden')">Dismiss</button></div>
+            <div id="ai-insights-content" style="font-size:13px;line-height:1.6"></div>
+          </div>
+        </div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
           <button class="btn btn-s" onclick="setStep(1)">← Customer Details</button>
           <button class="btn btn-p" onclick="setStep(3)">Services &amp; Delivery →</button>
@@ -585,6 +591,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
             <div><div style="font-size:13px;color:var(--steel)">Total MSRP</div><div class="num" style="font-weight:700;font-family:Sora" id="sum-msrp">$0</div></div>
           </div>
           <div style="border-top:1px solid var(--line);padding-top:16px"><table class="tbl"><thead><tr><th>Category</th><th>Brand</th><th>Model</th><th>Finish</th><th>Dimensions</th><th class="r">Price</th></tr></thead><tbody id="sum-table"></tbody></table></div>
+          <div id="sum-validation" class="hidden"></div>
         </div>
         <div class="card" style="margin-bottom:16px"><div class="flex" style="gap:12px"><input type="checkbox" id="b-pricing" style="width:18px;height:18px;flex-shrink:0" /><label for="b-pricing" style="margin:0;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer">Include pricing page in package</label></div></div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
@@ -754,7 +761,95 @@ function setStep(n){currentStep=n;[1,2,3,4,5].forEach(function(s){el('step-'+s).
 function resetBuilder(){builderProducts=[];builderServices=[];currentStep=1;setStep(1);renderProducts();el('b-volume-discount').value='0';_linkedContactId=null;if(el('crm-linked-banner'))el('crm-linked-banner').classList.add('hidden');if(el('crm-deal-row'))el('crm-deal-row').classList.add('hidden');if(el('b-crm-search'))el('b-crm-search').value='';if(el('b-deal-id'))el('b-deal-id').selectedIndex=0}
 function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}var snap=window._selectedSpecSnapshot||null;builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,quantity:parseInt(el('ap-qty').value)||1,msrp:parseFloat(el('ap-msrp').value)||0,promo_price:parseFloat(el('ap-promo').value)||0,negotiated_price:parseFloat(el('ap-neg').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null,aiq_product_id:_selectedProductId||null,brand_id:window._selectedBrandId||null,series:snap?.series||null,product_line:snap?.product_line||null,short_description:snap?.short_description||null,spec_snapshot:snap?{id:snap.id,brand_name:snap.brand_name,model:snap.model,category:snap.category,series:snap.series,product_line:snap.product_line,msrp:snap.msrp,status:snap.status,short_description:snap.short_description,launch_date:snap.launch_date}:null,_fromCatalog:!!_selectedProductId});['ap-name','ap-brand','ap-model','ap-msrp','ap-promo','ap-neg','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-finish').selectedIndex=0;el('ap-qty').value='1';el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');_selectedProductId=null;window._selectedBrandId=null;window._selectedSpecSnapshot=null;el('ap-selected-banner').classList.add('hidden');el('ap-search').value='';renderProducts()}
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
-function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)*(p.quantity||1)});list.innerHTML=builderProducts.map(function(p){var qty=p.quantity||1;var bestPrice=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);var catalogBadge=p._fromCatalog||p.aiq_product_id?'<span style="display:inline-block;background:var(--verified-soft);color:var(--verified);font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">CATALOG</span>':'';var seriesLine=p.series?' · '+esc(p.series):'';var dims='';if(p.width_inches)dims+=p.width_inches+'"W';if(p.height_inches)dims+=(dims?' × ':'')+p.height_inches+'"H';if(p.depth_inches)dims+=(dims?' × ':'')+p.depth_inches+'"D';return'<div class="card flex between" style="padding:14px 20px;margin-bottom:8px'+(p._fromCatalog||p.aiq_product_id?';border-left:3px solid var(--verified)':'')+'"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+catalogBadge+(qty>1?' <span class="badge badge-b" style="font-size:11px">×'+qty+'</span>':'')+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+esc(p.category)+seriesLine+(p.finish?' · '+esc(p.finish):'')+(dims?' · '+dims:'')+'</div></div></div><div class="flex" style="gap:16px"><div style="text-align:right">'+(bestPrice>0?'<div class="num" style="font-weight:600;font-family:Sora">$'+(bestPrice*qty).toLocaleString()+'</div>':'')+(p.msrp>0&&bestPrice<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*qty).toLocaleString()+'</div>':'')+'</div><button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('');el('product-total').classList.remove('hidden');el('product-total').textContent='Total MSRP: $'+total.toLocaleString()}
+function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');el('ai-insights')&&el('ai-insights').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)*(p.quantity||1)});list.innerHTML=builderProducts.map(function(p){var qty=p.quantity||1;var bestPrice=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);var catalogBadge=p._fromCatalog||p.aiq_product_id?'<span style="display:inline-block;background:var(--verified-soft);color:var(--verified);font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">CATALOG</span>':'';var seriesLine=p.series?' · '+esc(p.series):'';var dims='';if(p.width_inches)dims+=p.width_inches+'"W';if(p.height_inches)dims+=(dims?' × ':'')+p.height_inches+'"H';if(p.depth_inches)dims+=(dims?' × ':'')+p.depth_inches+'"D';return'<div class="card flex between" style="padding:14px 20px;margin-bottom:8px'+(p._fromCatalog||p.aiq_product_id?';border-left:3px solid var(--verified)':'')+'"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+catalogBadge+(qty>1?' <span class="badge badge-b" style="font-size:11px">×'+qty+'</span>':'')+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+esc(p.category)+seriesLine+(p.finish?' · '+esc(p.finish):'')+(dims?' · '+dims:'')+'</div></div></div><div class="flex" style="gap:16px"><div style="text-align:right">'+(bestPrice>0?'<div class="num" style="font-weight:600;font-family:Sora">$'+(bestPrice*qty).toLocaleString()+'</div>':'')+(p.msrp>0&&bestPrice<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*qty).toLocaleString()+'</div>':'')+'</div><button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('');el('product-total').classList.remove('hidden');el('product-total').textContent='Total MSRP: $'+total.toLocaleString();runAIInsights()}
+
+function runAIInsights(){
+  if(!builderProducts.length){el('ai-insights')&&el('ai-insights').classList.add('hidden');return}
+  var insights=[];var warnings=[];var suggestions=[];
+  var cats={};var brands={};var finishes={};
+  builderProducts.forEach(function(p){
+    cats[p.category]=(cats[p.category]||0)+1;
+    if(p.brand)brands[p.brand]=(brands[p.brand]||0)+1;
+    if(p.finish)finishes[p.finish]=(finishes[p.finish]||0)+1;
+  });
+  var catList=Object.keys(cats);
+  var brandList=Object.keys(brands);
+  var finishList=Object.keys(finishes);
+
+  // Accessory recommendations by category
+  var accessories={
+    'Refrigerator':['water line installation','ice maker kit','custom panel (if panel-ready)'],
+    'Range':['anti-tip bracket','gas connector kit','range hood/ventilation'],
+    'Wall Oven':['trim kit for cabinet opening','required electrical circuit'],
+    'Cooktop':['ventilation hood or downdraft','gas connector kit (if gas)','cutout template'],
+    'Dishwasher':['water supply line','drain hose extension','custom panel (if panel-ready)'],
+    'Hood':['ductwork/transition pieces','make-up air system (if 400+ CFM)','roof or wall cap'],
+    'Washer':['stacking kit (if stacking)','drain hose','hot/cold supply hoses','drain pan'],
+    'Dryer':['venting kit (4" rigid or semi-rigid)','dryer cord (3 or 4 prong)','stacking kit']
+  };
+  catList.forEach(function(cat){
+    if(accessories[cat]){
+      suggestions.push('<strong>'+esc(cat)+'</strong> — consider: '+accessories[cat].join(', '));
+    }
+  });
+
+  // Compatibility warnings
+  if(cats['Range']&&!cats['Hood']&&!catList.includes('Hood')){
+    warnings.push('You have a range but no ventilation hood — most building codes require one.');
+  }
+  if(cats['Cooktop']&&!cats['Hood']){
+    warnings.push('Cooktop added without a ventilation hood — strongly recommended.');
+  }
+  if(cats['Washer']&&!cats['Dryer']){
+    warnings.push('Washer without dryer — is this intentional? Laundry pairs are typically sold together.');
+  }
+  if(cats['Dryer']&&!cats['Washer']){
+    warnings.push('Dryer without washer — did you mean to add a matching washer?');
+  }
+
+  // Finish consistency
+  if(finishList.length>1&&builderProducts.length>2){
+    warnings.push('Mixed finishes detected ('+finishList.join(', ')+') — customer may expect a coordinated look.');
+  }
+
+  // Brand mixing insight
+  if(brandList.length>1&&builderProducts.length>2){
+    insights.push('Multi-brand package ('+brandList.join(', ')+') — consider noting any warranty or service coordination implications.');
+  }
+  if(brandList.length===1&&builderProducts.length>=3){
+    insights.push('Single-brand package ('+brandList[0]+') — great for a coordinated suite. Check if a bundle rebate applies.');
+  }
+
+  // Missing dimensions
+  var noDims=builderProducts.filter(function(p){return!p.width_inches&&!p.height_inches});
+  if(noDims.length){
+    warnings.push(noDims.length+' product'+(noDims.length>1?'s have':' has')+' no dimensions entered — needed for installation planning.');
+  }
+
+  // Missing electrical
+  var noElec=builderProducts.filter(function(p){return!p.electrical_requirements});
+  if(noElec.length&&builderProducts.length>=2){
+    insights.push(noElec.length+' product'+(noElec.length>1?'s are':' is')+' missing electrical requirements — add these for the installation summary.');
+  }
+
+  // Package value insights
+  var totalMsrp=0;builderProducts.forEach(function(p){totalMsrp+=(p.msrp||0)*(p.quantity||1)});
+  if(totalMsrp>=10000){
+    insights.push('Package over $10K — consider offering a volume discount or delivery upgrade to close.');
+  }
+  if(totalMsrp>=25000){
+    insights.push('Premium package ($'+totalMsrp.toLocaleString()+') — white glove delivery and professional installation strongly recommended.');
+  }
+
+  // Render
+  if(!warnings.length&&!suggestions.length&&!insights.length){el('ai-insights')&&el('ai-insights').classList.add('hidden');return}
+  var h='';
+  if(warnings.length){h+='<div style="margin-bottom:10px">'+warnings.map(function(w){return'<div style="padding:6px 0;color:var(--amber)">⚠️ '+w+'</div>'}).join('')+'</div>'}
+  if(suggestions.length){h+='<div style="margin-bottom:10px"><div style="font-weight:600;font-size:12px;text-transform:uppercase;color:var(--steel);margin-bottom:4px">Accessories & Requirements</div>'+suggestions.map(function(s){return'<div style="padding:4px 0">📦 '+s+'</div>'}).join('')+'</div>'}
+  if(insights.length){h+='<div>'+insights.map(function(i){return'<div style="padding:4px 0;color:var(--focus)">💡 '+i+'</div>'}).join('')+'</div>'}
+  el('ai-insights-content').innerHTML=h;
+  el('ai-insights').classList.remove('hidden');
+}
 /* Builder services */
 /* CRM Contact Search */
 var _crmSearchTimeout=null;
@@ -910,7 +1005,17 @@ h+='<td style="text-align:right;padding:8px 0;font-family:Sora;color:var(--verif
 h+='</tbody></table>';
 /* Summary */
 h+='<table style="width:100%;border-collapse:collapse;font-size:14px"><tbody>';h+='<tr><td style="padding:8px 0">Total MSRP</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:8px 0">'+fmt(totalMsrp)+'</td></tr>';if(productSavings>0)h+='<tr style="color:var(--verified)"><td style="padding:6px 0">Product Savings</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:6px 0">−'+fmt(productSavings)+'</td></tr>';h+='<tr style="font-weight:700;font-size:15px"><td style="padding:8px 0;border-top:2px solid var(--navy)">Sale Price</td><td style="text-align:right;font-family:Sora;padding:8px 0;border-top:2px solid var(--navy)">'+fmt(totalSale)+'</td></tr>';if(volDiscount>0)h+='<tr style="color:var(--verified)"><td style="padding:6px 0">Buy More, Save More</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:6px 0">−'+fmt(volDiscount)+'</td></tr>';if(builderServices.length){h+='<tr><td colspan="2" style="padding:12px 0 6px;font-weight:700;font-size:13px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--line)">Services</td></tr>';var sLabels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};builderServices.forEach(function(s){h+='<tr><td style="padding:4px 0">'+esc(sLabels[s.service_type]||s.service_type)+(s.description?' — '+esc(s.description):'')+(s.taxable?'':' <span style="font-size:11px;color:var(--steel)">(non-taxable)</span>')+'</td><td style="text-align:right;font-family:Sora;padding:4px 0">'+(s.amount>0?fmt(s.amount):'FREE')+'</td></tr>'});h+='<tr style="font-weight:600"><td style="padding:6px 0">Total Services</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(svcTotal)+'</td></tr>'}h+='<tr style="font-weight:600"><td style="padding:10px 0;border-top:1px solid var(--line)">Subtotal before tax</td><td style="text-align:right;font-family:Sora;padding:10px 0;border-top:1px solid var(--line)">'+fmt(subtotal)+'</td></tr>';if(taxRule){taxLines.forEach(function(t){h+='<tr style="color:var(--steel)"><td style="padding:4px 0">'+t.name+' ('+t.rate+'%)</td><td style="text-align:right;font-family:Sora;padding:4px 0">'+fmt(t.amount)+'</td></tr>'});h+='<tr style="font-weight:600"><td style="padding:6px 0">Total Tax ('+esc(taxRule.jurisdiction_name)+')</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(totalTax)+'</td></tr>'}else{h+='<tr style="color:var(--amber)"><td style="padding:6px 0" colspan="2">Select a tax jurisdiction in Step 3 to calculate taxes</td></tr>'}h+='<tr style="font-size:18px;font-weight:700"><td style="padding:14px 0;border-top:2px solid var(--navy)">Final Total</td><td style="text-align:right;font-family:Sora;padding:14px 0;border-top:2px solid var(--navy);color:var(--navy)">'+fmt(finalTotal)+'</td></tr>';if(productSavings+volDiscount>0)h+='<tr style="color:var(--verified);font-weight:600"><td style="padding:6px 0">Total Savings</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(productSavings+volDiscount)+'</td></tr>';h+='</tbody></table>';c.innerHTML=h}
-function renderSummary(){var total=0,saleTotal=0;builderProducts.forEach(function(p){var q=p.quantity||1;total+=(p.msrp||0)*q;var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);saleTotal+=best*q});var svcTotal=0;builderServices.forEach(function(s){svcTotal+=s.amount});el('sum-customer').textContent=el('b-cust-name').value||'—';el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';el('sum-count').textContent=builderProducts.length+' items'+(builderServices.length?' + '+builderServices.length+' services':'');el('sum-msrp').textContent='$'+total.toLocaleString();el('sum-table').innerHTML=builderProducts.map(function(p){var q=p.quantity||1;var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);return'<tr><td>'+p.category+(q>1?' ×'+q:'')+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(best>0?'$'+(best*q).toLocaleString():'—')+(p.msrp>0&&best<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*q).toLocaleString()+'</div>':'')+'</td></tr>'}).join('')}
+function renderSummary(){var total=0,saleTotal=0;builderProducts.forEach(function(p){var q=p.quantity||1;total+=(p.msrp||0)*q;var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);saleTotal+=best*q});var svcTotal=0;builderServices.forEach(function(s){svcTotal+=s.amount});el('sum-customer').textContent=el('b-cust-name').value||'—';el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';el('sum-count').textContent=builderProducts.length+' items'+(builderServices.length?' + '+builderServices.length+' services':'');el('sum-msrp').textContent='$'+total.toLocaleString();el('sum-table').innerHTML=builderProducts.map(function(p){var q=p.quantity||1;var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);return'<tr><td>'+p.category+(q>1?' ×'+q:'')+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(best>0?'$'+(best*q).toLocaleString():'—')+(p.msrp>0&&best<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*q).toLocaleString()+'</div>':'')+'</td></tr>'}).join('');
+  // Validation warnings
+  var valWarn=[];
+  if(!el('b-cust-name').value)valWarn.push('No customer name entered');
+  if(!builderProducts.length)valWarn.push('No appliances in package');
+  var noPrice=builderProducts.filter(function(p){return!p.msrp||p.msrp<=0});
+  if(noPrice.length)valWarn.push(noPrice.length+' product'+(noPrice.length>1?'s':'')+' missing MSRP');
+  if(!el('b-tax-jurisdiction').value)valWarn.push('No tax jurisdiction selected — taxes won\'t be calculated');
+  var valEl=document.getElementById('sum-validation');
+  if(valEl){if(valWarn.length){valEl.innerHTML='<div style="padding:12px 16px;background:#fef0e6;border-radius:var(--radius);margin-top:16px;font-size:13px;color:#e8590c"><strong>⚠ Pre-generate checklist:</strong><br>'+valWarn.map(function(w){return'• '+w}).join('<br>')+'</div>';valEl.classList.remove('hidden')}else{valEl.innerHTML='<div style="padding:12px 16px;background:var(--verified-soft);border-radius:var(--radius);margin-top:16px;font-size:13px;color:var(--verified)"><strong>✓ Package ready to generate</strong> — all fields complete.</div>';valEl.classList.remove('hidden')}}
+}
 
 /* ==================== PRICING PLANS ==================== */
 var PLANS=[{name:'Starter',price:'$99',unit:'/user/month',desc:'For individual salespeople',features:['Product search','Product Passport access','Spec package builder','PDF generation','Customer sharing links','Basic CRM connection']},{name:'Professional',price:'$199',unit:'/user/month',desc:'For teams that sell',featured:true,features:['Everything in Starter','Pricing pages with approval','Package versioning','Installation summaries','Automated CRM follow-up','Custom branding','Customer engagement tracking']},{name:'Retail Location',price:'$599',unit:'/location/month',desc:'For a store team',features:['Up to 10 users','Retailer branding','Full CRM integration','Shared templates','Manager controls','Pricing approvals','Store analytics']},{name:'Multi-Location',price:'$1,500+',unit:'/month',desc:'For multi-store operations',features:['Multiple stores','Central administration','Shared catalog','Location-specific pricing','Enterprise reporting','SSO','API access']},{name:'Builder & Designer',price:'$149',unit:'/user/month',desc:'For trade professionals',features:['Project management','Spec books','CAD/BIM access','Collaboration tools','Client presentation tools']}];

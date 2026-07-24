@@ -15,6 +15,7 @@ const respond = (body: unknown, status = 200) =>
   });
 
 const cleanModel = (value: string) => value.trim().replace(/\s+/g, " ").toUpperCase();
+const normalizeText = (value: unknown) => String(value ?? "").trim();
 const isRecord = (value: unknown): value is JsonObject => !!value && typeof value === "object" && !Array.isArray(value);
 
 const ALLOWED_ACTION_KEYS = new Set(["action", "productId", "originalVersion", "section", "templateId", "changes", "reason", "product", "rules", "formulaVersion", "changeRequestId", "decision", "notes", "suggestionId", "documentId", "assetId", "orderedAssetIds"]);
@@ -94,30 +95,29 @@ const normalizeUnit = (unit: unknown, allowedUnits: string[] = []) => {
   if (unit == null || unit === "") return "";
   const text = String(unit).trim();
   const canonical = text.toLowerCase();
-  const map: Record<string, string> = {
-    in: "in", inch: "in", inches: "in",
-    cm: "cm", centimeter: "cm", centimeters: "cm",
-    mm: "mm", millimeter: "mm", millimeters: "mm",
-    lb: "lb", lbs: "lb", pound: "lb", pounds: "lb",
-    kg: "kg", kilogram: "kg", kilograms: "kg",
-    "cu ft": "cu. ft.", "cu. ft.": "cu. ft.", "cubic feet": "cu. ft.", ft3: "cu. ft.",
-    l: "L", litre: "L", litres: "L", liter: "L", liters: "L",
-    v: "V", volt: "V", volts: "V",
-    a: "A", amp: "A", amps: "A", amperage: "A",
-    w: "W", watt: "W", watts: "W",
-    kw: "kW",
-    hz: "Hz",
-    cfm: "CFM",
-    btu: "BTU",
-    dba: "dBA",
-    rpm: "rpm",
-    minutes: "minutes", minute: "minutes", min: "minutes",
-    hours: "hours", hour: "hours", hr: "hours", hrs: "hours",
-    gallons: "gallons", gallon: "gallons", gal: "gallons",
-    litres: "litres", litress: "litres", liters: "litres", liter: "litres",
-    "sq in": "sq_in", sq_in: "sq_in",
-  };
-  const normalized = map[canonical] || text;
+  const map = new Map<string, string>([
+    ["in", "in"], ["inch", "in"], ["inches", "in"],
+    ["cm", "cm"], ["centimeter", "cm"], ["centimeters", "cm"],
+    ["mm", "mm"], ["millimeter", "mm"], ["millimeters", "mm"],
+    ["lb", "lb"], ["lbs", "lb"], ["pound", "lb"], ["pounds", "lb"],
+    ["kg", "kg"], ["kilogram", "kg"], ["kilograms", "kg"],
+    ["cu ft", "cu. ft."], ["cu. ft.", "cu. ft."], ["cubic feet", "cu. ft."], ["ft3", "cu. ft."],
+    ["l", "L"], ["liter", "L"], ["liters", "L"], ["litre", "L"], ["litres", "L"],
+    ["v", "V"], ["volt", "V"], ["volts", "V"],
+    ["a", "A"], ["amp", "A"], ["amps", "A"], ["amperage", "A"],
+    ["w", "W"], ["watt", "W"], ["watts", "W"],
+    ["kw", "kW"],
+    ["hz", "Hz"],
+    ["cfm", "CFM"],
+    ["btu", "BTU"],
+    ["dba", "dBA"],
+    ["rpm", "rpm"],
+    ["minutes", "minutes"], ["minute", "minutes"], ["min", "minutes"],
+    ["hours", "hours"], ["hour", "hours"], ["hr", "hours"], ["hrs", "hours"],
+    ["gallons", "gallons"], ["gallon", "gallons"], ["gal", "gallons"],
+    ["sq in", "sq_in"], ["sq_in", "sq_in"],
+  ]);
+  const normalized = map.get(canonical) || text;
   const allowed = allowedUnits.length ? allowedUnits : [normalized];
   const match = allowed.find(candidate => String(candidate).toLowerCase() === String(normalized).toLowerCase());
   return match || normalized;

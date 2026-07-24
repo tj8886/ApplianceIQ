@@ -759,11 +759,6 @@ loadWorkspaceSection = async function(id, section, product) {
 function documentConflictMarkup(details) {
   return renderConflictPanel(details) + `<div class="split-actions" style="margin-top:8px"><button type="button" class="btn secondary" data-reload>Reload Latest</button><button type="button" class="btn secondary" data-continue>Continue Reviewing Unsaved Values</button><button type="button" class="btn secondary" data-copy>Copy Unsaved Values</button></div>`;
 }
-async function openDocumentCreate(productId) {
-  const { data: product } = await sb.from("aiq_products").select("*").eq("id", productId).maybeSingle();
-  if (!product) return alert("Product unavailable.");
-  return openDocumentEditor(product, { title: "", document_type: "Owner Manual", language: "", version: "", source_type: "internal", source_reference: "", description: "", public_visible: false, approval_status: "draft" }, true);
-}
 async function openDocumentEditor(product, doc, isCreate = false) {
   const baseline = {
     title: doc.title || "",
@@ -888,11 +883,6 @@ async function restoreDocument(productId, documentId) {
   const { data, error } = await invokeGovernance("restore_document", { productId, documentId, originalVersion: product?.version_number, section: "documents" });
   if (error || data?.error) return alert(data?.error || error?.message || "Unable to restore document.");
   refreshProductView(productId);
-}
-async function openImageCreate(productId) {
-  const { data: product } = await sb.from("aiq_products").select("*").eq("id", productId).maybeSingle();
-  if (!product) return alert("Product unavailable.");
-  return openImageEditor(product, { title: "", image_type: "Hero", alt_text: "", display_order: "", source_type: "internal", source_reference: "", is_published: true, is_primary: false }, true);
 }
 async function openImageEditor(product, asset, isCreate = false) {
   const baseline = {
