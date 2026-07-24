@@ -436,7 +436,20 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <button class="step-btn" onclick="setStep(4)">4. Pricing</button>
         <button class="step-btn" onclick="setStep(5)">5. Generate</button>
       </div>
-      <div id="step-1"><div class="card"><h3 style="margin-bottom:20px">Customer &amp; Project Details</h3><div class="grid2">
+      <div id="step-1"><div class="card"><h3 style="margin-bottom:20px">Customer &amp; Project Details</h3>
+        <div style="margin-bottom:20px">
+          <label>Search CRM Contacts</label>
+          <div style="position:relative">
+            <input id="b-crm-search" placeholder="Search by name, email, or phone..." oninput="searchCRMContacts()" autocomplete="off" />
+            <div id="crm-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)"></div>
+          </div>
+          <div id="crm-linked-banner" class="hidden" style="padding:10px 16px;background:var(--verified-soft);border-radius:var(--radius);margin-top:8px;display:flex;justify-content:space-between;align-items:center"><div><span style="color:var(--verified);font-weight:600" id="crm-linked-label">Contact linked</span></div><button class="btn btn-g" style="padding:4px 8px;font-size:12px" onclick="clearCRMLink()">Unlink</button></div>
+        </div>
+        <div id="crm-deal-row" class="hidden" style="margin-bottom:16px">
+          <label>Link to Deal / Opportunity</label>
+          <select id="b-deal-id" style="max-width:500px"><option value="">— No deal selected —</option></select>
+        </div>
+        <div class="grid2">
         <div><label>Customer Name</label><input id="b-cust-name" placeholder="John Smith" /></div>
         <div><label>Customer Email</label><input id="b-cust-email" type="email" placeholder="john@email.com" /></div>
         <div><label>Customer Phone</label><input id="b-cust-phone" placeholder="(555) 123-4567" /></div>
@@ -738,11 +751,70 @@ function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('inv
 var builderServices=[];
 var builderTaxRules=[];
 function setStep(n){currentStep=n;[1,2,3,4,5].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3){renderBuilderServices();loadTaxJurisdictions()}if(n===4)renderPricingReview();if(n===5)renderSummary()}
-function resetBuilder(){builderProducts=[];builderServices=[];currentStep=1;setStep(1);renderProducts();el('b-volume-discount').value='0'}
+function resetBuilder(){builderProducts=[];builderServices=[];currentStep=1;setStep(1);renderProducts();el('b-volume-discount').value='0';_linkedContactId=null;if(el('crm-linked-banner'))el('crm-linked-banner').classList.add('hidden');if(el('crm-deal-row'))el('crm-deal-row').classList.add('hidden');if(el('b-crm-search'))el('b-crm-search').value='';if(el('b-deal-id'))el('b-deal-id').selectedIndex=0}
 function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}var snap=window._selectedSpecSnapshot||null;builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,quantity:parseInt(el('ap-qty').value)||1,msrp:parseFloat(el('ap-msrp').value)||0,promo_price:parseFloat(el('ap-promo').value)||0,negotiated_price:parseFloat(el('ap-neg').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null,aiq_product_id:_selectedProductId||null,brand_id:window._selectedBrandId||null,series:snap?.series||null,product_line:snap?.product_line||null,short_description:snap?.short_description||null,spec_snapshot:snap?{id:snap.id,brand_name:snap.brand_name,model:snap.model,category:snap.category,series:snap.series,product_line:snap.product_line,msrp:snap.msrp,status:snap.status,short_description:snap.short_description,launch_date:snap.launch_date}:null,_fromCatalog:!!_selectedProductId});['ap-name','ap-brand','ap-model','ap-msrp','ap-promo','ap-neg','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-finish').selectedIndex=0;el('ap-qty').value='1';el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');_selectedProductId=null;window._selectedBrandId=null;window._selectedSpecSnapshot=null;el('ap-selected-banner').classList.add('hidden');el('ap-search').value='';renderProducts()}
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
 function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)*(p.quantity||1)});list.innerHTML=builderProducts.map(function(p){var qty=p.quantity||1;var bestPrice=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);var catalogBadge=p._fromCatalog||p.aiq_product_id?'<span style="display:inline-block;background:var(--verified-soft);color:var(--verified);font-size:10px;padding:2px 6px;border-radius:4px;margin-left:6px;font-weight:600">CATALOG</span>':'';var seriesLine=p.series?' · '+esc(p.series):'';var dims='';if(p.width_inches)dims+=p.width_inches+'"W';if(p.height_inches)dims+=(dims?' × ':'')+p.height_inches+'"H';if(p.depth_inches)dims+=(dims?' × ':'')+p.depth_inches+'"D';return'<div class="card flex between" style="padding:14px 20px;margin-bottom:8px'+(p._fromCatalog||p.aiq_product_id?';border-left:3px solid var(--verified)':'')+'"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+catalogBadge+(qty>1?' <span class="badge badge-b" style="font-size:11px">×'+qty+'</span>':'')+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+esc(p.category)+seriesLine+(p.finish?' · '+esc(p.finish):'')+(dims?' · '+dims:'')+'</div></div></div><div class="flex" style="gap:16px"><div style="text-align:right">'+(bestPrice>0?'<div class="num" style="font-weight:600;font-family:Sora">$'+(bestPrice*qty).toLocaleString()+'</div>':'')+(p.msrp>0&&bestPrice<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*qty).toLocaleString()+'</div>':'')+'</div><button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('');el('product-total').classList.remove('hidden');el('product-total').textContent='Total MSRP: $'+total.toLocaleString()}
 /* Builder services */
+/* CRM Contact Search */
+var _crmSearchTimeout=null;
+var _linkedContactId=null;
+window.searchCRMContacts=function(){
+  clearTimeout(_crmSearchTimeout);
+  var q=el('b-crm-search').value.trim();
+  if(q.length<2){el('crm-search-results').style.display='none';return}
+  _crmSearchTimeout=setTimeout(async function(){
+    try{
+      var{data}=await window._sb.from('contacts').select('id,first_name,last_name,email,phone,lifecycle_stage').eq('organization_id',userOrgId).or('first_name.ilike.%'+q+'%,last_name.ilike.%'+q+'%,email.ilike.%'+q+'%,phone.ilike.%'+q+'%').order('last_name').limit(8);
+      var results=el('crm-search-results');
+      if(!data||!data.length){results.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">No contacts found for "'+esc(q)+'"</div>';results.style.display='block';return}
+      var stageColors={lead:'badge-y',sales_qualified:'badge-b',opportunity:'badge-b',customer:'badge-g'};
+      results.innerHTML=data.map(function(c){
+        var name=esc((c.first_name||'')+' '+(c.last_name||'')).trim();
+        var stageBadge=c.lifecycle_stage?'<span class="badge '+(stageColors[c.lifecycle_stage]||'badge-y')+'" style="font-size:10px;margin-left:6px">'+esc(c.lifecycle_stage)+'</span>':'';
+        return'<div style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--line)" onmouseover="this.style.background=\'var(--paper)\'" onmouseout="this.style.background=\'#fff\'" onclick="selectCRMContact(\''+c.id+'\')"><div style="font-weight:600;font-size:14px">'+name+stageBadge+'</div><div style="font-size:12px;color:var(--steel)">'+(c.email||'')+(c.phone?' · '+c.phone:'')+'</div></div>'
+      }).join('');
+      results.style.display='block';
+    }catch(e){console.error('CRM search error:',e)}
+  },250);
+};
+window.selectCRMContact=async function(contactId){
+  try{
+    var{data:c}=await window._sb.from('contacts').select('*').eq('id',contactId).single();
+    if(!c)return;
+    _linkedContactId=c.id;
+    el('b-cust-name').value=((c.first_name||'')+' '+(c.last_name||'')).trim();
+    el('b-cust-email').value=c.email||'';
+    if(el('b-cust-phone'))el('b-cust-phone').value=c.phone||'';
+    el('b-crm-search').value=((c.first_name||'')+' '+(c.last_name||'')).trim();
+    el('crm-search-results').style.display='none';
+    el('crm-linked-banner').classList.remove('hidden');
+    el('crm-linked-banner').style.display='flex';
+    el('crm-linked-label').innerHTML='✓ Linked to CRM contact: <strong>'+esc((c.first_name||'')+' '+(c.last_name||''))+'</strong>';
+    // Load deals for this contact
+    var{data:deals}=await window._sb.from('crm_deals').select('id,title,stage,value_amount').eq('contact_id',contactId).eq('organization_id',userOrgId).order('title');
+    var dealSel=el('b-deal-id');
+    dealSel.innerHTML='<option value="">— No deal selected —</option>';
+    if(deals&&deals.length){
+      deals.forEach(function(d){
+        var val=parseFloat(d.value_amount)||0;
+        dealSel.innerHTML+='<option value="'+d.id+'">'+esc(d.title)+' — '+esc(d.stage)+(val>0?' ($'+val.toLocaleString()+')':'')+'</option>';
+      });
+      el('crm-deal-row').classList.remove('hidden');
+    } else {
+      el('crm-deal-row').classList.add('hidden');
+    }
+  }catch(e){console.error('Select CRM contact error:',e)}
+};
+window.clearCRMLink=function(){
+  _linkedContactId=null;
+  el('crm-linked-banner').classList.add('hidden');
+  el('crm-deal-row').classList.add('hidden');
+  el('b-deal-id').selectedIndex=0;
+  el('b-crm-search').value='';
+};
+document.addEventListener('click',function(e){if(!e.target.closest('#b-crm-search')&&!e.target.closest('#crm-search-results')){var r=document.getElementById('crm-search-results');if(r)r.style.display='none'}});
+
 var _searchTimeout=null;
 var _selectedProductId=null;
 window.searchProducts=function(){
@@ -1179,7 +1251,7 @@ window.savePackage=async(status)=>{
       // Update project
       await sb.from('speciq_projects').update({project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,updated_at:new Date().toISOString()}).eq('id',projId);
       // Update package
-      const{error:ke}=await sb.from('speciq_packages').update({package_name:el('b-pkg-name').value||projName,status,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,customer_facing_pricing:el('b-customer-facing')?.checked||false,salesperson_name:el('b-salesperson')?.value||null,updated_at:new Date().toISOString(),updated_by:currentUser.id}).eq('id',pkgId);
+      const{error:ke}=await sb.from('speciq_packages').update({package_name:el('b-pkg-name').value||projName,status,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,customer_facing_pricing:el('b-customer-facing')?.checked||false,salesperson_name:el('b-salesperson')?.value||null,contact_id:_linkedContactId||null,deal_id:el('b-deal-id')?.value||null,updated_at:new Date().toISOString(),updated_by:currentUser.id}).eq('id',pkgId);
       if(ke)throw new Error('Package update failed: '+ke.message);
       // Delete old products and services, re-insert
       await sb.from('speciq_package_products').delete().eq('package_id',pkgId);
@@ -1189,7 +1261,7 @@ window.savePackage=async(status)=>{
       const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
       if(pe)throw new Error('Project save failed: '+pe.message);
       projId=proj.id;
-      const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:projId,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,customer_facing_pricing:el('b-customer-facing')?.checked||false,salesperson_name:el('b-salesperson')?.value||null,created_by:currentUser.id}).select('id').single();
+      const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:projId,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,customer_facing_pricing:el('b-customer-facing')?.checked||false,salesperson_name:el('b-salesperson')?.value||null,contact_id:_linkedContactId||null,deal_id:el('b-deal-id')?.value||null,created_by:currentUser.id}).select('id').single();
       if(ke)throw new Error('Package save failed: '+ke.message);
       pkgId=pkg.id;
     }
@@ -1203,6 +1275,17 @@ window.savePackage=async(status)=>{
     }
     await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:isEdit?'updated':'created'});
     if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:'sent'});
+    // Log CRM activity if linked to a contact or deal
+    if(_linkedContactId||el('b-deal-id')?.value){
+      var actTitle=isEdit?'Spec package updated':'Spec package created';
+      var actSummary=(el('b-pkg-name').value||projName)+' — '+builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+', $'+totalMsrp.toLocaleString()+' MSRP';
+      if(_linkedContactId){
+        await sb.from('activities').insert({organization_id:orgId,actor_user_id:currentUser.id,entity_type:'contact',entity_id:_linkedContactId,activity_type:'spec_package',title:actTitle,summary:actSummary,source:'spec-iq',metadata:{package_id:pkgId,status:status,total_msrp:totalMsrp,product_count:builderProducts.length}}).then(()=>{});
+      }
+      if(el('b-deal-id')?.value){
+        await sb.from('activities').insert({organization_id:orgId,actor_user_id:currentUser.id,entity_type:'deal',entity_id:el('b-deal-id').value,activity_type:'spec_package',title:actTitle,summary:actSummary,source:'spec-iq',metadata:{package_id:pkgId,status:status,total_msrp:totalMsrp,product_count:builderProducts.length}}).then(()=>{});
+      }
+    }
     // Clear edit context
     window._editingPackageId=null;
     window._editingProjectId=null;
@@ -1400,6 +1483,17 @@ window.editPackage=async function(pkgId){
   if(pkg.delivery_method){var radios=document.querySelectorAll('input[name="b-delivery"]');radios.forEach(function(r){r.checked=r.value===pkg.delivery_method})}
   el('b-pricing').checked=pkg.include_pricing||false;
   if(el('b-customer-facing'))el('b-customer-facing').checked=pkg.customer_facing_pricing||false;
+  // Restore CRM link if package has contact_id
+  if(pkg.contact_id){
+    _linkedContactId=pkg.contact_id;
+    selectCRMContact(pkg.contact_id).then(function(){
+      if(pkg.deal_id&&el('b-deal-id')){el('b-deal-id').value=pkg.deal_id}
+    });
+  } else {
+    _linkedContactId=null;
+    el('crm-linked-banner').classList.add('hidden');
+    el('crm-deal-row').classList.add('hidden');
+  }
   // Store edit context
   window._editingPackageId=pkgId;
   window._editingProjectId=pkg.project_id;

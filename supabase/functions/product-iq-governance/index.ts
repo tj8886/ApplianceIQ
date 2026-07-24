@@ -655,5 +655,175 @@ Deno.serve(async req => {
     });
   }
 
+  if (["update_document_metadata", "archive_document", "restore_document", "update_image_metadata", "set_primary_image", "reorder_images", "archive_image", "restore_image"].includes(String(body.action))) {
+    const { productId, originalVersion, documentId, assetId, changes, orderedAssetIds, reason, section } = body as JsonObject;
+    if (!productId || !Number.isInteger(originalVersion)) return respond({ error: "productId and originalVersion are required" }, 400);
+    if (section && !["documents", "assets"].includes(String(section))) return respond({ error: "Invalid section for document or image mutation", code: "validation_failed" }, 400);
+    const productResult = await loadProductForMutation(db, String(productId));
+    if ("status" in productResult) return respond({ error: productResult.error }, productResult.status);
+    const product = productResult.product as JsonObject;
+    if (Number(product.version_number) !== Number(originalVersion)) {
+      return respond({
+        error: "This product has a newer version. Reload before saving.",
+        code: "conflict",
+        currentVersion: product.version_number,
+        submittedVersion: originalVersion,
+        updatedAt: product.updated_at,
+        updatedBy: product.updated_by,
+      }, 409);
+    }
+
+    const updateProductTouch = async (entityAction: string, oldRecord: unknown, newRecord: unknown, entityType: string, entityId: string | null, rollback: (() => Promise<void>) | null = null) => {
+      const touched = await touchProductForVersion(db, String(productId), Number(originalVersion), user.id);
+      if ("error" in touched) return respond({ error: touched.error }, touched.status);
+      if ("conflict" in touched) {
+        if (rollback) await rollback();
+        return respond({
+          error: "This product has a newer version. Reload before saving.",
+          code: "conflict",
+          currentVersion: product.version_number,
+          submittedVersion: originalVersion,
+          updatedAt: product.updated_at,
+          updatedBy: product.updated_by,
+        }, 409);
+      }
+      await audit(db, product, entityAction, oldRecord, newRecord, reason ? String(reason) : undefined, user.id, entityType, entityId);
+      return respond({ data: touched.updated, version_number: touched.updated.version_number });
+    };
+
+    if (String(body.action) === "update_document_metadata" || String(body.action) === "archive_document" || String(body.action) === "restore_document") {
+      if (!documentId) return respond({ error: "documentId is required" }, 400);
+      const { data: document, error: docError } = await db.from("aiq_documents").select("*").eq("id", String(documentId)).maybeSingle();
+      if (docError || !document || String(document.product_id) !== String(product.id)) return respond({ error: "Document not found" }, 404);
+      const normalizedChanges = isRecord(changes) ? changes : {};
+      const { errors, type } = validateDocChanges(normalizedChanges);
+      if (Object.keys(errors).length) return respond({ error: "validation_failed", code: "validation_failed", fieldErrors: errors }, 400);
+      const oldRecord = cloneRecord(document);
+      const nextRecord: JsonObject = cloneRecord(document);
+      if (String(body.action) === "archive_document") {
+        nextRecord.archived_at = new Date().toISOString();
+        nextRecord.archived_by = user.id;
+      } else if (String(body.action) === "restore_document") {
+        nextRecord.archived_at = null;
+        nextRecord.archived_by = null;
+      } else {
+        nextRecord.title = normalizeText(normalizedChanges.title);
+        nextRecord.document_type = type || document.document_type;
+        nextRecord.language = normalizeText(normalizedChanges.language) || null;
+        nextRecord.version = normalizeText(normalizedChanges.version) || null;
+        nextRecord.source_type = normalizeText(normalizedChanges.source_type) || null;
+        nextRecord.source_reference = normalizeText(normalizedChanges.source_reference) || null;
+        nextRecord.description = normalizeText(normalizedChanges.description) || null;
+        nextRecord.public_visible = !!normalizedChanges.public_visible;
+        nextRecord.approval_status = normalizeText(normalizedChanges.approval_status) || "draft";
+      }
+      const patch: JsonObject = {};
+      for (const key of Object.keys(nextRecord)) {
+        if (!Object.is((oldRecord as JsonObject)[key], nextRecord[key])) patch[key] = nextRecord[key];
+      }
+      if (!Object.keys(patch).length) return respond({ error: "No changes supplied", code: "no_changes" }, 400);
+      const { error: updateError } = await db.from("aiq_documents").update(patch).eq("id", String(documentId));
+      if (updateError) return respond({ error: updateError.message }, 400);
+      const rolledBack = async () => { await db.from("aiq_documents").update(oldRecord as JsonObject).eq("id", String(documentId)); };
+      const actionName = String(body.action) === "archive_document" ? "document_archived" : String(body.action) === "restore_document" ? "document_restored" : "document_metadata_updated";
+      return updateProductTouch(actionName, { document: oldRecord }, { document: nextRecord }, "aiq_documents", String(documentId), rolledBack);
+    }
+
+    if (String(body.action) === "update_image_metadata" || String(body.action) === "set_primary_image" || String(body.action) === "archive_image" || String(body.action) === "restore_image" || String(body.action) === "reorder_images") {
+      if (String(body.action) === "reorder_images") {
+        if (!Array.isArray(orderedAssetIds) || !orderedAssetIds.length) return respond({ error: "orderedAssetIds are required" }, 400);
+        const { data: assets, error: assetError } = await db.from("mfr_assets").select("*").eq("product_id", String(product.id)).is("archived_at", null).order("display_order", { ascending: true }).order("updated_at", { ascending: false });
+        if (assetError) return respond({ error: assetError.message }, 400);
+        const active = (assets || []).filter((row: JsonObject) => !row.archived_at);
+        const activeIds = active.map((row: JsonObject) => String(row.id));
+        const requested = [...new Set((orderedAssetIds as unknown[]).map(v => String(v)))];
+        if (requested.length !== activeIds.length || requested.some(id => !activeIds.includes(id))) {
+          return respond({ error: "Reorder requests must include exactly the active images for this product.", code: "validation_failed" }, 400);
+        }
+        const oldRows = cloneRecord(active);
+        for (let i = 0; i < requested.length; i++) {
+          const asset = active.find((row: JsonObject) => String(row.id) === requested[i]);
+          if (!asset) continue;
+          const { error: rowError } = await db.from("mfr_assets").update({ display_order: i + 1 }).eq("id", String(asset.id));
+          if (rowError) return respond({ error: rowError.message }, 400);
+        }
+        const rollback = async () => {
+          for (const row of oldRows as JsonObject[]) await db.from("mfr_assets").update({ display_order: row.display_order }).eq("id", String(row.id));
+        };
+        const touched = await touchProductForVersion(db, String(productId), Number(originalVersion), user.id);
+        if ("error" in touched) return respond({ error: touched.error }, touched.status);
+        if ("conflict" in touched) {
+          await rollback();
+          return respond({
+            error: "This product has a newer version. Reload before saving.",
+            code: "conflict",
+            currentVersion: product.version_number,
+            submittedVersion: originalVersion,
+            updatedAt: product.updated_at,
+            updatedBy: product.updated_by,
+          }, 409);
+        }
+        await audit(db, product, "images_reordered", { assets: oldRows }, { orderedAssetIds: requested }, reason ? String(reason) : undefined, user.id, "mfr_assets", null);
+        return respond({ data: touched.updated, version_number: touched.updated.version_number });
+      }
+
+      if (!assetId) return respond({ error: "assetId is required" }, 400);
+      const { data: asset, error: assetError } = await db.from("mfr_assets").select("*").eq("id", String(assetId)).maybeSingle();
+      if (assetError || !asset || String(asset.product_id) !== String(product.id)) return respond({ error: "Image not found" }, 404);
+      const normalizedChanges = isRecord(changes) ? changes : {};
+      const { errors, type } = validateImageChanges(normalizedChanges);
+      if (Object.keys(errors).length) return respond({ error: "validation_failed", code: "validation_failed", fieldErrors: errors }, 400);
+      const oldRecord = cloneRecord(asset);
+      const nextRecord: JsonObject = cloneRecord(asset);
+      let primarySnapshot: JsonObject[] = [];
+
+      if (String(body.action) === "archive_image") {
+        nextRecord.archived_at = new Date().toISOString();
+        nextRecord.archived_by = user.id;
+        nextRecord.is_primary = false;
+      } else if (String(body.action) === "restore_image") {
+        nextRecord.archived_at = null;
+        nextRecord.archived_by = null;
+      } else {
+        nextRecord.title = normalizeText(normalizedChanges.title);
+        nextRecord.image_type = type || asset.image_type;
+        nextRecord.alt_text = normalizeText(normalizedChanges.alt_text) || null;
+        nextRecord.display_order = normalizedChanges.display_order === "" || normalizedChanges.display_order == null ? null : Number(normalizedChanges.display_order);
+        nextRecord.source_type = normalizeText(normalizedChanges.source_type) || null;
+        nextRecord.source_reference = normalizeText(normalizedChanges.source_reference) || null;
+        if ("is_published" in normalizedChanges) nextRecord.is_published = !!normalizedChanges.is_published;
+        if ("is_primary" in normalizedChanges) nextRecord.is_primary = !!normalizedChanges.is_primary;
+      }
+      if (String(body.action) === "set_primary_image") nextRecord.is_primary = true;
+      if (nextRecord.archived_at && nextRecord.is_primary) nextRecord.is_primary = false;
+      if (nextRecord.is_primary) {
+        const { data: primaries } = await db.from("mfr_assets").select("id").eq("product_id", String(product.id)).eq("is_primary", true).is("archived_at", null);
+        primarySnapshot = cloneRecord(primaries || []);
+        for (const row of primarySnapshot as JsonObject[]) {
+          if (String(row.id) !== String(asset.id)) {
+            const { error: clearError } = await db.from("mfr_assets").update({ is_primary: false }).eq("id", String(row.id));
+            if (clearError) return respond({ error: clearError.message }, 400);
+          }
+        }
+      }
+      const patch: JsonObject = {};
+      for (const key of Object.keys(nextRecord)) {
+        if (!Object.is((oldRecord as JsonObject)[key], nextRecord[key])) patch[key] = nextRecord[key];
+      }
+      if (!Object.keys(patch).length) return respond({ error: "No changes supplied", code: "no_changes" }, 400);
+      const { error: updateError } = await db.from("mfr_assets").update(patch).eq("id", String(assetId));
+      if (updateError) return respond({ error: updateError.message }, 400);
+      const rollback = async () => {
+        await db.from("mfr_assets").update(oldRecord as JsonObject).eq("id", String(assetId));
+        for (const row of primarySnapshot as JsonObject[]) {
+          await db.from("mfr_assets").update({ is_primary: true }).eq("id", String(row.id));
+        }
+      };
+      const primaryChanged = Object.prototype.hasOwnProperty.call(normalizedChanges, "is_primary") && Boolean((oldRecord as JsonObject).is_primary) !== Boolean(nextRecord.is_primary);
+      const actionName = String(body.action) === "archive_image" ? "image_archived" : String(body.action) === "restore_image" ? "image_restored" : primaryChanged ? "image_primary_changed" : "image_metadata_updated";
+      return updateProductTouch(actionName, { image: oldRecord }, { image: nextRecord }, "mfr_assets", String(assetId), rollback);
+    }
+  }
+
   return respond({ error: "Unknown action" }, 400);
 });

@@ -767,7 +767,7 @@ async function openDocumentCreate(productId) {
 async function openDocumentEditor(product, doc, isCreate = false) {
   const baseline = {
     title: doc.title || "",
-    document_type: doc.document_type || "Other",
+    document_type: documentTypeOrder.includes(doc.document_type) ? doc.document_type : "Other",
     language: doc.language || "",
     version: doc.version || "",
     source_type: doc.source_type || "internal",
@@ -802,8 +802,14 @@ async function openDocumentEditor(product, doc, isCreate = false) {
   const dirtySnapshot = () => JSON.stringify(Object.fromEntries(new FormData(form).entries()));
   const label = "document metadata changes";
   let originalSnapshot = dirtySnapshot();
-  updateDirtyGuard(false, label, () => modal.remove());
-  const markDirty = () => updateDirtyGuard(dirtySnapshot() !== originalSnapshot, label, () => modal.remove());
+  const closeEditor = () => {
+    if (dirtySnapshot() !== originalSnapshot && !confirm("Discard unsaved document changes?")) return;
+    clearEditorGuard();
+    modal.remove();
+  };
+  modal.querySelectorAll("[data-close]").forEach(el => el.onclick = closeEditor);
+  updateDirtyGuard(false, label, closeEditor);
+  const markDirty = () => updateDirtyGuard(dirtySnapshot() !== originalSnapshot, label, closeEditor);
   form.addEventListener("input", markDirty);
   form.addEventListener("change", markDirty);
   form.onsubmit = async e => {
@@ -830,7 +836,12 @@ async function openDocumentEditor(product, doc, isCreate = false) {
         approval_status: normalizeText(fd.get("approval_status")),
       },
     };
-    const { data, error } = await invokeGovernance(isCreate ? "create_document" : "update_document_metadata", payload);
+    if (JSON.stringify(payload.changes) === JSON.stringify({ title: baseline.title, document_type: baseline.document_type, language: baseline.language, version: baseline.version, source_type: baseline.source_type, source_reference: baseline.source_reference, description: baseline.description, public_visible: baseline.public_visible, approval_status: baseline.approval_status })) {
+      submit.disabled = false;
+      submit.textContent = "Save metadata";
+      return;
+    }
+    const { data, error } = await invokeGovernance("update_document_metadata", payload);
     if (error || data?.error) {
       submit.disabled = false;
       submit.textContent = "Save metadata";
@@ -886,7 +897,7 @@ async function openImageCreate(productId) {
 async function openImageEditor(product, asset, isCreate = false) {
   const baseline = {
     title: asset.title || "",
-    image_type: asset.image_type || "Other",
+    image_type: imageTypeOrder.includes(asset.image_type) ? asset.image_type : "Other",
     alt_text: asset.alt_text || "",
     display_order: asset.display_order ?? "",
     source_type: asset.source_type || "internal",
@@ -918,8 +929,14 @@ async function openImageEditor(product, asset, isCreate = false) {
   const dirtySnapshot = () => JSON.stringify(Object.fromEntries(new FormData(form).entries()));
   const label = "image metadata changes";
   let originalSnapshot = dirtySnapshot();
-  updateDirtyGuard(false, label, () => modal.remove());
-  const markDirty = () => updateDirtyGuard(dirtySnapshot() !== originalSnapshot, label, () => modal.remove());
+  const closeEditor = () => {
+    if (dirtySnapshot() !== originalSnapshot && !confirm("Discard unsaved image changes?")) return;
+    clearEditorGuard();
+    modal.remove();
+  };
+  modal.querySelectorAll("[data-close]").forEach(el => el.onclick = closeEditor);
+  updateDirtyGuard(false, label, closeEditor);
+  const markDirty = () => updateDirtyGuard(dirtySnapshot() !== originalSnapshot, label, closeEditor);
   form.addEventListener("input", markDirty);
   form.addEventListener("change", markDirty);
   form.onsubmit = async e => {
@@ -942,10 +959,15 @@ async function openImageEditor(product, asset, isCreate = false) {
         source_type: normalizeText(fd.get("source_type")),
         source_reference: normalizeText(fd.get("source_reference")),
         is_published: fd.get("is_published") === "true",
-        is_primary: fd.get("is_primary") === "true",
+      is_primary: fd.get("is_primary") === "true",
       },
     };
-    const { data, error } = await invokeGovernance(isCreate ? "create_image" : "update_image_metadata", payload);
+    if (JSON.stringify(payload.changes) === JSON.stringify({ title: baseline.title, image_type: baseline.image_type, alt_text: baseline.alt_text, display_order: baseline.display_order === "" ? null : Number(baseline.display_order), source_type: baseline.source_type, source_reference: baseline.source_reference, is_published: baseline.is_published, is_primary: baseline.is_primary })) {
+      submit.disabled = false;
+      submit.textContent = "Save metadata";
+      return;
+    }
+    const { data, error } = await invokeGovernance("update_image_metadata", payload);
     if (error || data?.error) {
       submit.disabled = false;
       submit.textContent = "Save metadata";
