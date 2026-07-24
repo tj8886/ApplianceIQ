@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0f1f3d"/>
+<title>ApplianceIQ Command Center — Unified Analytics Dashboard</title>
+<meta name="description" content="One dashboard for your entire operation. Revenue, floor performance, training, coaching — every metric from every ApplianceIQ system in one place."/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#0f1f3d;--navy-2:#16294e;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;--ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#fff;--verified:#1a9e56;--danger:#c02d1e;--amber:#e8590c;--accent:#6366f1}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
+/* NAV */
+.cnav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%}
+.cnav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.cnav-logo{font-family:'Sora',sans-serif;font-weight:800;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:9px}
+.cnav-pill{background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:-.3px}
+.cnav-links{display:flex;align-items:center;gap:24px}
+.cnav-links a{color:var(--steel);font-size:13px;text-decoration:none;font-weight:500;transition:color .15s}
+.cnav-links a:hover{color:var(--navy)}
+.cbtn{background:var(--navy);color:#fff;font-family:'Sora',sans-serif;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;cursor:pointer;text-decoration:none;display:inline-block;transition:background .15s}
+.cbtn:hover{background:var(--navy-2)}
+.cbtn-o{border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:'Sora',sans-serif;font-weight:600;display:inline-block;background:transparent;transition:all .15s}
+.cbtn-o:hover{border-color:var(--navy);background:#f0f4ff}
+/* SECTIONS */
+.csection{padding:100px 5%}
+.csection-inner{max-width:1200px;margin:0 auto}
+.ceyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:20px}
+.ceyebrow-line{width:24px;height:1px;background:var(--accent)}
+.ceyebrow-text{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);font-weight:600}
+/* HERO */
+.chero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px;position:relative;overflow:hidden}
+.chero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.chero::after{content:'';position:absolute;top:20%;right:-5%;width:600px;height:600px;background:radial-gradient(ellipse at right,rgba(99,102,241,0.06) 0%,transparent 70%);pointer-events:none}
+.chero-inner{max-width:1200px;margin:0 auto;width:100%}
+.chero h1{font-size:clamp(38px,5.5vw,72px);font-weight:800;letter-spacing:-2.5px;color:var(--navy);margin-bottom:24px;max-width:800px;line-height:1.03}
+.chero h1 em{font-style:normal;color:var(--accent)}
+.chero-sub{font-size:18px;color:var(--steel);max-width:580px;line-height:1.65;margin-bottom:40px}
+.chero-ctas{display:flex;align-items:center;gap:16px;margin-bottom:60px;flex-wrap:wrap}
+/* LIVE DEMO PANEL */
+.cdemo{background:var(--navy);border-radius:16px;padding:28px;color:#fff;overflow:hidden}
+.cdemo-title{font-family:'Sora',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,0.4);margin-bottom:20px}
+.cdemo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.cdemo-card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;text-align:center}
+.cdemo-val{font-family:'Sora',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px}
+.cdemo-lbl{font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px}
+.cdemo-var{font-size:12px;font-weight:700;margin-top:6px}
+.cdemo-var.up{color:#34d399}.cdemo-var.dn{color:#f87171}
+.chero-stats{display:flex;gap:48px;border-top:1px solid var(--line);padding-top:40px;margin-top:48px;flex-wrap:wrap}
+.cstat-num{font-family:'Sora',sans-serif;font-size:32px;font-weight:800;color:var(--navy);letter-spacing:-1px}
+.cstat-lbl{font-size:12px;color:var(--steel);margin-top:2px}
+/* FEATURES / TITLES */
+.ctitle{font-family:'Sora',sans-serif;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px}
+.csub{font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px}
+.cfeat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.cfeat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;transition:border-color .15s}
+.cfeat:hover{border-color:var(--accent)}
+.cfeat-icon{font-size:28px;margin-bottom:12px}
+.cfeat h3{font-family:'Sora',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)}
+.cfeat p{font-size:14px;color:var(--steel);line-height:1.6}
+/* FEEDS */
+.cfeeds{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px}
+.cfeed{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;text-align:center}
+.cfeed-icon{font-size:32px;margin-bottom:10px}
+.cfeed h3{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px}
+.cfeed p{font-size:13px;color:var(--steel);line-height:1.5}
+.cfeed-arrow{color:var(--accent);font-size:20px;margin-top:12px}
+/* PRICING */
+.cpricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.cprice-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column;transition:border-color .15s}
+.cprice-card:hover{border-color:var(--accent)}
+.cprice-card.pop{border-color:var(--accent);box-shadow:0 4px 24px rgba(99,102,241,0.12)}
+.cprice-tier{font-family:'Sora',sans-serif;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--steel)}
+.cprice-amt{font-family:'Sora',sans-serif;font-size:36px;font-weight:800;color:var(--navy);margin:8px 0 4px}
+.cprice-per{font-size:13px;color:var(--steel)}
+.cprice-list{list-style:none;padding:0;margin:18px 0;flex:1}
+.cprice-list li{font-size:13px;color:var(--ink);padding:6px 0;border-bottom:1px solid #f3f5f8}
+.cprice-list li::before{content:'✓ ';color:var(--accent);font-weight:700}
+/* FOOTER */
+.cfooter{background:var(--navy);color:rgba(255,255,255,0.55);text-align:center;padding:32px 5%;font-size:13px}
+.cfooter a{color:rgba(255,255,255,0.8);text-decoration:none;font-weight:600}
+/* APP */
+#ccApp{display:none}
+.cc-shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.cc-side{background:var(--navy);color:#fff;padding:20px 16px;display:flex;flex-direction:column;gap:4px}
+.cc-side .cc-logo{font-family:'Sora',sans-serif;font-weight:800;font-size:15px;display:flex;align-items:center;gap:8px;margin-bottom:20px;padding:8px 0}
+.cc-nav-btn{background:none;border:none;color:rgba(255,255,255,0.6);font-size:13px;font-weight:500;padding:10px 12px;border-radius:8px;text-align:left;cursor:pointer;transition:all .15s}
+.cc-nav-btn:hover,.cc-nav-btn.active{background:rgba(255,255,255,0.1);color:#fff}
+.cc-main{padding:24px 32px;overflow-y:auto;max-height:100vh}
+.cc-signout{margin-top:auto;background:none;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);padding:8px;border-radius:8px;font-size:12px;cursor:pointer}
+/* View Level Selector */
+.cc-level-bar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cc-breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px}
+.cc-breadcrumb .bc-item{color:var(--accent);cursor:pointer;font-weight:600;text-decoration:none}
+.cc-breadcrumb .bc-item:hover{text-decoration:underline}
+.cc-breadcrumb .bc-item.active{color:var(--navy);cursor:default}
+.cc-breadcrumb .bc-sep{color:var(--steel);font-size:11px}
+.cc-level-pills{display:flex;gap:6px;margin-left:auto}
+.cc-level-pill{padding:5px 14px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--steel);transition:all .15s}
+.cc-level-pill:hover{border-color:var(--accent);color:var(--accent)}
+.cc-level-pill.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cc-child-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:18px}
+.cc-child-card{background:#fff;border:2px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;position:relative}
+.cc-child-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(99,102,241,0.15);transform:translateY(-2px)}
+.cc-child-card::after{content:'→';position:absolute;top:14px;right:14px;color:var(--accent);font-size:16px;font-weight:700;opacity:0;transition:opacity .15s}
+.cc-child-card:hover::after{opacity:1}
+.cc-child-card .cc-cc-name{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--navy)}
+.cc-child-card .cc-cc-type{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px}
+.cc-child-card .cc-cc-stat{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;color:var(--navy);margin-top:6px}
+.cc-page-title{font-family:'Sora',sans-serif;font-size:22px;font-weight:800;margin-bottom:4px}
+.cc-page-sub{font-size:13px;color:var(--steel);margin-bottom:24px}
+.cc-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+.cc-stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}
+.cc-stat .cc-sv{font-family:'Sora',sans-serif;font-size:24px;font-weight:800;color:var(--navy)}
+.cc-stat .cc-sl{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.cc-stat .cc-var{font-size:12px;font-weight:700;margin-top:4px}
+.cc-stat .cc-var.up{color:var(--verified)}.cc-stat .cc-var.dn{color:var(--danger)}
+.cc-panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.cc-panel h3{font-family:'Sora',sans-serif;font-size:15px;font-weight:700;margin-bottom:12px}
+.cc-table{width:100%;border-collapse:collapse;font-size:13px}
+.cc-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--steel);padding:8px 10px;border-bottom:2px solid var(--line)}
+.cc-table td{padding:8px 10px;border-bottom:1px solid #f3f5f8}
+.cc-table tr[style*="cursor"]:hover td{background:#f0f0ff}
+.cc-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.cc-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+.cc-badge.up{background:#e8f5e9;color:#2e7d32}.cc-badge.dn{background:#fdecea;color:#8c2f22}.cc-badge.flat{background:#fff8e6;color:#b8860b}
+/* Leaderboard */
+.lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:24px 0 32px;padding:0 20px}
+.lb-pod{text-align:center;border-radius:14px 14px 0 0;padding:18px 16px 14px;position:relative;min-width:140px}
+.lb-pod.gold{background:linear-gradient(180deg,#fef3c7,#fde68a);border:2px solid #f59e0b;order:2;min-height:180px}
+.lb-pod.silver{background:linear-gradient(180deg,#f1f5f9,#e2e8f0);border:2px solid #94a3b8;order:1;min-height:150px}
+.lb-pod.bronze{background:linear-gradient(180deg,#fef2e8,#fed7aa);border:2px solid #ea580c;order:3;min-height:130px}
+.lb-pod .lb-rank{font-size:32px;margin-bottom:4px}
+.lb-pod .lb-name{font-family:'Sora',sans-serif;font-weight:800;font-size:15px;color:var(--navy)}
+.lb-pod .lb-store{font-size:11px;color:var(--steel)}
+.lb-pod .lb-val{font-family:'Sora',sans-serif;font-size:22px;font-weight:800;color:var(--navy);margin-top:6px}
+.lb-pod .lb-metric{font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px}
+.lb-cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.lb-card{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lb-card-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.lb-card-head .lb-icon{font-size:20px}
+.lb-card-head h4{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;margin:0;color:var(--navy)}
+.lb-row{display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid #f9fafb;gap:10px}
+.lb-row:last-child{border-bottom:none}
+.lb-row .lb-pos{font-family:'Sora',sans-serif;font-weight:800;font-size:14px;width:24px;text-align:center;color:var(--steel)}
+.lb-row.top1 .lb-pos{color:#f59e0b}
+.lb-row.top2 .lb-pos{color:#94a3b8}
+.lb-row.top3 .lb-pos{color:#ea580c}
+.lb-row .lb-rname{flex:1;font-weight:600;font-size:13px}
+.lb-row .lb-rstore{font-size:11px;color:var(--steel)}
+.lb-row .lb-rval{font-family:'Sora',sans-serif;font-weight:700;font-size:14px;color:var(--navy)}
+/* LOGIN */
+.clogin-overlay{position:fixed;inset:0;background:rgba(15,31,61,0.6);z-index:200;display:none;align-items:center;justify-content:center}
+.clogin-overlay.show{display:flex}
+.clogin-card{background:#fff;border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45);position:relative}
+.clogin-card h2{font-family:'Sora',sans-serif;font-size:20px;font-weight:800;margin-bottom:4px;color:var(--navy)}
+.clogin-field{margin-bottom:14px}
+.clogin-field label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+.clogin-field input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:14px}
+.clogin-notice{font-size:13px;margin-top:10px;text-align:center;display:none}
+.clogin-notice.err{display:block;color:var(--danger)}.clogin-notice.ok{display:block;color:var(--verified)}
+@media(max-width:860px){.cnav-links a:not(.cbtn):not(.cbtn-o){display:none}.cdemo-grid{grid-template-columns:1fr 1fr}.cfeeds{grid-template-columns:1fr}.cc-shell{grid-template-columns:1fr}.cc-side{flex-direction:row;overflow-x:auto}}
+@media(max-width:520px){.cdemo-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div id="ccLanding">
+<nav class="cnav"><div class="cnav-inner">
+  <div class="cnav-logo"><span class="cnav-pill">CC</span>Command Center</div>
+  <div class="cnav-links">
+    <a href="#cc-features">Features</a>
+    <a href="#cc-data-feeds">Data Feeds</a>
+    <a href="#cc-pricing">Pricing</a>
+    <a href="#" onclick="event.preventDefault();toggleCCLogin()" class="cbtn-o">Log In</a>
+    <button class="cbtn" onclick="toggleCCLogin('signup')">Start Free Trial →</button>
+  </div>
+</div></nav>
+
+<section class="chero"><div class="chero-inner">
+  <div class="ceyebrow"><span class="ceyebrow-line"></span><span class="ceyebrow-text">ApplianceIQ — Command Center</span></div>
+  <h1>One Screen.<br>Every <em>Metric</em>.<br>Every Store.</h1>
+  <p class="chero-sub">Revenue, margin, warranty, brand mix, channel split, coaching, training, floor traffic — every number from every ApplianceIQ system, unified in one dashboard. Drill from corporate to the individual rep in two clicks. Budget cascades from a single growth number. Leaderboards keep the floor competitive.</p>
+  <div class="chero-ctas">
+    <button class="cbtn" onclick="toggleCCLogin('signup')" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button>
+    <a href="#cc-data-feeds" class="cbtn-o">See What Feeds In</a>
+  </div>
+  <div class="cdemo">
+    <div class="cdemo-title">Live Dashboard — June 2026 · All Stores</div>
+    <div class="cdemo-grid">
+      <div class="cdemo-card"><div class="cdemo-val">$316,667</div><div class="cdemo-lbl">Revenue</div><div class="cdemo-var flat">● On budget</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">$82,133</div><div class="cdemo-lbl">Gross Margin</div><div class="cdemo-var dn">▼ 3.9% vs budget</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">42.2%</div><div class="cdemo-lbl">Warranty Attach</div><div class="cdemo-var dn">▼ 2.8% vs target</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">73.6%</div><div class="cdemo-lbl">Warranty Pen (Units)</div><div class="cdemo-var dn">▼ 8.0% vs target</div></div>
+    </div>
+    <div class="cdemo-grid" style="margin-top:12px">
+      <div class="cdemo-card"><div class="cdemo-val">$2,869</div><div class="cdemo-lbl">Avg Order</div><div class="cdemo-var up">▲ 2.5% vs target</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">3.14</div><div class="cdemo-lbl">IPO</div><div class="cdemo-var dn">▼ 1.9% vs target</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">62 / 22 / 16</div><div class="cdemo-lbl">Retail / Comm / Trades %</div><div class="cdemo-var flat">● Channel mix</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">6.6/10</div><div class="cdemo-lbl">Coaching Score</div><div class="cdemo-var dn">▼ 6.0% vs target</div></div>
+    </div>
+  </div>
+  <div class="chero-stats">
+    <div><div class="cstat-num">3</div><div class="cstat-lbl">Systems Feed In</div></div>
+    <div><div class="cstat-num">4</div><div class="cstat-lbl">Drill-Down Levels</div></div>
+    <div><div class="cstat-num">35</div><div class="cstat-lbl">Brands Tracked</div></div>
+    <div><div class="cstat-num">3</div><div class="cstat-lbl">Sales Channels</div></div>
+    <div><div class="cstat-num">20+</div><div class="cstat-lbl">Tracked Metrics</div></div>
+  </div>
+</div></section>
+
+<section class="csection" id="cc-features" style="background:#fff"><div class="csection-inner">
+  <div class="ceyebrow"><span class="ceyebrow-line"></span><span class="ceyebrow-text">Features</span></div>
+  <h2 class="ctitle">Everything the floor needs to know.<br>Everything leadership needs to see.</h2>
+  <p class="csub">One dashboard that speaks every language — from the CEO's annual target to the rep's daily scorecard.</p>
+  <div class="cfeat-grid">
+    <div class="cfeat"><div class="cfeat-icon">🔬</div><h3>Corporate → Region → Store → Rep</h3><p>Four drill-down levels with one click each. Breadcrumb navigation. Dropdown selectors for any region, store, or rep by name. Every metric available at every level — same data, different scope.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">💰</div><h3>Cascading Budgets</h3><p>CEO enters one growth number. Budget flows to regions, stores, and reps based on historical share. Add or close a store — budget recalculates. Manual override at every level. Math is a suggestion, not a prison.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">📊</div><h3>Margin ($ and %)</h3><p>Gross margin in dollars and as a percentage — by rep, store, region, corporate. Budget margin targets. See who's protecting margin and who's discounting away the profit.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🛡️</div><h3>Warranty Intelligence</h3><p>Attach rate, unit penetration (pieces with warranty ÷ pieces sold), dollar penetration (warranty $ ÷ revenue $), opportunities, and warranty revenue — all tracked separately, all budgeted, all by rep.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🏷️</div><h3>Brand Mix (35 Brands)</h3><p>Sales % by brand — Samsung, LG, KitchenAid, Sub-Zero, and 31 more. Brands grouped by tier: Entry, Mid, Luxury, Ultra Luxury. Budget brand targets. See who's selling up and who's staying safe.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🏪</div><h3>Channel Split</h3><p>Three sales channels: Retail (walk-in), Commercial (builders, property mgmt), Trades (designers, custom homes, cabinet makers). Revenue and % by channel at every level. See which stores are building trade relationships.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🛒</div><h3>IPO, AOV, Item Value</h3><p>Items per order, average order value, and average item value. Budget each one. Know who's building multi-piece kitchen packages and who's selling one dishwasher at a time.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🏅</div><h3>Leaderboard</h3><p>Podium for top revenue. Warranty champion. Margin leader. 13 category rankings with medals. Auto-generated shoutouts. Small celebrations that keep the floor motivated and competitive.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🏆</div><h3>AI Coaching Scores</h3><p>Average coaching score by rep, store, region. Cross-referenced with training completion, revenue, and conversion. Priority coaching flags for reps trending down. Powered by 6 AI coaching personas.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🎓</div><h3>Training Readiness</h3><p>Academy completion % by rep and store. Readiness badges. Cross-referenced with coaching scores and revenue — see the direct link between training and performance.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🔄</div><h3>Floor / Up System</h3><p>Walk-in count, greeting wait time, floor conversion %, ups taken vs missed. By store and by rep. Know which floors are fast and which are losing walk-ins.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">👤</div><h3>Full Rep Scorecards</h3><p>One card per rep showing revenue vs budget, margin, warranty attach + penetration, IPO, avg order, coaching score, training %, floor conversion, and channel mix. 15+ metrics in one view.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">✏️</div><h3>Everything Editable</h3><p>Every metric, every budget, every target — editable at every level. The cascade is a suggestion. Manual overrides win. Every org's metrics are different. Add your own.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🤖</div><h3>AI Predictions</h3><p>AI analyzes trends and tells you if you're heading toward or away from budget — before the month ends. Recommends coaching focus. Generates next-year predictions from one growth number.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">👁️</div><h3>Role-Based Access</h3><p>CEO sees the org. RSM sees their region. Store manager sees their floor. Rep sees their own card. Multi-tenant from day one. Shared views and custom dashboards.</p></div>
+  </div>
+</div></section>
+
+<section class="csection" id="cc-data-feeds"><div class="csection-inner">
+  <div class="ceyebrow"><span class="ceyebrow-line"></span><span class="ceyebrow-text">Data Feeds</span></div>
+  <h2 class="ctitle">Three systems. One truth.</h2>
+  <p class="csub">Every ApplianceIQ product feeds data into the Command Center. No exports, no spreadsheets, no reconciliation.</p>
+  <div class="cfeeds">
+    <div class="cfeed"><div class="cfeed-icon">🎯</div><h3>CRM</h3><p>Pipeline value, deal stages, revenue closed, coaching scores, KPI averages, recording volume, email activity, AI token usage</p><div class="cfeed-arrow">↓</div></div>
+    <div class="cfeed"><div class="cfeed-icon">🎓</div><h3>Academy</h3><p>Training completion %, track progress, quiz scores, certifications earned, daily floor metrics, cohort enrollment, roleplay sessions</p><div class="cfeed-arrow">↓</div></div>
+    <div class="cfeed"><div class="cfeed-icon">🔄</div><h3>Up System</h3><p>Walk-ins per hour, greeting wait time, ups taken vs missed, conversion rate, floor coverage, shift punctuality, staffing vs predicted</p><div class="cfeed-arrow">↓</div></div>
+  </div>
+</div></section>
+
+<section class="csection" id="cc-pricing" style="background:#fff"><div class="csection-inner">
+  <div class="ceyebrow"><span class="ceyebrow-line"></span><span class="ceyebrow-text">Pricing</span></div>
+  <h2 class="ctitle">See your whole operation.<br>From one seat.</h2>
+  <p class="csub">14-day free trial. No credit card required. Per-org pricing — every authorized user gets access.</p>
+  <div class="cpricing-grid">
+    <div class="cprice-card">
+      <div class="cprice-tier">Insights</div>
+      <div class="cprice-amt">$79<span style="font-size:16px;font-weight:400">/mo</span></div>
+      <div class="cprice-per">1 store · up to 5 viewers</div>
+      <ul class="cprice-list">
+        <li>Revenue, margin, warranty dashboards</li>
+        <li>Budget vs actual tracking</li>
+        <li>Rep scorecards (15+ metrics)</li>
+        <li>Brand mix by tier</li>
+        <li>Channel split (Retail/Commercial/Trades)</li>
+        <li>CRM data feed</li>
+        <li>Leaderboard</li>
+        <li>Monthly period views</li>
+      </ul>
+      <button class="cbtn" onclick="toggleCCLogin('signup')" style="width:100%;text-align:center">Start Free Trial</button>
+    </div>
+    <div class="cprice-card pop">
+      <div class="cprice-tier" style="color:var(--accent)">Operations <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:10px;margin-left:6px">Popular</span></div>
+      <div class="cprice-amt">$199<span style="font-size:16px;font-weight:400">/mo</span></div>
+      <div class="cprice-per">up to 10 stores · unlimited viewers</div>
+      <ul class="cprice-list">
+        <li>Everything in Insights</li>
+        <li>All 3 data feeds (CRM + Academy + Up)</li>
+        <li>Corporate → Region → Store → Rep drill-down</li>
+        <li>Cascading budgets from one growth number</li>
+        <li>35 brands across 4 tiers</li>
+        <li>Warranty: attach + penetration (units & $)</li>
+        <li>IPO, AOV, item value budgets</li>
+        <li>AI predictions + trend alerts</li>
+        <li>YoY comparison</li>
+        <li>Custom dashboard views</li>
+      </ul>
+      <button class="cbtn" onclick="toggleCCLogin('signup')" style="width:100%;text-align:center">Start Free Trial</button>
+    </div>
+    <div class="cprice-card">
+      <div class="cprice-tier">Enterprise</div>
+      <div class="cprice-amt">$399<span style="font-size:16px;font-weight:400">/mo</span></div>
+      <div class="cprice-per">unlimited stores · volume pricing available</div>
+      <ul class="cprice-list">
+        <li>Everything in Operations</li>
+        <li>Regional + district hierarchy</li>
+        <li>AI budget generation from growth %</li>
+        <li>Leaderboard with 13 categories + shoutouts</li>
+        <li>Coaching intelligence + training readiness</li>
+        <li>White-label option</li>
+        <li>API access</li>
+        <li>Scheduled email reports</li>
+        <li>Dedicated onboarding</li>
+        <li>Priority support</li>
+      </ul>
+      <button class="cbtn" onclick="toggleCCLogin('signup')" style="width:100%;text-align:center">Start Free Trial</button>
+    </div>
+  </div>
+</div></section>
+
+<footer class="cfooter">
+  <p>© 2026 ApplianceIQ · <a href="#cc-features">Features</a> · <a href="#cc-pricing">Pricing</a> · <a href="#" onclick="event.preventDefault();toggleCCLogin()">Log In</a> · <a href="https://appliceiq-crm.netlify.app">CRM</a> · <a href="https://applianceiq-iq-up-system.netlify.app">Up System</a></p>
+  <p style="margin-top:8px;font-size:11px;opacity:0.6">Unified analytics for appliance retail. Part of the ApplianceIQ platform.</p>
+</footer>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="clogin-overlay" id="ccLoginOverlay">
+  <div class="clogin-card">
+    <button onclick="toggleCCLogin()" style="position:absolute;top:16px;right:18px;background:none;border:none;font-size:20px;color:var(--steel);cursor:pointer">&times;</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span class="cnav-pill" style="width:34px;height:34px">CC</span>
+      <h2 style="margin:0">Command Center</h2>
+    </div>
+    <div style="font-size:13px;color:var(--steel);margin-bottom:18px">Unified analytics for your operation.</div>
+    <div class="clogin-field"><label>Email</label><input id="ccEmail" type="email" autocomplete="email" placeholder="you@company.com"></div>
+    <div class="clogin-field"><label>Password</label><input id="ccPass" type="password" autocomplete="current-password"></div>
+    <button class="cbtn" id="ccSigninBtn" style="width:100%;text-align:center;padding:12px;margin-top:6px">Sign In</button>
+    <div style="font-size:13px;color:var(--steel);text-align:center;margin-top:14px">New here? <a id="ccSignupLink" style="color:var(--accent);font-weight:600;cursor:pointer">Create an account</a></div>
+    <div class="clogin-notice" id="ccNotice"></div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="ccApp">
+  <div class="cc-shell">
+    <aside class="cc-side">
+      <div class="cc-logo"><span class="cnav-pill" style="width:28px;height:28px;font-size:9px">CC</span> Command Center</div>
+      <button class="cc-nav-btn active" data-view="overview">📊 Overview</button>
+      <button class="cc-nav-btn" data-view="revenue">💰 Revenue & Budget</button>
+      <button class="cc-nav-btn" data-view="warranty">🛡️ Warranty</button>
+      <button class="cc-nav-btn" data-view="brands">🏷️ Brands</button>
+      <button class="cc-nav-btn" data-view="stores">🏬 Stores</button>
+      <button class="cc-nav-btn" data-view="reps">👤 Rep Scorecards</button>
+      <button class="cc-nav-btn" data-view="coaching">🏆 Coaching</button>
+      <button class="cc-nav-btn" data-view="training">🎓 Training</button>
+      <button class="cc-nav-btn" data-view="floor">🔄 Floor / Up System</button>
+      <button class="cc-nav-btn" data-view="leaderboard">🏅 Leaderboard</button>
+      <button class="cc-nav-btn" data-view="settings">⚙️ Settings</button>
+      <button class="cc-signout" id="ccSignout">Sign out</button>
+    </aside>
+    <main class="cc-main" id="ccMain"></main>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const {createClient}=window.supabase;
+const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
+const pct=n=>n==null?'—':(n>=0?'+':'')+n.toFixed(1)+'%';
+
+let currentOrg=null,currentView='overview';
+// View level: {level:'corporate'|'region'|'store'|'rep', id:null|locationId|userId, name:'', path:[]}
+let viewLevel={level:'corporate',id:null,name:'All Stores',path:[]};
+let allLocs=[], allUserIds=[], repNames={};
+
+function repName(uid){ return repNames[uid] || uid.slice(0,8)+'…'; }
+
+function setLevel(level,id,name){
+  const prev={level:viewLevel.level,id:viewLevel.id,name:viewLevel.name};
+  if(level==='corporate') viewLevel={level,id:null,name:'All Stores',path:[]};
+  else viewLevel={level,id,name,path:[...viewLevel.path.filter(p=>p.level!==level),prev].filter(p=>p.level!=='corporate')};
+  renderCC();
+}
+function goUp(){
+  if(viewLevel.path.length>0){
+    const prev=viewLevel.path[viewLevel.path.length-1];
+    viewLevel={level:prev.level,id:prev.id,name:prev.name,path:viewLevel.path.slice(0,-1)};
+  } else viewLevel={level:'corporate',id:null,name:'All Stores',path:[]};
+  renderCC();
+}
+
+function toggleCCLogin(mode){
+  const o=$('#ccLoginOverlay');
+  if(o.classList.contains('show')){o.classList.remove('show');}
+  else{o.classList.add('show');$('#ccEmail').focus();if(mode==='signup')ccNote('Enter email and password, then tap Create an account.',true);}
+}
+function ccNote(msg,ok){const e=$('#ccNotice');e.textContent=msg;e.className='clogin-notice '+(ok?'ok':'err');}
+
+$('#ccSigninBtn').onclick=async()=>{
+  const email=$('#ccEmail').value.trim(),pass=$('#ccPass').value;
+  if(!email||!pass){ccNote('Enter email and password.');return;}
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ccNote(error.message);return;}
+  toggleCCLogin();bootApp();
+};
+$('#ccSignupLink').onclick=async()=>{
+  const email=$('#ccEmail').value.trim(),pass=$('#ccPass').value;
+  if(!email||!pass){ccNote('Enter email and password first.');return;}
+  const{error}=await sb.auth.signUp({email,password:pass});
+  if(error){ccNote(error.message);return;}
+  ccNote('Account created! Signing you in…',true);
+  const{error:e2}=await sb.auth.signInWithPassword({email,password:pass});
+  if(e2){ccNote('Account created — check email to confirm, then sign in.',true);return;}
+  toggleCCLogin();bootApp();
+};
+$('#ccSignout').onclick=async()=>{await sb.auth.signOut();location.reload();};
+$('#ccLoginOverlay').onclick=e=>{if(e.target===$('#ccLoginOverlay'))toggleCCLogin();};
+
+document.querySelectorAll('.cc-nav-btn').forEach(b=>{
+  b.onclick=()=>{document.querySelectorAll('.cc-nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;renderCC();}
+});
+
+async function bootApp(){
+  $('#ccLanding').style.display='none';$('#ccApp').style.display='block';
+  const{data:mem}=await sb.from('organization_members').select('organization_id,organizations(id,name)').eq('status','active');
+  const orgs=(mem??[]).map(m=>m.organizations).filter(Boolean);
+  if(orgs.length===0){
+    await sb.rpc('join_demo_org');
+    const{data:m2}=await sb.from('organization_members').select('organizations(id,name)').eq('status','active');
+    const o2=(m2??[]).map(m=>m.organizations).filter(Boolean);
+    currentOrg=o2[0]??null;
+  } else currentOrg=orgs[0];
+  if(!currentOrg){$('#ccMain').innerHTML='<div style="padding:40px;color:var(--steel);text-align:center">No organization found. Ask your admin for an invite.</div>';return;}
+  // Load rep names
+  const{data:profiles}=await sb.rpc('get_org_member_profiles',{p_org_id:currentOrg.id});
+  repNames={};(profiles??[]).forEach(p=>{repNames[p.user_id]=p.display_name;});
+  renderCC();
+}
+
+async function renderCC(){
+  const m=$('#ccMain');m.innerHTML='<div style="padding:40px;color:var(--steel);text-align:center">Loading…</div>';
+  if(currentView==='overview') return renderOverview();
+  if(currentView==='revenue') return renderRevenue();
+  if(currentView==='warranty') return renderWarranty();
+  if(currentView==='brands') return renderBrands();
+  if(currentView==='stores') return renderStores();
+  if(currentView==='reps') return renderReps();
+  if(currentView==='coaching') return renderCoaching();
+  if(currentView==='training') return renderTraining();
+  if(currentView==='floor') return renderFloor();
+  if(currentView==='leaderboard') return renderLeaderboard();
+  if(currentView==='settings') return renderSettings();
+}
+
+// Event delegation for drill-down clicks (avoids inline onclick escaping issues)
+function bindClicks(){
+  const main=$('#ccMain');
+  main.querySelectorAll('[data-rep-id]').forEach(el=>{
+    el.onclick=()=>setLevel('rep',el.dataset.repId,el.dataset.repName);
+  });
+  main.querySelectorAll('[data-store-id]').forEach(el=>{
+    el.onclick=()=>setLevel('store',el.dataset.storeId,el.dataset.storeName);
+  });
+}
+
+// Helper: load snapshots filtered by current view level
+async function loadAll(period='2026-06'){
+  const locR=await sb.from('org_locations').select('id,name,location_type,code,city,parent_id,is_active').eq('organization_id',currentOrg.id).eq('is_active',true);
+  allLocs=locR.data??[];
+  const lv=viewLevel;
+  let scopeLocIds=[];
+  if(lv.level==='corporate') scopeLocIds=allLocs.map(l=>l.id);
+  else if(lv.level==='region') scopeLocIds=[lv.id,...allLocs.filter(l=>l.parent_id===lv.id).map(l=>l.id)];
+  else if(lv.level==='store') scopeLocIds=[lv.id];
+
+  let corpQ=sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period);
+  if(lv.level==='corporate') corpQ=corpQ.is('location_id',null).is('user_id',null);
+  else if(lv.level==='region') corpQ=corpQ.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='store') corpQ=corpQ.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='rep') corpQ=corpQ.eq('user_id',lv.id);
+
+  const [corpR,storeR,repR]=await Promise.all([corpQ,
+    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).is('user_id',null).not('location_id','is',null).in('location_id',scopeLocIds.length?scopeLocIds:['00000000-0000-0000-0000-000000000000']),
+    sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key',period).not('user_id','is',null),
+  ]);
+  const corp=corpR.data??[],stores=storeR.data??[];
+  let scopeReps=repR.data??[];
+  if(lv.level==='store'){
+    const{data:members}=await sb.from('org_location_members').select('user_id').eq('location_id',lv.id);
+    const mids=(members??[]).map(m=>m.user_id);
+    scopeReps=scopeReps.filter(r=>mids.includes(r.user_id));
+  } else if(lv.level==='rep') scopeReps=scopeReps.filter(r=>r.user_id===lv.id);
+
+  const g=(k)=>corp.find(r=>r.metric_key===k)||{};
+  const gl=(arr,lid,key)=>arr.find(r=>r.location_id===lid&&r.metric_key===key)||{};
+  const gu=(arr,uid,key)=>arr.find(r=>r.user_id===uid&&r.metric_key===key)||{};
+  let childLocs=[];
+  if(lv.level==='corporate') childLocs=allLocs.filter(l=>l.location_type==='region');
+  else if(lv.level==='region') childLocs=allLocs.filter(l=>l.parent_id===lv.id&&l.location_type==='store');
+  const storeList=lv.level==='corporate'?allLocs.filter(l=>l.location_type==='store'):lv.level==='region'?allLocs.filter(l=>l.parent_id===lv.id):lv.level==='store'?allLocs.filter(l=>l.id===lv.id):[];
+  const userIds=[...new Set(scopeReps.map(r=>r.user_id))];
+  allUserIds=userIds;
+  return {corp,stores,reps:scopeReps,locs:allLocs,storeList,childLocs,userIds,g,gl,gu};
+}
+
+function levelBar(){
+  const lv=viewLevel;
+  let bc=`<span class="bc-item ${lv.level==='corporate'?'active':''}" onclick="setLevel('corporate')">🏢 Corporate</span>`;
+  for(const p of lv.path){
+    const em=p.level==='region'?'🗺️':p.level==='store'?'🏬':'👤';
+    bc+=`<span class="bc-sep">›</span><span class="bc-item" onclick="setLevel('${p.level}','${p.id}','${esc(p.name)}')">${em} ${esc(p.name)}</span>`;
+  }
+  if(lv.level!=='corporate'){
+    const em=lv.level==='region'?'🗺️':lv.level==='store'?'🏬':'👤';
+    bc+=`<span class="bc-sep">›</span><span class="bc-item active">${em} ${esc(lv.name)}</span>`;
+  }
+  const regions=allLocs.filter(l=>l.location_type==='region');
+  const stores=allLocs.filter(l=>l.location_type==='store');
+  return `<div class="cc-level-bar"><div class="cc-breadcrumb">${bc}</div>
+    <div class="cc-level-pills">
+      <button class="cc-level-pill ${lv.level==='corporate'?'active':''}" onclick="setLevel('corporate')">🏢 Corporate</button>
+      <select class="cc-level-pill ${lv.level==='region'?'active':''}" onchange="if(this.value){const o=JSON.parse(this.value);setLevel('region',o.id,o.name)}" style="cursor:pointer">
+        <option value="">🗺️ Region</option>
+        ${regions.map(r=>`<option value='${JSON.stringify({id:r.id,name:r.name}).replace(/'/g,"&#39;")}' ${lv.level==='region'&&lv.id===r.id?'selected':''}>${r.name}</option>`).join('')}
+      </select>
+      <select class="cc-level-pill ${lv.level==='store'?'active':''}" onchange="if(this.value){const o=JSON.parse(this.value);setLevel('store',o.id,o.name)}" style="cursor:pointer">
+        <option value="">🏬 Store</option>
+        ${stores.map(s=>`<option value='${JSON.stringify({id:s.id,name:s.name}).replace(/'/g,"&#39;")}' ${lv.level==='store'&&lv.id===s.id?'selected':''}>${s.name}</option>`).join('')}
+      </select>
+      <select class="cc-level-pill ${lv.level==='rep'?'active':''}" onchange="if(this.value){const o=JSON.parse(this.value);setLevel('rep',o.id,o.name)}" style="cursor:pointer">
+        <option value="">👤 Rep</option>
+        ${Object.entries(repNames).map(([uid,name])=>`<option value='${JSON.stringify({id:uid,name:name}).replace(/'/g,"&#39;")}' ${lv.level==='rep'&&lv.id===uid?'selected':''}>${name}</option>`).join('')}
+      </select>
+    </div></div>`;
+}
+
+function childCards(d){
+  if(d.childLocs.length>0){
+    const next=viewLevel.level==='corporate'?'region':'store';
+    return `<div class="cc-child-grid">${d.childLocs.map(c=>{
+      const rev=d.gl(d.stores,c.id,'revenue')||{};const co=d.gl(d.stores,c.id,'coaching_avg')||{};const wa=d.gl(d.stores,c.id,'warranty_attach')||{};
+      return `<div class="cc-child-card" onclick="setLevel('${next}','${c.id}','${esc(c.name)}')">
+        <div class="cc-cc-type">${esc(c.location_type)} ${esc(c.code??'')}</div>
+        <div class="cc-cc-name">${esc(c.name)}</div>
+        <div class="cc-cc-stat">${money(rev.actual_value)}</div>
+        <div style="font-size:11px;color:var(--steel)">Coach: ${co.actual_value?fmtN(co.actual_value,1)+'/10':'—'} · War: ${wa.actual_value?fmtP(wa.actual_value):'—'}</div>
+      </div>`;}).join('')}</div>`;
+  }
+  if(viewLevel.level==='store'&&d.userIds.length>0){
+    return `<div class="cc-child-grid">${d.userIds.map(uid=>{
+      const rev=d.gu(d.reps,uid,'revenue')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};
+      return `<div class="cc-child-card" data-rep-id="${uid}" data-rep-name="${esc(repName(uid))}">
+        <div class="cc-cc-type">Sales Rep</div><div class="cc-cc-name">${esc(repName(uid))}</div>
+        <div class="cc-cc-stat">${money(rev.actual_value)}</div>
+        <div style="font-size:11px;color:var(--steel)">Coach: ${co.actual_value?fmtN(co.actual_value,1)+'/10':'—'} · War: ${wa.actual_value?fmtP(wa.actual_value):'—'}</div>
+      </div>`;}).join('')}</div>`;
+  }
+  return '';
+}
+
+async function renderOverview(){
+  const d=await loadAll();const m=$('#ccMain');const isRep=viewLevel.level==='rep';
+  const rev=d.g('revenue'),war=d.g('warranty_value'),warA=d.g('warranty_attach'),units=d.g('units_sold');
+  const avgO=d.g('avg_order'),ipo=d.g('ipo'),itemV=d.g('item_value'),coach=d.g('coaching_avg'),train=d.g('training_completion'),conv=d.g('floor_conversion'),walks=d.g('walk_ins'),greet=d.g('greeting_time'),warOpp=d.g('warranty_opps');
+  const mgD=d.g('margin_dollars'),mgP=d.g('margin_pct'),wpU=d.g('warranty_pen_units'),wpD=d.g('warranty_pen_dollars');
+  m.innerHTML=`${levelBar()}
+    <h2 class="cc-page-title">${isRep?esc(viewLevel.name):viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
+    <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · ${esc(viewLevel.name)}</p>
+    ${childCards(d)}
+    <div class="cc-stat-grid">
+      ${statCard('Revenue',money(rev.actual_value),'Budget: '+money(rev.target_value),rev.variance_pct)}
+      ${statCard('Margin $',money(mgD.actual_value),'Budget: '+money(mgD.target_value),mgD.variance_pct)}
+      ${statCard('Margin %',fmtP(mgP.actual_value),'Target: '+fmtP(mgP.target_value),mgP.variance_pct)}
+      ${statCard('Avg Order',money(avgO.actual_value),'Target: '+money(avgO.target_value),avgO.variance_pct)}
+      ${statCard('IPO',fmtN(ipo.actual_value,2),'Target: '+fmtN(ipo.target_value,1),ipo.variance_pct)}
+      ${statCard('Item Value',money(itemV.actual_value),'Target: '+money(itemV.target_value),itemV.variance_pct)}
+      ${statCard('Units',fmtN(units.actual_value,0),'Target: '+fmtN(units.target_value,0),units.variance_pct)}
+      ${statCard('Warranty $',money(war.actual_value),'Budget: '+money(war.target_value),war.variance_pct)}
+      ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('Pen. (Units)',fmtP(wpU.actual_value),'Target: '+fmtP(wpU.target_value),wpU.variance_pct)}
+      ${statCard('Pen. ($)',fmtP(wpD.actual_value),'War$/Rev$, Target: '+fmtP(wpD.target_value),wpD.variance_pct)}
+      ${statCard('War. Opps',fmtN(warOpp.actual_value,0),'Target: '+fmtN(warOpp.target_value,0),warOpp.variance_pct)}
+      ${statCard('Coaching',fmtN(coach.actual_value,1)+'/10','Target: '+fmtN(coach.target_value,1),coach.variance_pct)}
+      ${statCard('Training',fmtP(train.actual_value),'Target: 100%',train.variance_pct)}
+      ${statCard('Conversion',fmtP(conv.actual_value),'Target: '+fmtP(conv.target_value),conv.variance_pct)}
+      ${!isRep&&walks.actual_value?statCard('Walk-Ins',fmtN(walks.actual_value,0),'This month',null):''}
+      ${!isRep&&greet.actual_value?statCard('Greeting',fmtN(greet.actual_value,0)+'s','Target: '+fmtN(greet.target_value,0)+'s',greet.variance_pct):''}
+    </div>
+    ${!isRep&&d.storeList.length>1?storeTable('Revenue by Location',d,'revenue',money):''}
+    ${!isRep&&d.storeList.length>1?storeTable('Warranty Attach',d,'warranty_attach',fmtP):''}
+    ${viewLevel.level==='store'&&d.userIds.length>0?repTable(d):''}
+    ${await channelPanel()}`;
+  bindClicks();
+}
+
+async function channelPanel(){
+  const lv=viewLevel;
+  let q=sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').in('metric_key',['channel_pct','channel_revenue']);
+  if(lv.level==='corporate') q=q.is('location_id',null).is('user_id',null);
+  else if(lv.level==='region') q=q.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='store') q=q.eq('location_id',lv.id).is('user_id',null);
+  else if(lv.level==='rep') q=q.eq('user_id',lv.id);
+  const{data:ch}=await q;
+  const pcts=(ch??[]).filter(c=>c.metric_key==='channel_pct');
+  const revs=(ch??[]).filter(c=>c.metric_key==='channel_revenue');
+  if(pcts.length===0) return '';
+  const channels=['Retail','Commercial','Trades'];
+  const colors={Retail:'var(--accent)',Commercial:'#d97706',Trades:'#7c3aed'};
+  const icons={Retail:'🏪',Commercial:'🏢',Trades:'🔨'};
+  const labels={Trades:'Trades (Designers, Builders, Cabinet Makers)'};
+  return `<div class="cc-panel"><h3>Sales by Channel</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">${channels.map(c=>{
+      const p=pcts.find(x=>x.metric_subtype===c)||{};const r=revs.find(x=>x.metric_subtype===c)||{};
+      const gap=(p.actual_value??0)-(p.target_value??0);
+      return `<div style="flex:1;min-width:180px;border:1px solid var(--line);border-radius:10px;padding:16px">
+        <div style="font-size:13px;color:${colors[c]};font-weight:700">${icons[c]} ${esc(labels[c]??c)}</div>
+        <div style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:var(--navy);margin:4px 0">${fmtP(p.actual_value)}</div>
+        ${r.actual_value?`<div style="font-size:13px;color:var(--ink)">${money(r.actual_value)}</div>`:''}
+        <div style="font-size:11px;color:var(--steel)">Target: ${fmtP(p.target_value)} · <span style="color:${gap>=0?'var(--verified)':'var(--danger)'}">Gap: ${gap>=0?'+':''}${gap.toFixed(1)}%</span></div>
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;margin-top:8px;overflow:hidden"><div style="background:${colors[c]};height:100%;width:${Math.min(p.actual_value??0,100)}%;border-radius:4px"></div></div>
+      </div>`;}).join('')}</div></div>`;
+}
+
+function repTable(d){
+  return `<div class="cc-panel"><h3>Rep Performance</h3>
+  <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Revenue</th><th class="num">vs Budget</th><th class="num">Avg Order</th><th class="num">IPO</th><th class="num">War %</th><th class="num">Coach</th><th class="num">Train</th><th class="num">Conv</th><th>Action</th></tr></thead><tbody>
+  ${d.userIds.map(uid=>{
+    const rv=d.gu(d.reps,uid,'revenue')||{};const ao=d.gu(d.reps,uid,'avg_order')||{};const ip=d.gu(d.reps,uid,'ipo')||{};
+    const wa=d.gu(d.reps,uid,'warranty_attach')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};
+    const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};const v=rv.variance_pct??0;
+    return `<tr style="cursor:pointer" data-rep-id="${uid}" data-rep-name="${esc(repName(uid))}">
+      <td><b>${esc(repName(uid))}</b></td><td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
+      <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${fmtP(wa.actual_value)}</td>
+      <td class="num">${fmtN(co.actual_value,1)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+      <td>${v>5?'<span class="cc-badge up">Strong</span>':v<-5?'<span class="cc-badge dn">Coach</span>':'<span class="cc-badge flat">OK</span>'}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+function storeTable(title,d,key,fmt){
+  return `<div class="cc-panel"><h3>${title}</h3>
+  <table class="cc-table"><thead><tr><th>Store</th><th class="num">Actual</th><th class="num">Target</th><th class="num">Variance</th><th>Status</th></tr></thead><tbody>
+  ${d.storeList.map(s=>{const r=d.gl(d.stores,s.id,key)||{};const v=r.variance_pct??0;
+    return `<tr style="cursor:pointer" data-store-id="${s.id}" data-store-name="${esc(s.name)}"><td><b>${esc(s.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(s.code??'')}</span></td>
+    <td class="num">${fmt(r.actual_value)}</td><td class="num">${fmt(r.target_value)}</td>
+    <td class="num">${pct(v)}</td><td>${badge(v)}</td></tr>`;}).join('')}</tbody></table></div>`;
+}
+
+async function renderRevenue(){
+  const d=await loadAll();const m=$('#ccMain');
+  const{data:plan}=await sb.from('budget_plans').select('*').eq('organization_id',currentOrg.id).eq('status','active').maybeSingle();
+  const{data:nodes}=await sb.from('budget_nodes').select('location_id,metric_type,target_value,pct_of_parent').eq('budget_plan_id',plan?.id).eq('period_type','annual');
+  m.innerHTML=`<h2 class="cc-page-title">Revenue & Budget</h2>
+    <p class="cc-page-sub">${plan?esc(plan.plan_name)+' · '+money(plan.total_revenue_target)+' target · '+plan.growth_pct+'% growth from '+plan.base_year:'No active plan'}</p>
+    <div class="cc-stat-grid">
+      ${statCard('Annual Target',money(plan?.total_revenue_target),'Growth: '+(plan?.growth_pct??0)+'%',null)}
+      ${statCard('MTD Revenue',money(d.g('revenue').actual_value),'June budget: '+money(d.g('revenue').target_value),d.g('revenue').variance_pct)}
+      ${statCard('Avg Order',money(d.g('avg_order').actual_value),'Target: '+money(d.g('avg_order').target_value),d.g('avg_order').variance_pct)}
+      ${statCard('IPO',fmtN(d.g('ipo').actual_value,2),'Target: '+fmtN(d.g('ipo').target_value,1),d.g('ipo').variance_pct)}
+      ${statCard('Item Value',money(d.g('item_value').actual_value),'Target: '+money(d.g('item_value').target_value),d.g('item_value').variance_pct)}
+    </div>
+    <div class="cc-panel"><h3>Annual Budget Cascade</h3>
+    <table class="cc-table"><thead><tr><th>Location</th><th>Type</th><th class="num">Annual Revenue Target</th><th class="num">% of Parent</th></tr></thead><tbody>
+    <tr style="font-weight:700"><td>Corporate</td><td>—</td><td class="num">${money(plan?.total_revenue_target)}</td><td class="num">100%</td></tr>
+    ${d.locs.filter(l=>l.location_type!=='corporate').sort((a,b)=>{const o={region:1,district:2,store:3};return (o[a.location_type]??9)-(o[b.location_type]??9);}).map(l=>{
+      const n=(nodes??[]).find(x=>x.location_id===l.id&&x.metric_type==='revenue');
+      const indent=l.location_type==='region'?16:l.location_type==='district'?32:48;
+      return `<tr><td style="padding-left:${indent}px">${esc(l.name)} <span style="color:var(--steel);font-size:11px">${esc(l.code??'')}</span></td><td>${esc(l.location_type)}</td><td class="num">${money(n?.target_value)}</td><td class="num">${n?.pct_of_parent?n.pct_of_parent.toFixed(1)+'%':'—'}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    ${storeTable('MTD Revenue by Store',d,'revenue',money)}`;
+}
+
+async function renderWarranty(){
+  const d=await loadAll();const m=$('#ccMain');
+  const warV=d.g('warranty_value'),warA=d.g('warranty_attach'),warO=d.g('warranty_opps');
+  const penetration=warO.actual_value&&d.g('units_sold').actual_value?(warO.actual_value/d.g('units_sold').actual_value*100):0;
+  m.innerHTML=`<h2 class="cc-page-title">Warranty Intelligence</h2><p class="cc-page-sub">Attach rate, penetration, and revenue · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Warranty Revenue',money(warV.actual_value),'Budget: '+money(warV.target_value),warV.variance_pct)}
+      ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('Opportunities',fmtN(warO.actual_value,0),'Target: '+fmtN(warO.target_value,0),warO.variance_pct)}
+      ${statCard('Penetration Rate',penetration.toFixed(1)+'%','Opps vs units sold',null)}
+    </div>
+    <div class="cc-panel"><h3>Warranty by Store</h3>
+    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Attach %</th><th class="num">Target</th><th class="num">Gap</th><th class="num">Opps</th><th class="num">Warranty $</th><th class="num">Budget $</th><th>Status</th></tr></thead><tbody>
+    ${d.storeList.map(s=>{
+      const wa=d.gl(d.stores,s.id,'warranty_attach')||{};const wv=d.gl(d.stores,s.id,'warranty_value')||{};const wo=d.gl(d.stores,s.id,'warranty_opps')||{};
+      const gap=(wa.actual_value??0)-(wa.target_value??0);
+      return `<tr><td><b>${esc(s.name)}</b></td><td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtP(wa.target_value)}</td><td class="num" style="color:${gap>=0?'var(--verified)':'var(--danger)'}">${gap>=0?'+':''}${gap.toFixed(1)}%</td><td class="num">${fmtN(wo.actual_value,0)}</td><td class="num">${money(wv.actual_value)}</td><td class="num">${money(wv.target_value)}</td><td>${badge(gap,0,-5)}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="cc-panel"><h3>Warranty by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Attach %</th><th class="num">Opps</th><th class="num">Warranty $</th><th>Status</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const wa=d.gu(d.reps,uid,'warranty_attach')||{};const wv=d.gu(d.reps,uid,'warranty_value')||{};const wo=d.gu(d.reps,uid,'warranty_opps')||{};
+      const gap=(wa.actual_value??0)-45;
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td><td class="num">${money(wv.actual_value)}</td><td>${badge(gap,0,-5)}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderStores(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Stores & Hierarchy</h2><p class="cc-page-sub">${d.locs.length} locations · ${d.storeList.length} active stores</p>
+    <div class="cc-panel"><h3>Organization Tree</h3>
+    <table class="cc-table"><thead><tr><th>Location</th><th>Type</th><th>City</th><th class="num">Revenue</th><th class="num">Coaching</th><th class="num">Walk-Ins</th><th>Status</th></tr></thead><tbody>
+    ${d.locs.sort((a,b)=>{const o={corporate:0,region:1,district:2,store:3};return (o[a.location_type]??9)-(o[b.location_type]??9)||a.name.localeCompare(b.name);}).map(l=>{
+      const rev=d.gl(d.stores,l.id,'revenue')||{};const coach=d.gl(d.stores,l.id,'coaching_avg')||{};const walks=d.gl(d.stores,l.id,'walk_ins')||{};
+      const indent=l.location_type==='corporate'?0:l.location_type==='region'?16:l.location_type==='district'?32:48;
+      return `<tr><td style="padding-left:${indent}px"><b>${esc(l.name)}</b> <span style="color:var(--steel);font-size:11px">${esc(l.code??'')}</span></td><td>${esc(l.location_type)}</td><td>${esc(l.city??'')}</td><td class="num">${money(rev.actual_value)}</td><td class="num">${coach.actual_value?fmtN(coach.actual_value,1)+'/10':'—'}</td><td class="num">${fmtN(walks.actual_value,0)}</td><td><span class="cc-badge ${l.is_active?'up':'dn'}">${l.is_active?'Active':'Closed'}</span></td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderReps(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Rep Scorecards</h2><p class="cc-page-sub">${d.userIds.length} reps · June 2026</p>
+    <div class="cc-panel"><h3>Full Scorecard</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Revenue</th><th class="num">vs Budget</th><th class="num">Avg Order</th><th class="num">IPO</th><th class="num">Item $</th><th class="num">War %</th><th class="num">War Opps</th><th class="num">Coach</th><th class="num">Training</th><th class="num">Conv %</th><th>Status</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const rv=d.gu(d.reps,uid,'revenue')||{};const ao=d.gu(d.reps,uid,'avg_order')||{};const ip=d.gu(d.reps,uid,'ipo')||{};
+      const iv=d.gu(d.reps,uid,'item_value')||{};const wa=d.gu(d.reps,uid,'warranty_attach')||{};const wo=d.gu(d.reps,uid,'warranty_opps')||{};
+      const co=d.gu(d.reps,uid,'coaching_avg')||{};const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};
+      const v=rv.variance_pct??0;const coachV=co.variance_pct??0;
+      return `<tr><td><b>${esc(repName(uid))}</b></td>
+        <td class="num">${money(rv.actual_value)}</td><td class="num">${badge(v)}</td>
+        <td class="num">${money(ao.actual_value)}</td><td class="num">${fmtN(ip.actual_value,1)}</td><td class="num">${money(iv.actual_value)}</td>
+        <td class="num">${fmtP(wa.actual_value)}</td><td class="num">${fmtN(wo.actual_value,0)}</td>
+        <td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+        <td>${v>5?'<span class="cc-badge up">Strong</span>':v<-5?'<span class="cc-badge dn">Needs coaching</span>':'<span class="cc-badge flat">On track</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderCoaching(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Coaching Intelligence</h2><p class="cc-page-sub">AI coaching performance across all stores · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Org Avg Score',fmtN(d.g('coaching_avg').actual_value,1)+'/10','Target: '+fmtN(d.g('coaching_avg').target_value,1)+'/10',d.g('coaching_avg').variance_pct)}
+    </div>
+    ${storeTable('Coaching Score by Store',d,'coaching_avg',(v)=>v?fmtN(v,1)+'/10':'—')}
+    <div class="cc-panel"><h3>Coaching by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Score</th><th class="num">Target</th><th class="num">Variance</th><th class="num">Training %</th><th class="num">Conv %</th><th>Action</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const co=d.gu(d.reps,uid,'coaching_avg')||{};const tr=d.gu(d.reps,uid,'training_completion')||{};const fc=d.gu(d.reps,uid,'floor_conversion')||{};
+      const v=co.variance_pct??0;
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${fmtN(co.target_value,1)}/10</td><td class="num">${pct(v)}</td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtP(fc.actual_value)}</td>
+        <td>${v<-15?'<span class="cc-badge dn">Priority coaching</span>':v<-5?'<span class="cc-badge flat">Monitor</span>':'<span class="cc-badge up">On track</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderTraining(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Training & Academy</h2><p class="cc-page-sub">Training completion and readiness · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Org Completion',fmtP(d.g('training_completion').actual_value),'Target: 100%',d.g('training_completion').variance_pct)}
+    </div>
+    ${storeTable('Training Completion by Store',d,'training_completion',fmtP)}
+    <div class="cc-panel"><h3>Training by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Completion</th><th class="num">Coaching Score</th><th class="num">Revenue</th><th>Readiness</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const tr=d.gu(d.reps,uid,'training_completion')||{};const co=d.gu(d.reps,uid,'coaching_avg')||{};const rv=d.gu(d.reps,uid,'revenue')||{};
+      const v=tr.actual_value??0;
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(tr.actual_value)}</td><td class="num">${fmtN(co.actual_value,1)}/10</td><td class="num">${money(rv.actual_value)}</td>
+        <td>${v>=90?'<span class="cc-badge up">Ready</span>':v>=70?'<span class="cc-badge flat">In progress</span>':'<span class="cc-badge dn">Behind</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderFloor(){
+  const d=await loadAll();const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Floor / Up System</h2><p class="cc-page-sub">Walk-in traffic, conversion, and greeting times · June 2026</p>
+    <div class="cc-stat-grid">
+      ${statCard('Total Walk-Ins',fmtN(d.g('walk_ins').actual_value,0),'All stores',null)}
+      ${statCard('Floor Conversion',fmtP(d.g('floor_conversion').actual_value),'Target: '+fmtP(d.g('floor_conversion').target_value),d.g('floor_conversion').variance_pct)}
+      ${statCard('Avg Greeting',fmtN(d.g('greeting_time').actual_value,0)+'s','Target: '+fmtN(d.g('greeting_time').target_value,0)+'s',d.g('greeting_time').variance_pct)}
+    </div>
+    <div class="cc-panel"><h3>Floor Performance by Store</h3>
+    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Walk-Ins</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Greeting Time</th><th class="num">Target</th><th>Status</th></tr></thead><tbody>
+    ${d.storeList.map(s=>{
+      const wi=d.gl(d.stores,s.id,'walk_ins')||{};const fc=d.gl(d.stores,s.id,'floor_conversion')||{};const gt=d.gl(d.stores,s.id,'greeting_time')||{};
+      const v=fc.variance_pct??0;
+      return `<tr><td><b>${esc(s.name)}</b></td><td class="num">${fmtN(wi.actual_value,0)}</td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${fmtN(gt.actual_value,0)}s</td><td class="num">${fmtN(gt.target_value,0)}s</td><td>${badge(v)}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="cc-panel"><h3>Conversion by Rep</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Revenue</th><th>Status</th></tr></thead><tbody>
+    ${d.userIds.map(uid=>{
+      const fc=d.gu(d.reps,uid,'floor_conversion')||{};const rv=d.gu(d.reps,uid,'revenue')||{};const v=fc.variance_pct??0;
+      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${money(rv.actual_value)}</td><td>${badge(v)}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function renderBrands(){
+  const{data:brands}=await sb.from('brand_catalog').select('*').eq('organization_id',currentOrg.id).eq('is_active',true).order('sort_order');
+  const{data:brandSnaps}=await sb.from('metric_snapshots').select('*').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').in('metric_key',['brand_pct','brand_tier_pct']).is('location_id',null).is('user_id',null);
+  const byBrand=(brandSnaps??[]).filter(s=>s.metric_key==='brand_pct').sort((a,b)=>(b.actual_value??0)-(a.actual_value??0));
+  const byTier=(brandSnaps??[]).filter(s=>s.metric_key==='brand_tier_pct');
+  const tierLabels={entry:'Entry Level',mid:'Mid Level',luxury:'Luxury',ultra_luxury:'Ultra Luxury'};
+  const tierColors={entry:'#6b7280',mid:'var(--accent)',luxury:'#d97706',ultra_luxury:'#7c3aed'};
+  const m=$('#ccMain');
+  m.innerHTML=`${levelBar()}
+    <h2 class="cc-page-title">Brand Mix</h2><p class="cc-page-sub">Sales % by brand and tier · June 2026</p>
+    <div class="cc-panel"><h3>Sales by Tier</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">${byTier.sort((a,b)=>{const o={entry:0,mid:1,luxury:2,ultra_luxury:3};return (o[a.metric_subtype]??9)-(o[b.metric_subtype]??9);}).map(t=>`
+      <div style="flex:1;min-width:140px;background:#f9fafb;border:1px solid var(--line);border-radius:10px;padding:16px;text-align:center">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:${tierColors[t.metric_subtype]??'var(--steel)'}">${esc(tierLabels[t.metric_subtype]??t.metric_subtype)}</div>
+        <div style="font-family:'Sora',sans-serif;font-size:28px;font-weight:800;color:var(--navy)">${fmtP(t.actual_value)}</div>
+        <div style="font-size:11px;color:var(--steel)">Target: ${fmtP(t.target_value)}</div>
+      </div>`).join('')}</div></div>
+    <div class="cc-panel"><h3>Sales by Brand</h3>
+    <table class="cc-table"><thead><tr><th>Brand</th><th>Tier</th><th class="num">% of Sales</th><th class="num">Target</th><th class="num">Gap</th><th style="width:30%">Share</th></tr></thead><tbody>
+    ${byBrand.map(b=>{
+      const brand=(brands??[]).find(br=>br.brand_name===b.metric_subtype);
+      const tier=brand?.brand_tier??'mid';const gap=(b.actual_value??0)-(b.target_value??0);
+      return `<tr><td><b>${esc(b.metric_subtype)}</b></td>
+        <td><span style="font-size:11px;font-weight:700;color:${tierColors[tier]??'var(--steel)'}">${esc(tierLabels[tier]??tier)}</span></td>
+        <td class="num">${fmtP(b.actual_value)}</td><td class="num">${fmtP(b.target_value)}</td>
+        <td class="num" style="color:${gap>=0?'var(--verified)':'var(--danger)'}">${gap>=0?'+':''}${gap.toFixed(1)}%</td>
+        <td><div style="background:#e5e7eb;border-radius:4px;height:18px;overflow:hidden"><div style="background:${tierColors[tier]??'var(--accent)'};height:100%;width:${Math.min(b.actual_value??0,100)}%;border-radius:4px"></div></div></td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="cc-panel"><h3>Brand Catalog (${(brands??[]).length} brands)</h3>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">${['entry','mid','luxury','ultra_luxury'].map(tier=>`
+      <div><div style="font-size:12px;font-weight:700;color:${tierColors[tier]};text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${tierLabels[tier]}</div>
+      ${(brands??[]).filter(b=>b.brand_tier===tier).map(b=>`<div style="font-size:13px;padding:3px 0;color:var(--ink)">${esc(b.brand_name)}</div>`).join('')}</div>`).join('')}</div></div>`;
+}
+
+async function renderLeaderboard(){
+  const{data:reps}=await sb.from('metric_snapshots').select('user_id,location_id,metric_key,actual_value').eq('organization_id',currentOrg.id).eq('period_type','monthly').eq('period_key','2026-06').not('user_id','is',null);
+  const{data:locs}=await sb.from('org_locations').select('id,name,code').eq('organization_id',currentOrg.id).eq('location_type','store');
+  const locMap={};(locs??[]).forEach(l=>{locMap[l.id]=l.name;});
+  const userIds=[...new Set((reps??[]).map(r=>r.user_id))];
+  const storeName=(uid)=>{const r=(reps??[]).find(x=>x.user_id===uid);return r?locMap[r.location_id]??'':'';};
+
+  function ranked(metricKey,fmt,higherIsBetter=true){
+    const vals=userIds.map(uid=>{const r=(reps??[]).find(x=>x.user_id===uid&&x.metric_key===metricKey);return{uid,val:r?.actual_value??null};}).filter(v=>v.val!==null);
+    vals.sort((a,b)=>higherIsBetter?(b.val-a.val):(a.val-b.val));
+    return vals.map((v,i)=>({...v,rank:i+1,display:fmt(v.val)}));
+  }
+
+  const categories=[
+    {key:'revenue',label:'Revenue',icon:'💰',fmt:money},
+    {key:'margin_dollars',label:'Margin $',icon:'📊',fmt:money},
+    {key:'margin_pct',label:'Margin %',icon:'📈',fmt:fmtP},
+    {key:'warranty_attach',label:'Warranty Attach',icon:'🛡️',fmt:fmtP},
+    {key:'warranty_pen_units',label:'Warranty Pen. (Units)',icon:'🔗',fmt:fmtP},
+    {key:'warranty_value',label:'Warranty $',icon:'💎',fmt:money},
+    {key:'avg_order',label:'Avg Order',icon:'🛒',fmt:money},
+    {key:'ipo',label:'IPO',icon:'📦',fmt:v=>fmtN(v,2)},
+    {key:'item_value',label:'Item Value',icon:'🏷️',fmt:money},
+    {key:'coaching_avg',label:'Coaching Score',icon:'🏆',fmt:v=>fmtN(v,1)+'/10'},
+    {key:'training_completion',label:'Training',icon:'🎓',fmt:fmtP},
+    {key:'floor_conversion',label:'Floor Conversion',icon:'🎯',fmt:fmtP},
+    {key:'units_sold',label:'Units Sold',icon:'📊',fmt:v=>fmtN(v,0)},
+  ];
+
+  // Top revenue earner for the podium
+  const revRank=ranked('revenue',money);
+  const marRank=ranked('margin_dollars',money);
+  const warRank=ranked('warranty_attach',fmtP);
+  const medals=['🥇','🥈','🥉'];
+  const podCls=['gold','silver','bronze'];
+
+  const m=$('#ccMain');
+  m.innerHTML=`
+    <div style="text-align:center;padding:20px 0 0">
+      <div style="font-size:40px">🏅</div>
+      <h2 class="cc-page-title" style="margin:8px 0 4px">Leaderboard</h2>
+      <p class="cc-page-sub" style="margin:0 auto 8px;text-align:center">Who's leading the pack this month? · June 2026</p>
+    </div>
+
+    <div style="text-align:center;margin-bottom:8px"><span style="font-family:'Sora',sans-serif;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:2px;color:var(--accent)">💰 Top Revenue</span></div>
+    <div class="lb-podium">
+      ${revRank.slice(0,3).map((r,i)=>`<div class="lb-pod ${podCls[i]}">
+        <div class="lb-rank">${medals[i]}</div>
+        <div class="lb-name">${esc(repName(r.uid))}</div>
+        <div class="lb-store">${esc(storeName(r.uid))}</div>
+        <div class="lb-val">${r.display}</div>
+        <div class="lb-metric">Revenue</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px">
+      <div style="flex:1;min-width:280px;text-align:center;background:linear-gradient(135deg,#eff6ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:12px;padding:18px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent)">🛡️ Warranty Champion</div>
+        <div style="font-size:24px;margin:6px 0">${medals[0]}</div>
+        <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color:var(--navy)">${esc(repName(warRank[0]?.uid))}</div>
+        <div style="font-size:13px;color:var(--steel)">${warRank[0]?.display} attach rate</div>
+      </div>
+      <div style="flex:1;min-width:280px;text-align:center;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:18px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--verified)">📊 Margin Leader</div>
+        <div style="font-size:24px;margin:6px 0">${medals[0]}</div>
+        <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:16px;color:var(--navy)">${esc(repName(marRank[0]?.uid))}</div>
+        <div style="font-size:13px;color:var(--steel)">${marRank[0]?.display} gross margin</div>
+      </div>
+    </div>
+
+    <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:16px;color:var(--navy);margin:24px 0 14px">Rankings by Category</div>
+    <div class="lb-cat-grid">
+    ${categories.map(cat=>{
+      const rank=ranked(cat.key,cat.fmt);
+      return `<div class="lb-card">
+        <div class="lb-card-head"><span class="lb-icon">${cat.icon}</span><h4>${esc(cat.label)}</h4></div>
+        ${rank.slice(0,5).map((r,i)=>`<div class="lb-row ${i<3?'top'+(i+1):''}">
+          <span class="lb-pos">${i<3?medals[i]:(i+1)}</span>
+          <span class="lb-rname">${esc(repName(r.uid))}<br><span class="lb-rstore">${esc(storeName(r.uid))}</span></span>
+          <span class="lb-rval">${r.display}</span>
+        </div>`).join('')}
+      </div>`;
+    }).join('')}
+    </div>
+
+    <div style="text-align:center;margin:32px 0 16px;padding:20px;background:#f9fafb;border-radius:12px;border:1px solid var(--line)">
+      <div style="font-size:28px">🎉</div>
+      <div style="font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:var(--navy);margin:8px 0">Shoutouts</div>
+      <div style="font-size:13px;color:var(--steel);max-width:500px;margin:0 auto">
+        ${revRank[0]?`<b>${esc(repName(revRank[0].uid))}</b> is leading revenue with ${revRank[0].display} 🔥<br>`:''}
+        ${warRank[0]?`<b>${esc(repName(warRank[0].uid))}</b> has the highest warranty attach at ${warRank[0].display} 💪<br>`:''}
+        ${(()=>{const coachRank=ranked('coaching_avg',v=>fmtN(v,1));return coachRank[0]?`<b>${esc(repName(coachRank[0].uid))}</b> topped coaching with ${coachRank[0].display}/10 🧠<br>`:''})()}
+        ${(()=>{const trainRank=ranked('training_completion',fmtP);return trainRank[0]&&trainRank[0].val>=100?`<b>${esc(repName(trainRank[0].uid))}</b> completed 100% of training! 🎓<br>`:''})()}
+        ${(()=>{const ipoRank=ranked('ipo',v=>fmtN(v,2));return ipoRank[0]?`<b>${esc(repName(ipoRank[0].uid))}</b> is building the biggest tickets at ${ipoRank[0].display} items per order 📦`:''})()}
+      </div>
+    </div>`;
+}
+
+async function renderSettings(){
+  const{data:metrics}=await sb.from('metric_definitions').select('*').eq('organization_id',currentOrg.id).order('sort_order');
+  const{data:plan}=await sb.from('budget_plans').select('*').eq('organization_id',currentOrg.id).eq('status','active').maybeSingle();
+  const m=$('#ccMain');
+  m.innerHTML=`<h2 class="cc-page-title">Settings</h2><p class="cc-page-sub">Metric catalog and budget configuration</p>
+    <div class="cc-panel"><h3>Active Budget Plan</h3>
+    ${plan?`<table class="cc-table"><tbody>
+      <tr><td><b>Plan</b></td><td>${esc(plan.plan_name)}</td></tr>
+      <tr><td><b>Fiscal Year</b></td><td>${plan.fiscal_year}</td></tr>
+      <tr><td><b>Total Target</b></td><td>${money(plan.total_revenue_target)}</td></tr>
+      <tr><td><b>Growth %</b></td><td>${plan.growth_pct}% from ${plan.base_year}</td></tr>
+      <tr><td><b>Status</b></td><td><span class="cc-badge up">${plan.status}</span></td></tr>
+    </tbody></table>`:'<p style="color:var(--steel)">No active budget plan.</p>'}</div>
+    <div class="cc-panel"><h3>Metric Catalog (${(metrics??[]).length} metrics)</h3>
+    <table class="cc-table"><thead><tr><th>Key</th><th>Label</th><th>Category</th><th>Unit</th><th>Budgetable</th><th>Visible</th></tr></thead><tbody>
+    ${(metrics??[]).map(m=>`<tr><td><code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:12px">${esc(m.metric_key)}</code></td><td>${esc(m.metric_label)}</td><td><span class="cc-badge flat">${esc(m.metric_category)}</span></td><td>${esc(m.unit)}</td><td>${m.is_budgetable?'✓':'—'}</td><td>${m.is_visible?'✓':'—'}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// Formatting helpers
+function fmtN(v,d){return v==null?'—':Number(v).toFixed(d??0);}
+function fmtP(v){return v==null?'—':Number(v).toFixed(1)+'%';}
+function badge(v,hi,lo){hi=hi??2;lo=lo??-2;v=v??0;return `<span class="cc-badge ${v>hi?'up':v<lo?'dn':'flat'}">${pct(v)}</span>`;}
+
+function statCard(label,value,sub,varPct){
+  const v=varPct??0;const cls=Math.abs(v)<2?'':v>0?'up':'dn';
+  return `<div class="cc-stat"><div class="cc-sl">${esc(label)}</div><div class="cc-sv">${value}</div>${sub?`<div style="font-size:11px;color:var(--steel)">${esc(sub)}</div>`:''}${varPct!=null?`<div class="cc-var ${cls}">${pct(v)} vs target</div>`:''}</div>`;
+}
+
+// BOOT
+(async()=>{
+  const{data:{session}}=await sb.auth.getSession();
+  if(session) bootApp();
+})();
+</script>
+</body>
+</html>
