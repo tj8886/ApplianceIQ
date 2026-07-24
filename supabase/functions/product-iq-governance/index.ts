@@ -18,7 +18,7 @@ const cleanModel = (value: string) => value.trim().replace(/\s+/g, " ").toUpperC
 const normalizeText = (value: unknown) => String(value ?? "").trim();
 const isRecord = (value: unknown): value is JsonObject => !!value && typeof value === "object" && !Array.isArray(value);
 
-const ALLOWED_ACTION_KEYS = new Set(["action", "productId", "originalVersion", "section", "templateId", "changes", "reason", "product", "rules", "formulaVersion", "changeRequestId", "decision", "notes", "suggestionId", "documentId", "assetId", "orderedAssetIds"]);
+const ALLOWED_ACTION_KEYS = new Set(["action", "productId", "originalVersion", "section", "templateId", "changes", "reason", "product", "rules", "formulaVersion", "changeRequestId", "decision", "notes", "suggestionId", "documentId", "assetId", "orderedAssetIds", "relationshipId", "targetProductId", "query", "brand", "category", "limit", "offset", "excludeProductId"]);
 const GROUP_ALLOWLIST = new Set(["configuration", "dimensions", "performance", "electrical", "gas", "installation", "ventilation", "certifications", "warranty", "notes"]);
 const BOOLEAN_KEYS = new Set([
   "counter_depth", "panel_ready", "ice_maker", "water_dispenser", "water_connection_required", "water_filtration", "dual_evaporator",
@@ -334,6 +334,118 @@ const IMAGE_TYPES = new Map([
 const PUBLICATION_STATES = new Set(["draft", "submitted", "in_review", "changes_requested", "approved", "published"]);
 const SOURCE_STATES = new Set(["internal", "manufacturer_submitted", "raw_import", "ai_extracted", "ai_suggested", "aiq_reviewed"]);
 
+const RELATIONSHIP_TYPES = new Map([
+  ["accessory", "Accessory"],
+  ["required_accessory", "Required Accessory"],
+  ["optional_accessory", "Optional Accessory"],
+  ["compatible_with", "Compatible With"],
+  ["incompatible_with", "Incompatible With"],
+  ["replaces", "Replaces"],
+  ["replaced_by", "Replaced By"],
+  ["predecessor", "Predecessor"],
+  ["successor", "Successor"],
+  ["package_companion", "Package Companion"],
+  ["installation_dependency", "Installation Dependency"],
+  ["pedestal", "Pedestal"],
+  ["stacking_kit", "Stacking Kit"],
+  ["panel", "Panel"],
+  ["handle", "Handle"],
+  ["trim_kit", "Trim Kit"],
+  ["filter", "Filter"],
+  ["hose", "Hose"],
+  ["power_cord", "Power Cord"],
+  ["ventilation_dependency", "Ventilation Dependency"],
+  ["cooking_dependency", "Cooking Dependency"],
+  ["laundry_pair", "Laundry Pair"],
+  ["refrigeration_pair", "Refrigeration Pair"],
+  ["outdoor_pair", "Outdoor Pair"],
+  ["alternate_finish", "Alternate Finish"],
+  ["equivalent_model", "Equivalent Model"],
+  ["service_part", "Service Part"],
+  ["other", "Other"],
+]);
+
+const RELATIONSHIP_ALIAS_MAP: Record<string, string> = {
+  accessory: "accessory",
+  accessories: "accessory",
+  required: "required_accessory",
+  required_accessory: "required_accessory",
+  optional: "optional_accessory",
+  optional_accessory: "optional_accessory",
+  compatible: "compatible_with",
+  compatible_with: "compatible_with",
+  incompatible: "incompatible_with",
+  incompatible_with: "incompatible_with",
+  replaces: "replaces",
+  replaced_by: "replaced_by",
+  predecessor: "predecessor",
+  successor: "successor",
+  package: "package_companion",
+  package_companion: "package_companion",
+  installation_dependency: "installation_dependency",
+  pedestal: "pedestal",
+  stacking_kit: "stacking_kit",
+  panel: "panel",
+  handle: "handle",
+  trim_kit: "trim_kit",
+  filter: "filter",
+  hose: "hose",
+  power_cord: "power_cord",
+  ventilation_dependency: "ventilation_dependency",
+  cooking_dependency: "cooking_dependency",
+  laundry_pair: "laundry_pair",
+  refrigeration_pair: "refrigeration_pair",
+  outdoor_pair: "outdoor_pair",
+  alternate_finish: "alternate_finish",
+  equivalent_model: "equivalent_model",
+  service_part: "service_part",
+  other: "other",
+};
+
+const BIDIRECTIONAL_RELATIONSHIP_TYPES = new Set([
+  "compatible_with",
+  "incompatible_with",
+  "package_companion",
+  "laundry_pair",
+  "refrigeration_pair",
+  "outdoor_pair",
+  "alternate_finish",
+  "equivalent_model",
+]);
+
+const RELATIONSHIP_REQUIREMENT_LEVELS = new Set(["required", "recommended", "optional", "not_applicable"]);
+const RELATIONSHIP_COMPATIBILITY_STATUS = new Set(["verified", "likely", "conditional", "incompatible", "unverified", "discontinued", "not_applicable"]);
+const RELATIONSHIP_DIRECTION_TYPES = new Set(["forward", "bidirectional"]);
+const RELATIONSHIP_CATEGORY_GROUPS: Record<string, string[]> = {
+  refrigeration: ["panel", "handle", "filter", "trim_kit", "refrigeration_pair", "installation_dependency", "power_cord"],
+  laundry: ["laundry_pair", "pedestal", "stacking_kit", "hose", "power_cord", "ventilation_dependency", "installation_dependency"],
+  cooking: ["ventilation_dependency", "trim_kit", "handle", "power_cord", "cooking_dependency", "installation_dependency"],
+  dishwashers: ["panel", "handle", "hose", "power_cord", "installation_dependency"],
+  ventilation: ["cooking_dependency", "ventilation_dependency", "trim_kit", "installation_dependency"],
+  microwaves: ["trim_kit", "installation_dependency", "cooking_dependency", "ventilation_dependency"],
+  vacuums: ["service_part", "other", "equivalent_model"],
+  outdoor: ["outdoor_pair", "installation_dependency", "power_cord", "hose"],
+  small_appliances: ["service_part", "other", "equivalent_model"],
+  general: ["accessory", "compatible_with", "other"],
+};
+
+const normalizeRelationshipKey = (value: unknown) => {
+  const text = String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  return RELATIONSHIP_ALIAS_MAP[text] || text;
+};
+
+const relationshipLabel = (value: unknown) => RELATIONSHIP_TYPES.get(normalizeRelationshipKey(value)) || "Other";
+const relationshipDirectionFor = (type: string, requestedDirection?: unknown) => {
+  const canonical = normalizeRelationshipKey(type);
+  const defaultDirection = BIDIRECTIONAL_RELATIONSHIP_TYPES.has(canonical) ? "bidirectional" : "forward";
+  const requested = String(requestedDirection ?? "").trim().toLowerCase();
+  if (!requested) return defaultDirection;
+  if (!RELATIONSHIP_DIRECTION_TYPES.has(requested)) return null;
+  if (defaultDirection === "bidirectional" && requested !== "bidirectional") return null;
+  if (defaultDirection === "forward" && requested !== "forward") return null;
+  return requested;
+};
+
 const normalizeChoice = (value: unknown, allowed: Map<string, string> | Set<string>) => {
   const text = String(value ?? "").trim();
   const key = text.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -422,6 +534,107 @@ const validateImageChanges = (changes: JsonObject) => {
   return { errors, type };
 };
 
+const validateRelationshipChanges = (changes: JsonObject, relationshipType: string, currentSourceId?: string) => {
+  const errors: Record<string, { code: string; message: string; submittedValue?: unknown }> = {};
+  const allowed = new Set([
+    "relationship_type",
+    "direction",
+    "requirement_level",
+    "compatibility_status",
+    "compatibility_notes",
+    "installation_notes",
+    "quantity",
+    "minimum_quantity",
+    "maximum_quantity",
+    "same_brand_requirement",
+    "compatible_finish_requirement",
+    "source_type",
+    "source_reference",
+    "source_confidence",
+    "effective_start_date",
+    "effective_end_date",
+    "notes",
+    "relationship_label",
+  ]);
+  for (const key of Object.keys(changes)) {
+    if (!allowed.has(key)) errors[key] = { code: "unknown_field", message: "This relationship field cannot be edited." };
+  }
+
+  const normalizedType = normalizeRelationshipKey(relationshipType || changes.relationship_type);
+  if (!RELATIONSHIP_TYPES.has(normalizedType)) {
+    errors.relationship_type = { code: "invalid_value", message: `Relationship type must be one of: ${[...RELATIONSHIP_TYPES.values()].join(", ")}.` };
+  }
+  const direction = relationshipDirectionFor(normalizedType, changes.direction);
+  if (!direction) {
+    errors.direction = { code: "invalid_value", message: "Relationship direction does not match the selected relationship type." };
+  }
+
+  const requirementLevel = String(changes.requirement_level ?? "").trim().toLowerCase();
+  if (requirementLevel && !RELATIONSHIP_REQUIREMENT_LEVELS.has(requirementLevel)) {
+    errors.requirement_level = { code: "invalid_value", message: `Requirement level must be one of: ${[...RELATIONSHIP_REQUIREMENT_LEVELS].join(", ")}.` };
+  }
+  const compatibilityStatus = String(changes.compatibility_status ?? "").trim().toLowerCase();
+  if (compatibilityStatus && !RELATIONSHIP_COMPATIBILITY_STATUS.has(compatibilityStatus)) {
+    errors.compatibility_status = { code: "invalid_value", message: `Compatibility status must be one of: ${[...RELATIONSHIP_COMPATIBILITY_STATUS].join(", ")}.` };
+  }
+  if (compatibilityStatus === "conditional" && !normalizeText(changes.compatibility_notes)) {
+    errors.compatibility_notes = { code: "required", message: "Conditional compatibility requires notes." };
+  }
+
+  const quantityFields: Array<[string, number | null | undefined]> = [
+    ["quantity", changes.quantity as number | null | undefined],
+    ["minimum_quantity", changes.minimum_quantity as number | null | undefined],
+    ["maximum_quantity", changes.maximum_quantity as number | null | undefined],
+  ];
+  for (const [key, value] of quantityFields) {
+    if (value == null || value === "") continue;
+    const n = Number(value);
+    if (!Number.isInteger(n) || n <= 0) errors[key] = { code: "invalid_value", message: `${key.replaceAll("_", " ")} must be a positive integer.`, submittedValue: value };
+  }
+  const minQty = changes.minimum_quantity == null || changes.minimum_quantity === "" ? null : Number(changes.minimum_quantity);
+  const maxQty = changes.maximum_quantity == null || changes.maximum_quantity === "" ? null : Number(changes.maximum_quantity);
+  if (minQty != null && maxQty != null && Number.isInteger(minQty) && Number.isInteger(maxQty) && minQty > maxQty) {
+    errors.minimum_quantity = { code: "invalid_value", message: "Minimum quantity cannot exceed maximum quantity." };
+    errors.maximum_quantity = { code: "invalid_value", message: "Maximum quantity must be at least minimum quantity." };
+  }
+
+  if (normalizedType && ["compatible_with", "incompatible_with", "alternate_finish", "equivalent_model", "package_companion", "laundry_pair", "refrigeration_pair", "outdoor_pair"].includes(normalizedType)) {
+    if (changes.quantity != null && String(changes.quantity) !== "") {
+      errors.quantity = { code: "invalid_value", message: "This relationship type does not use a quantity." };
+    }
+  }
+  if (normalizedType === "incompatible_with" && (changes.quantity != null || changes.minimum_quantity != null || changes.maximum_quantity != null)) {
+    errors.quantity = { code: "invalid_value", message: "Incompatible relationships cannot specify quantities." };
+  }
+  if (normalizedType === "required_accessory" && changes.quantity != null && Number(changes.quantity) < 1) {
+    errors.quantity = { code: "invalid_value", message: "Required accessories must have a positive quantity." };
+  }
+
+  const sourceConfidence = changes.source_confidence;
+  if (sourceConfidence != null && String(sourceConfidence) !== "") {
+    const n = Number(sourceConfidence);
+    if (!Number.isFinite(n) || n < 0 || n > 100) errors.source_confidence = { code: "invalid_value", message: "Source confidence must be between 0 and 100." };
+  }
+  if (changes.source_type != null && normalizeText(changes.source_type) && !SOURCE_STATES.has(normalizeText(changes.source_type))) {
+    errors.source_type = { code: "invalid_value", message: `Source must be one of: ${[...SOURCE_STATES].join(", ")}.` };
+  }
+
+  const start = normalizeText(changes.effective_start_date);
+  const end = normalizeText(changes.effective_end_date);
+  if (start && Number.isNaN(Date.parse(start))) errors.effective_start_date = { code: "invalid_value", message: "Effective start date must be a valid date." };
+  if (end && Number.isNaN(Date.parse(end))) errors.effective_end_date = { code: "invalid_value", message: "Effective end date must be a valid date." };
+  if (start && end && !Number.isNaN(Date.parse(start)) && !Number.isNaN(Date.parse(end)) && new Date(end) < new Date(start)) {
+    errors.effective_start_date = { code: "invalid_value", message: "Effective end date cannot precede start date." };
+    errors.effective_end_date = { code: "invalid_value", message: "Effective end date cannot precede start date." };
+  }
+
+  if (currentSourceId && normalizeText(changes.related_product_id) && String(changes.related_product_id) === currentSourceId) {
+    errors.related_product_id = { code: "self_reference", message: "A product cannot be related to itself." };
+  }
+
+  return { errors, normalizedType, direction };
+};
+
 const cloneRecord = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
 
 Deno.serve(async req => {
@@ -450,6 +663,40 @@ Deno.serve(async req => {
   if (!isRecord(body) || !body.action) return respond({ error: "action is required" }, 400);
   const unexpected = Object.keys(body).filter(key => !ALLOWED_ACTION_KEYS.has(key));
   if (unexpected.length) return respond({ error: "Unknown request fields", code: "validation_failed", fieldErrors: Object.fromEntries(unexpected.map(key => [key, { code: "unknown_field", message: "This field is not allowed in this request." }])) }, 400);
+
+  if (body.action === "search_relationship_products") {
+    const query = normalizeText(body.query);
+    const brand = normalizeText(body.brand);
+    const category = normalizeText(body.category);
+    const limit = Math.min(Math.max(Number(body.limit) || 12, 1), 40);
+    const offset = Math.max(Number(body.offset) || 0, 0);
+    const excludeProductId = normalizeText(body.excludeProductId);
+    let search = userClient.from("aiq_products").select("id,manufacturer_name,brand_name,model,short_description,category,status,approval_status,public_visible,version_number,updated_at", { count: "exact" }).order("updated_at", { ascending: false });
+    if (query) {
+      const normalized = cleanModel(query);
+      search = search.or(`model.ilike.%${query}%,short_description.ilike.%${query}%,brand_name.ilike.%${query}%,model.ilike.%${normalized}%`);
+    }
+    if (brand) search = search.ilike("brand_name", `%${brand}%`);
+    if (category) search = search.ilike("category", `%${category}%`);
+    if (excludeProductId) search = search.neq("id", excludeProductId);
+    const { data: products, error, count } = await search.range(offset, offset + limit - 1);
+    if (error) return respond({ error: error.message }, 400);
+    const ids = (products || []).map(row => String(row.id));
+    let primaryImageMap: Record<string, JsonObject> = {};
+    if (ids.length) {
+      const { data: images } = await userClient.from("mfr_assets").select("product_id,file_url,media_url,title,image_type,is_primary").in("product_id", ids).eq("is_primary", true).is("archived_at", null);
+      primaryImageMap = Object.fromEntries((images || []).map(row => [String(row.product_id), row]));
+    }
+    return respond({
+      data: (products || []).map(row => ({
+        ...row,
+        primary_image_url: primaryImageMap[String(row.id)]?.file_url || primaryImageMap[String(row.id)]?.media_url || null,
+        primary_image_title: primaryImageMap[String(row.id)]?.title || null,
+        primary_image_type: primaryImageMap[String(row.id)]?.image_type || null,
+      })),
+      count: count ?? products?.length ?? 0,
+    });
+  }
 
   if (body.action === "create_product") {
     const p = isRecord(body.product) ? body.product : {};
@@ -653,6 +900,174 @@ Deno.serve(async req => {
       version_number: updatedProduct.version_number,
       section: "specifications",
     });
+  }
+
+  if (["create_product_relationship", "update_product_relationship", "archive_product_relationship", "restore_product_relationship"].includes(String(body.action))) {
+    const { productId, originalVersion, relationshipId, targetProductId, changes, reason, section } = body as JsonObject;
+    if (!productId || !Number.isInteger(originalVersion)) return respond({ error: "productId and originalVersion are required" }, 400);
+    if (section && section !== "relationships") return respond({ error: "Invalid section for relationship mutation", code: "validation_failed" }, 400);
+
+    const sourceResult = await loadProductForMutation(db, String(productId));
+    if ("status" in sourceResult) return respond({ error: sourceResult.error }, sourceResult.status);
+    const sourceProduct = sourceResult.product as JsonObject;
+    if (Number(sourceProduct.version_number) !== Number(originalVersion)) {
+      return respond({
+        error: "This product has a newer version. Reload before saving.",
+        code: "conflict",
+        currentVersion: sourceProduct.version_number,
+        submittedVersion: originalVersion,
+        updatedAt: sourceProduct.updated_at,
+        updatedBy: sourceProduct.updated_by,
+      }, 409);
+    }
+
+    const touchAndAudit = async (actionName: string, oldRecord: unknown, newRecord: unknown, entityId: string | null, rollback: (() => Promise<void>) | null = null) => {
+      const touched = await touchProductForVersion(db, String(productId), Number(originalVersion), user.id);
+      if ("error" in touched) return respond({ error: touched.error }, touched.status);
+      if ("conflict" in touched) {
+        if (rollback) await rollback();
+        return respond({
+          error: "This product has a newer version. Reload before saving.",
+          code: "conflict",
+          currentVersion: sourceProduct.version_number,
+          submittedVersion: originalVersion,
+          updatedAt: sourceProduct.updated_at,
+          updatedBy: sourceProduct.updated_by,
+        }, 409);
+      }
+      await audit(db, sourceProduct, actionName, oldRecord, newRecord, reason ? String(reason) : undefined, user.id, "aiq_product_relationships", entityId);
+      return respond({ data: touched.updated, version_number: touched.updated.version_number });
+    };
+
+    if (String(body.action) === "create_product_relationship") {
+      const normalizedChanges = isRecord(changes) ? changes : {};
+      const targetId = normalizeText(targetProductId);
+      if (!targetId) return respond({ error: "targetProductId is required", code: "validation_failed" }, 400);
+      const { data: targetProduct, error: targetError } = await db.from("aiq_products").select("*").eq("id", targetId).maybeSingle();
+      if (targetError || !targetProduct) return respond({ error: "Target product not found" }, 404);
+      const validation = validateRelationshipChanges(normalizedChanges, normalizedChanges.relationship_type, String(sourceProduct.id));
+      if (Object.keys(validation.errors).length) return respond({ error: "validation_failed", code: "validation_failed", fieldErrors: validation.errors }, 400);
+      const finalType = validation.normalizedType;
+      const finalDirection = validation.direction || (BIDIRECTIONAL_RELATIONSHIP_TYPES.has(finalType) ? "bidirectional" : "forward");
+      const requiredLevel = RELATIONSHIP_REQUIREMENT_LEVELS.has(String(normalizedChanges.requirement_level || "").trim().toLowerCase())
+        ? String(normalizedChanges.requirement_level).trim().toLowerCase()
+        : finalType === "required_accessory"
+          ? "required"
+          : "optional";
+      const sourceConfidence = normalizedChanges.source_confidence == null || normalizedChanges.source_confidence === ""
+        ? null
+        : Number(normalizedChanges.source_confidence);
+      const quantity = normalizedChanges.quantity == null || normalizedChanges.quantity === "" ? (finalType === "required_accessory" ? 1 : null) : Number(normalizedChanges.quantity);
+      const minimumQuantity = normalizedChanges.minimum_quantity == null || normalizedChanges.minimum_quantity === "" ? null : Number(normalizedChanges.minimum_quantity);
+      const maximumQuantity = normalizedChanges.maximum_quantity == null || normalizedChanges.maximum_quantity === "" ? null : Number(normalizedChanges.maximum_quantity);
+      const sourceId = String(sourceProduct.id);
+      const relatedId = String(targetProduct.id);
+      if (sourceId === relatedId) return respond({ error: "A product cannot be related to itself.", code: "validation_failed", fieldErrors: { targetProductId: { code: "self_reference", message: "Select a different product." } } }, 400);
+      const { data: activeRelationships } = await db.from("aiq_product_relationships").select("id,product_id,related_product_id").eq("organization_id", sourceProduct.organization_id).eq("relationship_type", finalType).eq("direction", finalDirection).is("archived_at", null);
+      const duplicateExists = (activeRelationships || []).some((row: JsonObject) => {
+        const forward = String(row.product_id) === sourceId && String(row.related_product_id) === relatedId;
+        const reverse = BIDIRECTIONAL_RELATIONSHIP_TYPES.has(finalType) && String(row.product_id) === relatedId && String(row.related_product_id) === sourceId;
+        return forward || reverse;
+      });
+      if (duplicateExists) return respond({ error: "A matching active relationship already exists.", code: "duplicate_relationship" }, 409);
+      const row = {
+        organization_id: sourceProduct.organization_id,
+        product_id: sourceId,
+        related_product_id: relatedId,
+        relationship_type: finalType,
+        relationship_label: relationshipLabel(finalType),
+        direction: finalDirection,
+        requirement_level: requiredLevel,
+        compatibility_status: String(normalizedChanges.compatibility_status || "unverified").trim().toLowerCase(),
+        compatibility_notes: normalizeText(normalizedChanges.compatibility_notes || normalizedChanges.notes) || null,
+        installation_notes: normalizeText(normalizedChanges.installation_notes) || null,
+        quantity,
+        minimum_quantity: minimumQuantity,
+        maximum_quantity: maximumQuantity,
+        same_brand_requirement: Boolean(normalizedChanges.same_brand_requirement),
+        compatible_finish_requirement: Boolean(normalizedChanges.compatible_finish_requirement),
+        source_type: normalizeText(normalizedChanges.source_type) || "internal",
+        source_reference: normalizeText(normalizedChanges.source_reference) || null,
+        source_confidence: sourceConfidence,
+        effective_start_date: normalizeText(normalizedChanges.effective_start_date) || null,
+        effective_end_date: normalizeText(normalizedChanges.effective_end_date) || null,
+        archived_at: null,
+        archived_by: null,
+        created_by: user.id,
+        updated_by: user.id,
+      };
+      const { data: inserted, error: insertError } = await db.from("aiq_product_relationships").insert(row).select("*").single();
+      if (insertError || !inserted) return respond({ error: insertError?.message || "Relationship insert failed" }, 400);
+      const rollback = async () => { await db.from("aiq_product_relationships").delete().eq("id", String(inserted.id)); };
+      return touchAndAudit("product_relationship_created", null, inserted, String(inserted.id), rollback);
+    }
+
+    if (!relationshipId) return respond({ error: "relationshipId is required" }, 400);
+    const { data: relationship, error: relationshipError } = await db.from("aiq_product_relationships").select("*").eq("id", String(relationshipId)).maybeSingle();
+    if (relationshipError || !relationship) return respond({ error: "Relationship not found" }, 404);
+    if (String(relationship.product_id) !== String(sourceProduct.id)) return respond({ error: "Relationship not found" }, 404);
+    const { data: targetProduct, error: targetError } = await db.from("aiq_products").select("*").eq("id", String(relationship.related_product_id)).maybeSingle();
+    if (targetError || !targetProduct) return respond({ error: "Target product not found" }, 404);
+
+    const oldRecord = cloneRecord(relationship);
+    const nextRecord: JsonObject = cloneRecord(relationship);
+    const normalizedChanges = isRecord(changes) ? changes : {};
+
+    if (String(body.action) === "archive_product_relationship") {
+      if (nextRecord.archived_at) return respond({ error: "No changes supplied", code: "no_changes" }, 400);
+      nextRecord.archived_at = new Date().toISOString();
+      nextRecord.archived_by = user.id;
+    } else if (String(body.action) === "restore_product_relationship") {
+      if (!nextRecord.archived_at) return respond({ error: "No changes supplied", code: "no_changes" }, 400);
+      nextRecord.archived_at = null;
+      nextRecord.archived_by = null;
+    } else {
+      const proposedType = normalizeRelationshipKey(normalizedChanges.relationship_type || relationship.relationship_type);
+      const validation = validateRelationshipChanges({ ...normalizedChanges, relationship_type: proposedType }, proposedType, String(sourceProduct.id));
+      if (Object.keys(validation.errors).length) return respond({ error: "validation_failed", code: "validation_failed", fieldErrors: validation.errors }, 400);
+      if (normalizedChanges.targetProductId && String(normalizedChanges.targetProductId) !== String(relationship.related_product_id)) {
+        return respond({ error: "Changing the target product requires creating a new relationship.", code: "validation_failed", fieldErrors: { targetProductId: { code: "immutable", message: "Create a new relationship to change the target product." } } }, 400);
+      }
+      nextRecord.relationship_type = proposedType;
+      nextRecord.relationship_label = relationshipLabel(proposedType);
+      nextRecord.direction = validation.direction || nextRecord.direction || "forward";
+      nextRecord.requirement_level = RELATIONSHIP_REQUIREMENT_LEVELS.has(String(normalizedChanges.requirement_level || "").trim().toLowerCase())
+        ? String(normalizedChanges.requirement_level).trim().toLowerCase()
+        : nextRecord.requirement_level;
+      nextRecord.compatibility_status = String(normalizedChanges.compatibility_status || nextRecord.compatibility_status || "unverified").trim().toLowerCase();
+      nextRecord.compatibility_notes = normalizeText(normalizedChanges.compatibility_notes || normalizedChanges.notes) || nextRecord.compatibility_notes || null;
+      nextRecord.installation_notes = normalizeText(normalizedChanges.installation_notes) || nextRecord.installation_notes || null;
+      if ("quantity" in normalizedChanges) nextRecord.quantity = normalizedChanges.quantity === "" || normalizedChanges.quantity == null ? null : Number(normalizedChanges.quantity);
+      if ("minimum_quantity" in normalizedChanges) nextRecord.minimum_quantity = normalizedChanges.minimum_quantity === "" || normalizedChanges.minimum_quantity == null ? null : Number(normalizedChanges.minimum_quantity);
+      if ("maximum_quantity" in normalizedChanges) nextRecord.maximum_quantity = normalizedChanges.maximum_quantity === "" || normalizedChanges.maximum_quantity == null ? null : Number(normalizedChanges.maximum_quantity);
+      if ("same_brand_requirement" in normalizedChanges) nextRecord.same_brand_requirement = Boolean(normalizedChanges.same_brand_requirement);
+      if ("compatible_finish_requirement" in normalizedChanges) nextRecord.compatible_finish_requirement = Boolean(normalizedChanges.compatible_finish_requirement);
+      if ("source_type" in normalizedChanges) nextRecord.source_type = normalizeText(normalizedChanges.source_type) || nextRecord.source_type || "internal";
+      if ("source_reference" in normalizedChanges) nextRecord.source_reference = normalizeText(normalizedChanges.source_reference) || null;
+      if ("source_confidence" in normalizedChanges) nextRecord.source_confidence = normalizedChanges.source_confidence === "" || normalizedChanges.source_confidence == null ? null : Number(normalizedChanges.source_confidence);
+      if ("effective_start_date" in normalizedChanges) nextRecord.effective_start_date = normalizeText(normalizedChanges.effective_start_date) || null;
+      if ("effective_end_date" in normalizedChanges) nextRecord.effective_end_date = normalizeText(normalizedChanges.effective_end_date) || null;
+    }
+
+    const patch: JsonObject = {};
+    for (const key of Object.keys(nextRecord)) {
+      if (!Object.is((oldRecord as JsonObject)[key], nextRecord[key])) patch[key] = nextRecord[key];
+    }
+    if (!Object.keys(patch).length) return respond({ error: "No changes supplied", code: "no_changes" }, 400);
+
+    const { data: activeRelationships } = await db.from("aiq_product_relationships").select("id,product_id,related_product_id").eq("organization_id", sourceProduct.organization_id).eq("relationship_type", String(nextRecord.relationship_type)).eq("direction", String(nextRecord.direction)).is("archived_at", null).neq("id", String(relationship.id));
+    const duplicateExists = (activeRelationships || []).some((row: JsonObject) => {
+      const forward = String(row.product_id) === String(nextRecord.product_id) && String(row.related_product_id) === String(nextRecord.related_product_id);
+      const reverse = BIDIRECTIONAL_RELATIONSHIP_TYPES.has(String(nextRecord.relationship_type)) && String(row.product_id) === String(nextRecord.related_product_id) && String(row.related_product_id) === String(nextRecord.product_id);
+      return forward || reverse;
+    });
+    if (duplicateExists) return respond({ error: "A matching active relationship already exists.", code: "duplicate_relationship" }, 409);
+
+    const { error: updateError } = await db.from("aiq_product_relationships").update({ ...patch, updated_by: user.id }).eq("id", String(relationshipId));
+    if (updateError) return respond({ error: updateError.message }, 400);
+    const rollback = async () => { await db.from("aiq_product_relationships").update(oldRecord as JsonObject).eq("id", String(relationshipId)); };
+    const actionName = String(body.action) === "archive_product_relationship" ? "product_relationship_archived" : String(body.action) === "restore_product_relationship" ? "product_relationship_restored" : "product_relationship_updated";
+    return touchAndAudit(actionName, oldRecord, nextRecord, String(relationshipId), rollback);
   }
 
   if (["update_document_metadata", "archive_document", "restore_document", "update_image_metadata", "set_primary_image", "reorder_images", "archive_image", "restore_image"].includes(String(body.action))) {
