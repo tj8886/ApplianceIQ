@@ -220,10 +220,92 @@ function roleLabel(){
 }
 
 /* ── INIT ── */
+function inviteCodeFromURL(){
+  const m=new URLSearchParams(location.search).get('invite');
+  return m?m.trim():null;
+}
 async function init(){
+  const code=inviteCodeFromURL();
   const {data:{user}}=await sb.auth.getUser();
+  if(code){
+    if(user){ // already signed in — redeem straight away
+      S.user=user;
+      const {data:vn,error}=await sb.rpc('piq_redeem_invite',{p_code:code});
+      if(error)return showInvite(code,error.message);
+      history.replaceState({},'',location.pathname);
+      await loadRole();S.view='app';S.page='dashboard';return render();
+    }
+    return showInvite(code);
+  }
   if(user){S.user=user;await loadRole();S.view='app';render()}
   else showLanding();
+}
+
+/* ── INVITE ACCEPTANCE ── */
+async function showInvite(code,err){
+  const {data}=await sb.rpc('piq_preview_invite',{p_code:code});
+  const inv=Array.isArray(data)?data[0]:data;
+  if(!inv||!inv.valid){
+    document.getElementById('app').innerHTML=`
+    <div class="login-overlay"><div class="login-box">
+      <div class="mark">PIQ</div><h1>Invite Unavailable</h1>
+      <p class="sub">This invite link is invalid, already used, or expired. Ask your administrator for a new one.</p>
+      <button class="btn btn-secondary" onclick="location.href=location.pathname">← Back to Product IQ</button>
+    </div></div>`;return;
+  }
+  document.getElementById('app').innerHTML=`
+  <div class="login-overlay"><div class="login-box">
+    <div class="mark">PIQ</div>
+    <h1>You're Invited</h1>
+    <p class="sub">${inv.persona==='manufacturer'
+      ? 'Manage product content for <b>'+esc(inv.vendor_name)+'</b>'
+      : 'Retailer access to the Product IQ catalog'}</p>
+    <div class="panel" style="text-align:left;background:#eef0ff;border-color:#c7d2fe;margin-bottom:16px">
+      <div class="tiny"><b>${esc(inv.email)}</b></div>
+      <div class="tiny">${inv.persona==='manufacturer'?'Role: '+esc(inv.invite_role||'').replace(/_/g,' '):'Browse and export published product data'}</div>
+    </div>
+    ${err?`<div class="error" style="margin-bottom:12px">${esc(err)}</div>`:''}
+    <div class="form-row"><label>Create a Password</label><input id="inv-pw" type="password" placeholder="At least 8 characters"/></div>
+    <div class="form-row"><label>Confirm Password</label><input id="inv-pw2" type="password"/></div>
+    <div id="inv-err"></div>
+    <button class="btn btn-primary" onclick="acceptInvite('${code}','${esc(inv.email)}')" style="margin-top:8px">Accept &amp; Create Account</button>
+    <div class="demo-hint">Already have an account with this email? <a href="#" onclick="acceptInviteExisting('${code}','${esc(inv.email)}');return false">Sign in instead</a></div>
+  </div></div>`;
+  document.getElementById('inv-pw').focus();
+}
+async function acceptInvite(code,email){
+  const pw=document.getElementById('inv-pw').value, pw2=document.getElementById('inv-pw2').value;
+  const E=document.getElementById('inv-err');
+  const fail=m=>E.innerHTML=`<div class="error" style="margin:8px 0">${esc(m)}</div>`;
+  if(pw.length<8)return fail('Password must be at least 8 characters.');
+  if(pw!==pw2)return fail('Passwords do not match.');
+  E.innerHTML='<div class="tiny" style="margin:8px 0">Creating your account…</div>';
+  const {error:se}=await sb.auth.signUp({email,password:pw});
+  if(se&&!/already registered|already been registered/i.test(se.message)){
+    if(/rate limit|too many/i.test(se.message)){
+      return fail('Too many sign-up attempts right now. Please wait a minute and try again. (Administrator: disable "Confirm email" in Supabase Auth settings to remove this limit — invites are already verified.)');
+    }
+    return fail(se.message);
+  }
+  await sb.rpc('piq_confirm_invited_email',{p_code:code});
+  const {error:le}=await sb.auth.signInWithPassword({email,password:pw});
+  if(le)return fail('Account created, but sign-in failed: '+le.message+'. If you already had an account, use "Sign in instead" below.');
+  const {error:re}=await sb.rpc('piq_redeem_invite',{p_code:code});
+  if(re)return fail(re.message);
+  const {data:{user}}=await sb.auth.getUser();
+  S.user=user;history.replaceState({},'',location.pathname);
+  await loadRole();S.view='app';S.page='dashboard';render();
+}
+async function acceptInviteExisting(code,email){
+  const pw=prompt('Enter your existing password for '+email);
+  if(!pw)return;
+  const {error:le}=await sb.auth.signInWithPassword({email,password:pw});
+  if(le)return showInvite(code,le.message);
+  const {error:re}=await sb.rpc('piq_redeem_invite',{p_code:code});
+  if(re)return showInvite(code,re.message);
+  const {data:{user}}=await sb.auth.getUser();
+  S.user=user;history.replaceState({},'',location.pathname);
+  await loadRole();S.view='app';S.page='dashboard';render();
 }
 
 /* ── LANDING ── */
@@ -1148,40 +1230,112 @@ async function renderExport(C){
 /* ══════════════════ TEAM & ACCESS (admin only) ══════════════════ */
 async function renderTeam(C){
   if(!S.role.isAdmin)return C.innerHTML='<div class="empty">Team &amp; Access is restricted to platform administrators.</div>';
-  const [{data:members},{data:vendors},{data:admins}]=await Promise.all([
+  const [{data:members},{data:vendors},{data:admins},{data:invites},{data:brandRows}]=await Promise.all([
     sb.from('mfr_members').select('user_id,role,status,created_at,mfr_vendors(name)').order('created_at',{ascending:false}),
     sb.from('mfr_vendors').select('id,name,status').order('name'),
-    sb.from('product_iq_platform_roles').select('user_id,role,status')
+    sb.from('product_iq_platform_roles').select('user_id,role,status'),
+    sb.from('mfr_invites').select('*').order('created_at',{ascending:false}).limit(50),
+    sb.from('brand_catalog').select('manufacturer_id')
   ]);
-  const {data:brandCounts}=await sb.from('brand_catalog').select('manufacturer_id');
-  const bc={};(brandCounts||[]).forEach(b=>{if(b.manufacturer_id)bc[b.manufacturer_id]=(bc[b.manufacturer_id]||0)+1});
+  const bc={};(brandRows||[]).forEach(b=>{if(b.manufacturer_id)bc[b.manufacturer_id]=(bc[b.manufacturer_id]||0)+1});
+  const owning=(vendors||[]).filter(v=>bc[v.id]).sort((a,b)=>bc[b.id]-bc[a.id]);
+  const pending=(invites||[]).filter(i=>i.status==='pending');
+  const ROLES=['vendor_owner','vendor_admin','brand_admin','product_editor','product_reviewer','asset_editor','training_editor','viewer'];
+
   C.innerHTML=`
-  <div class="pagehead"><div><h1>👥 Team &amp; Access</h1><p class="sub">Manufacturer accounts, brand ownership, and platform administrators.</p></div></div>
-  <div class="cards" style="grid-template-columns:repeat(3,1fr)">
-    <div class="metric"><div class="label">Manufacturer Companies</div><div class="value">${(vendors||[]).length}</div></div>
+  <div class="pagehead"><div><h1>👥 Team &amp; Access</h1><p class="sub">Invite manufacturers and retailers, and manage brand ownership.</p></div></div>
+  <div class="cards" style="grid-template-columns:repeat(4,1fr)">
+    <div class="metric"><div class="label">Companies</div><div class="value">${owning.length}</div><div class="note">owning brands</div></div>
     <div class="metric"><div class="label">Assigned Users</div><div class="value">${(members||[]).length}</div></div>
+    <div class="metric"><div class="label">Pending Invites</div><div class="value" style="color:${pending.length?'var(--amber)':'var(--navy)'}">${pending.length}</div></div>
     <div class="metric"><div class="label">Platform Admins</div><div class="value">${(admins||[]).length}</div></div>
   </div>
-  <div class="panel"><h2>Assigned Manufacturer Users</h2>
+
+  <div class="panel"><h2>✉️ Invite a User</h2>
+    <div class="form-grid">
+      <div class="form-row"><label>Email Address</label><input id="inv-email" type="email" placeholder="name@company.com"/></div>
+      <div class="form-row"><label>Account Type</label>
+        <select id="inv-persona" onchange="document.getElementById('inv-mfr-fields').style.display=this.value==='manufacturer'?'contents':'none'">
+          <option value="manufacturer">Manufacturer — manages their own brands</option>
+          <option value="retailer">Retailer — browse &amp; export only</option>
+        </select></div>
+      <span id="inv-mfr-fields" style="display:contents">
+        <div class="form-row"><label>Company</label>
+          <select id="inv-vendor">${owning.map(v=>`<option value="${v.id}">${esc(v.name)} (${bc[v.id]} brand${bc[v.id]===1?'':'s'})</option>`).join('')}</select></div>
+        <div class="form-row"><label>Role</label>
+          <select id="inv-role">${ROLES.map(r=>`<option value="${r}"${r==='product_editor'?' selected':''}>${r.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      </span>
+    </div>
+    <div class="form-actions"><button class="btn btn-indigo" onclick="createInvite()">Generate Invite Link</button></div>
+    <div id="inv-result"></div>
+  </div>
+
+  <div class="panel"><h2>Pending Invites</h2>
+    ${pending.length?`<div class="tablewrap"><table>
+      <thead><tr><th>Email</th><th>Type</th><th>Company / Role</th><th>Expires</th><th>Link</th><th></th></tr></thead>
+      <tbody>${pending.map(i=>`<tr>
+        <td><span class="model-name">${esc(i.email)}</span></td>
+        <td><span class="pill ${i.persona==='manufacturer'?'pill-indigo':'pill-cyan'}">${esc(i.persona)}</span></td>
+        <td class="tiny">${esc(i.vendor_name||'—')}${i.invite_role?' · '+esc(i.invite_role).replace(/_/g,' '):''}</td>
+        <td class="tiny">${fmtDate(i.expires_at)}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="copyInvite('${i.code}')">📋 Copy</button></td>
+        <td><button class="btn btn-secondary btn-sm" onclick="revokeInvite('${i.id}')">Revoke</button></td>
+      </tr>`).join('')}</tbody></table></div>`:'<div class="empty">No pending invites.</div>'}
+  </div>
+
+  <div class="panel"><h2>Assigned Users</h2>
     ${(members||[]).length?`<div class="tablewrap"><table>
-      <thead><tr><th>Company</th><th>Role</th><th>Status</th><th>User ID</th></tr></thead>
+      <thead><tr><th>Company</th><th>Role</th><th>Status</th><th>User</th></tr></thead>
       <tbody>${(members||[]).map(m=>`<tr>
         <td><span class="model-name">${esc(m.mfr_vendors?.name||'—')}</span></td>
-        <td><span class="pill pill-indigo">${esc(m.role||'—')}</span></td>
+        <td><span class="pill pill-indigo">${esc(m.role||'—').replace(/_/g,' ')}</span></td>
         <td>${m.status==='active'?'<span class="pill pill-green">Active</span>':'<span class="pill pill-gray">'+esc(m.status)+'</span>'}</td>
         <td class="tiny">${esc(m.user_id).substring(0,8)}…</td>
-      </tr>`).join('')}</tbody></table></div>`
-    :'<div class="empty">No manufacturer users assigned yet.</div>'}
+      </tr>`).join('')}</tbody></table></div>`:'<div class="empty">No manufacturer users assigned yet.</div>'}
   </div>
-  <div class="panel"><h2>Manufacturer Companies &amp; Brand Ownership</h2>
+
+  <div class="panel"><h2>Companies &amp; Brand Ownership</h2>
     <div class="tablewrap"><table>
       <thead><tr><th>Company</th><th>Brands Owned</th><th>Status</th></tr></thead>
-      <tbody>${(vendors||[]).filter(v=>bc[v.id]).sort((a,b)=>bc[b.id]-bc[a.id]).map(v=>`<tr>
+      <tbody>${owning.map(v=>`<tr>
         <td><span class="model-name">${esc(v.name)}</span></td>
-        <td><span class="pill pill-gray">${bc[v.id]||0}</span></td>
+        <td><span class="pill pill-gray">${bc[v.id]}</span></td>
         <td>${v.status==='active'?'<span class="pill pill-green">Active</span>':'<span class="pill pill-gray">'+esc(v.status||'—')+'</span>'}</td>
       </tr>`).join('')}</tbody></table></div>
   </div>`;
+}
+function inviteURL(code){return location.origin+location.pathname+'?invite='+code}
+async function createInvite(){
+  const email=document.getElementById('inv-email').value.trim();
+  const persona=document.getElementById('inv-persona').value;
+  const vendor=document.getElementById('inv-vendor')?.value||null;
+  const role=document.getElementById('inv-role')?.value||'product_editor';
+  const R=document.getElementById('inv-result');
+  if(!email)return R.innerHTML='<div class="error" style="margin-top:12px">Email address is required.</div>';
+  const {data,error}=await sb.rpc('piq_create_invite',{p_email:email,p_persona:persona,
+    p_vendor_id:persona==='manufacturer'?vendor:null,p_role:role});
+  if(error)return R.innerHTML=`<div class="error" style="margin-top:12px">${esc(error.message)}</div>`;
+  const inv=Array.isArray(data)?data[0]:data;
+  const url=inviteURL(inv.code);
+  R.innerHTML=`<div class="panel" style="margin-top:14px;background:var(--greenbg);border-color:#a7e0bd">
+    <strong>✅ Invite created for ${esc(inv.email)}</strong>
+    <div class="tiny" style="margin:6px 0">${inv.vendor_name?'Company: '+esc(inv.vendor_name):'Retailer access'} · expires in 30 days</div>
+    <input class="control" style="width:100%;margin-top:6px" readonly value="${esc(url)}" onclick="this.select()"/>
+    <div style="margin-top:8px"><button class="btn btn-indigo btn-sm" onclick="copyInvite('${inv.code}')">📋 Copy Link</button></div>
+    <div class="tiny" style="margin-top:8px">Send this link to ${esc(inv.email)}. They set their own password and are granted access automatically.</div>
+  </div>`;
+  document.getElementById('inv-email').value='';
+}
+function copyInvite(code){
+  const url=inviteURL(code);
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('Invite link copied:\n'+url),()=>prompt('Copy this link:',url));
+  else prompt('Copy this link:',url);
+}
+async function revokeInvite(id){
+  if(!confirm('Revoke this invite? The link will stop working.'))return;
+  const {error}=await sb.rpc('piq_revoke_invite',{p_id:id});
+  if(error)return alert(error.message);
+  renderPage();
 }
 
 /* ══════════════════ ACTIVITY ══════════════════ */
