@@ -173,7 +173,7 @@ const {createClient}=supabase;
 const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
 
 /* ── STATE ── */
-const S={user:null,view:'landing',page:'dashboard',detail:null,detailTab:'overview',editMode:false,filters:{search:'',brand:'',manufacturer:'',category:'',status:''},pg:0,assetFilter:'all',modal:null};
+const S={user:null,role:{isAdmin:false,isManufacturer:false,isRetailer:false,vendors:[],brandNames:[],loaded:false},view:'landing',page:'dashboard',detail:null,detailTab:'overview',editMode:false,filters:{search:'',brand:'',manufacturer:'',category:'',status:''},pg:0,assetFilter:'all',modal:null};
 const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt$=v=>v?'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}):'—';
 const fmtDate=v=>v?new Date(v).toLocaleDateString():'—';
@@ -181,10 +181,48 @@ const DOC_ICONS={owners_manual:'📖',installation_guide:'🔧',spec_sheet:'📋
 const VID_ICONS={product_overview:'🎬',installation_video:'🛠️',how_to_video:'💡',testimonial_video:'⭐','360_view':'🔄',comparison_video:'⚖️'};
 const MKT_ICONS={sell_sheet_print:'🖨️',social_media_kit:'📱',co_op_ad_template:'📰',pop_display:'🏪',brand_logo:'🏷️',product_badge:'🏆',email_template:'📧',training_deck:'🎓',catalog_page:'📕'};
 
+/* ── ECOSYSTEM APPS ── */
+const APPS=[
+  ['CRM','🤝','https://crmaiiq.netlify.app'],
+  ['Spec IQ','📋','https://appliance-spec-iq.netlify.app'],
+  ['AI Academy','🎓','https://applianceiq-aiacademy.netlify.app'],
+  ['IQ Field','🔧','https://applianceiq-iq-field.netlify.app'],
+  ['Command Center','🛰️','https://applianceiq-intelligence-group.netlify.app/command-center'],
+  ['Brand Portal','🏭','https://applianceiq-brand-portal.netlify.app'],
+  ['IQ Up','📈','https://applianceiq-iq-up-system.netlify.app'],
+];
+
+/* ── ROLE CONTEXT ── */
+async function loadRole(){
+  const uid=S.user?.id; if(!uid)return;
+  const [{data:roles},{data:members},{data:admin}]=await Promise.all([
+    sb.from('mfr_user_roles').select('*').eq('user_id',uid).maybeSingle(),
+    sb.from('mfr_members').select('vendor_id,role,status,mfr_vendors(id,name)').eq('user_id',uid).eq('status','active'),
+    sb.from('product_iq_platform_roles').select('role').eq('user_id',uid).eq('status','active')
+  ]);
+  const isAdmin=(admin||[]).length>0 || !!roles?.is_admin;
+  const vendors=(members||[]).map(m=>({id:m.vendor_id,name:m.mfr_vendors?.name||'Vendor',role:m.role}));
+  let brandNames=[];
+  if(vendors.length){
+    const {data:bs}=await sb.from('brand_catalog').select('brand_name').in('manufacturer_id',vendors.map(v=>v.id));
+    brandNames=(bs||[]).map(b=>b.brand_name);
+  }
+  S.role={isAdmin,isManufacturer:!!roles?.is_manufacturer||vendors.length>0,
+    isRetailer:!!roles?.is_retailer||!!roles?.is_builder||!!roles?.is_designer,
+    vendors,brandNames,loaded:true};
+}
+const canEdit=()=>S.role.isAdmin||S.role.isManufacturer;
+function roleLabel(){
+  if(S.role.isAdmin)return'Platform Admin';
+  if(S.role.vendors.length)return S.role.vendors.map(v=>v.name).join(', ');
+  if(S.role.isRetailer)return'Retailer';
+  return'Viewer';
+}
+
 /* ── INIT ── */
 async function init(){
   const {data:{user}}=await sb.auth.getUser();
-  if(user){S.user=user;S.view='app';render()}
+  if(user){S.user=user;await loadRole();S.view='app';render()}
   else showLanding();
 }
 
@@ -248,47 +286,50 @@ async function doLogin(){
   const {error}=await sb.auth.signInWithPassword({email,password:pass});
   if(error)return document.getElementById('login-error').innerHTML=`<div class="error" style="margin:8px 0">${esc(error.message)}</div>`;
   const {data:{user}}=await sb.auth.getUser();
-  S.user=user;S.view='app';S.page='dashboard';render();
+  S.user=user;await loadRole();S.view='app';S.page='dashboard';render();
 }
 
-/* ── NAV ── */
-const NAV=[
-  ['dashboard','⌂','Dashboard'],
-  ['catalog','☷','Product Catalog'],
-  ['brands','◆','Brands'],
-  ['_sep'],
-  ['_label','DIGITAL ASSETS'],
-  ['images','📸','Images'],
-  ['videos','🎬','Videos'],
-  ['documents','📄','Documents'],
-  ['marketing','📢','Marketing Assets'],
-  ['_sep'],
-  ['_label','MANAGE'],
-  ['add-product','＋','Add Product'],
-  ['rebates','💰','Rebates & Promos'],
-  ['certifications','⚡','Certifications'],
-  ['data-quality','◎','Data Quality'],
-  ['activity','↻','Activity Log'],
-];
+/* ── NAV (role-aware) ── */
+function navItems(){
+  const n=[['dashboard','⌂','Dashboard'],['catalog','☷','Product Catalog'],['brands','◆','Brands'],
+    ['_sep'],['_label','DIGITAL ASSETS'],
+    ['images','📸','Images'],['videos','🎬','Videos'],['documents','📄','Documents'],['marketing','📢','Marketing Assets'],
+    ['_sep'],['_label',canEdit()?'MANAGE':'TOOLS']];
+  if(canEdit())n.push(['add-product','＋','Add Product']);
+  n.push(['rebates','💰','Rebates & Promos'],['certifications','⚡','Certifications'],['export','⇩','Export Data']);
+  if(canEdit())n.push(['data-quality','◎','Data Quality']);
+  n.push(['activity','↻','Activity Log']);
+  if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
+  return n;
+}
+const NAV=[['dashboard','⌂','Dashboard'],['catalog','☷','Product Catalog'],['brands','◆','Brands'],
+  ['images','📸','Images'],['videos','🎬','Videos'],['documents','📄','Documents'],['marketing','📢','Marketing Assets'],
+  ['add-product','＋','Add Product'],['rebates','💰','Rebates & Promos'],['certifications','⚡','Certifications'],
+  ['export','⇩','Export Data'],['data-quality','◎','Data Quality'],['activity','↻','Activity Log'],
+  ['team','👥','Team & Access'],['product-detail','☷','Product Detail']];
 
 function go(page,detail){S.page=page;S.detail=detail||null;S.editMode=false;S.detailTab='overview';S.pg=0;render()}
 
 /* ── RENDER SHELL ── */
 function render(){
   if(S.view!=='app')return;
-  const links=NAV.map(n=>{
+  const links=navItems().map(n=>{
     if(n[0]==='_sep')return'<div class="side-sep"></div>';
     if(n[0]==='_label')return`<div class="side-label">${n[1]}</div>`;
     return`<button class="nav ${S.page===n[0]?'active':''}" onclick="go('${n[0]}')"><span class="icon">${n[1]}</span>${n[2]}</button>`;
   }).join('');
+  const apps=APPS.map(a=>`<a class="side-link" href="${a[2]}" target="_blank">${a[1]} ${a[0]} ↗</a>`).join('');
   document.getElementById('app').innerHTML=`<div class="shell">
     <aside class="side">
       <div class="brand"><span class="mark">PIQ</span>Product IQ</div>
       <div class="product-pill">Product Information Management</div>
       ${links}
+      <div class="side-sep"></div>
+      <div class="side-label">IQ ECOSYSTEM</div>
+      ${apps}
       <div class="side-bottom">
         <a class="side-link" href="https://applianceiq-intelligence-group.netlify.app" target="_blank">← IQ Intelligence Group</a>
-        <div class="user-chip">${esc(S.user?.email||'')}</div>
+        <div class="user-chip">${esc(S.user?.email||'')}<br/><span style="color:#a5b4fc;font-weight:700">${esc(roleLabel())}</span></div>
         <button class="nav" onclick="logout()" style="margin-top:4px"><span class="icon">⏻</span>Sign Out</button>
       </div>
     </aside>
@@ -296,13 +337,13 @@ function render(){
   </div>`;
   renderPage();
 }
-async function logout(){await sb.auth.signOut();S.user=null;showLanding()}
+async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:false,isManufacturer:false,isRetailer:false,vendors:[],brandNames:[],loaded:false};showLanding()}
 
 /* ── PAGE ROUTER ── */
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -334,7 +375,7 @@ async function renderDashboard(C){
   const completeness=all.length?Math.round(((withDesc+withUpc+withFinish+imgProds+docProds)/(all.length*5))*100):0;
 
   C.innerHTML=`
-  <div class="pagehead"><div><h1>PIM Dashboard</h1><p class="sub">Product Information Management — your centralized content hub.</p></div><button class="btn btn-indigo" onclick="go('add-product')">＋ Add Product</button></div>
+  <div class="pagehead"><div><h1>PIM Dashboard</h1><p class="sub">Product Information Management — your centralized content hub.</p></div>${canEdit()?'<button class="btn btn-indigo" onclick="go(\'add-product\')">＋ Add Product</button>':''}</div>
 
   <div class="cards">
     <div class="metric"><div class="label">Products</div><div class="value">${all.length}</div><div class="note">${Object.keys(mfrs).length} manufacturers · ${Object.keys(cats).length} categories</div></div>
@@ -409,7 +450,7 @@ async function renderCatalog(C){
   if(S.filters.category)filtered=filtered.filter(p=>p.category===S.filters.category);
   const ps=20,pages=Math.ceil(filtered.length/ps),page=filtered.slice(S.pg*ps,(S.pg+1)*ps);
   C.innerHTML=`
-  <div class="pagehead"><div><h1>Product Catalog</h1><p class="sub">${all.length} products across ${brands.length} brands</p></div><button class="btn btn-indigo" onclick="go('add-product')">＋ Add Product</button></div>
+  <div class="pagehead"><div><h1>Product Catalog</h1><p class="sub">${all.length} products across ${brands.length} brands</p></div>${canEdit()?'<button class="btn btn-indigo" onclick="go(\'add-product\')">＋ Add Product</button>':''}</div>
   <div class="toolbar">
     <input class="control search-input" placeholder="Search model, brand, series…" value="${esc(S.filters.search)}" oninput="S.filters.search=this.value;S.pg=0;renderPage()"/>
     <select class="control" onchange="S.filters.brand=this.value;S.pg=0;renderPage()"><option value="">All Brands</option>${brands.map(b=>`<option${S.filters.brand===b?' selected':''}>${esc(b)}</option>`).join('')}</select>
@@ -443,7 +484,7 @@ async function renderImages(C){
   if(S.assetFilter!=='all')filtered=filtered.filter(i=>i.image_type===S.assetFilter);
   C.innerHTML=`
   <div class="pagehead"><div><h1>📸 Image Library</h1><p class="sub">${all.length} images across ${new Set(all.map(i=>i.product_id)).size} products</p></div>
-    <button class="btn btn-indigo" onclick="showAddImageModal()">＋ Upload Image</button></div>
+    ${canEdit()?'<button class="btn btn-indigo" onclick="showAddImageModal()">＋ Upload Image</button>':''}</div>
   <div class="toolbar">
     <select class="control" onchange="S.assetFilter=this.value;renderPage()"><option value="all">All Types</option>${['hero','lifestyle','detail','finish_swatch','quoting_image','dim_drawing_image'].map(t=>`<option value="${t}"${S.assetFilter===t?' selected':''}>${t.replace(/_/g,' ')}</option>`).join('')}</select>
     <span class="tiny" style="margin-left:auto">${filtered.length} images</span>
@@ -472,7 +513,7 @@ async function renderVideos(C){
   const all=videos||[];
   C.innerHTML=`
   <div class="pagehead"><div><h1>🎬 Video Library</h1><p class="sub">${all.length} videos across ${new Set(all.map(v=>v.product_id)).size} products</p></div>
-    <button class="btn btn-indigo" onclick="showAddVideoModal()">＋ Add Video</button></div>
+    ${canEdit()?'<button class="btn btn-indigo" onclick="showAddVideoModal()">＋ Add Video</button>':''}</div>
   ${all.length?`<div class="asset-grid">${all.map(v=>{
     const p=pMap[v.product_id];
     const thumb=v.thumbnail_url||((v.embed_url||'').includes('youtube')?`https://img.youtube.com/vi/${(v.embed_url||'').match(/(?:embed\/|v=)([^&?/]+)/)?.[1]||''}/hqdefault.jpg`:'');
@@ -502,7 +543,7 @@ async function renderDocuments(C){
   if(S.assetFilter!=='all')filtered=filtered.filter(d=>d.doc_type===S.assetFilter);
   C.innerHTML=`
   <div class="pagehead"><div><h1>📄 Document Library</h1><p class="sub">${all.length} documents — manuals, spec sheets, energy guides, installation guides & more</p></div>
-    <button class="btn btn-indigo" onclick="showAddDocModal()">＋ Upload Document</button></div>
+    ${canEdit()?'<button class="btn btn-indigo" onclick="showAddDocModal()">＋ Upload Document</button>':''}</div>
   <div class="toolbar">
     <select class="control" onchange="S.assetFilter=this.value;renderPage()"><option value="all">All Document Types</option>${docTypes.map(t=>`<option value="${t}"${S.assetFilter===t?' selected':''}>${DOC_ICONS[t]||'📄'} ${t.replace(/_/g,' ')}</option>`).join('')}</select>
     <span class="tiny" style="margin-left:auto">${filtered.length} documents</span>
@@ -535,7 +576,7 @@ async function renderMarketing(C){
   if(S.assetFilter!=='all')filtered=filtered.filter(a=>a.asset_type===S.assetFilter);
   C.innerHTML=`
   <div class="pagehead"><div><h1>📢 Marketing Assets</h1><p class="sub">${all.length} assets — sell sheets, social kits, co-op ads, POP displays & more</p></div>
-    <button class="btn btn-indigo" onclick="showAddMarketingModal()">＋ Upload Asset</button></div>
+    ${canEdit()?'<button class="btn btn-indigo" onclick="showAddMarketingModal()">＋ Upload Asset</button>':''}</div>
   <div class="toolbar">
     <select class="control" onchange="S.assetFilter=this.value;renderPage()"><option value="all">All Asset Types</option>${mktTypes.map(t=>`<option value="${t}"${S.assetFilter===t?' selected':''}>${MKT_ICONS[t]||'📢'} ${t.replace(/_/g,' ')}</option>`).join('')}</select>
   </div>
@@ -563,7 +604,7 @@ async function renderRebates(C){
   const expired=all.filter(r=>!r.is_active||new Date(r.end_date)<new Date());
   C.innerHTML=`
   <div class="pagehead"><div><h1>💰 Rebates & Promotions</h1><p class="sub">${active.length} active, ${expired.length} expired or inactive</p></div>
-    <button class="btn btn-indigo" onclick="showAddRebateModal()">＋ Add Rebate</button></div>
+    ${canEdit()?'<button class="btn btn-indigo" onclick="showAddRebateModal()">＋ Add Rebate</button>':''}</div>
   ${active.length?`<h3 style="margin-bottom:12px">Active Rebates</h3><div class="tablewrap" style="margin-bottom:20px"><table>
     <thead><tr><th>Rebate</th><th>Type</th><th>Amount</th><th>Product/Brand</th><th>Valid</th><th>Deadline</th><th></th></tr></thead>
     <tbody>${active.map(r=>{const p=pMap[r.product_id];const b=bMap[r.brand_id];return`<tr>
@@ -593,7 +634,7 @@ async function renderCertifications(C){
   const bodies={};all.forEach(c=>{bodies[c.cert_body]=(bodies[c.cert_body]||0)+1});
   C.innerHTML=`
   <div class="pagehead"><div><h1>⚡ Certifications & Compliance</h1><p class="sub">${all.length} certifications across ${new Set(all.map(c=>c.product_id)).size} products</p></div>
-    <button class="btn btn-indigo" onclick="showAddCertModal()">＋ Add Certification</button></div>
+    ${canEdit()?'<button class="btn btn-indigo" onclick="showAddCertModal()">＋ Add Certification</button>':''}</div>
   ${Object.keys(bodies).length?`<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:20px">
     ${Object.entries(bodies).sort((a,b)=>b[1]-a[1]).map(([body,cnt])=>`<div class="metric"><div class="label">${esc(body)}</div><div class="value">${cnt}</div></div>`).join('')}
   </div>`:''}
@@ -766,7 +807,7 @@ async function renderProductDetail(C){
           ${p.finish?`<span class="pill pill-gray">${esc(p.finish)}</span>`:''}
         </div>
       </div>
-      <button class="btn btn-secondary" onclick="S.editMode=true;renderPage()">✏️ Edit Product</button>
+      ${canEdit()?'<button class="btn btn-secondary" onclick="S.editMode=true;renderPage()">✏️ Edit Product</button>':''}
     </div>
 
     <div class="tabs">${allTabs.map(t=>`<button class="tab ${tab===t?'active':''}" onclick="S.detailTab='${t}';renderPage()">${t.charAt(0).toUpperCase()+t.slice(1)}${tabCounts[t]?' ('+tabCounts[t]+')':''}</button>`).join('')}</div>
@@ -1041,6 +1082,106 @@ async function renderDataQuality(C){
       <td><button class="btn btn-secondary btn-sm" onclick="go('product-detail','${p.id}')">Fix →</button></td>
     </tr>`).join('')}</tbody>
   </table></div>`;
+}
+
+/* ══════════════════ EXPORT (retailer-focused) ══════════════════ */
+function toCSV(rows){
+  if(!rows.length)return'';
+  const keys=Object.keys(rows[0]);
+  const cell=v=>{const s=v==null?'':String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+  return keys.join(',')+'\n'+rows.map(r=>keys.map(k=>cell(r[k])).join(',')).join('\n');
+}
+function download(name,text,type){
+  const b=new Blob([text],{type:type||'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+const EXPORTS={
+  products:{label:'Product Catalog',icon:'📦',table:'aiq_products',
+    cols:'model,brand_name,manufacturer_name,category,series,product_line,upc,finish,color,msrp,map_price,width_inches,height_inches,depth_inches,weight_lbs,energy_star,ada_compliant,short_description'},
+  documents:{label:'Documents & Manuals',icon:'📄',table:'pim_product_documents',cols:'title,doc_type,language,locale,version,file_url,file_name,created_at'},
+  images:{label:'Product Images',icon:'📸',table:'pim_product_images',cols:'image_type,file_url,alt_text,finish_shown,angle,width_px,height_px,is_primary'},
+  videos:{label:'Product Videos',icon:'🎬',table:'pim_product_videos',cols:'title,video_type,embed_url,video_url,duration_seconds,resolution,language'},
+  marketing:{label:'Marketing Assets',icon:'📢',table:'pim_marketing_assets',cols:'title,asset_type,file_url,campaign,season,usage_rights,effective_date,expiry_date'},
+  rebates:{label:'Rebates & Promotions',icon:'💰',table:'pim_product_rebates',cols:'rebate_name,rebate_type,rebate_amount,rebate_percent,start_date,end_date,submission_deadline,rebate_form_url,is_active'},
+  certifications:{label:'Certifications & Energy',icon:'⚡',table:'pim_product_certifications',cols:'cert_type,cert_body,cert_number,energy_star_rating,annual_energy_kwh,annual_energy_cost,water_usage_gallons,noise_level_dba,energy_guide_url'},
+  dimensions:{label:'Dimensions & Cutouts',icon:'📐',table:'pim_product_dimensions',cols:'width_inches,height_inches,depth_inches,depth_with_door_inches,cutout_width,cutout_height,cutout_depth,shipping_weight_lbs,door_swing_direction,cad_file_url,revit_file_url'},
+  warranty:{label:'Warranty Coverage',icon:'🛡️',table:'pim_warranty_details',cols:'coverage_name,warranty_type,coverage_years,parts_covered,labor_covered,in_home_service,transferable,registration_url'},
+  brands:{label:'Brand Directory',icon:'◆',table:'brand_catalog',cols:'brand_name,parent_company,brand_tier,country,is_active'}
+};
+async function runExport(key,fmt){
+  const e=EXPORTS[key];if(!e)return;
+  const {data,error}=await sb.from(e.table).select(e.cols);
+  if(error)return alert('Export failed: '+error.message);
+  if(!data||!data.length)return alert('No data available to export for '+e.label+'.');
+  const stamp=new Date().toISOString().slice(0,10);
+  if(fmt==='json')download(`productiq-${key}-${stamp}.json`,JSON.stringify(data,null,2),'application/json');
+  else download(`productiq-${key}-${stamp}.csv`,toCSV(data));
+}
+async function renderExport(C){
+  const counts={};
+  await Promise.all(Object.entries(EXPORTS).map(async([k,e])=>{
+    const {count}=await sb.from(e.table).select('*',{count:'exact',head:true});
+    counts[k]=count||0;
+  }));
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>⇩ Export Data</h1><p class="sub">Download product content as CSV or JSON. Exports respect your access level — you receive exactly the records you're permitted to see.</p></div></div>
+  <div class="panel" style="background:#eef0ff;border-color:#c7d2fe">
+    <div style="display:flex;gap:12px;align-items:center">
+      <div style="font-size:22px">${S.role.isAdmin?'🛡️':S.role.vendors.length?'🏭':'🏪'}</div>
+      <div><strong>Exporting as: ${esc(roleLabel())}</strong>
+      <div class="tiny">${S.role.isAdmin?'Full catalog access across all brands.':S.role.vendors.length?'Scoped to brands owned by '+esc(S.role.vendors.map(v=>v.name).join(', ')):'Published product content across the catalog.'}</div></div>
+    </div>
+  </div>
+  <div class="asset-grid">
+    ${Object.entries(EXPORTS).map(([k,e])=>`<div class="asset-card">
+      <div class="preview" style="height:80px;font-size:30px">${e.icon}</div>
+      <div class="info"><h4>${esc(e.label)}</h4><span class="tiny">${counts[k]} record${counts[k]===1?'':'s'} available</span></div>
+      <div class="actions">
+        <button class="btn btn-secondary btn-sm" onclick="runExport('${k}','csv')" ${counts[k]?'':'disabled style="opacity:.4"'}>CSV</button>
+        <button class="btn btn-secondary btn-sm" onclick="runExport('${k}','json')" ${counts[k]?'':'disabled style="opacity:.4"'}>JSON</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+/* ══════════════════ TEAM & ACCESS (admin only) ══════════════════ */
+async function renderTeam(C){
+  if(!S.role.isAdmin)return C.innerHTML='<div class="empty">Team &amp; Access is restricted to platform administrators.</div>';
+  const [{data:members},{data:vendors},{data:admins}]=await Promise.all([
+    sb.from('mfr_members').select('user_id,role,status,created_at,mfr_vendors(name)').order('created_at',{ascending:false}),
+    sb.from('mfr_vendors').select('id,name,status').order('name'),
+    sb.from('product_iq_platform_roles').select('user_id,role,status')
+  ]);
+  const {data:brandCounts}=await sb.from('brand_catalog').select('manufacturer_id');
+  const bc={};(brandCounts||[]).forEach(b=>{if(b.manufacturer_id)bc[b.manufacturer_id]=(bc[b.manufacturer_id]||0)+1});
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>👥 Team &amp; Access</h1><p class="sub">Manufacturer accounts, brand ownership, and platform administrators.</p></div></div>
+  <div class="cards" style="grid-template-columns:repeat(3,1fr)">
+    <div class="metric"><div class="label">Manufacturer Companies</div><div class="value">${(vendors||[]).length}</div></div>
+    <div class="metric"><div class="label">Assigned Users</div><div class="value">${(members||[]).length}</div></div>
+    <div class="metric"><div class="label">Platform Admins</div><div class="value">${(admins||[]).length}</div></div>
+  </div>
+  <div class="panel"><h2>Assigned Manufacturer Users</h2>
+    ${(members||[]).length?`<div class="tablewrap"><table>
+      <thead><tr><th>Company</th><th>Role</th><th>Status</th><th>User ID</th></tr></thead>
+      <tbody>${(members||[]).map(m=>`<tr>
+        <td><span class="model-name">${esc(m.mfr_vendors?.name||'—')}</span></td>
+        <td><span class="pill pill-indigo">${esc(m.role||'—')}</span></td>
+        <td>${m.status==='active'?'<span class="pill pill-green">Active</span>':'<span class="pill pill-gray">'+esc(m.status)+'</span>'}</td>
+        <td class="tiny">${esc(m.user_id).substring(0,8)}…</td>
+      </tr>`).join('')}</tbody></table></div>`
+    :'<div class="empty">No manufacturer users assigned yet.</div>'}
+  </div>
+  <div class="panel"><h2>Manufacturer Companies &amp; Brand Ownership</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Company</th><th>Brands Owned</th><th>Status</th></tr></thead>
+      <tbody>${(vendors||[]).filter(v=>bc[v.id]).sort((a,b)=>bc[b.id]-bc[a.id]).map(v=>`<tr>
+        <td><span class="model-name">${esc(v.name)}</span></td>
+        <td><span class="pill pill-gray">${bc[v.id]||0}</span></td>
+        <td>${v.status==='active'?'<span class="pill pill-green">Active</span>':'<span class="pill pill-gray">'+esc(v.status||'—')+'</span>'}</td>
+      </tr>`).join('')}</tbody></table></div>
+  </div>`;
 }
 
 /* ══════════════════ ACTIVITY ══════════════════ */
