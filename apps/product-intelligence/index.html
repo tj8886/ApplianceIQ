@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f1f3d" />
+  <title>Product IQ — ApplianceIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{--navy:#0f1f3d;--navy2:#16294e;--teal:#2f7d72;--tealwash:#e6f0ed;--bg:#f4f6f8;--card:#fff;--ink:#1f2b3d;--muted:#64748b;--line:#e3e8ee;--green:#177c45;--greenbg:#e8f7ee;--amber:#a15c00;--amberbg:#fff5df;--red:#ad3125;--redbg:#fdecea;--blue:#365ebf;--bluebg:#edf3ff}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 Inter,system-ui,sans-serif} button,input,select{font:inherit} h1,h2,h3{font-family:Sora,Inter,sans-serif;margin:0;color:var(--navy)}
+    .shell{min-height:100vh;display:grid;grid-template-columns:248px minmax(0,1fr)}.side{background:var(--navy);color:#fff;padding:20px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}.brand{display:flex;align-items:center;gap:10px;padding:8px 10px 22px;font-family:Sora;font-weight:800}.mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#2f7d72,#5cb7a9);display:grid;place-items:center;font-size:11px}.product-pill{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#8fd3c9;margin:0 10px 10px}.nav{border:0;background:transparent;color:#b7c4d8;text-align:left;padding:10px 11px;border-radius:8px;cursor:pointer;font-weight:600;display:flex;gap:10px;align-items:center}.nav:hover,.nav.active{background:rgba(255,255,255,.1);color:#fff}.nav[hidden]{display:none}.nav .icon{width:17px;text-align:center}.side-bottom{margin-top:auto;border-top:1px solid rgba(255,255,255,.12);padding-top:12px}.switch{color:#c8d2e3;text-decoration:none;font-size:12px;padding:9px 11px;display:block}.user{font-size:12px;color:#aebdd1;padding:10px}
+    main{min-width:0;padding:28px 34px 44px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px}.crumb{font-size:12px;color:var(--muted)}.crumb b{color:var(--navy)}.userchip{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}.avatar{height:30px;width:30px;border-radius:50%;background:var(--tealwash);color:var(--teal);display:grid;place-items:center;font-weight:800}.pagehead{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:22px}.pagehead h1{font-size:28px;letter-spacing:-.8px}.sub{color:var(--muted);margin:5px 0 0}.btn{border:0;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:700}.btn.primary{background:var(--navy);color:#fff}.btn.secondary{background:#fff;border:1px solid var(--line);color:var(--navy)}.btn:disabled{opacity:.55;cursor:not-allowed}
+    .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}.metric,.panel{background:var(--card);border:1px solid var(--line);border-radius:12px}.metric{padding:16px}.metric .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.55px;font-weight:700}.metric .value{font:800 25px Sora;margin-top:5px;color:var(--navy)}.metric .note{font-size:11px;color:var(--muted);margin-top:4px}.layout{display:grid;grid-template-columns:1.25fr .85fr;gap:16px}.panel{padding:18px}.panel h2{font-size:15px;margin-bottom:13px}.queue{border-bottom:1px solid #eef1f4;padding:10px 0;display:flex;justify-content:space-between;gap:14px}.queue:last-child{border:0}.queue small{color:var(--muted)}.empty{padding:30px 16px;text-align:center;color:var(--muted);border:1px dashed #cad3df;border-radius:9px}.error{padding:12px 14px;border-radius:9px;background:var(--redbg);color:var(--red);margin:10px 0}.loading{color:var(--muted);padding:24px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:15px}.control{height:38px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 10px;color:var(--ink)}.search{min-width:230px;flex:1}.tablewrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px}.table{width:100%;border-collapse:collapse;min-width:980px}.table th{padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.65px;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap}.table td{padding:11px 12px;border-bottom:1px solid #eef1f4;vertical-align:middle}.table tr:last-child td{border:0}.table tr.click{cursor:pointer}.table tr.click:hover td{background:#f8fbfc}.model{font-weight:800;color:var(--navy)}.tiny{font-size:12px;color:var(--muted)}.thumb{height:34px;width:34px;background:#eef2f6;border-radius:7px;display:grid;place-items:center;color:#99a7b7}.pill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700;white-space:nowrap}.pill.green{color:var(--green);background:var(--greenbg)}.pill.amber{color:var(--amber);background:var(--amberbg)}.pill.red{color:var(--red);background:var(--redbg)}.pill.blue{color:var(--blue);background:var(--bluebg)}.pill.gray{color:#59687a;background:#eef2f6}.pager{padding:12px;display:flex;align-items:center;justify-content:space-between;color:var(--muted)}
+    .record{background:#fff;border:1px solid var(--line);border-radius:12px;padding:19px}.recordtop{display:flex;gap:16px;align-items:flex-start}.product-image{height:78px;width:78px;border-radius:12px;background:#eef2f6;display:grid;place-items:center;font-size:28px}.recordmeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.tabs{display:flex;gap:3px;overflow:auto;border-bottom:1px solid var(--line);margin:22px -19px 18px;padding:0 19px}.tab{border:0;border-bottom:2px solid transparent;background:none;padding:11px 10px;color:var(--muted);white-space:nowrap;cursor:pointer;font-weight:600}.tab.active{color:var(--teal);border-color:var(--teal)}.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}.kv div{padding:12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}.kv div:nth-child(3n){border-right:0}.kv small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}.governance-list{display:grid;gap:10px}.governance-item{padding:12px;border:1px solid var(--line);border-radius:9px}.access{max-width:550px;margin:12vh auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:32px;text-align:center}.access .lock{font-size:32px;margin-bottom:10px}
+    @media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.layout{grid-template-columns:1fr}.kv{grid-template-columns:repeat(2,1fr)}.kv div:nth-child(3n){border-right:1px solid var(--line)}.kv div:nth-child(2n){border-right:0}}@media(max-width:760px){.shell{grid-template-columns:1fr}.side{height:auto;position:static;flex-direction:row;overflow:auto;padding:10px}.brand,.product-pill,.side-bottom,.user{display:none}.nav{white-space:nowrap;font-size:12px}.nav .icon{display:none}main{padding:20px 15px}.topbar{margin-bottom:20px}.cards{grid-template-columns:repeat(2,1fr);gap:9px}.metric{padding:13px}.metric .value{font-size:21px}.pagehead{display:block}.pagehead .btn{margin-top:13px}.toolbar{display:grid;grid-template-columns:1fr 1fr}.search{grid-column:1/-1;min-width:0}.recordtop{display:block}.product-image{margin-bottom:12px}.kv{grid-template-columns:1fr}.kv div{border-right:0!important}.tabs{margin-left:-19px;margin-right:-19px}.userchip span{display:none}} 
+  </style>
+</head>
+<body><div id="app"><div class="loading">Loading Product IQ…</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const {createClient}=supabase;
+const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
+const state={user:null,role:null,products:[],page:0,filters:{search:'',brand:'',manufacturer:'',category:'',status:'',approval:'',publication:''}};
+const nav=[['dashboard','⌂','Dashboard'],['products','□','Products'],['brands','◇','Brands'],['documents','▤','Documents'],['assets','▧','Digital Assets'],['approvals','✓','Approvals'],['data-quality','◌','Data Quality'],['distribution','⇄','Distribution'],['team','♙','Team'],['settings','⚙','Settings']];
+const adminOnly=new Set(['brands','documents','assets','approvals','data-quality','distribution','team','settings']);
+const esc=v=>String(v??'—').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const pill=(value,type='gray')=>`<span class="pill ${type}">${esc(value)}</span>`;
+const statusPill=s=>pill(s||'draft',s==='active'||s==='approved'||s==='published'?'green':s==='draft'||s==='submitted'||s==='in_review'?'amber':s==='discontinued'?'gray':'red');
+const route=()=>location.pathname.replace(/^\/product-intelligence\/?/,'')||'dashboard';
+function go(path){history.pushState({},'',`/product-intelligence/${path}`.replace(/\/$/,''));render()}
+window.addEventListener('popstate',render);
+async function init(){const {data:{user}}=await sb.auth.getUser();state.user=user;if(!user)return access('Sign in required','Product IQ uses your existing ApplianceIQ account.');const {data:role,error}=await sb.from('product_iq_platform_roles').select('role,status').eq('user_id',user.id).maybeSingle();if(!error&&role?.status==='active'){state.role=role.role;return render()}const {data:records,error:accessError}=await sb.from('aiq_products').select('id').limit(1);if(!accessError&&records?.length){state.role='approved data consumer';return render()}return access('Product IQ access required','Your ApplianceIQ account is not currently authorized for Product IQ.')}
+function access(title,text){document.getElementById('app').innerHTML=`<div class="access"><div class="lock">⌁</div><h1>${title}</h1><p class="sub">${text}</p><a class="btn secondary" href="/">Return to ApplianceIQ</a></div>`}
+function isPlatformUser(){return state.role&&state.role!=='approved data consumer'}
+function shell(content,active){const links=nav.filter(n=>!adminOnly.has(n[0])||isPlatformUser()).map(([key,icon,label])=>`<button class="nav ${active===key?'active':''}" onclick="go('${key}')"><span class="icon">${icon}</span>${label}</button>`).join('');document.getElementById('app').innerHTML=`<div class="shell"><aside class="side"><div class="brand"><span class="mark">PIQ</span><span>Product IQ</span></div><div class="product-pill">Product Intelligence</div>${links}<div class="side-bottom"><a class="switch" href="/">← ApplianceIQ platform</a><div class="user">${esc(state.user.email)}</div></div></aside><main><div class="topbar"><div class="crumb">ApplianceIQ <span> / </span><b>Product IQ</b></div><div class="userchip"><div class="avatar">${esc((state.user.email||'U')[0].toUpperCase())}</div><span>${esc(state.role.replaceAll('_',' '))}</span></div></div>${content}</main></div>`}
+async function governanceAction(action,payload){const {data,error}=await sb.functions.invoke('product-iq-governance',{body:{action,...payload}});if(error||data?.error){alert(data?.error||error.message||'Governance action could not be completed.');return false}return true}
+async function submitReview(productId){if(!isPlatformUser())return;const summary=prompt('Briefly describe the review request:');if(summary===null)return;const ok=await governanceAction('create_review',{productId,summary});if(ok){alert('Review request created.');render()}}
+async function resolveReview(changeRequestId,decision){if(!isPlatformUser()||!confirm(`${decision==='approve'?'Approve':'Reject'} this review request?`))return;const notes=prompt('Decision notes (optional):')||'';const ok=await governanceAction('resolve_review',{changeRequestId,decision,notes});if(ok){alert('Review decision recorded.');render()}}
+async function render(){if(!state.user)return;const r=route();if(r.startsWith('products/'))return productRecord(r.split('/')[1]);if(r==='products')return products();if(r==='dashboard')return dashboard();if(['brands','documents','assets','approvals','data-quality','distribution','team','settings'].includes(r))return governance(r);go('dashboard')}
+async function dashboard(){shell(`<div class="pagehead"><div><h1>Product Intelligence</h1><p class="sub">Your authorized appliance product-data workspace.</p></div><button class="btn secondary" onclick="go('products')">View products</button></div><div id="dashboard"><div class="loading">Loading real Product IQ metrics…</div></div>`,'dashboard');const root=document.getElementById('dashboard');const [{data:ps,error},{data:docs},{data:requests},{data:events},{data:quality}]=await Promise.all([sb.from('aiq_products').select('id,status,approval_status,public_visible,updated_at,model,brand_name').order('updated_at',{ascending:false}),sb.from('aiq_documents').select('product_id'),sb.from('product_iq_change_requests').select('id,status,requested_at,summary,product_id').order('requested_at',{ascending:false}).limit(6),sb.from('product_iq_distribution_events').select('id,status,destination,created_at').order('created_at',{ascending:false}).limit(6),sb.from('product_iq_data_quality_results').select('score')]);if(error)return root.innerHTML=`<div class="error">Unable to load dashboard data: ${esc(error.message)}</div>`;const all=ps||[],count=f=>all.filter(f).length,avg=quality?.length?(quality.reduce((a,x)=>a+Number(x.score),0)/quality.length).toFixed(0):null,withDocs=new Set((docs||[]).map(x=>x.product_id));const metrics=[['Total products',all.length,'Authorized records'],['Approved',count(x=>x.approval_status==='approved'),'Approval status'],['Published',count(x=>x.public_visible),'Publicly available'],['Drafts',count(x=>x.status==='draft'||x.approval_status==='draft'),'Needs completion'],['Pending review',count(x=>['submitted','in_review'].includes(x.approval_status)),'Current product state'],['Discontinued',count(x=>x.status==='discontinued'),'Service/history retained'],['Missing documents',all.length-withDocs.size,'Products with no linked document'],['Missing images','—','No Product IQ image model yet'],['Data-quality issues',quality?.length||0,quality?.length?'Validated records':'No validation runs yet'],['Completeness',avg?avg+'%':'—',avg?'Average health score':'No validation runs yet']];root.innerHTML=`<div class="cards">${metrics.map(m=>`<div class="metric"><div class="label">${m[0]}</div><div class="value">${m[1]}</div><div class="note">${m[2]}</div></div>`).join('')}</div><div class="layout"><section class="panel"><h2>Recent product changes</h2>${all.slice(0,6).map(x=>`<div class="queue"><div><b>${esc(x.brand_name)} ${esc(x.model)}</b><br><small>${new Date(x.updated_at).toLocaleString()}</small></div>${statusPill(x.approval_status)}</div>`).join('')||'<div class="empty">No authorized product changes.</div>'}</section><section class="panel"><h2>Recent review requests</h2>${requests?.length?requests.map(x=>`<div class="queue"><div><b>${esc(x.summary||x.status.replaceAll('_',' '))}</b><br><small>${esc(x.status)} · ${new Date(x.requested_at).toLocaleString()}</small></div>${statusPill(x.status)}</div>`).join(''):'<div class="empty">No review requests have been created yet.</div>'}</section><section class="panel"><h2>Distribution activity</h2>${events?.length?events.map(x=>`<div class="queue"><div><b>${esc(x.destination.replaceAll('_',' '))}</b><br><small>${new Date(x.created_at).toLocaleString()}</small></div>${statusPill(x.status)}</div>`).join(''):'<div class="empty">No distribution events yet. Approved publishing remains controlled.</div>'}</section></div>`}
+async function products(){shell(`<div class="pagehead"><div><h1>Products</h1><p class="sub">Authoritative Product IQ records.</p></div></div><div class="toolbar"><input id="search" class="control search" placeholder="Search model, brand, or name"/><select id="brand" class="control"><option value="">All brands</option></select><select id="category" class="control"><option value="">All categories</option></select><select id="status" class="control"><option value="">All lifecycle states</option><option>active</option><option>draft</option><option>discontinued</option></select><select id="approval" class="control"><option value="">All approval states</option><option>approved</option><option>draft</option><option>submitted</option><option>in_review</option></select></div><div id="productTable" class="loading">Loading authorized products…</div>`,'products');for(const id of ['search','brand','category','status','approval'])document.getElementById(id).addEventListener('input',()=>{state.filters[id==='search'?'search':id]=document.getElementById(id).value;state.page=0;loadProducts()});loadProducts()}
+async function loadProducts(){const out=document.getElementById('productTable');if(!out)return;let q=sb.from('aiq_products').select('id,manufacturer_name,brand_name,model,short_description,category,status,approval_status,public_visible,source_confidence,version_number,updated_at,updated_by',{count:'exact'}).order('updated_at',{ascending:false});const f=state.filters;if(f.search)q=q.or(`model.ilike.%${f.search}%,brand_name.ilike.%${f.search}%,short_description.ilike.%${f.search}%`);for(const k of ['brand','category','status'])if(f[k])q=q.eq(k==='brand'?'brand_name':k,f[k]);if(f.approval)q=q.eq('approval_status',f.approval);const {data,error,count}=await q.range(state.page*25,state.page*25+24);if(error)return out.innerHTML=`<div class="error">Unable to load products: ${esc(error.message)}</div>`;state.products=data||[];const values=(key)=>[...new Set(state.products.map(x=>x[key]).filter(Boolean))].sort();for(const [id,key] of [['brand','brand_name'],['category','category']]){const el=document.getElementById(id),current=state.filters[id];if(el&&el.options.length===1){values(key).forEach(v=>el.insertAdjacentHTML('beforeend',`<option value="${esc(v)}">${esc(v)}</option>`));el.value=current}}out.innerHTML=`<div class="tablewrap"><table class="table"><thead><tr><th></th><th>Product</th><th>Manufacturer</th><th>Category</th><th>Lifecycle</th><th>Approval</th><th>Publication</th><th>Confidence</th><th>Version</th><th>Updated</th></tr></thead><tbody>${data?.length?data.map(p=>`<tr class="click" onclick="go('products/${p.id}')"><td><div class="thumb">□</div></td><td><div class="model">${esc(p.brand_name)} ${esc(p.model)}</div><div class="tiny">${esc(p.short_description||'No short description')}</div></td><td>${esc(p.manufacturer_name)}</td><td>${esc(p.category)}</td><td>${statusPill(p.status)}</td><td>${statusPill(p.approval_status)}</td><td>${p.public_visible?pill('Published','green'):pill('Not published','gray')}</td><td>${p.source_confidence==null?'—':esc(p.source_confidence)+'%'}</td><td>v${esc(p.version_number)}</td><td class="tiny">${new Date(p.updated_at).toLocaleDateString()}</td></tr>`).join(''):`<tr><td colspan="10"><div class="empty">No authorized products match these filters.</div></td></tr>`}</tbody></table><div class="pager"><span>${count||0} authorized product records</span><span><button class="btn secondary" ${state.page===0?'disabled':''} onclick="state.page--;loadProducts()">Previous</button> <button class="btn secondary" ${(state.page+1)*25>=(count||0)?'disabled':''} onclick="state.page++;loadProducts()">Next</button></span></div></div>`}
+async function productRecord(id){shell(`<div id="record" class="loading">Loading product record…</div>`,'products');const root=document.getElementById('record');const [{data:p,error},{data:spec},{data:docs},{data:rels},{data:versions},{data:requests},{data:quality},{data:events}]=await Promise.all([sb.from('aiq_products').select('*').eq('id',id).maybeSingle(),sb.from('aiq_product_specifications').select('*').eq('product_id',id).maybeSingle(),sb.from('aiq_documents').select('*').eq('product_id',id),sb.from('aiq_product_relationships').select('*').eq('product_id',id),sb.from('aiq_product_versions').select('*').eq('product_id',id).order('version_number',{ascending:false}),sb.from('product_iq_change_requests').select('*').eq('product_id',id).order('requested_at',{ascending:false}),sb.from('product_iq_data_quality_results').select('*').eq('product_id',id).order('validated_at',{ascending:false}).limit(1),sb.from('product_iq_distribution_events').select('*').eq('product_id',id).order('created_at',{ascending:false})]);if(error||!p)return root.innerHTML=`<div class="error">This product is unavailable or you do not have access.</div>`;const tabs={Overview:`<div class="kv"><div><small>Brand</small>${esc(p.brand_name)}</div><div><small>Manufacturer</small>${esc(p.manufacturer_name)}</div><div><small>Model</small>${esc(p.model)}</div><div><small>Category</small>${esc(p.category)}</div><div><small>Source</small>${esc(p.source_type)}</div><div><small>Source confidence</small>${p.source_confidence==null?'—':esc(p.source_confidence)+'%'}</div><div><small>Last updated</small>${new Date(p.updated_at).toLocaleString()}</div><div><small>Actor</small>${esc(p.updated_by||p.created_by||'System')}</div><div><small>MSRP</small>${p.msrp?'$'+Number(p.msrp).toLocaleString():'—'}</div></div>`,Specifications:spec?`<pre>${esc(JSON.stringify({dimensions:spec.dimensions,electrical:spec.electrical,gas:spec.gas,ventilation:spec.ventilation,installation:spec.installation,performance:spec.performance},null,2))}</pre>`:'<div class="empty">No structured specifications have been added.</div>',Documents:docs?.length?`<div class="governance-list">${docs.map(d=>`<div class="governance-item"><b>${esc(d.title)}</b><br><span class="tiny">${esc(d.document_type)} · ${esc(d.approval_status)}</span></div>`).join('')}</div>`:'<div class="empty">No linked Product IQ documents.</div>',Relationships:rels?.length?`<div class="governance-list">${rels.map(r=>`<div class="governance-item"><b>${esc(r.relationship_type)}</b><br><span class="tiny">${esc(r.relationship_label||'No label')}</span></div>`).join('')}</div>`:'<div class="empty">No product relationships yet.</div>',History:versions?.length?`<div class="governance-list">${versions.map(v=>`<div class="governance-item"><b>Version ${esc(v.version_number)}</b><br><span class="tiny">${new Date(v.created_at).toLocaleString()}</span></div>`).join('')}</div>`:'<div class="empty">No history snapshots available.</div>',Reviews:requests?.length?`<div class="governance-list">${requests.map(r=>`<div class="governance-item"><b>${esc(r.request_type)}</b> ${statusPill(r.status)}<br><span class="tiny">${esc(r.summary||'No summary')}</span></div>`).join('')}</div>`:'<div class="empty">No review requests.</div>', 'Data Quality':quality?.[0]?`<div class="metric"><div class="label">Product health score</div><div class="value">${esc(quality[0].score)}%</div></div>`:'<div class="empty">No data-quality validation has run.</div>',Distribution:events?.length?`<div class="governance-list">${events.map(e=>`<div class="governance-item"><b>${esc(e.destination)}</b> ${statusPill(e.status)}<br><span class="tiny">${new Date(e.created_at).toLocaleString()}</span></div>`).join('')}</div>`:'<div class="empty">No distribution events. Publishing remains controlled.</div>'};const names=Object.keys(tabs);root.innerHTML=`<div class="record"><div class="recordtop"><div class="product-image">□</div><div><div class="tiny">${esc(p.brand_name)} · ${esc(p.manufacturer_name)}</div><h1>${esc(p.model)}</h1><p class="sub">${esc(p.short_description||p.category)}</p><div class="recordmeta">${statusPill(p.status)}${statusPill(p.approval_status)}${p.public_visible?pill('Published','green'):pill('Not published','gray')} ${pill('v'+p.version_number,'blue')}</div></div></div><div class="tabs">${names.map((n,i)=>`<button class="tab ${i===0?'active':''}" data-tab="${n}">${n}</button>`).join('')}</div><div id="tabcontent">${tabs.Overview}</div></div>`;root.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{root.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');root.querySelector('#tabcontent').innerHTML=tabs[b.dataset.tab]})}
+async function governance(page){const map={brands:['Brands','brand_catalog','brand_name,manufacturer_id,is_active,updated_at'],documents:['Documents','aiq_documents','title,document_type,approval_status,updated_at'],assets:['Digital Assets','mfr_assets','title,category,is_published,updated_at'],approvals:['Approvals','product_iq_change_requests','request_type,status,summary,requested_at'], 'data-quality':['Data Quality','product_iq_data_quality_results','score,validated_at,validation_source'],distribution:['Distribution','product_iq_distribution_events','destination,status,created_at,error_message'],team:['Team','product_iq_platform_roles','role,status,granted_at,grant_authority'],settings:['Settings',null,null]};const [title,table,fields]=map[page];shell(`<div class="pagehead"><div><h1>${title}</h1><p class="sub">Live Product IQ governance data.</p></div></div><div id="governance" class="loading">Loading…</div>`,page);const root=document.getElementById('governance');if(!table)return root.innerHTML='<div class="empty">Product IQ settings are controlled by the platform authorization foundation. No editable client settings are available yet.</div>';const {data,error}=await sb.from(table).select(fields).order(fields.includes('updated_at')?'updated_at':fields.includes('requested_at')?'requested_at':fields.includes('created_at')?'created_at':'granted_at',{ascending:false}).limit(50);if(error)return root.innerHTML=`<div class="error">Unable to load ${esc(title.toLowerCase())}: ${esc(error.message)}</div>`;root.innerHTML=data?.length?`<div class="tablewrap"><table class="table"><thead><tr>${fields.split(',').map(f=>`<th>${esc(f.replaceAll('_',' '))}</th>`).join('')}</tr></thead><tbody>${data.map(row=>`<tr>${fields.split(',').map(f=>`<td>${typeof row[f]==='boolean'?row[f]?'Yes':'No':esc(row[f]??'—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:`<div class="empty">No ${title.toLowerCase()} records are available yet.</div>`}
+products=async()=>{
+  shell(`<div class="pagehead"><div><h1>Products</h1><p class="sub">Authoritative Product IQ records.</p></div>${isPlatformUser()?'<button class="btn primary" id="create-product">Create Product</button>':''}</div><div class="toolbar"><input id="search" class="control search" placeholder="Search model, brand, or name"/><select id="brand" class="control"><option value="">All brands</option></select><select id="manufacturer" class="control"><option value="">All manufacturers</option></select><select id="category" class="control"><option value="">All categories</option><option>refrigeration</option><option>dishwashers</option><option>cooking</option><option>laundry</option></select><select id="status" class="control"><option value="">All lifecycle states</option><option>active</option><option>draft</option><option>discontinued</option></select><select id="approval" class="control"><option value="">All approval states</option><option>approved</option><option>draft</option><option>submitted</option><option>in_review</option></select><select id="publication" class="control"><option value="">All publication states</option><option value="published">Published</option><option value="unpublished">Not published</option></select><select id="sort" class="control"><option value="updated_at.desc">Last updated</option><option value="model.asc">Model A–Z</option><option value="model.desc">Model Z–A</option><option value="brand_name.asc">Brand A–Z</option></select></div><div id="productTable" class="loading">Loading authorized products…</div>`,'products');
+  for(const id of ['search','brand','manufacturer','category','status','approval','publication','sort'])document.getElementById(id).addEventListener('input',()=>{state.filters[id==='search'?'search':id]=document.getElementById(id).value;state.page=0;loadProducts()});
+  document.getElementById('create-product')?.addEventListener('click',createProductPrompt);loadProducts();
+};
+loadProducts=async()=>{
+  const out=document.getElementById('productTable');if(!out)return;
+  const f=state.filters,clean=String(f.search||'').replace(/[%(),]/g,' ').trim();
+  const [sortColumn,sortDirection]=(f.sort||'updated_at.desc').split('.');
+  let q=sb.from('aiq_products').select('id,manufacturer_name,brand_name,model,short_description,category,status,approval_status,public_visible,source_confidence,version_number,updated_at,updated_by',{count:'exact'}).order(sortColumn,{ascending:sortDirection==='asc'});
+  if(clean)q=q.or(`model.ilike.%${clean}%,brand_name.ilike.%${clean}%,short_description.ilike.%${clean}%`);
+  if(f.brand)q=q.eq('brand_name',f.brand);if(f.manufacturer)q=q.eq('manufacturer_name',f.manufacturer);if(f.category)q=q.eq('category',f.category);if(f.status)q=q.eq('status',f.status);if(f.approval)q=q.eq('approval_status',f.approval);if(f.publication)q=q.eq('public_visible',f.publication==='published');
+  const {data,error,count}=await q.range(state.page*25,state.page*25+24);
+  if(error)return out.innerHTML=`<div class="error">Unable to load products: ${esc(error.message)}</div>`;
+  const rows=data||[],values=key=>[...new Set(rows.map(x=>x[key]).filter(Boolean))].sort();
+  for(const [id,key] of [['brand','brand_name'],['manufacturer','manufacturer_name'],['category','category']]){const el=document.getElementById(id),current=f[id];if(el&&el.options.length===1){values(key).forEach(v=>el.insertAdjacentHTML('beforeend',`<option value="${esc(v)}">${esc(v)}</option>`));el.value=current}}
+  out.innerHTML=`<div class="tablewrap"><table class="table"><thead><tr><th></th><th>Product</th><th>Manufacturer</th><th>Category</th><th>Lifecycle</th><th>Approval</th><th>Publication</th><th>Confidence</th><th>Version</th><th>Updated</th></tr></thead><tbody>${rows.length?rows.map(p=>`<tr class="click" onclick="go('products/${p.id}')"><td><div class="thumb">□</div></td><td><div class="model">${esc(p.brand_name)} ${esc(p.model)}</div><div class="tiny">${esc(p.short_description||'No short description')}</div></td><td>${esc(p.manufacturer_name)}</td><td>${esc(p.category)}</td><td>${statusPill(p.status)}</td><td>${statusPill(p.approval_status)}</td><td>${p.public_visible?pill('Published','green'):pill('Not published','gray')}</td><td>${p.source_confidence==null?'—':esc(p.source_confidence)+'%'}</td><td>v${esc(p.version_number)}</td><td class="tiny">${new Date(p.updated_at).toLocaleDateString()}</td></tr>`).join(''):`<tr><td colspan="10"><div class="empty">No authorized products match these filters.</div></td></tr>`}</tbody></table><div class="pager"><span>${count||0} authorized product records</span><span><button class="btn secondary" ${state.page===0?'disabled':''} onclick="state.page--;loadProducts()">Previous</button> <button class="btn secondary" ${(state.page+1)*25>=(count||0)?'disabled':''} onclick="state.page++;loadProducts()">Next</button></span></div></div>`;
+};
+const baseProductRecord=productRecord;
+productRecord=async id=>{await baseProductRecord(id);if(isPlatformUser()){const record=document.querySelector('#record .record');if(record&&!record.querySelector('[data-review-action]')){const action=document.createElement('div');action.style.marginTop='14px';action.innerHTML=`<button class="btn primary" data-review-action>Submit for review</button>`;action.querySelector('button').onclick=()=>submitReview(id);record.querySelector('.tabs').before(action)}}};
+async function approvals(){
+  shell(`<div class="pagehead"><div><h1>Approvals</h1><p class="sub">Review requests and recorded Product IQ decisions.</p></div></div><div id="governance" class="loading">Loading review requests…</div>`,'approvals');
+  const root=document.getElementById('governance');
+  const {data,error}=await sb.from('product_iq_change_requests').select('id,product_id,request_type,status,summary,requested_at,resolved_at').order('requested_at',{ascending:false}).limit(50);
+  if(error)return root.innerHTML=`<div class="error">Unable to load approvals: ${esc(error.message)}</div>`;
+  if(!data?.length)return root.innerHTML='<div class="empty">No review requests have been created yet. Open a product record to submit one.</div>';
+  const rows=data.map(r=>{
+    const decision=isPlatformUser()&&['submitted','in_review'].includes(r.status)
+      ? '<button class="btn primary" data-approve="'+esc(r.id)+'">Approve</button> <button class="btn secondary" data-reject="'+esc(r.id)+'">Reject</button>'
+      : esc(r.resolved_at?'Recorded':'—');
+    return `<tr><td><b>${esc(r.request_type)}</b><br><span class="tiny">${esc(r.summary||'No summary')}</span></td><td><button class="btn secondary" data-product="${esc(r.product_id)}">View product</button></td><td>${statusPill(r.status)}</td><td class="tiny">${new Date(r.requested_at).toLocaleString()}</td><td>${decision}</td></tr>`;
+  }).join('');
+  root.innerHTML=`<div class="tablewrap"><table class="table"><thead><tr><th>Request</th><th>Product</th><th>Status</th><th>Requested</th><th>Decision</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  root.querySelectorAll('[data-product]').forEach(b=>b.onclick=()=>go('products/'+b.dataset.product));
+  root.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>resolveReview(b.dataset.approve,'approve'));
+  root.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>resolveReview(b.dataset.reject,'reject'));
+}
+const baseRender=render;
+render=async()=>{if(state.user&&route()==='approvals')return approvals();return baseRender()};
+init();
+</script>
+<style>
+    .workspace{display:grid;grid-template-columns:210px minmax(0,1fr);gap:18px}.workspace-nav{background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px;height:max-content;position:sticky;top:18px}.workspace-nav button{display:block;width:100%;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:650;text-align:left;padding:8px 10px;cursor:pointer}.workspace-nav button:hover,.workspace-nav button.active{background:var(--tealwash);color:var(--teal)}.workspace-head{background:#fff;border:1px solid var(--line);border-radius:13px;padding:20px;margin-bottom:18px}.workspace-headtop{display:flex;gap:16px;align-items:flex-start;justify-content:space-between}.workspace-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.workspace-content{min-width:0}.score{display:grid;grid-template-columns:160px 1fr;gap:18px;align-items:center}.score-ring{width:132px;height:132px;border-radius:50%;background:conic-gradient(var(--teal) calc(var(--score)*1%),#e6ebef 0);display:grid;place-items:center;margin:auto}.score-ring:after{content:'';height:104px;width:104px;border-radius:50%;background:#fff;position:absolute}.score-ring b{z-index:1;font:800 28px Sora;color:var(--navy)}.score-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.score-line{display:flex;justify-content:space-between;border-bottom:1px solid #edf0f3;padding:7px 0}.workspace-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}.workspace-stat{background:#f7f9fb;border:1px solid #e8edf1;border-radius:9px;padding:11px}.workspace-stat b{display:block;font:700 19px Sora;color:var(--navy)}.section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.section-title h2{font-size:18px}.data-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}.data-list{display:grid;gap:9px}.data-row{padding:12px;border:1px solid #e8edf1;border-radius:9px}.data-row b{color:var(--navy)}.spec-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.spec-card{border:1px solid var(--line);border-radius:9px;padding:12px}.spec-card small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}.spec-card .spec-meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.spec-card .spec-value{font-weight:700;color:var(--navy)}.spec-card .spec-inline{display:grid;gap:8px}.spec-card .field-error{color:var(--red);font-size:12px}.spec-card .op-line{display:flex;gap:8px;align-items:center;justify-content:space-between}.spec-card .op-line .control{flex:1}.timeline{border-left:2px solid #d7e4e1;margin-left:8px;padding-left:18px}.timeline-item{position:relative;padding:0 0 17px}.timeline-item:before{content:'';height:10px;width:10px;background:var(--teal);border-radius:50%;position:absolute;left:-24px;top:5px}.asset-preview{height:90px;border-radius:9px;background:#f0f3f6;display:grid;place-items:center;color:#8291a3;font-size:25px}.workspace-note{font-size:12px;color:var(--muted);margin-top:8px}.conflict-panel{background:#fff3d7;border:1px solid #efcb71;border-radius:10px;padding:12px;margin:10px 0;color:#7d5000}.conflict-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.change-chip{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:700;background:#edf3ff;color:#365ebf}@media(max-width:980px){.workspace{grid-template-columns:1fr}.workspace-nav{position:static;display:flex;overflow:auto;gap:2px}.workspace-nav button{white-space:nowrap;width:auto}.workspace-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.workspace-headtop{display:block}.workspace-actions{justify-content:flex-start;margin-top:14px}.score{grid-template-columns:1fr}.score-grid,.spec-grid{grid-template-columns:1fr}.workspace-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<script>
+const workspaceSections=['Overview','Specifications','Images','Documents','Manuals','Warranty','Features','Accessories','Compatible Products','Replacement Models','Package Builder','Cross Sell','Related Products','History','AI Validation','Reviews','Distribution','Metadata','Settings'];
+const categoryTemplate={refrigerator:['Capacity','Counter depth','Ice maker','Water filter','Energy Star','Dual evaporator','Panel ready','WiFi','Door alarm','Sabbath mode','Installation depth','Height','Width','Depth'],refrigeration:['Capacity','Counter depth','Ice maker','Water filter','Energy Star','Dual evaporator','Panel ready','WiFi','Door alarm','Sabbath mode','Installation depth','Height','Width','Depth'],laundry:['Capacity','Washer type','Dryer type','Stackable','Vent type','Voltage','Steam','WiFi','Height','Width','Depth'],dishwasher:['Place settings','Sound level','Water connection','Voltage','Third rack','Panel ready','Height','Width','Depth'],cooking:['Fuel type','Oven capacity','Burners','Convection','Voltage','Gas connection','Ventilation','Height','Width','Depth'],ventilation:['Airflow','Duct size','Blower type','Voltage','Lighting','Height','Width','Depth'],microwave:['Capacity','Watts','Installation type','Ventilation','Height','Width','Depth'],outdoor:['Fuel type','BTU','Burners','Installation','Height','Width','Depth'],vacuum:['Power','Runtime','Filter type','Bag type','Weight','Noise level'],small:['Power','Capacity','Voltage','Dimensions','Warranty']};
+const workspaceCache=new Map();
+function createProductPrompt(){const modal=document.createElement('div');modal.style.cssText='position:fixed;inset:0;background:#0f1f3d99;z-index:99;display:grid;place-items:center;padding:18px';modal.innerHTML=`<form style="width:min(680px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:14px;padding:22px"><div class="pagehead"><div><h2>Create Product Draft</h2><p class="sub">Required fields are marked. Drafts are never published automatically.</p></div><button type="button" class="btn secondary" data-cancel>Cancel</button></div><div class="spec-grid">${[['manufacturer_name','Manufacturer'],['brand_name','Brand'],['model','Model Number'],['short_description','Product Name'],['category','Category'],['status','Lifecycle Status'],['source_type','Source'],['source_reference','Source Reference']].map(([key,label])=>`<label class="spec-card"><small>${label} *</small>${key==='status'?'<select class="control" name="status"><option value="draft">Draft</option><option value="active">Active</option></select>':key==='source_type'?'<select class="control" name="source_type"><option value="internal">Internal</option><option value="manufacturer_submitted">Manufacturer submitted</option><option value="raw_import">Raw import</option><option value="aiq_reviewed">ApplianceIQ reviewed</option></select>':`<input class="control" name="${key}" required aria-label="${label}"/>`}</label>`).join('')}</div><div class="error" hidden data-error></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button type="button" class="btn secondary" data-cancel>Cancel</button><button class="btn primary" type="submit">Create draft</button></div></form>`;document.body.append(modal);const form=modal.querySelector('form'),close=()=>modal.remove();modal.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=close);form.onsubmit=async e=>{e.preventDefault();const fd=new FormData(form),product=Object.fromEntries(fd.entries());const missing=Object.entries(product).filter(([,v])=>!String(v).trim());if(missing.length){const box=form.querySelector('[data-error]');box.hidden=false;box.textContent='Complete all required fields.';return}const submit=form.querySelector('[type=submit]');submit.disabled=true;submit.textContent='Creating…';const {data,error}=await sb.functions.invoke('product-iq-governance',{body:{action:'create_product',product}});if(error||data?.error){const box=form.querySelector('[data-error]');box.hidden=false;box.textContent=data?.error||error.message||'Draft creation failed.';submit.disabled=false;submit.textContent='Create draft';return}close();go('products/'+data.data.id)}}
+const normalizedCategory=v=>String(v||'').toLowerCase();
+function templateFor(product){const cat=normalizedCategory(product.category);return Object.entries(categoryTemplate).find(([key])=>cat.includes(key))?.[1]||['Dimensions','Electrical','Installation','Performance','Certifications','Warranty'];}
+function scoreModel(product,counts,quality){const available=quality?.score!=null?Number(quality.score):null;const items=[['Specifications',counts.spec?100:0],['Images',null],['Documents',counts.docs?100:0],['Warranty',counts.warranty?100:0],['Relationships',counts.relationships?100:0],['SEO',null],['Training',null],['Sales Readiness',null],['Retail Readiness',null],['Manufacturer Verification',product.source_review_status==='approved'?100:null]];return {overall:available,items};}
+async function loadWorkspaceSection(id,section,product){const key=id+':'+section;if(workspaceCache.has(key))return workspaceCache.get(key);let q;switch(section){case 'Specifications':case 'Warranty':case 'Features':q=sb.from('aiq_product_specifications').select('*').eq('product_id',id).maybeSingle();break;case 'Documents':case 'Manuals':q=sb.from('aiq_documents').select('*').eq('product_id',id);break;case 'Images':q=sb.from('mfr_assets').select('*').eq('model',product.model);break;case 'History':q=sb.from('aiq_product_versions').select('*').eq('product_id',id).order('version_number',{ascending:false});break;case 'AI Validation':q=Promise.all([sb.from('product_iq_data_quality_results').select('*').eq('product_id',id).order('validated_at',{ascending:false}).limit(1),sb.from('product_iq_ai_suggestions').select('*').eq('product_id',id).order('extracted_at',{ascending:false})]);break;case 'Reviews':q=sb.from('product_iq_change_requests').select('*').eq('product_id',id).order('requested_at',{ascending:false});break;case 'Distribution':q=sb.from('product_iq_distribution_events').select('*').eq('product_id',id).order('created_at',{ascending:false});break;default:q=sb.from('aiq_product_relationships').select('*').eq('product_id',id)}const result=await q;workspaceCache.set(key,result);return result}
+function sectionHtml(section,data,product,counts){const empty=t=>`<div class="empty">${t}</div>`;const rows=Array.isArray(data)?data:data?.data;const spec=data?.data||data;if(section==='Overview'){const model=scoreModel(product,counts,counts.quality);return `<div class="data-card"><div class="section-title"><h2>Product intelligence</h2><span class="tiny">Calculated only from available Product IQ data</span></div><div class="score"><div class="score-ring" style="--score:${model.overall??0}"><b>${model.overall==null?'—':model.overall+'%'}</b></div><div class="score-grid">${model.items.map(([n,v])=>`<div class="score-line"><span>${n}</span><b>${v==null?'Not Yet Available':v+'%'}</b></div>`).join('')}</div></div></div><div class="data-card" style="margin-top:16px"><div class="section-title"><h2>Product summary</h2></div><div class="kv"><div><small>Manufacturer</small>${esc(product.manufacturer_name)}</div><div><small>Brand</small>${esc(product.brand_name)}</div><div><small>Category</small>${esc(product.category)}</div><div><small>Lifecycle</small>${statusPill(product.status)}</div><div><small>Approval</small>${statusPill(product.approval_status)}</div><div><small>Publication</small>${product.public_visible?pill('Published','green'):pill('Not published')}</div><div><small>Confidence</small>${product.source_confidence==null?'—':esc(product.source_confidence)+'%'}</div><div><small>Source</small>${esc(product.source_type)}</div><div><small>Updated by</small>${esc(product.updated_by||'System')}</div></div><div class="workspace-stats">${[['Images','Not Yet Available'],['Documents',counts.docs],['Specifications',counts.spec?1:0],['Relationships',counts.relationships],['Manuals',counts.manuals],['Warranty',counts.warranty?'Available':'Not Yet Available'],['Videos','Not Yet Available'],['Accessories',counts.accessories]].map(x=>`<div class="workspace-stat"><small>${x[0]}</small><b>${x[1]}</b></div>`).join('')}</div></div>`}if(section==='Specifications'||section==='Features'||section==='Warranty'){if(!spec||spec.error)return empty('No structured specifications have been added.');const base=section==='Warranty'?spec.warranty:section==='Features'?spec.performance:{...spec.dimensions,...spec.electrical,...spec.installation,...spec.performance};const template=templateFor(product);return `<div class="data-card"><div class="section-title"><h2>${section} · ${esc(product.category)}</h2><span class="tiny">Category-aware template</span></div><div class="spec-grid">${template.map(field=>{const val=Object.entries(base||{}).find(([k])=>k.replaceAll('_',' ').toLowerCase()===field.toLowerCase())?.[1];return `<div class="spec-card"><small>${esc(field)}</small><b>${val==null?'Not Yet Available':esc(typeof val==='object'?JSON.stringify(val):val)}</b></div>`}).join('')}</div></div>`}if(section==='Images'){return rows?.length?`<div class="data-card"><div class="section-title"><h2>Image center</h2><span class="tiny">Asset records linked by model</span></div><div class="spec-grid">${rows.map(a=>`<div class="data-row"><div class="asset-preview">▧</div><b>${esc(a.title)}</b><br><span class="tiny">${esc(a.category)} · ${esc(a.file_type)} · v${esc(a.version)}</span><p class="workspace-note">Resolution, aspect ratio, primary image, ordering, and AI quality are not stored yet.</p></div>`).join('')}</div></div>`:empty('No Product IQ image asset records are linked to this model.')}
+if(section==='Documents'||section==='Manuals'){const filtered=(rows||[]).filter(d=>section!=='Manuals'||/manual/i.test(d.document_type||''));return filtered.length?`<div class="data-card"><div class="section-title"><h2>${section} center</h2><span class="tiny">Immutable published documents are not deletable here</span></div><div class="data-list">${filtered.map(d=>`<div class="data-row"><b>${esc(d.title)}</b> ${statusPill(d.approval_status)}<br><span class="tiny">${esc(d.document_type)} · v${esc(d.version||d.version_number)} · ${new Date(d.updated_at).toLocaleDateString()}</span><br>${d.file_url?`<a href="${esc(d.file_url)}" target="_blank" rel="noreferrer">Preview / download</a>`:'<span class="tiny">No file URL recorded</span>'}</div>`).join('')}</div></div>`:empty(`No ${section.toLowerCase()} are linked to this product.`)}
+if(['Accessories','Compatible Products','Replacement Models','Package Builder','Cross Sell','Related Products'].includes(section)){const label=section.toLowerCase().replaceAll(' ','_');const filtered=(rows||[]).filter(r=>normalizedCategory(r.relationship_type).includes(label.split('_')[0])||section==='Related Products');return filtered.length?`<div class="data-card"><div class="section-title"><h2>${section}</h2><span class="tiny">Product IQ relationships</span></div><div class="data-list">${filtered.map(r=>`<div class="data-row"><b>${esc(r.relationship_type)}</b><br><span class="tiny">${esc(r.relationship_label||'No human label')} · ${esc(r.related_product_id)}</span></div>`).join('')}</div></div>`:empty(`No ${section.toLowerCase()} relationships are recorded.`)}
+if(section==='History'){return rows?.length?`<div class="data-card"><div class="section-title"><h2>Immutable version history</h2><span class="tiny">Restore preview is intentionally read-only in Phase 2</span></div><div class="timeline">${rows.map(v=>`<div class="timeline-item"><b>Version ${esc(v.version_number)}</b><br><span class="tiny">${new Date(v.created_at).toLocaleString()} · Snapshot preserved</span><details><summary>View snapshot</summary><pre>${esc(JSON.stringify(v.snapshot,null,2))}</pre></details></div>`).join('')}</div></div>`:empty('No immutable snapshots are visible.')}
+if(section==='AI Validation'){const [quality,suggestions]=data;const q=quality.data?.[0];return `<div class="data-card"><div class="section-title"><h2>AI validation</h2><span class="tiny">Suggestions never publish automatically</span></div>${q?`<div class="metric"><div class="label">Latest Product IQ validation</div><div class="value">${esc(q.score)}%</div><div class="note">${esc(q.validation_source)} · ${new Date(q.validated_at).toLocaleString()}</div></div>`:empty('No validation run yet.')}<div class="data-list" style="margin-top:14px">${suggestions.data?.length?suggestions.data.map(s=>`<div class="data-row"><b>${esc(s.issue_type)}</b> ${pill(s.confidence==null?'Confidence unavailable':Math.round(Number(s.confidence)*100)+'%',s.confidence>.8?'green':'amber')}<br><span class="tiny">${esc(s.affected_field)} · ${esc(s.reasoning_summary)}</span><br><b>Suggested fix:</b> ${esc(s.suggested_value)}<p class="workspace-note">Reviewer actions are governed; no automatic change is made.</p></div>`).join(''):empty('No AI suggestions have been recorded.')}</div></div>`}
+if(section==='Reviews'||section==='Distribution'){return rows?.length?`<div class="data-card"><div class="section-title"><h2>${section}</h2></div><div class="data-list">${rows.map(r=>`<div class="data-row"><b>${esc(r.status||r.destination)}</b><br><span class="tiny">${esc(r.summary||r.destination||'')} · ${new Date(r.requested_at||r.created_at).toLocaleString()}</span></div>`).join('')}</div></div>`:empty(`No ${section.toLowerCase()} records are available.`)}return `<div class="data-card"><h2>${section}</h2><p class="sub">This workspace section is ready for the next governed Product IQ capability. No duplicate storage was created.</p></div>`}
+async function productWorkspace(id){shell(`<div id="workspace" class="loading">Loading Product Intelligence workspace…</div>`,'products');const root=document.getElementById('workspace');const {data:product,error}=await sb.from('aiq_products').select('*').eq('id',id).maybeSingle();if(error||!product)return root.innerHTML='<div class="error">This product is unavailable or you do not have access.</div>';const [{data:spec},{count:docCount},{count:relCount},{count:manualCount},{data:quality}]=await Promise.all([sb.from('aiq_product_specifications').select('id,warranty').eq('product_id',id).maybeSingle(),sb.from('aiq_documents').select('id',{count:'exact',head:true}).eq('product_id',id),sb.from('aiq_product_relationships').select('id,relationship_type',{count:'exact'}).eq('product_id',id),sb.from('aiq_documents').select('id',{count:'exact',head:true}).eq('product_id',id).ilike('document_type','%manual%'),sb.from('product_iq_data_quality_results').select('score').eq('product_id',id).order('validated_at',{ascending:false}).limit(1)]);const counts={spec:!!spec,docs:docCount||0,relationships:relCount||0,manuals:manualCount||0,warranty:!!spec?.warranty,accessories:0,quality:quality?.[0]};let active='Overview';root.innerHTML=`<div class="workspace-head"><div class="workspace-headtop"><div class="recordtop"><div class="product-image">□</div><div><div class="tiny">${esc(product.brand_name)} · ${esc(product.manufacturer_name)}</div><h1>${esc(product.model)}</h1><p class="sub">${esc(product.short_description||product.category)}</p><div class="recordmeta">${statusPill(product.status)}${statusPill(product.approval_status)}${product.public_visible?pill('Published','green'):pill('Not published')} ${pill('v'+product.version_number,'blue')} ${counts.quality?pill(counts.quality.score+'% intelligence','green'):pill('Intelligence not yet scored')}</div></div></div><div class="workspace-actions"><button class="btn secondary" onclick="go('products/${id}')">Save</button>${isPlatformUser()?`<button class="btn primary" id="submit-review">Submit review</button>`:''}<button class="btn secondary" id="history-action">View history</button></div></div></div><div class="workspace"><nav class="workspace-nav">${workspaceSections.map((s,i)=>`<button class="${i===0?'active':''}" data-section="${s}">${s}</button>`).join('')}</nav><div class="workspace-content" id="workspace-content"><div class="loading">Loading overview…</div></div></div>`;const content=root.querySelector('#workspace-content');async function select(section){active=section;root.querySelectorAll('[data-section]').forEach(b=>b.classList.toggle('active',b.dataset.section===section));content.innerHTML='<div class="loading">Loading '+esc(section)+'…</div>';const data=section==='Overview'?null:await loadWorkspaceSection(id,section,product);content.innerHTML=sectionHtml(section,data,product,counts)}root.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>select(b.dataset.section));root.querySelector('#history-action').onclick=()=>select('History');root.querySelector('#submit-review')?.addEventListener('click',()=>submitReview(id));select(active)}
+productRecord=productWorkspace;
+const phase2Render=render;render=async()=>{if(state.user&&route().startsWith('products/'))return productWorkspace(route().split('/')[1]);return phase2Render()};
+if(state.user)render();
+</script><script src="/specification-templates.js"></script><script>
+const phase4aSectionHtml = sectionHtml;
+const specTemplates = window.ProductIQSpecificationTemplates;
+const specTemplateFor = window.productIQTemplateFor;
+const specTemplateSections = window.productIQTemplateSections;
+const specTemplateFields = window.productIQTemplateFields;
+const templateNames = window.ProductIQTemplateNames || {};
+const normalizeStoredValue = window.productIQNormalizeStoredValue;
+const displayStoredValue = window.productIQDisplayStoredValue;
+const knownSpecificationKeysFor = window.productIQKnownSpecificationKeys;
+const groupedSpecificationSections = window.productIQGroupedSpecificationSections;
+const editorState = { dirty: false, label: "", onDiscard: null };
+window.__productIQEditorState = null;
+const originalGo = go;
+go = function(path) {
+  if (window.__productIQEditorState?.dirty && !confirm(`You have unsaved ${window.__productIQEditorState.label || "changes"}. Leave without saving?`)) return;
+  window.__productIQEditorState?.onDiscard?.();
+  originalGo(path);
+};
+function setEditorGuard(next) {
+  window.__productIQEditorState = next;
+}
+function clearEditorGuard() {
+  window.__productIQEditorState = null;
+}
+function specKey(field) {
+  const group = field.group || field.section;
+  return `${group}.${field.key}`;
+}
+function specGroupValue(spec, field) {
+  const group = field.group || field.section;
+  return spec?.[group]?.[field.key];
+}
+function specFieldState(field, raw) {
+  const normalized = normalizeStoredValue(raw);
+  const out = { normalized, tone: "gray", label: "Optional and empty", invalid: false };
+  if (normalized.state === "not_applicable") {
+    out.label = "Not applicable";
+    out.tone = "gray";
+    return out;
+  }
+  if (normalized.state === "empty") {
+    out.label = field.requiredLevel === "required" ? "Missing required" : field.requiredLevel === "recommended" ? "Missing recommended" : "Optional and empty";
+    out.tone = field.requiredLevel === "required" ? "red" : field.requiredLevel === "recommended" ? "amber" : "gray";
+    return out;
+  }
+  if (field.fieldType === "number" || field.fieldType === "measurement") {
+    const numeric = typeof normalized.value === "number" ? normalized.value : Number(normalized.value);
+    if (!Number.isFinite(numeric)) {
+      out.label = "Invalid stored value";
+      out.tone = "red";
+      out.invalid = true;
+      return out;
+    }
+    if (field.minimum != null && numeric < field.minimum) {
+      out.label = "Invalid stored value";
+      out.tone = "red";
+      out.invalid = true;
+      return out;
+    }
+    if (field.maximum != null && numeric > field.maximum) {
+      out.label = "Invalid stored value";
+      out.tone = "red";
+      out.invalid = true;
+      return out;
+    }
+  }
+  if (field.fieldType === "boolean" && typeof normalized.value !== "boolean") {
+    out.label = "Invalid stored value";
+    out.tone = "red";
+    out.invalid = true;
+    return out;
+  }
+  if (field.fieldType === "select" && field.allowedValues.length && !field.allowedValues.includes(String(normalized.value))) {
+    out.label = "Invalid stored value";
+    out.tone = "red";
+    out.invalid = true;
+    return out;
+  }
+  if (field.fieldType === "multi-select" && !Array.isArray(normalized.value)) {
+    out.label = "Invalid stored value";
+    out.tone = "red";
+    out.invalid = true;
+    return out;
+  }
+  if (normalized.unit) {
+    const allowed = field.allowedUnits?.length ? field.allowedUnits : (field.unit ? [field.unit] : []);
+    if (allowed.length && !allowed.includes(normalized.unit)) {
+      out.label = "Invalid stored value";
+      out.tone = "red";
+      out.invalid = true;
+      return out;
+    }
+  }
+  out.label = "Populated";
+  out.tone = "green";
+  return out;
+}
+function renderSpecValue(field, raw) {
+  const normalized = normalizeStoredValue(raw);
+  if (normalized.state === "empty") return `<span class="pill gray">Not Yet Available</span>`;
+  if (normalized.state === "not_applicable") return `<span class="pill gray">Not applicable</span>`;
+  if (field.fieldType === "boolean") return normalized.value === true ? `<span class="pill green">Yes</span>` : normalized.value === false ? `<span class="pill red">No</span>` : `<span class="pill gray">${esc(String(normalized.value))}</span>`;
+  if (field.fieldType === "multi-select") return Array.isArray(normalized.value) && normalized.value.length ? esc(normalized.value.join(", ")) : `<span class="pill gray">Not Yet Available</span>`;
+  if (typeof normalized.value === "object" && normalized.value && Object.prototype.hasOwnProperty.call(normalized.value, "value")) return esc(String(normalized.value.value ?? "—")) + (normalized.unit ? ` <span class="tiny">${esc(normalized.unit)}</span>` : "");
+  return esc(String(normalized.value)) + (normalized.unit ? ` <span class="tiny">${esc(normalized.unit)}</span>` : "");
+}
+function renderKnownFieldCard(field, raw) {
+  const state = specFieldState(field, raw);
+  const normalized = normalizeStoredValue(raw);
+  const meta = [];
+  if (field.requiredLevel === "required") meta.push(`<span class="change-chip">Required</span>`);
+  if (field.requiredLevel === "recommended") meta.push(`<span class="change-chip">Recommended</span>`);
+  if (normalized.unit) meta.push(`<span class="change-chip">${esc(normalized.unit)}</span>`);
+  const secondary = [];
+  if (typeof raw === "object" && raw && !Array.isArray(raw)) {
+    if (raw.source) secondary.push(`Source: ${esc(raw.source)}`);
+    if (raw.confidence != null) secondary.push(`Confidence: ${esc(raw.confidence)}`);
+    if (raw.source_reference) secondary.push(`Reference: ${esc(raw.source_reference)}`);
+  }
+  return `<div class="spec-card"><div class="spec-meta">${meta.join("")}</div><small>${esc(field.label)}</small><div class="spec-value">${renderSpecValue(field, raw)}</div><div class="tiny">${esc(state.label)}</div>${secondary.length ? `<div class="tiny">${secondary.join(" · ")}</div>` : ""}${field.helpText ? `<div class="workspace-note">${esc(field.helpText)}</div>` : ""}</div>`;
+}
+function renderOtherSpecifications(spec, templateName) {
+  const known = knownSpecificationKeysFor(templateName);
+  const rows = [];
+  for (const [group, groupValue] of Object.entries(spec || {})) {
+    if (!groupValue || typeof groupValue !== "object" || Array.isArray(groupValue)) continue;
+    for (const [key, value] of Object.entries(groupValue)) {
+      if (known.has(`${group}.${key}`)) continue;
+      const normalized = normalizeStoredValue(value);
+      const label = key.replace(/_/g, " ");
+      const meta = typeof value === "object" && value ? [value.source, value.source_reference, value.confidence != null ? `Confidence: ${value.confidence}` : null].filter(Boolean) : [];
+      rows.push(`<div class="spec-card"><div class="spec-meta"><span class="change-chip">${esc(group)}</span>${normalized.unit ? `<span class="change-chip">${esc(normalized.unit)}</span>` : ""}</div><small>${esc(label)}</small><div class="spec-value">${esc(displayStoredValue(value).text)}</div><div class="tiny">${esc(key)}</div>${meta.length ? `<div class="tiny">${meta.map(esc).join(" · ")}</div>` : ""}</div>`);
+    }
+  }
+  if (!rows.length) return "";
+  return `<div class="data-card" style="margin-top:16px"><div class="section-title"><h2>Other Specifications</h2><span class="tiny">Legacy keys are preserved and shown read-only</span></div><div class="spec-grid">${rows.join("")}</div></div>`;
+}
+function renderSpecificationsSection(data, product) {
+  const spec = data?.data || data || {};
+  const templateName = specTemplateFor(product.category);
+  const template = specTemplates[templateName] || specTemplates.general;
+  const sections = groupedSpecificationSections(templateName);
+  const fieldSet = new Set();
+  const sectionCards = sections.map(section => {
+    const cards = section.fields.map(field => {
+      const group = field.group || field.section;
+      fieldSet.add(specKey(field));
+      return renderKnownFieldCard(field, spec?.[group]?.[field.key]);
+    }).join("");
+    return `<div class="data-card"><div class="section-title"><h2>${esc(section.name)}</h2><span class="tiny">${esc(templateNames[templateName] || templateName)}</span></div><div class="spec-grid">${cards || `<div class="empty">No fields defined for this section.</div>`}</div></div>`;
+  }).join("");
+  const other = renderOtherSpecifications(spec, templateName);
+  const editButton = isPlatformUser() ? `<button class="btn secondary" onclick="openSpecificationEditor('${product.id}',${product.version_number},'${templateName}')">Edit specifications</button>` : "";
+  return `<div class="data-card"><div class="section-title"><h2>Specifications · ${esc(templateNames[templateName] || templateName)}</h2>${editButton}</div><div class="workspace-note">Known fields are grouped by the active product template. Structured values and legacy primitives are both supported.</div></div>${sectionCards}${other || ""}`;
+}
+sectionHtml = (section, data, product, counts) => {
+  if (section === "Specifications") return renderSpecificationsSection(data, product, counts);
+  if (section !== "Overview") return phase4aSectionHtml(section, data, product, counts);
+  return phase4aSectionHtml(section, data, product, counts);
+};
+function inputValueFor(field, raw) {
+  const normalized = normalizeStoredValue(raw);
+  if (field.fieldType === "multi-select") return Array.isArray(normalized.value) ? normalized.value : [];
+  if (field.fieldType === "boolean") return normalized.state === "set" ? String(!!normalized.value) : "";
+  if (normalized.state === "not_applicable") return "";
+  if (normalized.state === "empty") return "";
+  if (normalized.unit && typeof normalized.value === "object" && normalized.value && Object.prototype.hasOwnProperty.call(normalized.value, "value")) return normalized.value.value ?? "";
+  if (typeof normalized.value === "object" && normalized.value && Object.prototype.hasOwnProperty.call(normalized.value, "value")) return normalized.value.value ?? "";
+  return normalized.value ?? "";
+}
+function inputUnitFor(field, raw) {
+  const normalized = normalizeStoredValue(raw);
+  if (normalized.unit) return normalized.unit;
+  return field.unit || field.allowedUnits?.[0] || "";
+}
+function renderEditorField(field, spec) {
+  const group = field.group || field.section;
+  const raw = spec?.[group]?.[field.key];
+  const normalized = normalizeStoredValue(raw);
+  const hasValue = normalized.state === "set";
+  const opDefault = normalized.state === "not_applicable" ? "not_applicable" : hasValue ? "set" : "keep";
+  const opName = `op__${group}__${field.key}`;
+  const valueName = `value__${group}__${field.key}`;
+  const unitName = `unit__${group}__${field.key}`;
+  const idBase = `${group}__${field.key}`;
+  const allowedUnits = (field.allowedUnits && field.allowedUnits.length ? field.allowedUnits : (field.unit ? [field.unit] : [])).filter(Boolean);
+  const value = inputValueFor(field, raw);
+  const unit = inputUnitFor(field, raw);
+  const meta = [];
+  if (field.requiredLevel === "required") meta.push(`<span class="change-chip">Required</span>`);
+  if (field.requiredLevel === "recommended") meta.push(`<span class="change-chip">Recommended</span>`);
+  if (allowedUnits.length) meta.push(`<span class="change-chip">Units: ${esc(allowedUnits.join(", "))}</span>`);
+  const control =
+    field.fieldType === "boolean" ? `<select class="control" id="${idBase}__value" name="${valueName}"><option value="">Keep current</option><option value="true" ${value === true || value === "true" ? "selected" : ""}>Yes</option><option value="false" ${value === false || value === "false" ? "selected" : ""}>No</option></select>` :
+    field.fieldType === "select" ? `<select class="control" id="${idBase}__value" name="${valueName}"><option value="">Keep current</option>${(field.allowedValues || []).map(v => `<option value="${esc(v)}" ${String(value) === String(v) ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>` :
+    field.fieldType === "multi-select" && (field.allowedValues || []).length ? `<select class="control" id="${idBase}__value" name="${valueName}" multiple>${(field.allowedValues || []).map(v => `<option value="${esc(v)}" ${(Array.isArray(value) ? value : []).map(String).includes(String(v)) ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>` :
+    field.fieldType === "multi-select" ? `<input class="control" id="${idBase}__value" name="${valueName}" type="text" placeholder="Comma-separated values" value="${esc(Array.isArray(value) ? value.join(", ") : value)}" />` :
+    field.fieldType === "number" || field.fieldType === "measurement" ? `<input class="control" id="${idBase}__value" name="${valueName}" type="number" step="${field.step ?? "any"}" min="${field.minimum ?? ""}" max="${field.maximum ?? ""}" value="${esc(value)}" />` :
+    `<input class="control" id="${idBase}__value" name="${valueName}" type="text" value="${esc(value)}" />`;
+  const unitControl = allowedUnits.length ? `<select class="control" id="${idBase}__unit" name="${unitName}"><option value="">Default</option>${allowedUnits.map(v => `<option value="${esc(v)}" ${String(unit) === String(v) ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>` : "";
+  const opControl = `<select class="control" id="${idBase}__op" name="${opName}"><option value="keep" ${opDefault === "keep" ? "selected" : ""}>Keep current</option><option value="set" ${opDefault === "set" ? "selected" : ""}>Set</option><option value="clear" ${opDefault === "clear" ? "selected" : ""}>Clear</option><option value="not_applicable" ${opDefault === "not_applicable" ? "selected" : ""}>Not applicable</option></select>`;
+  return `<label class="spec-card" data-field-card="true" data-key="${esc(specKey(field))}" data-type="${esc(field.fieldType)}" data-required="${esc(field.requiredLevel)}"><div class="spec-meta">${meta.join("")}</div><small>${esc(field.label)}</small><div class="spec-inline"><div class="op-line">${opControl}${unitControl}</div>${control}<div class="field-error" data-field-error="${esc(specKey(field))}" hidden></div>${field.helpText ? `<div class="workspace-note">${esc(field.helpText)}</div>` : ""}</div></label>`;
+}
+function formDataEntryMap(form) {
+  const map = new Map();
+  for (const [name, value] of new FormData(form).entries()) map.set(name, value);
+  return map;
+}
+function normalizeEditorValue(field, form, key) {
+  const group = field.group || field.section;
+  const op = String(form.elements[`op__${group}__${field.key}`]?.value || "keep");
+  const valueControl = form.elements[`value__${group}__${field.key}`];
+  const unitControl = form.elements[`unit__${group}__${field.key}`];
+  const rawValue = field.fieldType === "multi-select"
+    ? valueControl?.multiple
+      ? [...(valueControl?.selectedOptions ? valueControl.selectedOptions : [])].map(option => option.value)
+      : String(valueControl?.value || "").split(",").map(part => part.trim()).filter(Boolean)
+    : valueControl?.value ?? "";
+  const unit = unitControl?.value || "";
+  if (op === "keep") return null;
+  if (op === "clear") return { key, operation: "clear" };
+  if (op === "not_applicable") return { key, operation: "not_applicable" };
+  if (field.fieldType === "boolean") return { key, operation: "set", value: rawValue === "true", unit: "" };
+  if (field.fieldType === "multi-select") return { key, operation: "set", value: rawValue, unit: "" };
+  if (field.fieldType === "number" || field.fieldType === "measurement") return { key, operation: "set", value: rawValue === "" ? null : Number(rawValue), unit };
+  return { key, operation: "set", value: rawValue, unit };
+}
+function validateEditorField(field, draft) {
+  if (!draft || draft.operation === "keep") return null;
+  if (draft.operation === "clear") {
+    if (field.requiredLevel === "required") return "This field is required.";
+    return null;
+  }
+  if (draft.operation === "not_applicable") return null;
+  const emptyValue = draft.value == null || draft.value === "" || (Array.isArray(draft.value) && !draft.value.length);
+  if (emptyValue && field.requiredLevel === "required") return "This field is required.";
+  if (field.fieldType === "boolean" && typeof draft.value !== "boolean") return "Boolean values must be yes or no.";
+  if ((field.fieldType === "number" || field.fieldType === "measurement") && (draft.value === null || draft.value === "" || Number.isNaN(Number(draft.value)))) return "Enter a numeric value.";
+  if ((field.fieldType === "number" || field.fieldType === "measurement") && Number(draft.value) < 0) return "Numeric values cannot be negative.";
+  if (field.allowedValues?.length) {
+    if (field.fieldType === "multi-select") {
+      if (!Array.isArray(draft.value) || draft.value.some(v => !field.allowedValues.includes(v))) return "Choose only allowed values.";
+    } else if (!field.allowedValues.includes(String(draft.value))) {
+      return "Choose one of the allowed values.";
+    }
+  }
+  if (field.allowedUnits?.length || field.unit) {
+    const allowed = field.allowedUnits?.length ? field.allowedUnits : [field.unit].filter(Boolean);
+    if (draft.unit && !allowed.includes(draft.unit)) return `Allowed units: ${allowed.join(", ")}.`;
+  }
+  if ((field.fieldType === "measurement" || field.fieldType === "number") && field.maximum != null && Number(draft.value) > field.maximum) return `Value must be at most ${field.maximum}.`;
+  if ((field.fieldType === "measurement" || field.fieldType === "number") && field.minimum != null && Number(draft.value) < field.minimum) return `Value must be at least ${field.minimum}.`;
+  return null;
+}
+function collectSpecDrafts(form, templateName, spec) {
+  const fields = specTemplateFields(templateName);
+  const drafts = [];
+  const errors = {};
+  for (const field of fields) {
+    const group = field.group || field.section;
+    const key = specKey(field);
+    const draft = normalizeEditorValue(field, form, key);
+    const baseline = normalizeStoredValue(spec?.[group]?.[field.key]);
+    if (draft == null) continue;
+    const isSame = (() => {
+      if (draft.operation === "clear") return baseline.state === "empty";
+      if (draft.operation === "not_applicable") return baseline.state === "not_applicable";
+      if (draft.operation !== "set") return true;
+      if ((field.fieldType === "number" || field.fieldType === "measurement") && baseline.state === "set") return String(Number(baseline.value)) === String(Number(draft.value)) && String(baseline.unit || "") === String(draft.unit || "");
+      if (field.fieldType === "boolean" && baseline.state === "set") return String(Boolean(baseline.value)) === String(Boolean(draft.value));
+      if (field.fieldType === "multi-select" && baseline.state === "set") return JSON.stringify([...(baseline.value || [])].map(String).sort()) === JSON.stringify([...(draft.value || [])].map(String).sort());
+      return String(baseline.value ?? "") === String(draft.value ?? "") && String(baseline.unit || "") === String(draft.unit || "");
+    })();
+    if (isSame) continue;
+    const error = validateEditorField(field, draft);
+    if (error) errors[key] = error;
+    drafts.push({ field, draft, key });
+  }
+  return { drafts, errors };
+}
+function applyFieldErrors(host, fieldErrors) {
+  host.querySelectorAll("[data-field-error]").forEach(node => { node.hidden = true; node.textContent = ""; });
+  if (!fieldErrors) return;
+  for (const [key, value] of Object.entries(fieldErrors)) {
+    const node = host.querySelector(`[data-field-error="${CSS.escape(key)}"]`);
+    if (node) {
+      node.hidden = false;
+      node.textContent = value?.message || value?.error || String(value);
+    }
+  }
+}
+function renderConflictPanel(details) {
+  return `<div class="conflict-panel">
+    <b>Another update was saved first.</b>
+    <div class="tiny">You opened version ${esc(details.loadedVersion)} and the server is now on version ${esc(details.currentVersion)}.</div>
+    ${details.updatedAt ? `<div class="tiny">Last change: ${esc(details.updatedAt)}</div>` : ""}
+    ${details.updatedBy ? `<div class="tiny">Updated by: ${esc(details.updatedBy)}</div>` : ""}
+    <div class="conflict-actions">
+      <button class="btn secondary" type="button" data-action="reload-latest">Reload Latest</button>
+      <button class="btn secondary" type="button" data-action="continue-local">Continue Reviewing Unsaved Values</button>
+      <button class="btn secondary" type="button" data-action="copy-unsaved">Copy Unsaved Values</button>
+    </div>
+  </div>`;
+}
+async function openSpecificationEditor(id, version, templateName) {
+  const host = document.querySelector("#workspace-content");
+  const [{ data: product, error: productError }, { data: spec, error: specError }] = await Promise.all([
+    sb.from("aiq_products").select("*").eq("id", id).maybeSingle(),
+    sb.from("aiq_product_specifications").select("*").eq("product_id", id).maybeSingle(),
+  ]);
+  if (productError || !product) return alert("Unable to load product for editing.");
+  const template = templateName || specTemplateFor(product.category);
+  const sections = specTemplateSections(template);
+  const specRecord = spec || {};
+  const otherMarkup = renderOtherSpecifications(specRecord, template);
+  const formMarkup = (serverError = "") => `<div class="data-card"><div class="section-title"><h2>Edit specifications</h2><button class="btn secondary" type="button" data-cancel>Edit / cancel</button></div>${serverError ? `<div class="error">${esc(serverError)}</div>` : ""}<div id="spec-conflict-slot"></div><form id="spec-form"><input type="hidden" name="product-version" value="${esc(version)}" />${sections.map(section => `<div class="data-card" style="margin-bottom:12px"><div class="section-title"><h2>${esc(section.name)}</h2><span class="tiny">${esc(templateNames[template] || template)}</span></div><div class="spec-grid">${section.fields.map(field => renderEditorField(field, specRecord)).join("")}</div></div>`).join("")}${otherMarkup || ""}<div id="spec-general-error" class="error" hidden></div><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn secondary" type="button" data-cancel>Cancel</button><button class="btn primary" type="submit">Save specifications</button></div></form></div>`;
+  host.innerHTML = formMarkup();
+  const form = host.querySelector("#spec-form");
+  const cancelButtons = host.querySelectorAll("[data-cancel]");
+  const originalSnapshot = JSON.stringify(specRecord);
+  const state = { dirty: false, label: "specification changes" };
+  setEditorGuard({ dirty: true, label: "specification changes", onDiscard: () => clearEditorGuard() });
+  const updateDirty = () => {
+    state.dirty = JSON.stringify(collectSpecDrafts(form, template, specRecord).drafts) !== "[]";
+    if (window.__productIQEditorState) window.__productIQEditorState.dirty = state.dirty;
+  };
+  form.addEventListener("input", updateDirty);
+  form.addEventListener("change", updateDirty);
+  const exitEditor = () => {
+    if (state.dirty && !confirm("Discard unsaved specification changes?")) return;
+    clearEditorGuard();
+    productWorkspace(id);
+  };
+  cancelButtons.forEach(button => button.onclick = exitEditor);
+  const refreshFieldError = (fieldKey, message) => {
+    const node = host.querySelector(`[data-field-error="${CSS.escape(fieldKey)}"]`);
+    if (!node) return;
+    node.hidden = !message;
+    node.textContent = message || "";
+  };
+  const renderFieldErrorMap = fieldErrors => {
+    host.querySelectorAll("[data-field-error]").forEach(node => { node.hidden = true; node.textContent = ""; });
+    if (!fieldErrors) return;
+    for (const [key, err] of Object.entries(fieldErrors)) {
+      const message = err?.message || err?.error || String(err);
+      refreshFieldError(key, message);
+    }
+  };
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const submit = form.querySelector('[type="submit"]');
+    const generalError = host.querySelector("#spec-general-error");
+    renderFieldErrorMap(null);
+    generalError.hidden = true;
+    generalError.textContent = "";
+    const { drafts, errors } = collectSpecDrafts(form, template, specRecord);
+    if (Object.keys(errors).length) {
+      for (const [key, message] of Object.entries(errors)) refreshFieldError(key, message);
+      generalError.hidden = false;
+      generalError.textContent = "Fix the highlighted field errors before saving.";
+      return;
+    }
+    if (!drafts.length) {
+      clearEditorGuard();
+      return productWorkspace(id);
+    }
+    const changes = {};
+    for (const { field, draft } of drafts) {
+      const group = field.group || field.section;
+      changes[group] ||= {};
+      changes[group][field.key] = { operation: draft.operation, value: draft.value, unit: draft.unit };
+    }
+    submit.disabled = true;
+    submit.textContent = "Saving…";
+    const { data, error } = await sb.functions.invoke("product-iq-governance", {
+      body: {
+        action: "update_specifications",
+        productId: id,
+        originalVersion: version,
+        section: "specifications",
+        templateId: template,
+        changes,
+      },
+    });
+    if (error || data?.error) {
+      submit.disabled = false;
+      submit.textContent = "Save specifications";
+      if (data?.code === "conflict" || data?.error === "conflict") {
+        const slot = host.querySelector("#spec-conflict-slot");
+        if (slot) slot.innerHTML = renderConflictPanel({
+          loadedVersion: version,
+          currentVersion: data.currentVersion,
+          updatedAt: data.updatedAt,
+          updatedBy: data.updatedBy,
+        });
+        const latestButton = host.querySelector('[data-action="reload-latest"]');
+        const continueButton = host.querySelector('[data-action="continue-local"]');
+        const copyButton = host.querySelector('[data-action="copy-unsaved"]');
+        latestButton.onclick = () => openSpecificationEditor(id, data.currentVersion || version, template);
+        continueButton.onclick = () => { if (slot) slot.innerHTML = ""; };
+        copyButton.onclick = async () => {
+          const payload = JSON.stringify({ loadedVersion: version, currentVersion: data.currentVersion, changes }, null, 2);
+          try { await navigator.clipboard.writeText(payload); copyButton.textContent = "Copied"; } catch { alert(payload); }
+        };
+        return;
+      }
+      if (data?.fieldErrors) {
+        for (const [key, value] of Object.entries(data.fieldErrors)) refreshFieldError(key, value?.message || value?.error || String(value));
+        generalError.hidden = false;
+        generalError.textContent = data?.error || error?.message || "Save failed.";
+        return;
+      }
+      generalError.hidden = false;
+      generalError.textContent = data?.error || error?.message || "Save failed.";
+      return;
+    }
+    clearEditorGuard();
+    productWorkspace(id);
+  };
+  window.addEventListener("beforeunload", e => {
+    if (window.__productIQEditorState?.dirty) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  }, { once: true });
+}
+</script></body></html>

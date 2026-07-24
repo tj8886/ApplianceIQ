@@ -1,0 +1,537 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+type JsonObject = Record<string, unknown>;
+type SpecOperation = "set" | "clear" | "not_applicable";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+};
+
+const respond = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, "Content-Type": "application/json" },
+  });
+
+const cleanModel = (value: string) => value.trim().replace(/\s+/g, " ").toUpperCase();
+const isRecord = (value: unknown): value is JsonObject => !!value && typeof value === "object" && !Array.isArray(value);
+
+const ALLOWED_ACTION_KEYS = new Set(["action", "productId", "originalVersion", "section", "templateId", "changes", "reason", "product", "rules", "formulaVersion", "changeRequestId", "decision", "notes", "suggestionId"]);
+const GROUP_ALLOWLIST = new Set(["configuration", "dimensions", "performance", "electrical", "gas", "installation", "ventilation", "certifications", "warranty", "notes"]);
+const BOOLEAN_KEYS = new Set([
+  "counter_depth", "panel_ready", "ice_maker", "water_dispenser", "water_connection_required", "water_filtration", "dual_evaporator",
+  "temperature_zones", "door_alarm", "sabbath_mode", "wifi", "energy_star", "third_rack", "adjustable_rack", "leak_protection",
+  "convection", "induction", "air_fry", "self_clean", "steam_clean", "warming_drawer", "double_oven", "griddle", "stackable",
+  "pedestal_compatible", "steam", "automatic_dispensing", "heat_pump", "reversible_door", "recirculating_support", "trim_kit_compatibility",
+  "built_in_kit_required", "wet_cleaning", "mop_function", "mapping", "obstacle_avoidance", "auto_empty", "self_cleaning", "rotisserie",
+  "side_burner", "weather_resistance", "cover_compatibility", "dishwasher_safe_parts", "smart_connectivity", "dedicated_circuit_required",
+  "adjustable_height_range", "blender", "unknown_boolean_placeholder",
+]);
+
+const SELECT_RULES: Record<string, string[]> = {
+  refrigerator_type: ["French door", "Side-by-side", "Top freezer", "Bottom freezer", "Column", "Compact"],
+  configuration: ["Freestanding", "Built-in", "Integrated", "Counter-depth", "Column", "Panel-ready"],
+  installation_type: ["Freestanding", "Built-in", "Integrated", "Counter-depth", "Countertop", "Portable", "Over-the-range", "Drawer", "Wall mount", "Under-cabinet", "Island", "Downdraft", "Insert"],
+  door_hinge: ["Left", "Right", "Reversible", "French split"],
+  door_swing: ["Left", "Right", "Reversible", "French split"],
+  dishwasher_type: ["Built-in", "Portable", "Drawer", "Countertop"],
+  handle_type: ["Bar", "Pocket", "Tubular", "Recessed"],
+  fuel_type: ["Gas", "Electric", "Dual fuel", "Induction", "Charcoal", "Pellet"],
+  cooktop_fuel_type: ["Gas", "Electric", "Dual fuel", "Induction"],
+  oven_fuel_type: ["Gas", "Electric", "Dual fuel"],
+  product_type: ["Range", "Cooktop", "Rangetop", "Wall oven", "Speed oven", "Warming drawer", "Combination oven", "Washer", "Dryer", "Washer dryer combo", "Grill", "Griddle", "Pizza oven", "Smoker", "Outdoor refrigerator", "Outdoor burner", "Blender", "Coffee maker", "Mixer", "Toaster", "Processor", "Kettle", "Air fryer", "Other", "Microwave"],
+  load_style: ["Front load", "Top load", "Side load", "Stackable"],
+  vent_type: ["Vented", "Ventless"],
+  hood_type: ["Under-cabinet", "Wall mount", "Island", "Insert", "Downdraft"],
+  duct_direction: ["Vertical", "Horizontal", "Convertible"],
+  blower_type: ["Internal", "External", "Inline"],
+  microwave_type: ["Countertop", "Over-the-range", "Built-in", "Drawer"],
+  vacuum_type: ["Upright", "Canister", "Robot", "Stick", "Handheld"],
+  cleaning_system: ["Bagged", "Bagless", "Hybrid"],
+  bagged_or_bagless: ["Bagged", "Bagless", "Hybrid"],
+  battery_type: ["Lithium-ion", "Nickel-metal hydride", "Other"],
+};
+
+const MULTI_KEYS = new Set(["wash_cycles", "dry_cycles", "included_accessories", "required_accessories", "floor_types"]);
+
+const dimensionRegex = /(width|height|depth|cutout|clearance|adjustable_height_range|door_open|installation_depth|dock_dimensions)/i;
+const numericRegex = /(capacity|place_settings|noise_level|rack_count|burner_count|element_count|oven_count|speed_count|power|runtime|charge_time|speed_settings|turntable_size|venting_cfm|maximum_cfm|minimum_cfm|cooking_area|total_btu|spin_speed|voltage|amperage|wattage|frequency|weight|annual_energy_consumption|max_cfm|min_cfm|airflow|cfm)/i;
+const percentRegex = /(confidence|score)/i;
+const textKeys = new Set([
+  "annual_energy_consumption", "electrical_requirements", "gas_requirements", "water_requirements", "drain_requirements",
+  "required_breaker", "tub_material", "drying_system", "filtration_system", "convection_type", "burner_output", "filter_type",
+  "dock_dimensions", "temperature_range", "battery_type", "bagged_or_bagless", "material", "product_type", "additional_notes",
+  "compatible_stacking_kit", "fuel_type", "cooktop_fuel_type", "oven_fuel_type", "installation_type", "configuration",
+  "door_hinge", "door_swing", "turntable_size", "clearance_above_gas_cooking", "clearance_above_electric_cooking",
+  "handle_type", "water_connection", "drain_requirements", "clearance_above_gas_cooking", "clearance_above_electric_cooking",
+  "filtration", "included_accessories", "required_accessories", "warranty", "water_requirements", "minimum_clearances",
+  "load_style", "vent_type", "hood_type", "duct_direction", "blower_type", "microwave_type", "vacuum_type", "cleaning_system",
+  "product_type", "convection_type",
+  "door_swing", "door_hinge", "hood_type", "filter_type", "material", "battery_type", "bagged_or_bagless", "electrical_requirements",
+]);
+
+const TEMPLATE_ALIASES: Record<string, string[]> = {
+  refrigeration: ["refrigeration", "refrigerator", "fridge", "freezer", "wine cooler", "column refrigerator"],
+  dishwashers: ["dishwasher", "dishwashers"],
+  cooking: ["cooking", "range", "ranges", "cooktop", "cooktops", "rangetop", "rangetops", "wall oven", "ovens", "speed oven", "warming drawer", "combination oven"],
+  laundry: ["laundry", "washer", "washers", "dryer", "dryers", "washer dryer", "laundry pair"],
+  ventilation: ["ventilation", "hood", "range hood", "vent hood"],
+  microwaves: ["microwave", "microwaves"],
+  vacuums: ["vacuum", "vacuum cleaner", "robot vacuum"],
+  outdoor: ["outdoor", "outdoor appliance", "grill", "grills", "outdoor kitchen"],
+  small_appliances: ["small appliance", "small appliances", "blender", "coffee maker", "toaster", "mixer", "processor"],
+  general: [],
+};
+
+const canonicalTemplateForCategory = (category: string | null | undefined) => {
+  const lowered = String(category || "").toLowerCase();
+  const match = Object.entries(TEMPLATE_ALIASES).find(([, aliases]) => aliases.some(alias => lowered.includes(alias)));
+  return match?.[0] || "general";
+};
+
+const normalizeUnit = (unit: unknown, allowedUnits: string[] = []) => {
+  if (unit == null || unit === "") return "";
+  const text = String(unit).trim();
+  const canonical = text.toLowerCase();
+  const map: Record<string, string> = {
+    in: "in", inch: "in", inches: "in",
+    cm: "cm", centimeter: "cm", centimeters: "cm",
+    mm: "mm", millimeter: "mm", millimeters: "mm",
+    lb: "lb", lbs: "lb", pound: "lb", pounds: "lb",
+    kg: "kg", kilogram: "kg", kilograms: "kg",
+    "cu ft": "cu. ft.", "cu. ft.": "cu. ft.", "cubic feet": "cu. ft.", ft3: "cu. ft.",
+    l: "L", litre: "L", litres: "L", liter: "L", liters: "L",
+    v: "V", volt: "V", volts: "V",
+    a: "A", amp: "A", amps: "A", amperage: "A",
+    w: "W", watt: "W", watts: "W",
+    kw: "kW",
+    hz: "Hz",
+    cfm: "CFM",
+    btu: "BTU",
+    dba: "dBA",
+    rpm: "rpm",
+    minutes: "minutes", minute: "minutes", min: "minutes",
+    hours: "hours", hour: "hours", hr: "hours", hrs: "hours",
+    gallons: "gallons", gallon: "gallons", gal: "gallons",
+    litres: "litres", litress: "litres", liters: "litres", liter: "litres",
+    "sq in": "sq_in", sq_in: "sq_in",
+  };
+  const normalized = map[canonical] || text;
+  const allowed = allowedUnits.length ? allowedUnits : [normalized];
+  const match = allowed.find(candidate => String(candidate).toLowerCase() === String(normalized).toLowerCase());
+  return match || normalized;
+};
+
+const allowedUnitsFor = (key: string) => {
+  if (dimensionRegex.test(key)) return ["in", "cm", "mm"];
+  if (/weight/i.test(key)) return ["lb", "kg"];
+  if (/(capacity|place_settings)/i.test(key)) return ["cu. ft.", "L", "place settings", "bottles", "loads"];
+  if (/(voltage)/i.test(key)) return ["V"];
+  if (/(amperage)/i.test(key)) return ["A"];
+  if (/(wattage|power)/i.test(key)) return ["W", "kW"];
+  if (/(frequency)/i.test(key)) return ["Hz"];
+  if (/(noise_level)/i.test(key)) return ["dBA"];
+  if (/(maximum_cfm|minimum_cfm|venting_cfm|airflow|cfm)/i.test(key)) return ["CFM"];
+  if (/(total_btu|burner_output)/i.test(key)) return ["BTU"];
+  if (/(runtime|charge_time|speed_settings)/i.test(key)) return ["minutes", "hours"];
+  if (/(cooking_area|turntable_size)/i.test(key)) return ["sq_in", "in", "cm"];
+  if (/(annual_energy_consumption)/i.test(key)) return ["kWh"];
+  return [];
+};
+
+const inferFieldType = (key: string, value: unknown) => {
+  if (BOOLEAN_KEYS.has(key)) return "boolean";
+  if (MULTI_KEYS.has(key)) return "multi-select";
+  if (SELECT_RULES[key]) return "select";
+  if (textKeys.has(key)) return "text";
+  if (dimensionRegex.test(key)) return "measurement";
+  if (percentRegex.test(key)) return "number";
+  if (numericRegex.test(key)) return "number";
+  if (Array.isArray(value)) return "multi-select";
+  if (typeof value === "boolean") return "boolean";
+  if (typeof value === "number") return "number";
+  return null;
+};
+
+const validateField = (template: string, group: string, key: string, change: JsonObject) => {
+  const errors: Record<string, { code: string; message: string; submittedValue?: unknown }> = {};
+  const fieldId = `${group}.${key}`;
+  if (!GROUP_ALLOWLIST.has(group)) {
+    errors[fieldId] = { code: "unknown_group", message: "Unknown specification group." };
+    return errors;
+  }
+  const known = BOOLEAN_KEYS.has(key) || MULTI_KEYS.has(key) || !!SELECT_RULES[key] || textKeys.has(key) || dimensionRegex.test(key) || numericRegex.test(key) || percentRegex.test(key);
+  if (!known) {
+    errors[fieldId] = { code: "unknown_field", message: "Unknown specification key." };
+    return errors;
+  }
+  const operation = String(change.operation || "");
+  if (!["set", "clear", "not_applicable"].includes(operation)) {
+    errors[fieldId] = { code: "invalid_operation", message: "Unsupported specification operation." };
+    return errors;
+  }
+  const fieldType = inferFieldType(key, change.value);
+  if (operation === "clear" || operation === "not_applicable") return errors;
+  const value = change.value;
+  const unitRules = allowedUnitsFor(key);
+  if (change.unit && !unitRules.length) {
+    errors[fieldId] = { code: "invalid_unit", message: "This field does not accept a unit.", submittedValue: value };
+    return errors;
+  }
+  if (fieldType === "boolean") {
+    if (typeof value !== "boolean") errors[fieldId] = { code: "invalid_type", message: "Boolean values must be true or false.", submittedValue: value };
+    return errors;
+  }
+  if (fieldType === "multi-select") {
+    if (!Array.isArray(value)) errors[fieldId] = { code: "invalid_type", message: "Multi-select values must be an array.", submittedValue: value };
+    return errors;
+  }
+  if (fieldType === "number" || fieldType === "measurement") {
+    const numeric = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(numeric)) {
+      errors[fieldId] = { code: "invalid_type", message: "Enter a numeric value.", submittedValue: value };
+      return errors;
+    }
+    if (numeric < 0) {
+      errors[fieldId] = { code: "invalid_range", message: "Numeric values cannot be negative.", submittedValue: value };
+      return errors;
+    }
+    if (percentRegex.test(key) && numeric > 100) {
+      errors[fieldId] = { code: "invalid_range", message: "Percentage values cannot exceed 100.", submittedValue: value };
+      return errors;
+    }
+    const unit = normalizeUnit(change.unit, unitRules);
+    if (change.unit && unitRules.length && !unitRules.includes(unit)) {
+      errors[fieldId] = { code: "invalid_unit", message: `Allowed units: ${unitRules.join(", ")}.`, submittedValue: value };
+      return errors;
+    }
+    return errors;
+  }
+  if (SELECT_RULES[key]) {
+    if (typeof value !== "string" || !SELECT_RULES[key].includes(value)) {
+      errors[fieldId] = { code: "invalid_value", message: "Choose one of the allowed values.", submittedValue: value };
+    }
+    return errors;
+  }
+  if (fieldType === null) {
+    errors[fieldId] = { code: "unknown_field", message: "Unknown specification key.", submittedValue: value };
+    return errors;
+  }
+  if (typeof value === "string") {
+    const unit = normalizeUnit(change.unit, unitRules);
+    if (change.unit && unitRules.length && !unitRules.includes(unit)) {
+      errors[fieldId] = { code: "invalid_unit", message: `Allowed units: ${unitRules.join(", ")}.`, submittedValue: value };
+    }
+    return errors;
+  }
+  if (Array.isArray(value)) return errors;
+  errors[fieldId] = { code: "invalid_type", message: "Unsupported specification value.", submittedValue: value };
+  return errors;
+};
+
+const mergeSpecValue = (existing: unknown, change: JsonObject, key: string) => {
+  const operation = String(change.operation);
+  if (operation === "clear") return undefined;
+  if (operation === "not_applicable") return { value: null, status: "not_applicable" };
+  const fieldType = inferFieldType(key, change.value);
+  const allowedUnits = allowedUnitsFor(key);
+  const unit = change.unit ? normalizeUnit(change.unit, allowedUnits) : "";
+  if (fieldType === "boolean") return !!change.value;
+  if (fieldType === "multi-select") return Array.isArray(change.value) ? change.value : [];
+  if (fieldType === "number" || fieldType === "measurement") {
+    const numeric = typeof change.value === "number" ? change.value : Number(change.value);
+    return unit ? { value: numeric, unit } : numeric;
+  }
+  if (change.unit && unit) return { value: change.value, unit };
+  return change.value;
+};
+
+const mergeSpecGroups = (current: JsonObject, changes: JsonObject) => {
+  const next = { ...current };
+  for (const [group, groupChanges] of Object.entries(changes)) {
+    const existingGroup = isRecord(next[group]) ? { ...(next[group] as JsonObject) } : {};
+    for (const [key, change] of Object.entries(groupChanges as JsonObject)) {
+      if (!isRecord(change)) continue;
+      const merged = mergeSpecValue(existingGroup[key], change, key);
+      if (change.operation === "clear") delete existingGroup[key];
+      else existingGroup[key] = merged;
+    }
+    next[group] = existingGroup;
+  }
+  return next;
+};
+
+const rowToSpecGroups = (row: JsonObject | null) => ({
+  dimensions: isRecord(row?.dimensions) ? row!.dimensions : {},
+  electrical: isRecord(row?.electrical) ? row!.electrical : {},
+  gas: isRecord(row?.gas) ? row!.gas : {},
+  ventilation: isRecord(row?.ventilation) ? row!.ventilation : {},
+  installation: isRecord(row?.installation) ? row!.installation : {},
+  performance: isRecord(row?.performance) ? row!.performance : {},
+  certifications: isRecord(row?.certifications) ? row!.certifications : {},
+  warranty: isRecord(row?.warranty) ? row!.warranty : {},
+  documents: isRecord(row?.documents) ? row!.documents : {},
+  notes: isRecord(row?.notes) ? row!.notes : {},
+});
+
+const specGroupsToRow = (groups: JsonObject) => ({
+  dimensions: groups.dimensions ?? {},
+  electrical: groups.electrical ?? {},
+  gas: groups.gas ?? {},
+  ventilation: groups.ventilation ?? {},
+  installation: groups.installation ?? {},
+  performance: groups.performance ?? {},
+  certifications: groups.certifications ?? {},
+  warranty: groups.warranty ?? {},
+  documents: groups.documents ?? {},
+  notes: groups.notes ?? {},
+});
+
+const audit = async (db: ReturnType<typeof createClient>, product: JsonObject, action: string, oldRecord: unknown, newRecord: unknown, reason?: string, actorId?: string) =>
+  db.from("product_iq_governance_audit_log").insert({
+    organization_id: product.organization_id,
+    product_id: product.id,
+    entity_type: "aiq_products",
+    entity_id: product.id,
+    action,
+    actor_id: actorId,
+    actor_kind: "service",
+    reason,
+    old_record: oldRecord,
+    new_record: newRecord,
+  });
+
+Deno.serve(async req => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return respond({ error: "Method not allowed" }, 405);
+
+  const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return respond({ error: "Authentication required" }, 401);
+
+  const url = Deno.env.get("SUPABASE_URL") || "";
+  const anon = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!url || !anon || !service) return respond({ error: "Server configuration missing" }, 500);
+
+  const userClient = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${token}` } } });
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return respond({ error: "Invalid session" }, 401);
+
+  const db = createClient(url, service, { auth: { persistSession: false } });
+  const { data: role } = await db.from("product_iq_platform_roles").select("role,status,expires_at").eq("user_id", user.id).maybeSingle();
+  if (!role || role.status !== "active" || (role.expires_at && new Date(role.expires_at) <= new Date())) {
+    return respond({ error: "Product IQ administrator access required" }, 403);
+  }
+
+  const body = await req.json().catch(() => null);
+  if (!isRecord(body) || !body.action) return respond({ error: "action is required" }, 400);
+  const unexpected = Object.keys(body).filter(key => !ALLOWED_ACTION_KEYS.has(key));
+  if (unexpected.length) return respond({ error: "Unknown request fields", code: "validation_failed", fieldErrors: Object.fromEntries(unexpected.map(key => [key, { code: "unknown_field", message: "This field is not allowed in this request." }])) }, 400);
+
+  if (body.action === "create_product") {
+    const p = isRecord(body.product) ? body.product : {};
+    const required = ["manufacturer_name", "brand_name", "model", "short_description", "category", "status", "source_type", "source_reference"];
+    const missing = required.filter(k => !String(p[k] ?? "").trim());
+    if (missing.length) return respond({ error: "Missing required fields", fields: missing }, 400);
+    const model = cleanModel(String(p.model));
+    const { data: duplicate } = await db.from("aiq_products").select("id").ilike("brand_name", String(p.brand_name).trim()).ilike("model", model).limit(1);
+    if (duplicate?.length) return respond({ error: "A matching brand and model already exists", code: "duplicate_model" }, 409);
+    const { data, error } = await db.from("aiq_products").insert({
+      ...p,
+      model,
+      status: p.status || "draft",
+      approval_status: "draft",
+      public_visible: false,
+      created_by: user.id,
+      updated_by: user.id,
+      source_confidence: p.source_confidence ?? null,
+    }).select().single();
+    if (error) return respond({ error: error.message }, 400);
+    await audit(db, data as JsonObject, "product_draft_created", null, data, "Governed Product IQ draft creation", user.id);
+    return respond({ data }, 201);
+  }
+
+  if (body.action === "update_product") {
+    const { productId, originalVersion, section, changes, reason } = body as JsonObject;
+    if (!productId || !Number.isInteger(originalVersion) || !section || !isRecord(changes)) return respond({ error: "productId, originalVersion, section, and changes are required" }, 400);
+    const protectedFields = new Set(["approval_status", "public_visible", "published_at", "unpublished_at", "organization_id", "manufacturer_id", "brand_id", "created_by", "updated_by", "version_number"]);
+    const overviewFields = new Set(["short_description", "model", "category", "status", "source_type", "source_reference", "source_confidence", "country_availability"]);
+    if (Object.keys(changes).some(key => protectedFields.has(key))) return respond({ error: "Protected fields require a review transition", code: "protected_field" }, 403);
+    if (section === "overview" && Object.keys(changes).some(key => !overviewFields.has(key))) return respond({ error: "Unknown or non-overview field", code: "unknown_field" }, 400);
+    if (section === "overview" && ["short_description", "model", "category"].some(key => key in changes && !String((changes as JsonObject)[key] ?? "").trim())) return respond({ error: "Product name, model number, and category are required", code: "validation_failed" }, 400);
+    if ("source_confidence" in changes && (Number((changes as JsonObject).source_confidence) < 0 || Number((changes as JsonObject).source_confidence) > 100 || Number.isNaN(Number((changes as JsonObject).source_confidence)))) {
+      return respond({ error: "Confidence must be between 0 and 100", code: "validation_failed" }, 400);
+    }
+    const { data: current, error: readError } = await db.from("aiq_products").select("*").eq("id", String(productId)).maybeSingle();
+    if (readError || !current) return respond({ error: "Product not found" }, 404);
+    if (current.version_number !== originalVersion) {
+      return respond({
+        error: "This product has a newer version. Reload before saving.",
+        code: "conflict",
+        currentVersion: current.version_number,
+        submittedVersion: originalVersion,
+        updatedAt: current.updated_at,
+        updatedBy: current.updated_by,
+      }, 409);
+    }
+    if ((changes as JsonObject).model) {
+      (changes as JsonObject).model = cleanModel(String((changes as JsonObject).model));
+      const { data: dupe } = await db.from("aiq_products").select("id").ilike("brand_name", String(current.brand_name)).ilike("model", String((changes as JsonObject).model)).neq("id", String(productId)).limit(1);
+      if (dupe?.length) return respond({ error: "A matching brand and model already exists", code: "duplicate_model" }, 409);
+    }
+    const { data: updated, error: updateError } = await db.from("aiq_products").update({ ...changes, updated_by: user.id }).eq("id", String(productId)).eq("version_number", originalVersion).select().single();
+    if (updateError || !updated) return respond({ error: updateError?.message || "Update conflict", code: "conflict", currentVersion: current.version_number }, 409);
+    await audit(db, updated as JsonObject, "product_section_updated", current, updated, `${section}: ${reason || "governed update"}`, user.id);
+    return respond({ data: updated });
+  }
+
+  if (body.action === "validate_product") {
+    const { productId, rules, formulaVersion = "phase3.v1" } = body as JsonObject;
+    const { data: p } = await db.from("aiq_products").select("*").eq("id", String(productId)).maybeSingle();
+    const { data: s } = await db.from("aiq_product_specifications").select("*").eq("product_id", String(productId)).maybeSingle();
+    if (!p) return respond({ error: "Product not found" }, 404);
+    const issues = (Array.isArray(rules) ? rules : []).filter((r: any) => r.required && !r.value).map((r: any) => ({
+      origin: "deterministic",
+      rule_id: r.id,
+      rule_version: formulaVersion,
+      section: r.section,
+      key: r.key,
+      issue_type: "missing_required_specification",
+      severity: "blocking",
+      current_value: null,
+      explanation: `${r.label} is required for ${p.category}.`,
+      suggested_action: "Add a value in the governed workspace.",
+    }));
+    const score = Math.max(0, 100 - issues.length * 10);
+    const result = {
+      organization_id: p.organization_id,
+      product_id: p.id,
+      version_number: p.version_number,
+      score,
+      section_scores: { formula_version: formulaVersion, completeness: score },
+      issues,
+      validation_source: "rules",
+      validated_by: user.id,
+    };
+    const { data, error } = await db.from("product_iq_data_quality_results").upsert(result, { onConflict: "product_id,version_number,validation_source" }).select().single();
+    return error ? respond({ error: error.message }, 400) : respond({ data, specification_present: !!s });
+  }
+
+  if (body.action === "update_specifications") {
+    const { productId, originalVersion, templateId, changes, reason, section } = body as JsonObject;
+    if (!productId || !Number.isInteger(originalVersion) || !templateId || !isRecord(changes)) return respond({ error: "productId, originalVersion, templateId, and changes are required" }, 400);
+    if (section && section !== "specifications") return respond({ error: "Invalid section for specification update", code: "validation_failed" }, 400);
+
+    const { data: product } = await db.from("aiq_products").select("*").eq("id", String(productId)).maybeSingle();
+    if (!product) return respond({ error: "Product not found" }, 404);
+    const resolvedTemplate = canonicalTemplateForCategory(product.category);
+    if (String(templateId) && canonicalTemplateForCategory(String(templateId)) !== resolvedTemplate && String(templateId) !== resolvedTemplate) {
+      // The browser supplied a template id, but the server resolves the authoritative family.
+      return respond({ error: "Unknown specification template", code: "unknown_template" }, 400);
+    }
+    if (product.version_number !== originalVersion) {
+      return respond({
+        error: "This product has a newer version. Reload before saving.",
+        code: "conflict",
+        currentVersion: product.version_number,
+        submittedVersion: originalVersion,
+        updatedAt: product.updated_at,
+        updatedBy: product.updated_by,
+      }, 409);
+    }
+
+    const fieldErrors: Record<string, { code: string; message: string; submittedValue?: unknown }> = {};
+    const nextChanges: JsonObject = {};
+    for (const [group, groupChangesRaw] of Object.entries(changes)) {
+      if (!GROUP_ALLOWLIST.has(group)) {
+        fieldErrors[group] = { code: "unknown_group", message: "Unknown specification group." };
+        continue;
+      }
+      if (!isRecord(groupChangesRaw)) {
+        fieldErrors[group] = { code: "invalid_group", message: "Specification group changes must be an object." };
+        continue;
+      }
+      const groupChanges: JsonObject = {};
+      for (const [key, changeRaw] of Object.entries(groupChangesRaw)) {
+        if (!isRecord(changeRaw)) {
+          fieldErrors[`${group}.${key}`] = { code: "invalid_field", message: "Each specification change must be an object." };
+          continue;
+        }
+        if (!("operation" in changeRaw)) {
+          fieldErrors[`${group}.${key}`] = { code: "invalid_operation", message: "Specification changes require an explicit operation." };
+          continue;
+        }
+        const change = changeRaw as JsonObject;
+        const allowed = validateField(resolvedTemplate, group, key, change);
+        Object.assign(fieldErrors, allowed);
+        if (allowed[`${group}.${key}`]) continue;
+        const op = String(change.operation) as SpecOperation;
+        if (op === "clear" || op === "not_applicable" || op === "set") groupChanges[key] = change;
+      }
+      if (Object.keys(groupChanges).length) nextChanges[group] = groupChanges;
+    }
+    if (Object.keys(fieldErrors).length) {
+      return respond({ error: "validation_failed", code: "validation_failed", fieldErrors }, 400);
+    }
+    if (!Object.keys(nextChanges).length) {
+      return respond({ error: "No specification changes were supplied", code: "no_changes" }, 400);
+    }
+
+    const { data: existingSpec } = await db.from("aiq_product_specifications").select("*").eq("product_id", String(productId)).maybeSingle();
+    const previousGroups = rowToSpecGroups(existingSpec as JsonObject | null);
+    const nextGroups = mergeSpecGroups(previousGroups, nextChanges);
+    const payload = specGroupsToRow(nextGroups);
+    let specRowId: string | null = (existingSpec as JsonObject | null)?.id ? String((existingSpec as JsonObject).id) : null;
+    let inserted = false;
+
+    if (specRowId) {
+      const { error: specError } = await db.from("aiq_product_specifications").update(payload).eq("id", specRowId);
+      if (specError) return respond({ error: specError.message }, 400);
+    } else {
+      const { data: insertedRow, error: insertError } = await db.from("aiq_product_specifications").insert({
+        organization_id: product.organization_id,
+        product_id: product.id,
+        version_number: product.version_number,
+        ...payload,
+      }).select("id").single();
+      if (insertError || !insertedRow) return respond({ error: insertError?.message || "Specification insert failed" }, 400);
+      specRowId = String(insertedRow.id);
+      inserted = true;
+    }
+
+    const { data: updatedProduct, error: updateError } = await db.from("aiq_products").update({ updated_by: user.id }).eq("id", String(productId)).eq("version_number", originalVersion).select().single();
+    if (updateError || !updatedProduct) {
+      if (inserted && specRowId) {
+        await db.from("aiq_product_specifications").delete().eq("id", specRowId);
+      } else if (specRowId) {
+        await db.from("aiq_product_specifications").update(specGroupsToRow(previousGroups)).eq("id", specRowId);
+      }
+      return respond({
+        error: "This product has a newer version. Reload before saving.",
+        code: "conflict",
+        currentVersion: product.version_number,
+        submittedVersion: originalVersion,
+        updatedAt: product.updated_at,
+        updatedBy: product.updated_by,
+      }, 409);
+    }
+
+    await audit(
+      db,
+      updatedProduct as JsonObject,
+      "product_specifications_updated",
+      { product: product, specifications: previousGroups },
+      { product: updatedProduct, specifications: nextGroups, changes: nextChanges },
+      `specifications (${resolvedTemplate}): ${reason || Object.keys(nextChanges).map(group => `${group}:${Object.keys(nextChanges[group] as JsonObject).join(",")}`).join("; ")}`,
+      user.id,
+    );
+    return respond({
+      data: updatedProduct,
+      version_number: updatedProduct.version_number,
+      section: "specifications",
+    });
+  }
+
+  return respond({ error: "Unknown action" }, 400);
+});
