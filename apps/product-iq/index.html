@@ -330,7 +330,7 @@ async function renderDashboard(C){
     sb.from('aiq_products').select('id,brand_name,manufacturer_name,model,category,status,approval_status,public_visible,msrp,updated_at,short_description',{count:'exact'}),
     sb.from('brand_catalog').select('id,brand_name,brand_tier,is_active,product_count'),
     sb.from('aiq_product_versions').select('id,created_at').order('created_at',{ascending:false}).limit(10),
-    sb.from('aiq_product_specifications').select('id')
+    sb.from('pim_product_features').select('product_id').then(r=>({data:[...new Set((r.data||[]).map(x=>x.product_id))].map(id=>({id})),error:r.error}))
   ]);
   if(error)return C.innerHTML=`<div class="error">${esc(error.message)}</div>`;
   const all=products||[];
@@ -432,16 +432,16 @@ async function renderProductDetail(C){
   if(!S.detail)return go('catalog');
   const [{data:p,error},{data:spec},{data:versions},{data:rels},{data:assets}]=await Promise.all([
     sb.from('aiq_products').select('*').eq('id',S.detail).maybeSingle(),
-    sb.from('aiq_product_specifications').select('*').eq('product_id',S.detail).maybeSingle(),
+    sb.from('pim_product_dimensions').select('*').eq('product_id',S.detail).maybeSingle(),
     sb.from('aiq_product_versions').select('*').eq('product_id',S.detail).order('version_number',{ascending:false}),
-    sb.from('aiq_product_relationships').select('*').eq('product_id',S.detail),
-    sb.from('mfr_assets').select('*').eq('product_id',S.detail)
+    sb.from('pim_product_accessories').select('*').eq('product_id',S.detail),
+    sb.from('pim_product_images').select('*').eq('product_id',S.detail).order('display_order')
   ]);
   if(error||!p)return C.innerHTML=`<div class="error">Product not found.</div>`;
 
   if(S.editMode)return renderProductEdit(C,p,spec);
 
-  const specSections=spec?['dimensions','electrical','gas','ventilation','installation','performance','certifications','warranty'].filter(k=>spec[k]&&Object.keys(spec[k]).length):[];
+  const specSections=spec?Object.entries(spec).filter(([k,v])=>v!=null&&k!=='id'&&k!=='product_id'&&k!=='created_at'&&k!=='updated_at'&&k!=='dimension_type'&&k!=='notes').map(([k])=>k):[];
   const tabData={
     Overview:`<div class="kv">
       <div><small>Brand</small>${esc(p.brand_name)}</div><div><small>Manufacturer</small>${esc(p.manufacturer_name)}</div><div><small>Model</small>${esc(p.model)}</div>
@@ -546,10 +546,9 @@ async function saveProduct(id,hasSpec){
   const hasAnySpec=Object.values(specData).some(v=>v!==null&&v!=='');
   if(hasAnySpec){
     if(hasSpec==='true'||hasSpec===true){
-      await sb.from('aiq_product_specifications').update(specData).eq('product_id',id);
+      await sb.from('pim_product_dimensions').update(specData).eq('product_id',id);
     }else{
-      const {data:prod}=await sb.from('aiq_products').select('organization_id').eq('id',id).maybeSingle();
-      await sb.from('aiq_product_specifications').insert({product_id:id,organization_id:prod?.organization_id,...specData,version_number:1,created_at:new Date().toISOString()});
+      await sb.from('pim_product_dimensions').insert({product_id:id,...specData});
     }
   }
   S.editMode=false;renderPage();
@@ -620,7 +619,7 @@ async function renderBrands(C){
 /* ── DATA QUALITY ── */
 async function renderDataQuality(C){
   const {data:products}=await sb.from('aiq_products').select('id,brand_name,model,short_description,msrp,series,product_line,product_family,category');
-  const {data:specs}=await sb.from('aiq_product_specifications').select('product_id');
+  const {data:specs}=await sb.from('pim_product_dimensions').select('product_id');
   const specIds=new Set((specs||[]).map(s=>s.product_id));
 
   const scored=(products||[]).map(p=>{
@@ -657,7 +656,7 @@ async function renderDataQuality(C){
 
 /* ── ACTIVITY ── */
 async function renderActivity(C){
-  const {data:log}=await sb.from('product_iq_governance_audit_log').select('*').order('created_at',{ascending:false}).limit(50);
+  const {data:log}=await sb.from('aiq_product_versions').select('*').order('created_at',{ascending:false}).limit(50);
   const {data:versions}=await sb.from('aiq_product_versions').select('id,product_id,version_number,created_at').order('created_at',{ascending:false}).limit(30);
 
   C.innerHTML=`
