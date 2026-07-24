@@ -610,6 +610,24 @@ async function copyText(text) {
 function fieldControl(label, control, hint = "", required = false) {
   return `<label class="field"><small>${esc(label)}${required ? " *" : ""}</small>${control}${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</label>`;
 }
+function fieldControlWithError(name, label, control, hint = "", required = false) {
+  return `<label class="field" data-field="${esc(name)}"><small>${esc(label)}${required ? " *" : ""}</small>${control}${hint ? `<div class="hint">${esc(hint)}</div>` : ""}<div class="field-error" data-field-error="${esc(name)}" hidden></div></label>`;
+}
+function clearFieldErrors(form) {
+  form.querySelectorAll("[data-field-error]").forEach(el => {
+    el.hidden = true;
+    el.textContent = "";
+  });
+}
+function applyFieldErrors(form, errors = {}) {
+  clearFieldErrors(form);
+  for (const [name, value] of Object.entries(errors || {})) {
+    const el = form.querySelector(`[data-field-error="${name}"]`);
+    if (!el) continue;
+    el.hidden = false;
+    el.textContent = value?.message || value?.error || String(value);
+  }
+}
 function modalShell(title, subtitle, body) {
   const wrap = document.createElement("div");
   wrap.className = "modal-backdrop";
@@ -639,6 +657,11 @@ function renderDocumentPreview(doc) {
     return `<div class="doc-preview"><iframe src="${esc(url)}" title="${esc(doc.title || "Document preview")}"></iframe></div>`;
   }
   return `<div class="doc-preview"><div class="placeholder">Preview unavailable</div></div>`;
+}
+function fileActionButtons(url, title) {
+  if (!url) return `<button type="button" class="btn secondary" disabled>Download</button>`;
+  const file = fileNameFromUrl(url);
+  return `<a class="btn secondary" href="${esc(url)}" target="_blank" rel="noopener noreferrer" download="${esc(file)}">Download</a>`;
 }
 function documentGroupSortKey(name) {
   const idx = documentTypeOrder.indexOf(name);
@@ -678,6 +701,7 @@ function docCard(doc, product) {
     <div class="doc-actions">
       <button type="button" class="btn secondary" onclick="openLink('${esc(url)}')">Open</button>
       <button type="button" class="btn secondary" onclick="copyText('${esc(url)}')">Copy link</button>
+      ${fileActionButtons(url, doc.title)}
       ${isPlatformUser() ? `<button type="button" class="btn secondary" onclick="openDocumentEditor('${esc(product.id)}','${esc(doc.id)}')">Edit metadata</button>
       <button type="button" class="btn secondary" onclick="${archived ? `restoreDocument('${esc(product.id)}','${esc(doc.id)}')` : `archiveDocument('${esc(product.id)}','${esc(doc.id)}')`}">${archived ? "Restore" : "Archive"}</button>` : ""}
     </div>
@@ -700,6 +724,7 @@ function imageCard(asset, product, activeImages) {
     <div class="gallery-actions">
       <button type="button" class="btn secondary" onclick="openLink('${esc(url)}')">Open</button>
       <button type="button" class="btn secondary" onclick="copyText('${esc(url)}')">Copy link</button>
+      ${fileActionButtons(url, asset.title)}
       ${isPlatformUser() ? `<button type="button" class="btn secondary" onclick="openImageEditor('${esc(product.id)}','${esc(asset.id)}')">Edit metadata</button>
       <button type="button" class="btn secondary" onclick="${archived ? `restoreImage('${esc(product.id)}','${esc(asset.id)}')` : `archiveImage('${esc(product.id)}','${esc(asset.id)}')`}">${archived ? "Restore" : "Archive"}</button>
       ${!primary ? `<button type="button" class="btn secondary" onclick="setPrimaryImage('${esc(product.id)}','${esc(asset.id)}')">Make primary</button>` : `<button type="button" class="btn secondary" disabled>Primary</button>`}` : ""}
@@ -762,7 +787,7 @@ function documentConflictMarkup(details) {
 async function openDocumentEditor(product, doc, isCreate = false) {
   const baseline = {
     title: doc.title || "",
-    document_type: documentTypeOrder.includes(doc.document_type) ? doc.document_type : "Other",
+    document_type: documentTypeLabel(doc.document_type),
     language: doc.language || "",
     version: doc.version || "",
     source_type: doc.source_type || "internal",
@@ -776,15 +801,15 @@ async function openDocumentEditor(product, doc, isCreate = false) {
       <input type="hidden" name="original_version" value="${esc(product.version_number)}" />
       <div id="document-conflict"></div>
       <div class="modal-grid">
-        ${fieldControl("Title", `<input class="control" name="title" required value="${esc(baseline.title)}" />`, "Document display title", true)}
-        ${fieldControl("Document type", `<select class="control" name="document_type">${documentTypeOrder.map(type => `<option value="${esc(type)}" ${baseline.document_type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select>`, "Choose the closest matching document type", true)}
-        ${fieldControl("Language", `<input class="control" name="language" list="language-hints" value="${esc(baseline.language)}" />`, "Language or locale, if known")}
-        ${fieldControl("Version", `<input class="control" name="version" value="${esc(baseline.version)}" />`, "Document version or revision")}
-        ${fieldControl("Source", `<select class="control" name="source_type">${sourceStates.map(v => `<option value="${esc(v)}" ${baseline.source_type === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Origin of the record")}
-        ${fieldControl("Source reference", `<input class="control" name="source_reference" value="${esc(baseline.source_reference)}" />`, "External reference, file ID, or submission reference")}
-        ${fieldControl("Publication state", `<select class="control" name="approval_status">${publicationStates.map(v => `<option value="${esc(v)}" ${baseline.approval_status === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Review status for this document")}
-        ${fieldControl("Public visibility", `<select class="control" name="public_visible"><option value="false" ${!baseline.public_visible ? "selected" : ""}>Hidden</option><option value="true" ${baseline.public_visible ? "selected" : ""}>Visible</option></select>`, "Whether the document is available to downstream readers")}
-        <label class="field full"><small>Internal description</small><textarea class="control" name="description" rows="4">${esc(baseline.description)}</textarea><div class="hint">Shown to Product IQ editors only.</div></label>
+        ${fieldControlWithError("title", "Title", `<input class="control" name="title" required value="${esc(baseline.title)}" />`, "Document display title", true)}
+        ${fieldControlWithError("document_type", "Document type", `<select class="control" name="document_type">${documentTypeOrder.map(type => `<option value="${esc(type)}" ${baseline.document_type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select>`, "Choose the closest matching document type", true)}
+        ${fieldControlWithError("language", "Language", `<input class="control" name="language" list="language-hints" value="${esc(baseline.language)}" />`, "Language or locale, if known")}
+        ${fieldControlWithError("version", "Version", `<input class="control" name="version" value="${esc(baseline.version)}" />`, "Document version or revision")}
+        ${fieldControlWithError("source_type", "Source", `<select class="control" name="source_type">${sourceStates.map(v => `<option value="${esc(v)}" ${baseline.source_type === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Origin of the record")}
+        ${fieldControlWithError("source_reference", "Source reference", `<input class="control" name="source_reference" value="${esc(baseline.source_reference)}" />`, "External reference, file ID, or submission reference")}
+        ${fieldControlWithError("approval_status", "Publication state", `<select class="control" name="approval_status">${publicationStates.map(v => `<option value="${esc(v)}" ${baseline.approval_status === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Review status for this document")}
+        ${fieldControlWithError("public_visible", "Public visibility", `<select class="control" name="public_visible"><option value="false" ${!baseline.public_visible ? "selected" : ""}>Hidden</option><option value="true" ${baseline.public_visible ? "selected" : ""}>Visible</option></select>`, "Whether the document is available to downstream readers")}
+        <label class="field full" data-field="description"><small>Internal description</small><textarea class="control" name="description" rows="4">${esc(baseline.description)}</textarea><div class="hint">Shown to Product IQ editors only.</div><div class="field-error" data-field-error="description" hidden></div></label>
       </div>
       <div id="document-field-errors" class="error" hidden></div>
       <div class="modal-actions"><button type="button" class="btn secondary" data-close>Cancel</button><button type="submit" class="btn primary">Save metadata</button></div>
@@ -809,6 +834,7 @@ async function openDocumentEditor(product, doc, isCreate = false) {
   form.addEventListener("change", markDirty);
   form.onsubmit = async e => {
     e.preventDefault();
+    clearFieldErrors(form);
     errorBox.hidden = true;
     errorBox.textContent = "";
     submit.disabled = true;
@@ -857,6 +883,7 @@ async function openDocumentEditor(product, doc, isCreate = false) {
         return;
       }
       if (data?.fieldErrors) {
+        applyFieldErrors(form, data.fieldErrors);
         errorBox.hidden = false;
         errorBox.textContent = data?.error || "Fix the highlighted document errors before saving.";
         submit.disabled = false;
@@ -887,7 +914,7 @@ async function restoreDocument(productId, documentId) {
 async function openImageEditor(product, asset, isCreate = false) {
   const baseline = {
     title: asset.title || "",
-    image_type: imageTypeOrder.includes(asset.image_type) ? asset.image_type : "Other",
+    image_type: imageTypeLabel(asset.image_type),
     alt_text: asset.alt_text || "",
     display_order: asset.display_order ?? "",
     source_type: asset.source_type || "internal",
@@ -900,14 +927,14 @@ async function openImageEditor(product, asset, isCreate = false) {
       <input type="hidden" name="original_version" value="${esc(product.version_number)}" />
       <div id="image-conflict"></div>
       <div class="modal-grid">
-        ${fieldControl("Title", `<input class="control" name="title" value="${esc(baseline.title)}" required />`, "Image display title", true)}
-        ${fieldControl("Image type", `<select class="control" name="image_type">${imageTypeOrder.map(type => `<option value="${esc(type)}" ${baseline.image_type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select>`, "Choose the closest image type", true)}
-        ${fieldControl("Alt text", `<textarea class="control" name="alt_text" rows="3">${esc(baseline.alt_text)}</textarea>`, "Accessible alternative text for the asset")}
-        ${fieldControl("Display order", `<input class="control" name="display_order" type="number" min="0" step="1" value="${esc(baseline.display_order)}" />`, "Lower numbers appear earlier in the gallery")}
-        ${fieldControl("Source", `<select class="control" name="source_type">${sourceStates.map(v => `<option value="${esc(v)}" ${baseline.source_type === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Origin of the record")}
-        ${fieldControl("Source reference", `<input class="control" name="source_reference" value="${esc(baseline.source_reference)}" />`, "External reference, file ID, or submission reference")}
-        ${fieldControl("Publication state", `<select class="control" name="is_published"><option value="true" ${baseline.is_published ? "selected" : ""}>Published</option><option value="false" ${!baseline.is_published ? "selected" : ""}>Hidden</option></select>`, "Controls publication visibility")}
-        <label class="field full"><small>Primary image</small><select class="control" name="is_primary"><option value="false" ${!baseline.is_primary ? "selected" : ""}>No</option><option value="true" ${baseline.is_primary ? "selected" : ""}>Yes</option></select><div class="hint">Exactly one active primary image is enforced server-side.</div></label>
+        ${fieldControlWithError("title", "Title", `<input class="control" name="title" value="${esc(baseline.title)}" required />`, "Image display title", true)}
+        ${fieldControlWithError("image_type", "Image type", `<select class="control" name="image_type">${imageTypeOrder.map(type => `<option value="${esc(type)}" ${baseline.image_type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select>`, "Choose the closest image type", true)}
+        ${fieldControlWithError("alt_text", "Alt text", `<textarea class="control" name="alt_text" rows="3">${esc(baseline.alt_text)}</textarea>`, "Accessible alternative text for the asset")}
+        ${fieldControlWithError("display_order", "Display order", `<input class="control" name="display_order" type="number" min="0" step="1" value="${esc(baseline.display_order)}" />`, "Lower numbers appear earlier in the gallery")}
+        ${fieldControlWithError("source_type", "Source", `<select class="control" name="source_type">${sourceStates.map(v => `<option value="${esc(v)}" ${baseline.source_type === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Origin of the record")}
+        ${fieldControlWithError("source_reference", "Source reference", `<input class="control" name="source_reference" value="${esc(baseline.source_reference)}" />`, "External reference, file ID, or submission reference")}
+        ${fieldControlWithError("is_published", "Publication state", `<select class="control" name="is_published"><option value="true" ${baseline.is_published ? "selected" : ""}>Published</option><option value="false" ${!baseline.is_published ? "selected" : ""}>Hidden</option></select>`, "Controls publication visibility")}
+        ${fieldControlWithError("is_primary", "Primary image", `<select class="control" name="is_primary"><option value="false" ${!baseline.is_primary ? "selected" : ""}>No</option><option value="true" ${baseline.is_primary ? "selected" : ""}>Yes</option></select>`, "Exactly one active primary image is enforced server-side.")}
       </div>
       <div id="image-field-errors" class="error" hidden></div>
       <div class="modal-actions"><button type="button" class="btn secondary" data-close>Cancel</button><button type="submit" class="btn primary">Save metadata</button></div>
@@ -931,6 +958,7 @@ async function openImageEditor(product, asset, isCreate = false) {
   form.addEventListener("change", markDirty);
   form.onsubmit = async e => {
     e.preventDefault();
+    clearFieldErrors(form);
     errorBox.hidden = true;
     errorBox.textContent = "";
     submit.disabled = true;
@@ -978,6 +1006,7 @@ async function openImageEditor(product, asset, isCreate = false) {
         return;
       }
       if (data?.fieldErrors) {
+        applyFieldErrors(form, data.fieldErrors);
         errorBox.hidden = false;
         errorBox.textContent = data?.error || "Fix the highlighted image errors before saving.";
         submit.disabled = false;
