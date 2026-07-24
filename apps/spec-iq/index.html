@@ -463,15 +463,34 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       <!-- STEP 3: SERVICES -->
       <div id="step-3" class="hidden">
         <div class="card" style="margin-bottom:16px">
-          <h3 style="margin-bottom:4px">Delivery &amp; Services</h3>
-          <p style="color:var(--steel);font-size:13px;margin-bottom:20px">Add delivery, installation, and other service charges.</p>
-          <div style="margin-bottom:20px">
-            <label>Delivery Method</label>
-            <div class="flex" style="gap:12px;margin-top:4px">
-              <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer"><input type="radio" name="b-delivery" value="delivery" checked style="width:16px;height:16px" /> Delivery</label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer"><input type="radio" name="b-delivery" value="pickup" style="width:16px;height:16px" /> Customer Pickup</label>
+          <h3 style="margin-bottom:4px">Delivery</h3>
+          <p style="color:var(--steel);font-size:13px;margin-bottom:12px">Choose delivery method and any associated charges.</p>
+          <div class="flex" style="gap:12px;margin-bottom:16px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer"><input type="radio" name="b-delivery" value="delivery" checked style="width:16px;height:16px" onchange="toggleDeliveryOptions()" /> Delivery</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer"><input type="radio" name="b-delivery" value="pickup" style="width:16px;height:16px" onchange="toggleDeliveryOptions()" /> Customer Pickup</label>
+          </div>
+          <div id="delivery-options">
+            <div class="flex" style="gap:8px;flex-wrap:wrap">
+              <button class="btn btn-s" onclick="quickAddService('delivery','Standard Delivery',149,true)" style="font-size:13px">Standard $149</button>
+              <button class="btn btn-s" onclick="quickAddService('delivery','White Glove Delivery',299,true)" style="font-size:13px">White Glove $299</button>
+              <button class="btn btn-s" onclick="quickAddService('delivery','Premium Delivery & Setup',499,true)" style="font-size:13px">Premium $499</button>
+              <button class="btn btn-s" onclick="quickAddService('delivery','Free Delivery',0,false)" style="font-size:13px;color:var(--verified)">Free Delivery</button>
             </div>
           </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <h3 style="margin-bottom:4px">Installation</h3>
+          <p style="color:var(--steel);font-size:13px;margin-bottom:12px">Quick-add common installation services or add custom amounts below.</p>
+          <div class="flex" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
+            <button class="btn btn-s" onclick="quickAddService('installation','Basic Installation',199,true)" style="font-size:13px">Basic $199</button>
+            <button class="btn btn-s" onclick="quickAddService('installation','Full Installation',399,true)" style="font-size:13px">Full $399</button>
+            <button class="btn btn-s" onclick="quickAddService('installation','Built-In Installation',599,true)" style="font-size:13px">Built-In $599</button>
+            <button class="btn btn-s" onclick="quickAddService('haul_away','Haul-Away & Recycling',75,true)" style="font-size:13px">Haul-Away $75</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <h3 style="margin-bottom:4px">Additional Services</h3>
+          <p style="color:var(--steel);font-size:13px;margin-bottom:12px">Extended warranties, accessories, environmental fees, or custom charges.</p>
           <div id="builder-services-list"></div>
           <div id="add-service-form" class="hidden" style="border:1px solid var(--focus);border-radius:var(--radius);padding:16px;margin-bottom:12px;background:var(--focus-soft)">
             <div class="grid3" style="margin-bottom:12px">
@@ -484,7 +503,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
             </div>
             <div class="flex" style="gap:8px;margin-top:12px"><button class="btn btn-p" onclick="addBuilderService()">Add Service</button><button class="btn btn-s" onclick="el('add-service-form').classList.add('hidden')">Cancel</button></div>
           </div>
-          <button class="btn btn-s" onclick="el('add-service-form').classList.remove('hidden')" style="margin-top:8px"><svg class="icon" style="width:16px;height:16px"><use href="#i-plus"/></svg> Add Service</button>
+          <button class="btn btn-s" onclick="el('add-service-form').classList.remove('hidden')" style="margin-top:8px"><svg class="icon" style="width:16px;height:16px"><use href="#i-plus"/></svg> Custom Service</button>
         </div>
         <div class="card" style="margin-bottom:16px">
           <h3 style="margin-bottom:4px">Tax Jurisdiction</h3>
@@ -505,7 +524,10 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       <!-- STEP 4: PRICING REVIEW -->
       <div id="step-4" class="hidden">
         <div class="card" style="margin-bottom:16px">
-          <h3 style="margin-bottom:16px">Pricing Breakdown</h3>
+          <div class="flex between" style="margin-bottom:16px">
+            <h3>Pricing Breakdown</h3>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--steel);cursor:pointer"><input type="checkbox" id="b-customer-facing" style="width:16px;height:16px" onchange="renderPricingReview()" /> Customer-facing (hide model #s)</label>
+          </div>
           <div id="pricing-review-content" style="font-size:14px">Calculating...</div>
         </div>
         <div class="card" style="margin-bottom:16px"><div class="flex" style="gap:12px"><input type="checkbox" id="b-pricing" style="width:18px;height:18px;flex-shrink:0" checked /><label for="b-pricing" style="margin:0;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer">Include pricing page in package</label></div></div>
@@ -757,13 +779,38 @@ window.clearProductSelection=function(){
 };
 // Close search results when clicking outside
 document.addEventListener('click',function(e){if(!e.target.closest('#ap-search')&&!e.target.closest('#ap-search-results')){var r=document.getElementById('ap-search-results');if(r)r.style.display='none'}});
+window.quickAddService=function(type,desc,amount,taxable){
+  // Check if same type+desc already exists
+  var exists=builderServices.some(function(s){return s.service_type===type&&s.description===desc});
+  if(exists){alert(desc+' already added.');return}
+  var labels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};
+  builderServices.push({id:Date.now(),service_type:type,description:desc,amount:amount,taxable:taxable});
+  renderBuilderServices();
+};
+window.toggleDeliveryOptions=function(){
+  var method=document.querySelector('input[name="b-delivery"]:checked')?.value||'delivery';
+  var opts=document.getElementById('delivery-options');
+  if(opts)opts.style.display=method==='delivery'?'':'none';
+};
 window.addBuilderService=function(){var type=el('bs-type').value,desc=el('bs-desc').value,amount=parseFloat(el('bs-amount').value)||0;if(!amount){alert('Enter a service amount.');return}var labels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};builderServices.push({id:Date.now(),service_type:type,description:desc||labels[type],amount:amount,taxable:el('bs-taxable').checked});el('bs-desc').value='';el('bs-amount').value='';el('bs-taxable').checked=true;el('add-service-form').classList.add('hidden');renderBuilderServices()};
 window.removeBuilderService=function(id){builderServices=builderServices.filter(function(s){return s.id!==id});renderBuilderServices()};
 function renderBuilderServices(){var list=el('builder-services-list');if(!list)return;if(!builderServices.length){list.innerHTML='<div style="padding:12px 0;color:var(--steel);font-size:13px">No services added yet.</div>';return}var labels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};list.innerHTML=builderServices.map(function(s){return'<div class="flex between" style="padding:10px 16px;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:6px"><div><span style="font-weight:600">'+esc(labels[s.service_type]||s.service_type)+'</span>'+(s.description?' — <span style="color:var(--steel);font-size:13px">'+esc(s.description)+'</span>':'')+(s.taxable?'':' <span class="badge badge-y" style="font-size:10px">non-taxable</span>')+'</div><div class="flex" style="gap:12px"><span class="num" style="font-weight:600;font-family:Sora">$'+s.amount.toLocaleString()+'</span><button class="btn btn-g" style="padding:4px" onclick="removeBuilderService('+s.id+')"><svg class="icon" style="width:14px;height:14px;color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('')}
 /* Tax jurisdiction loader */
 async function loadTaxJurisdictions(){if(builderTaxRules.length)return;try{const{data}=await window._sb.from('speciq_tax_rules').select('*').eq('organization_id',window._userOrgId).order('jurisdiction_name');builderTaxRules=data||[]}catch(e){builderTaxRules=[]}var sel=el('b-tax-jurisdiction');sel.innerHTML='<option value="">— Select province —</option>'+builderTaxRules.map(function(t){return'<option value="'+t.id+'"'+(t.is_default?' selected':'')+'>'+esc(t.jurisdiction_name)+' ('+esc(t.province_state)+')</option>'}).join('')}
 /* Pricing review renderer */
-function renderPricingReview(){var c=el('pricing-review-content');if(!c)return;var totalMsrp=0,totalSale=0;builderProducts.forEach(function(p){var q=p.quantity||1;var msrp=(p.msrp||0)*q;var promo=(p.promo_price||0)*q;var neg=(p.negotiated_price||0)*q;totalMsrp+=msrp;totalSale+=neg>0?neg:(promo>0?promo:msrp)});var productSavings=totalMsrp-totalSale;var volDiscount=parseFloat(el('b-volume-discount').value)||0;var saleAfterVol=totalSale-volDiscount;var svcTotal=0,taxableSvcTotal=0;builderServices.forEach(function(s){svcTotal+=s.amount;if(s.taxable)taxableSvcTotal+=s.amount});var subtotal=saleAfterVol+svcTotal;var taxRuleId=el('b-tax-jurisdiction').value;var taxRule=builderTaxRules.find(function(t){return t.id===taxRuleId})||null;var taxLines=[];var totalTax=0;if(taxRule){var taxableBase=saleAfterVol+taxableSvcTotal;var rates=[{name:'GST',rate:parseFloat(taxRule.gst_rate)||0},{name:'HST',rate:parseFloat(taxRule.hst_rate)||0},{name:'PST',rate:parseFloat(taxRule.pst_rate)||0},{name:'QST',rate:parseFloat(taxRule.qst_rate)||0},{name:'Env Fee',rate:parseFloat(taxRule.env_fee_rate)||0}];rates.forEach(function(r){if(r.rate>0){var amt=taxableBase*(r.rate/100);totalTax+=amt;taxLines.push({name:r.name,rate:r.rate,amount:amt})}})}var finalTotal=subtotal+totalTax;var fmt=function(v){return'$'+(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})};var h='<table style="width:100%;border-collapse:collapse;font-size:14px"><tbody>';h+='<tr><td style="padding:8px 0">Total MSRP</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:8px 0">'+fmt(totalMsrp)+'</td></tr>';if(productSavings>0)h+='<tr style="color:var(--verified)"><td style="padding:6px 0">Product Savings</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:6px 0">−'+fmt(productSavings)+'</td></tr>';h+='<tr style="font-weight:700;font-size:15px"><td style="padding:8px 0;border-top:2px solid var(--navy)">Sale Price</td><td style="text-align:right;font-family:Sora;padding:8px 0;border-top:2px solid var(--navy)">'+fmt(totalSale)+'</td></tr>';if(volDiscount>0)h+='<tr style="color:var(--verified)"><td style="padding:6px 0">Buy More, Save More</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:6px 0">−'+fmt(volDiscount)+'</td></tr>';if(builderServices.length){h+='<tr><td colspan="2" style="padding:12px 0 6px;font-weight:700;font-size:13px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--line)">Services</td></tr>';var sLabels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};builderServices.forEach(function(s){h+='<tr><td style="padding:4px 0">'+esc(sLabels[s.service_type]||s.service_type)+(s.taxable?'':' <span style="font-size:11px;color:var(--steel)">(non-taxable)</span>')+'</td><td style="text-align:right;font-family:Sora;padding:4px 0">'+fmt(s.amount)+'</td></tr>'});h+='<tr style="font-weight:600"><td style="padding:6px 0">Total Services</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(svcTotal)+'</td></tr>'}h+='<tr style="font-weight:600"><td style="padding:10px 0;border-top:1px solid var(--line)">Subtotal before tax</td><td style="text-align:right;font-family:Sora;padding:10px 0;border-top:1px solid var(--line)">'+fmt(subtotal)+'</td></tr>';if(taxRule){taxLines.forEach(function(t){h+='<tr style="color:var(--steel)"><td style="padding:4px 0">'+t.name+' ('+t.rate+'%)</td><td style="text-align:right;font-family:Sora;padding:4px 0">'+fmt(t.amount)+'</td></tr>'});h+='<tr style="font-weight:600"><td style="padding:6px 0">Total Tax ('+esc(taxRule.jurisdiction_name)+')</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(totalTax)+'</td></tr>'}else{h+='<tr style="color:var(--amber)"><td style="padding:6px 0" colspan="2">Select a tax jurisdiction in Step 3 to calculate taxes</td></tr>'}h+='<tr style="font-size:18px;font-weight:700"><td style="padding:14px 0;border-top:2px solid var(--navy)">Final Total</td><td style="text-align:right;font-family:Sora;padding:14px 0;border-top:2px solid var(--navy);color:var(--navy)">'+fmt(finalTotal)+'</td></tr>';if(productSavings+volDiscount>0)h+='<tr style="color:var(--verified);font-weight:600"><td style="padding:6px 0">Total Savings</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(productSavings+volDiscount)+'</td></tr>';h+='</tbody></table>';c.innerHTML=h}
+function renderPricingReview(){var c=el('pricing-review-content');if(!c)return;var custFacing=el('b-customer-facing')?.checked||false;var totalMsrp=0,totalSale=0;builderProducts.forEach(function(p){var q=p.quantity||1;var msrp=(p.msrp||0)*q;var promo=(p.promo_price||0)*q;var neg=(p.negotiated_price||0)*q;totalMsrp+=msrp;totalSale+=neg>0?neg:(promo>0?promo:msrp)});var productSavings=totalMsrp-totalSale;var volDiscount=parseFloat(el('b-volume-discount').value)||0;var saleAfterVol=totalSale-volDiscount;var svcTotal=0,taxableSvcTotal=0;builderServices.forEach(function(s){svcTotal+=s.amount;if(s.taxable)taxableSvcTotal+=s.amount});var subtotal=saleAfterVol+svcTotal;var taxRuleId=el('b-tax-jurisdiction').value;var taxRule=builderTaxRules.find(function(t){return t.id===taxRuleId})||null;var taxLines=[];var totalTax=0;if(taxRule){var taxableBase=saleAfterVol+taxableSvcTotal;var rates=[{name:'GST',rate:parseFloat(taxRule.gst_rate)||0},{name:'HST',rate:parseFloat(taxRule.hst_rate)||0},{name:'PST',rate:parseFloat(taxRule.pst_rate)||0},{name:'QST',rate:parseFloat(taxRule.qst_rate)||0},{name:'Env Fee',rate:parseFloat(taxRule.env_fee_rate)||0}];rates.forEach(function(r){if(r.rate>0){var amt=taxableBase*(r.rate/100);totalTax+=amt;taxLines.push({name:r.name,rate:r.rate,amount:amt})}})}var finalTotal=subtotal+totalTax;var fmt=function(v){return'$'+(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})};
+/* Line item table */
+var h='<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px"><thead><tr style="border-bottom:2px solid var(--navy)"><th style="text-align:left;padding:6px 0;color:var(--steel);font-size:11px;text-transform:uppercase">Appliance</th>'+(custFacing?'':'<th style="text-align:left;padding:6px 0;color:var(--steel);font-size:11px;text-transform:uppercase">Model</th>')+'<th style="text-align:center;padding:6px 0;color:var(--steel);font-size:11px;text-transform:uppercase">Qty</th><th style="text-align:right;padding:6px 0;color:var(--steel);font-size:11px;text-transform:uppercase">MSRP</th><th style="text-align:right;padding:6px 0;color:var(--steel);font-size:11px;text-transform:uppercase">Price</th><th style="text-align:right;padding:6px 0;color:var(--steel);font-size:11px;text-transform:uppercase">Savings</th></tr></thead><tbody>';
+builderProducts.forEach(function(p){var q=p.quantity||1;var msrp=(p.msrp||0)*q;var best=p.negotiated_price>0?p.negotiated_price*q:(p.promo_price>0?p.promo_price*q:msrp);var saved=msrp-best;
+h+='<tr style="border-bottom:1px solid var(--line)"><td style="padding:8px 0">'+esc(p.brand)+' '+(custFacing?esc(p.category):esc(p.product_name))+(p.finish?' <span style="color:var(--steel);font-size:12px">'+esc(p.finish)+'</span>':'')+'</td>';
+if(!custFacing)h+='<td style="padding:8px 0;color:var(--steel)">'+esc(p.model_number)+'</td>';
+h+='<td style="text-align:center;padding:8px 0">'+q+'</td>';
+h+='<td style="text-align:right;padding:8px 0;font-family:Sora">'+fmt(msrp)+'</td>';
+h+='<td style="text-align:right;padding:8px 0;font-family:Sora;font-weight:600">'+fmt(best)+'</td>';
+h+='<td style="text-align:right;padding:8px 0;font-family:Sora;color:var(--verified);font-weight:600">'+(saved>0?'−'+fmt(saved):'—')+'</td></tr>'});
+h+='</tbody></table>';
+/* Summary */
+h+='<table style="width:100%;border-collapse:collapse;font-size:14px"><tbody>';h+='<tr><td style="padding:8px 0">Total MSRP</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:8px 0">'+fmt(totalMsrp)+'</td></tr>';if(productSavings>0)h+='<tr style="color:var(--verified)"><td style="padding:6px 0">Product Savings</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:6px 0">−'+fmt(productSavings)+'</td></tr>';h+='<tr style="font-weight:700;font-size:15px"><td style="padding:8px 0;border-top:2px solid var(--navy)">Sale Price</td><td style="text-align:right;font-family:Sora;padding:8px 0;border-top:2px solid var(--navy)">'+fmt(totalSale)+'</td></tr>';if(volDiscount>0)h+='<tr style="color:var(--verified)"><td style="padding:6px 0">Buy More, Save More</td><td style="text-align:right;font-family:Sora;font-weight:600;padding:6px 0">−'+fmt(volDiscount)+'</td></tr>';if(builderServices.length){h+='<tr><td colspan="2" style="padding:12px 0 6px;font-weight:700;font-size:13px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--line)">Services</td></tr>';var sLabels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};builderServices.forEach(function(s){h+='<tr><td style="padding:4px 0">'+esc(sLabels[s.service_type]||s.service_type)+(s.description?' — '+esc(s.description):'')+(s.taxable?'':' <span style="font-size:11px;color:var(--steel)">(non-taxable)</span>')+'</td><td style="text-align:right;font-family:Sora;padding:4px 0">'+(s.amount>0?fmt(s.amount):'FREE')+'</td></tr>'});h+='<tr style="font-weight:600"><td style="padding:6px 0">Total Services</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(svcTotal)+'</td></tr>'}h+='<tr style="font-weight:600"><td style="padding:10px 0;border-top:1px solid var(--line)">Subtotal before tax</td><td style="text-align:right;font-family:Sora;padding:10px 0;border-top:1px solid var(--line)">'+fmt(subtotal)+'</td></tr>';if(taxRule){taxLines.forEach(function(t){h+='<tr style="color:var(--steel)"><td style="padding:4px 0">'+t.name+' ('+t.rate+'%)</td><td style="text-align:right;font-family:Sora;padding:4px 0">'+fmt(t.amount)+'</td></tr>'});h+='<tr style="font-weight:600"><td style="padding:6px 0">Total Tax ('+esc(taxRule.jurisdiction_name)+')</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(totalTax)+'</td></tr>'}else{h+='<tr style="color:var(--amber)"><td style="padding:6px 0" colspan="2">Select a tax jurisdiction in Step 3 to calculate taxes</td></tr>'}h+='<tr style="font-size:18px;font-weight:700"><td style="padding:14px 0;border-top:2px solid var(--navy)">Final Total</td><td style="text-align:right;font-family:Sora;padding:14px 0;border-top:2px solid var(--navy);color:var(--navy)">'+fmt(finalTotal)+'</td></tr>';if(productSavings+volDiscount>0)h+='<tr style="color:var(--verified);font-weight:600"><td style="padding:6px 0">Total Savings</td><td style="text-align:right;font-family:Sora;padding:6px 0">'+fmt(productSavings+volDiscount)+'</td></tr>';h+='</tbody></table>';c.innerHTML=h}
 function renderSummary(){var total=0,saleTotal=0;builderProducts.forEach(function(p){var q=p.quantity||1;total+=(p.msrp||0)*q;var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);saleTotal+=best*q});var svcTotal=0;builderServices.forEach(function(s){svcTotal+=s.amount});el('sum-customer').textContent=el('b-cust-name').value||'—';el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';el('sum-count').textContent=builderProducts.length+' items'+(builderServices.length?' + '+builderServices.length+' services':'');el('sum-msrp').textContent='$'+total.toLocaleString();el('sum-table').innerHTML=builderProducts.map(function(p){var q=p.quantity||1;var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);return'<tr><td>'+p.category+(q>1?' ×'+q:'')+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(best>0?'$'+(best*q).toLocaleString():'—')+(p.msrp>0&&best<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*q).toLocaleString()+'</div>':'')+'</td></tr>'}).join('')}
 
 /* ==================== PRICING PLANS ==================== */
@@ -867,44 +914,51 @@ function buildPrintHTML(pkg,products,retailer){
     html+='<h2 class="print-section-title">Pricing Summary</h2>';
 
     /* Product pricing table */
+    var custFacing=pkg.customer_facing_pricing||false;
     var hasPromo=products.some(function(p){return parseFloat(p.promo_price)>0});
     var hasNeg=products.some(function(p){return parseFloat(p.negotiated_price)>0});
     var hasQty=products.some(function(p){return(p.quantity||1)>1});
-    html+='<table class="print-pricing-table"><thead><tr><th>Appliance</th><th>Model</th>';
+    var hasSavings=products.some(function(p){var q=p.quantity||1;var msrp=(parseFloat(p.msrp)||0)*q;var best=parseFloat(p.negotiated_price)>0?parseFloat(p.negotiated_price)*q:(parseFloat(p.promo_price)>0?parseFloat(p.promo_price)*q:msrp);return msrp>best&&best>0});
+    html+='<table class="print-pricing-table"><thead><tr><th>Appliance</th>';
+    if(!custFacing)html+='<th>Model</th>';
     if(hasQty)html+='<th style="text-align:center">Qty</th>';
     html+='<th style="text-align:right">MSRP</th>';
-    if(hasPromo)html+='<th style="text-align:right">Promo</th>';
-    if(hasNeg)html+='<th style="text-align:right">Your Price</th>';
+    if(hasPromo&&!custFacing)html+='<th style="text-align:right">Promo</th>';
+    html+='<th style="text-align:right">Your Price</th>';
+    if(hasSavings)html+='<th style="text-align:right">Savings</th>';
     html+='</tr></thead><tbody>';
     products.forEach(function(p){
       var qty=p.quantity||1;
       var msrp=(parseFloat(p.msrp)||0)*qty;
       var promo=(parseFloat(p.promo_price)||0)*qty;
       var neg=(parseFloat(p.negotiated_price)||0)*qty;
-      html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+(p.finish?' <span style="color:#5b6b85;font-size:9pt">'+esc(p.finish)+'</span>':'')+'</td>';
-      html+='<td>'+esc(p.model_number)+'</td>';
+      var bestPrice=neg>0?neg:(promo>0?promo:msrp);
+      var lineSaved=msrp-bestPrice;
+      html+='<tr><td>'+esc(p.brand)+' '+(custFacing?esc(p.category):esc(p.product_name))+(p.finish?' <span style="color:#5b6b85;font-size:9pt">'+esc(p.finish)+'</span>':'')+'</td>';
+      if(!custFacing)html+='<td>'+esc(p.model_number)+'</td>';
       if(hasQty)html+='<td style="text-align:center">'+qty+'</td>';
       html+='<td style="text-align:right;font-family:Sora,sans-serif">'+(msrp>0?fmt(msrp):'—')+'</td>';
-      if(hasPromo)html+='<td style="text-align:right;font-family:Sora,sans-serif;color:#1a9e56">'+(promo>0?fmt(promo):'—')+'</td>';
-      if(hasNeg)html+='<td style="text-align:right;font-family:Sora,sans-serif;font-weight:600">'+(neg>0?fmt(neg):'—')+'</td>';
+      if(hasPromo&&!custFacing)html+='<td style="text-align:right;font-family:Sora,sans-serif;color:#1a9e56">'+(promo>0?fmt(promo):'—')+'</td>';
+      html+='<td style="text-align:right;font-family:Sora,sans-serif;font-weight:600">'+(bestPrice>0?fmt(bestPrice):'—')+'</td>';
+      if(hasSavings)html+='<td style="text-align:right;font-family:Sora,sans-serif;color:#1a9e56;font-weight:600">'+(lineSaved>0?'−'+fmt(lineSaved):'—')+'</td>';
       html+='</tr>';
     });
     /* Totals rows */
-    var colSpan=2+(hasQty?1:0);
+    var colSpan=1+(!custFacing?1:0)+(hasQty?1:0);
     html+='<tr class="total-row"><td colspan="'+colSpan+'">Total MSRP</td><td style="text-align:right;font-family:Sora,sans-serif">'+fmt(totalMsrp)+'</td>';
-    if(hasPromo)html+='<td></td>';if(hasNeg)html+='<td></td>';html+='</tr>';
+    if(hasPromo&&!custFacing)html+='<td></td>';html+='<td></td>';if(hasSavings)html+='<td></td>';html+='</tr>';
     if(productSavings>0){
+      var restCols=1+(hasPromo&&!custFacing?1:0)+1+(hasSavings?1:0);
       html+='<tr style="color:#1a9e56"><td colspan="'+colSpan+'">Product Savings</td>';
-      var saleCols=1+(hasPromo?1:0)+(hasNeg?1:0);
-      html+='<td colspan="'+saleCols+'" style="text-align:right;font-family:Sora,sans-serif;font-weight:600;color:#1a9e56">−'+fmt(productSavings)+'</td></tr>';
+      html+='<td colspan="'+restCols+'" style="text-align:right;font-family:Sora,sans-serif;font-weight:600;color:#1a9e56">−'+fmt(productSavings)+'</td></tr>';
     }
     if(volumeDiscount>0){
+      var restCols2=1+(hasPromo&&!custFacing?1:0)+1+(hasSavings?1:0);
       html+='<tr style="color:#1a9e56"><td colspan="'+colSpan+'">Buy More, Save More</td>';
-      var saleCols2=1+(hasPromo?1:0)+(hasNeg?1:0);
-      html+='<td colspan="'+saleCols2+'" style="text-align:right;font-family:Sora,sans-serif;font-weight:600;color:#1a9e56">−'+fmt(volumeDiscount)+'</td></tr>';
+      html+='<td colspan="'+restCols2+'" style="text-align:right;font-family:Sora,sans-serif;font-weight:600;color:#1a9e56">−'+fmt(volumeDiscount)+'</td></tr>';
     }
+    var saleColsFull=1+(hasPromo&&!custFacing?1:0)+1+(hasSavings?1:0);
     html+='<tr style="background:#f6f8fb"><td colspan="'+colSpan+'" style="font-weight:700;border-top:2px solid #0f1f3d">Sale Price</td>';
-    var saleColsFull=1+(hasPromo?1:0)+(hasNeg?1:0);
     html+='<td colspan="'+saleColsFull+'" style="text-align:right;font-family:Sora,sans-serif;font-weight:700;font-size:13pt;border-top:2px solid #0f1f3d">'+fmt(saleAfterVolume)+'</td></tr>';
     html+='</tbody></table>';
 
@@ -1056,7 +1110,7 @@ window.savePackage=async(status)=>{
       // Update project
       await sb.from('speciq_projects').update({project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,updated_at:new Date().toISOString()}).eq('id',projId);
       // Update package
-      const{error:ke}=await sb.from('speciq_packages').update({package_name:el('b-pkg-name').value||projName,status,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,salesperson_name:el('b-salesperson')?.value||null,updated_at:new Date().toISOString(),updated_by:currentUser.id}).eq('id',pkgId);
+      const{error:ke}=await sb.from('speciq_packages').update({package_name:el('b-pkg-name').value||projName,status,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,customer_facing_pricing:el('b-customer-facing')?.checked||false,salesperson_name:el('b-salesperson')?.value||null,updated_at:new Date().toISOString(),updated_by:currentUser.id}).eq('id',pkgId);
       if(ke)throw new Error('Package update failed: '+ke.message);
       // Delete old products and services, re-insert
       await sb.from('speciq_package_products').delete().eq('package_id',pkgId);
@@ -1066,7 +1120,7 @@ window.savePackage=async(status)=>{
       const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
       if(pe)throw new Error('Project save failed: '+pe.message);
       projId=proj.id;
-      const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:projId,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,salesperson_name:el('b-salesperson')?.value||null,created_by:currentUser.id}).select('id').single();
+      const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:projId,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,customer_facing_pricing:el('b-customer-facing')?.checked||false,salesperson_name:el('b-salesperson')?.value||null,created_by:currentUser.id}).select('id').single();
       if(ke)throw new Error('Package save failed: '+ke.message);
       pkgId=pkg.id;
     }
@@ -1225,6 +1279,7 @@ window.editPackage=async function(pkgId){
   if(el('b-volume-discount'))el('b-volume-discount').value=pkg.volume_discount||'0';
   if(pkg.delivery_method){var radios=document.querySelectorAll('input[name="b-delivery"]');radios.forEach(function(r){r.checked=r.value===pkg.delivery_method})}
   el('b-pricing').checked=pkg.include_pricing||false;
+  if(el('b-customer-facing'))el('b-customer-facing').checked=pkg.customer_facing_pricing||false;
   // Store edit context
   window._editingPackageId=pkgId;
   window._editingProjectId=pkg.project_id;
