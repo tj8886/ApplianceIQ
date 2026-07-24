@@ -191,3 +191,20 @@ jobs:
             exit 0
           fi
           npx -y netlify-cli deploy --prod --dir apps/intelligence-group --site 9aba62a7-90db-4001-86f9-438f72adeea7
+
+  deploy-product-iq:
+    name: Deploy Product IQ to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/product-iq -> applianceiq-product-iq.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/product-iq --site 2b20d5cf-0a07-482e-bb82-8320bfeabb6a
