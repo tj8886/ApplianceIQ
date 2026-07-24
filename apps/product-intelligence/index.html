@@ -537,4 +537,505 @@ async function openSpecificationEditor(id, version, templateName) {
     }
   }, { once: true });
 }
+
+const originalWorkspaceSectionHtml = sectionHtml;
+const originalLoadWorkspaceSection = loadWorkspaceSection;
+const normalizeText = value => String(value ?? "").trim();
+const slugifyValue = value => String(value ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+const documentTypeOrder = ["Owner Manual", "Installation Guide", "Warranty", "Energy Guide", "Quick Start Guide", "Specification Sheet", "Dimension Sheet", "Parts List", "Service Manual", "CAD", "Marketing", "Video", "Other"];
+const documentTypeLabels = Object.fromEntries(documentTypeOrder.map(v => [slugifyValue(v), v]));
+const imageTypeOrder = ["Hero", "Gallery", "Lifestyle", "Cutout", "Dimension Drawing", "Installation", "Marketing", "Packaging", "Thumbnail", "Other"];
+const imageTypeLabels = Object.fromEntries(imageTypeOrder.map(v => [slugifyValue(v), v]));
+const publicationStates = ["draft", "submitted", "in_review", "changes_requested", "approved", "published"];
+const sourceStates = ["internal", "manufacturer_submitted", "raw_import", "ai_extracted", "ai_suggested", "aiq_reviewed"];
+const languageHints = ["en", "en-US", "fr", "fr-CA", "es", "de"];
+function clearWorkspaceCache(productId) {
+  for (const key of [...workspaceCache.keys()]) if (key.startsWith(productId + ":")) workspaceCache.delete(key);
+}
+function refreshProductView(productId) {
+  clearWorkspaceCache(productId);
+  if (route().startsWith(`products/${productId}`)) return productWorkspace(productId);
+  return render();
+}
+function formatDate(value) {
+  if (!value) return "—";
+  try { return new Date(value).toLocaleString(); } catch { return String(value); }
+}
+function formatBytes(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(1)} GB`;
+}
+function fileNameFromUrl(url) {
+  if (!url) return "—";
+  try {
+    const parsed = new URL(url, location.origin);
+    return decodeURIComponent(parsed.pathname.split("/").filter(Boolean).pop() || parsed.hostname || url);
+  } catch {
+    return String(url).split("/").filter(Boolean).pop() || String(url);
+  }
+}
+function fileFormatFromName(name) {
+  const part = String(name || "").split(".").pop();
+  return part && part !== name ? part.toUpperCase() : "—";
+}
+function documentTypeLabel(value) {
+  return documentTypeLabels[slugifyValue(value)] || normalizeText(value) || "Other";
+}
+function imageTypeLabel(value) {
+  return imageTypeLabels[slugifyValue(value)] || normalizeText(value) || "Other";
+}
+function fileAccessUrl(row) {
+  return row?.file_url || row?.media_url || row?.external_url || "";
+}
+async function invokeGovernance(action, payload) {
+  return sb.functions.invoke("product-iq-governance", { body: { action, ...payload } });
+}
+function openLink(url) {
+  if (!url) return;
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    alert(text);
+    return false;
+  }
+}
+function fieldControl(label, control, hint = "", required = false) {
+  return `<label class="field"><small>${esc(label)}${required ? " *" : ""}</small>${control}${hint ? `<div class="hint">${esc(hint)}</div>` : ""}</label>`;
+}
+function modalShell(title, subtitle, body) {
+  const wrap = document.createElement("div");
+  wrap.className = "modal-backdrop";
+  wrap.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><div class="pagehead"><div><h2>${esc(title)}</h2>${subtitle ? `<p class="sub">${esc(subtitle)}</p>` : ""}</div><button type="button" class="btn secondary" data-close>Close</button></div>${body}</div>`;
+  document.body.append(wrap);
+  wrap.querySelector("[data-close]").onclick = () => wrap.remove();
+  return wrap;
+}
+function modalForm(title, subtitle, formMarkup) {
+  const modal = modalShell(title, subtitle, formMarkup);
+  const close = () => modal.remove();
+  modal.querySelectorAll("[data-close]").forEach(el => el.onclick = close);
+  return { modal, close };
+}
+function updateDirtyGuard(dirty, label, onDiscard) {
+  setEditorGuard({ dirty, label, onDiscard });
+}
+function renderDocumentPreview(doc) {
+  const url = fileAccessUrl(doc);
+  if (!url) return `<div class="empty-inline">No preview available.</div>`;
+  const name = fileNameFromUrl(url);
+  const ext = fileFormatFromName(name).toLowerCase();
+  if (["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "svg"].includes(ext)) {
+    return `<div class="doc-preview"><img src="${esc(url)}" alt="${esc(doc.title || "Document preview")}" loading="lazy" /></div>`;
+  }
+  if (ext === "pdf") {
+    return `<div class="doc-preview"><iframe src="${esc(url)}" title="${esc(doc.title || "Document preview")}"></iframe></div>`;
+  }
+  return `<div class="doc-preview"><div class="placeholder">Preview unavailable</div></div>`;
+}
+function documentGroupSortKey(name) {
+  const idx = documentTypeOrder.indexOf(name);
+  return idx === -1 ? 999 : idx;
+}
+function imageGroupSortKey(name) {
+  const idx = imageTypeOrder.indexOf(name);
+  return idx === -1 ? 999 : idx;
+}
+function groupDocuments(rows) {
+  const groups = new Map();
+  for (const row of rows || []) {
+    const type = documentTypeLabel(row.document_type);
+    if (!groups.has(type)) groups.set(type, []);
+    groups.get(type).push(row);
+  }
+  return [...groups.entries()].sort((a, b) => documentGroupSortKey(a[0]) - documentGroupSortKey(b[0]) || a[0].localeCompare(b[0]));
+}
+function groupImages(rows) {
+  const groups = new Map();
+  for (const row of rows || []) {
+    const type = imageTypeLabel(row.image_type);
+    if (!groups.has(type)) groups.set(type, []);
+    groups.get(type).push(row);
+  }
+  return [...groups.entries()].sort((a, b) => imageGroupSortKey(a[0]) - imageGroupSortKey(b[0]) || a[0].localeCompare(b[0]));
+}
+function docCard(doc, product) {
+  const url = fileAccessUrl(doc);
+  const archived = !!doc.archived_at;
+  const displayVersion = doc.version || doc.version_number || "—";
+  const state = archived ? pill("Archived", "gray") : statusPill(doc.approval_status);
+  return `<div class="doc-card ${archived ? "archived" : ""}">
+    <div class="doc-meta">${pill(documentTypeLabel(doc.document_type), "blue")}${state}${doc.public_visible ? pill("Published", "green") : pill("Hidden", "gray")}${doc.language ? pill(doc.language, "gray") : ""}${doc.source_type ? pill(doc.source_type, "gray") : ""}</div>
+    <div class="doc-meta-row"><b>${esc(doc.title || "Untitled document")}</b><span>${esc(displayVersion ? `v${displayVersion}` : "—")}</span><span>${esc(fileNameFromUrl(url))}</span><span>${esc(fileFormatFromName(fileNameFromUrl(url)))}</span>${doc.file_size_bytes || doc.file_size || doc.size ? `<span>${esc(formatBytes(doc.file_size_bytes || doc.file_size || doc.size))}</span>` : ""}<span>${esc(formatDate(doc.updated_at || doc.created_at))}</span></div>
+    <div class="doc-meta-row">${doc.source_reference ? `<span>Reference: ${esc(doc.source_reference)}</span>` : `<span>Reference: —</span>`}${doc.description ? `<span>${esc(doc.description)}</span>` : ""}</div>
+    <div class="doc-actions">
+      <button type="button" class="btn secondary" onclick="openLink('${esc(url)}')">Open</button>
+      <button type="button" class="btn secondary" onclick="copyText('${esc(url)}')">Copy link</button>
+      ${isPlatformUser() ? `<button type="button" class="btn secondary" onclick="openDocumentEditor('${esc(product.id)}','${esc(doc.id)}')">Edit metadata</button>
+      <button type="button" class="btn secondary" onclick="${archived ? `restoreDocument('${esc(product.id)}','${esc(doc.id)}')` : `archiveDocument('${esc(product.id)}','${esc(doc.id)}')`}">${archived ? "Restore" : "Archive"}</button>` : ""}
+    </div>
+    ${renderDocumentPreview(doc)}
+  </div>`;
+}
+function imageCard(asset, product, activeImages) {
+  const archived = !!asset.archived_at;
+  const primary = !!asset.is_primary && !archived;
+  const url = fileAccessUrl(asset);
+  const name = fileNameFromUrl(url);
+  const index = activeImages.findIndex(x => x.id === asset.id);
+  return `<div class="gallery-card ${archived ? "archived" : ""} ${primary ? "primary" : ""}">
+    <div class="gallery-thumb">${url ? `<img src="${esc(url)}" alt="${esc(asset.alt_text || asset.title || "Product image")}" loading="lazy" />` : `<div class="placeholder">No preview</div>`}</div>
+    <div class="doc-meta">${pill(imageTypeLabel(asset.image_type), "blue")}${primary ? pill("Primary", "green") : pill("Secondary", "gray")}${archived ? pill("Archived", "gray") : pill(asset.is_published ? "Published" : "Hidden", asset.is_published ? "green" : "gray")}${asset.source_type ? pill(asset.source_type, "gray") : ""}</div>
+    <div class="gallery-title">${esc(asset.title || "Untitled image")}</div>
+    <div class="gallery-sub">${esc(asset.alt_text || "No alt text")}</div>
+    <div class="gallery-sub">${esc(name)}${asset.display_order != null ? ` · Order ${esc(asset.display_order)}` : ""}${asset.version ? ` · v${esc(asset.version)}` : ""}</div>
+    <div class="gallery-sub">${asset.source_reference ? esc(asset.source_reference) : ""}${asset.updated_at ? ` · ${esc(formatDate(asset.updated_at))}` : ""}</div>
+    <div class="gallery-actions">
+      <button type="button" class="btn secondary" onclick="openLink('${esc(url)}')">Open</button>
+      <button type="button" class="btn secondary" onclick="copyText('${esc(url)}')">Copy link</button>
+      ${isPlatformUser() ? `<button type="button" class="btn secondary" onclick="openImageEditor('${esc(product.id)}','${esc(asset.id)}')">Edit metadata</button>
+      <button type="button" class="btn secondary" onclick="${archived ? `restoreImage('${esc(product.id)}','${esc(asset.id)}')` : `archiveImage('${esc(product.id)}','${esc(asset.id)}')`}">${archived ? "Restore" : "Archive"}</button>
+      ${!primary ? `<button type="button" class="btn secondary" onclick="setPrimaryImage('${esc(product.id)}','${esc(asset.id)}')">Make primary</button>` : `<button type="button" class="btn secondary" disabled>Primary</button>`}` : ""}
+    </div>
+    ${isPlatformUser() && !archived ? `<div class="asset-order"><button type="button" class="btn secondary" ${index <= 0 ? "disabled" : ""} onclick="moveImage('${esc(product.id)}','${esc(asset.id)}',-1)">↑ Move up</button><button type="button" class="btn secondary" onclick="moveImage('${esc(product.id)}','${esc(asset.id)}',1)" ${index === -1 || index === activeImages.length - 1 ? "disabled" : ""}>↓ Move down</button></div>` : ""}
+  </div>`;
+}
+function renderDocumentsSection(data, product, section) {
+  const rows = (Array.isArray(data) ? data : data?.data || []).filter(doc => section !== "Manuals" || /manual/i.test(doc.document_type || ""));
+  const active = rows.filter(doc => !doc.archived_at);
+  const archived = rows.filter(doc => doc.archived_at);
+  const grouped = groupDocuments(active);
+  const archivedGrouped = groupDocuments(archived);
+  const activeHtml = grouped.length ? grouped.map(([type, docs]) => `<div class="doc-group"><div class="doc-group-head"><h3>${esc(type)}</h3><span class="tiny">${docs.length} record${docs.length === 1 ? "" : "s"}</span></div><div class="data-list">${docs.map(doc => docCard(doc, product)).join("")}</div></div>`).join("") : `<div class="empty">${section === "Manuals" ? "No manuals are linked to this product." : "No documents are linked to this product."}</div>`;
+  const archivedHtml = archivedGrouped.length ? archivedGrouped.map(([type, docs]) => `<div class="doc-group"><div class="doc-group-head"><h3>${esc(type)}</h3><span class="tiny">${docs.length} archived</span></div><div class="data-list">${docs.map(doc => docCard(doc, product)).join("")}</div></div>`).join("") : `<div class="empty">No archived documents.</div>`;
+  return `<div class="data-card"><div class="section-title"><h2>${section}</h2><div class="split-actions"></div></div><div class="workspace-note">Documents are grouped by type. Archived records are hidden from the active view.</div><div class="doc-type-group">${activeHtml}</div>${archived.length ? `<details class="doc-archive"><summary class="hidden-toggle"><span class="pill gray">Show archived documents</span></summary><div class="doc-type-group" style="margin-top:12px">${archivedHtml}</div></details>` : ""}</div>`;
+}
+function renderImagesSection(data, product) {
+  const rows = (Array.isArray(data) ? data : data?.data || []).slice().sort((a, b) => {
+    const ao = a.archived_at ? 1 : 0;
+    const bo = b.archived_at ? 1 : 0;
+    if (ao !== bo) return ao - bo;
+    const aOrder = a.display_order == null ? 99999 : Number(a.display_order);
+    const bOrder = b.display_order == null ? 99999 : Number(b.display_order);
+    return aOrder - bOrder || String(a.title || "").localeCompare(String(b.title || ""));
+  });
+  const active = rows.filter(row => !row.archived_at);
+  const archived = rows.filter(row => row.archived_at);
+  const activeHtml = active.length ? `<div class="gallery-grid">${active.map(asset => imageCard(asset, product, active)).join("")}</div>` : `<div class="empty">No active image assets are linked to this product.</div>`;
+  const archivedHtml = archived.length ? `<div class="gallery-grid">${archived.map(asset => imageCard(asset, product, active)).join("")}</div>` : `<div class="empty">No archived image assets.</div>`;
+  return `<div class="data-card"><div class="section-title"><h2>Images</h2><div class="split-actions"></div></div><div class="workspace-note">Active images are ordered. The current primary image is marked in the gallery.</div>${activeHtml}${archived.length ? `<details class="asset-archive"><summary class="hidden-toggle"><span class="pill gray">Show archived images</span></summary><div style="margin-top:12px">${archivedHtml}</div></details>` : ""}</div>`;
+}
+sectionHtml = function(section, data, product, counts) {
+  if (section === "Documents" || section === "Manuals") return renderDocumentsSection(data, product, section);
+  if (section === "Images") return renderImagesSection(data, product);
+  return originalWorkspaceSectionHtml(section, data, product, counts);
+};
+loadWorkspaceSection = async function(id, section, product) {
+  const key = id + ":" + section;
+  if (workspaceCache.has(key)) return workspaceCache.get(key);
+  let q;
+  switch (section) {
+    case "Documents":
+    case "Manuals":
+      q = sb.from("aiq_documents").select("*").eq("product_id", id).order("document_type", { ascending: true }).order("updated_at", { ascending: false });
+      break;
+    case "Images":
+      q = sb.from("mfr_assets").select("*").eq("product_id", id).order("display_order", { ascending: true }).order("updated_at", { ascending: false });
+      break;
+    default:
+      return originalLoadWorkspaceSection(id, section, product);
+  }
+  const result = await q;
+  workspaceCache.set(key, result);
+  return result;
+};
+function documentConflictMarkup(details) {
+  return renderConflictPanel(details) + `<div class="split-actions" style="margin-top:8px"><button type="button" class="btn secondary" data-reload>Reload Latest</button><button type="button" class="btn secondary" data-continue>Continue Reviewing Unsaved Values</button><button type="button" class="btn secondary" data-copy>Copy Unsaved Values</button></div>`;
+}
+async function openDocumentCreate(productId) {
+  const { data: product } = await sb.from("aiq_products").select("*").eq("id", productId).maybeSingle();
+  if (!product) return alert("Product unavailable.");
+  return openDocumentEditor(product, { title: "", document_type: "Owner Manual", language: "", version: "", source_type: "internal", source_reference: "", description: "", public_visible: false, approval_status: "draft" }, true);
+}
+async function openDocumentEditor(product, doc, isCreate = false) {
+  const baseline = {
+    title: doc.title || "",
+    document_type: doc.document_type || "Other",
+    language: doc.language || "",
+    version: doc.version || "",
+    source_type: doc.source_type || "internal",
+    source_reference: doc.source_reference || "",
+    description: doc.description || "",
+    public_visible: !!doc.public_visible,
+    approval_status: doc.approval_status || "draft",
+  };
+  const modal = modalForm(isCreate ? "Add document metadata" : "Edit document metadata", `${product.brand_name} · ${product.model}`, `<form id="document-form">
+      <input type="hidden" name="document_id" value="${esc(doc.id || "")}" />
+      <input type="hidden" name="original_version" value="${esc(product.version_number)}" />
+      <div id="document-conflict"></div>
+      <div class="modal-grid">
+        ${fieldControl("Title", `<input class="control" name="title" required value="${esc(baseline.title)}" />`, "Document display title", true)}
+        ${fieldControl("Document type", `<select class="control" name="document_type">${documentTypeOrder.map(type => `<option value="${esc(type)}" ${baseline.document_type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select>`, "Choose the closest matching document type", true)}
+        ${fieldControl("Language", `<input class="control" name="language" list="language-hints" value="${esc(baseline.language)}" />`, "Language or locale, if known")}
+        ${fieldControl("Version", `<input class="control" name="version" value="${esc(baseline.version)}" />`, "Document version or revision")}
+        ${fieldControl("Source", `<select class="control" name="source_type">${sourceStates.map(v => `<option value="${esc(v)}" ${baseline.source_type === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Origin of the record")}
+        ${fieldControl("Source reference", `<input class="control" name="source_reference" value="${esc(baseline.source_reference)}" />`, "External reference, file ID, or submission reference")}
+        ${fieldControl("Publication state", `<select class="control" name="approval_status">${publicationStates.map(v => `<option value="${esc(v)}" ${baseline.approval_status === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Review status for this document")}
+        ${fieldControl("Public visibility", `<select class="control" name="public_visible"><option value="false" ${!baseline.public_visible ? "selected" : ""}>Hidden</option><option value="true" ${baseline.public_visible ? "selected" : ""}>Visible</option></select>`, "Whether the document is available to downstream readers")}
+        <label class="field full"><small>Internal description</small><textarea class="control" name="description" rows="4">${esc(baseline.description)}</textarea><div class="hint">Shown to Product IQ editors only.</div></label>
+      </div>
+      <div id="document-field-errors" class="error" hidden></div>
+      <div class="modal-actions"><button type="button" class="btn secondary" data-close>Cancel</button><button type="submit" class="btn primary">Save metadata</button></div>
+      <datalist id="language-hints">${languageHints.map(v => `<option value="${esc(v)}"></option>`).join("")}</datalist>
+    </form>`);
+  const form = modal.querySelector("#document-form");
+  const submit = form.querySelector('button[type="submit"]');
+  const conflictSlot = modal.querySelector("#document-conflict");
+  const errorBox = modal.querySelector("#document-field-errors");
+  const dirtySnapshot = () => JSON.stringify(Object.fromEntries(new FormData(form).entries()));
+  const label = "document metadata changes";
+  let originalSnapshot = dirtySnapshot();
+  updateDirtyGuard(false, label, () => modal.remove());
+  const markDirty = () => updateDirtyGuard(dirtySnapshot() !== originalSnapshot, label, () => modal.remove());
+  form.addEventListener("input", markDirty);
+  form.addEventListener("change", markDirty);
+  form.onsubmit = async e => {
+    e.preventDefault();
+    errorBox.hidden = true;
+    errorBox.textContent = "";
+    submit.disabled = true;
+    submit.textContent = "Saving…";
+    const fd = new FormData(form);
+    const payload = {
+      productId: product.id,
+      documentId: doc.id,
+      originalVersion: Number(form.elements.original_version.value),
+      section: "documents",
+      changes: {
+        title: normalizeText(fd.get("title")),
+        document_type: normalizeText(fd.get("document_type")),
+        language: normalizeText(fd.get("language")),
+        version: normalizeText(fd.get("version")),
+        source_type: normalizeText(fd.get("source_type")),
+        source_reference: normalizeText(fd.get("source_reference")),
+        description: normalizeText(fd.get("description")),
+        public_visible: fd.get("public_visible") === "true",
+        approval_status: normalizeText(fd.get("approval_status")),
+      },
+    };
+    const { data, error } = await invokeGovernance(isCreate ? "create_document" : "update_document_metadata", payload);
+    if (error || data?.error) {
+      submit.disabled = false;
+      submit.textContent = "Save metadata";
+      if (data?.code === "conflict" || data?.error === "conflict") {
+        conflictSlot.innerHTML = documentConflictMarkup({
+          loadedVersion: payload.originalVersion,
+          currentVersion: data.currentVersion,
+          updatedAt: data.updatedAt,
+          updatedBy: data.updatedBy,
+        });
+        conflictSlot.querySelector("[data-reload]").onclick = async () => {
+          const { data: fresh } = await sb.from("aiq_documents").select("*").eq("id", doc.id).maybeSingle();
+          modal.remove();
+          if (fresh) return openDocumentEditor(product, fresh, false);
+        };
+        conflictSlot.querySelector("[data-continue]").onclick = () => { conflictSlot.innerHTML = ""; };
+        conflictSlot.querySelector("[data-copy]").onclick = () => copyText(JSON.stringify(payload.changes, null, 2));
+        return;
+      }
+      if (data?.fieldErrors) {
+        errorBox.hidden = false;
+        errorBox.textContent = data?.error || "Fix the highlighted document errors before saving.";
+        submit.disabled = false;
+        return;
+      }
+      errorBox.hidden = false;
+      errorBox.textContent = data?.error || error?.message || "Save failed.";
+      return;
+    }
+    modal.remove();
+    clearEditorGuard();
+    refreshProductView(product.id);
+  };
+}
+async function archiveDocument(productId, documentId) {
+  if (!confirm("Archive this document? It will remain recoverable.")) return;
+  const { data: product } = await sb.from("aiq_products").select("version_number").eq("id", productId).maybeSingle();
+  const { data, error } = await invokeGovernance("archive_document", { productId, documentId, originalVersion: product?.version_number, section: "documents" });
+  if (error || data?.error) return alert(data?.error || error?.message || "Unable to archive document.");
+  refreshProductView(productId);
+}
+async function restoreDocument(productId, documentId) {
+  const { data: product } = await sb.from("aiq_products").select("version_number").eq("id", productId).maybeSingle();
+  const { data, error } = await invokeGovernance("restore_document", { productId, documentId, originalVersion: product?.version_number, section: "documents" });
+  if (error || data?.error) return alert(data?.error || error?.message || "Unable to restore document.");
+  refreshProductView(productId);
+}
+async function openImageCreate(productId) {
+  const { data: product } = await sb.from("aiq_products").select("*").eq("id", productId).maybeSingle();
+  if (!product) return alert("Product unavailable.");
+  return openImageEditor(product, { title: "", image_type: "Hero", alt_text: "", display_order: "", source_type: "internal", source_reference: "", is_published: true, is_primary: false }, true);
+}
+async function openImageEditor(product, asset, isCreate = false) {
+  const baseline = {
+    title: asset.title || "",
+    image_type: asset.image_type || "Other",
+    alt_text: asset.alt_text || "",
+    display_order: asset.display_order ?? "",
+    source_type: asset.source_type || "internal",
+    source_reference: asset.source_reference || "",
+    is_published: asset.is_published !== false,
+    is_primary: !!asset.is_primary,
+  };
+  const modal = modalForm(isCreate ? "Add image metadata" : "Edit image metadata", `${product.brand_name} · ${product.model}`, `<form id="image-form">
+      <input type="hidden" name="asset_id" value="${esc(asset.id || "")}" />
+      <input type="hidden" name="original_version" value="${esc(product.version_number)}" />
+      <div id="image-conflict"></div>
+      <div class="modal-grid">
+        ${fieldControl("Title", `<input class="control" name="title" value="${esc(baseline.title)}" required />`, "Image display title", true)}
+        ${fieldControl("Image type", `<select class="control" name="image_type">${imageTypeOrder.map(type => `<option value="${esc(type)}" ${baseline.image_type === type ? "selected" : ""}>${esc(type)}</option>`).join("")}</select>`, "Choose the closest image type", true)}
+        ${fieldControl("Alt text", `<textarea class="control" name="alt_text" rows="3">${esc(baseline.alt_text)}</textarea>`, "Accessible alternative text for the asset")}
+        ${fieldControl("Display order", `<input class="control" name="display_order" type="number" min="0" step="1" value="${esc(baseline.display_order)}" />`, "Lower numbers appear earlier in the gallery")}
+        ${fieldControl("Source", `<select class="control" name="source_type">${sourceStates.map(v => `<option value="${esc(v)}" ${baseline.source_type === v ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`, "Origin of the record")}
+        ${fieldControl("Source reference", `<input class="control" name="source_reference" value="${esc(baseline.source_reference)}" />`, "External reference, file ID, or submission reference")}
+        ${fieldControl("Publication state", `<select class="control" name="is_published"><option value="true" ${baseline.is_published ? "selected" : ""}>Published</option><option value="false" ${!baseline.is_published ? "selected" : ""}>Hidden</option></select>`, "Controls publication visibility")}
+        <label class="field full"><small>Primary image</small><select class="control" name="is_primary"><option value="false" ${!baseline.is_primary ? "selected" : ""}>No</option><option value="true" ${baseline.is_primary ? "selected" : ""}>Yes</option></select><div class="hint">Exactly one active primary image is enforced server-side.</div></label>
+      </div>
+      <div id="image-field-errors" class="error" hidden></div>
+      <div class="modal-actions"><button type="button" class="btn secondary" data-close>Cancel</button><button type="submit" class="btn primary">Save metadata</button></div>
+    </form>`);
+  const form = modal.querySelector("#image-form");
+  const submit = form.querySelector('button[type="submit"]');
+  const conflictSlot = modal.querySelector("#image-conflict");
+  const errorBox = modal.querySelector("#image-field-errors");
+  const dirtySnapshot = () => JSON.stringify(Object.fromEntries(new FormData(form).entries()));
+  const label = "image metadata changes";
+  let originalSnapshot = dirtySnapshot();
+  updateDirtyGuard(false, label, () => modal.remove());
+  const markDirty = () => updateDirtyGuard(dirtySnapshot() !== originalSnapshot, label, () => modal.remove());
+  form.addEventListener("input", markDirty);
+  form.addEventListener("change", markDirty);
+  form.onsubmit = async e => {
+    e.preventDefault();
+    errorBox.hidden = true;
+    errorBox.textContent = "";
+    submit.disabled = true;
+    submit.textContent = "Saving…";
+    const fd = new FormData(form);
+    const payload = {
+      productId: product.id,
+      assetId: asset.id,
+      originalVersion: Number(form.elements.original_version.value),
+      section: "assets",
+      changes: {
+        title: normalizeText(fd.get("title")),
+        image_type: normalizeText(fd.get("image_type")),
+        alt_text: normalizeText(fd.get("alt_text")),
+        display_order: fd.get("display_order") === "" ? null : Number(fd.get("display_order")),
+        source_type: normalizeText(fd.get("source_type")),
+        source_reference: normalizeText(fd.get("source_reference")),
+        is_published: fd.get("is_published") === "true",
+        is_primary: fd.get("is_primary") === "true",
+      },
+    };
+    const { data, error } = await invokeGovernance(isCreate ? "create_image" : "update_image_metadata", payload);
+    if (error || data?.error) {
+      submit.disabled = false;
+      submit.textContent = "Save metadata";
+      if (data?.code === "conflict" || data?.error === "conflict") {
+        conflictSlot.innerHTML = documentConflictMarkup({
+          loadedVersion: payload.originalVersion,
+          currentVersion: data.currentVersion,
+          updatedAt: data.updatedAt,
+          updatedBy: data.updatedBy,
+        });
+        conflictSlot.querySelector("[data-reload]").onclick = async () => {
+          const { data: fresh } = await sb.from("mfr_assets").select("*").eq("id", asset.id).maybeSingle();
+          modal.remove();
+          if (fresh) return openImageEditor(product, fresh, false);
+        };
+        conflictSlot.querySelector("[data-continue]").onclick = () => { conflictSlot.innerHTML = ""; };
+        conflictSlot.querySelector("[data-copy]").onclick = () => copyText(JSON.stringify(payload.changes, null, 2));
+        return;
+      }
+      if (data?.fieldErrors) {
+        errorBox.hidden = false;
+        errorBox.textContent = data?.error || "Fix the highlighted image errors before saving.";
+        submit.disabled = false;
+        return;
+      }
+      errorBox.hidden = false;
+      errorBox.textContent = data?.error || error?.message || "Save failed.";
+      return;
+    }
+    modal.remove();
+    clearEditorGuard();
+    refreshProductView(product.id);
+  };
+}
+async function archiveImage(productId, assetId) {
+  if (!confirm("Archive this image? It will remain recoverable.")) return;
+  const { data: product } = await sb.from("aiq_products").select("version_number").eq("id", productId).maybeSingle();
+  const { data, error } = await invokeGovernance("archive_image", { productId, assetId, originalVersion: product?.version_number, section: "assets" });
+  if (error || data?.error) return alert(data?.error || error?.message || "Unable to archive image.");
+  refreshProductView(productId);
+}
+async function restoreImage(productId, assetId) {
+  const { data: product } = await sb.from("aiq_products").select("version_number").eq("id", productId).maybeSingle();
+  const { data, error } = await invokeGovernance("restore_image", { productId, assetId, originalVersion: product?.version_number, section: "assets" });
+  if (error || data?.error) return alert(data?.error || error?.message || "Unable to restore image.");
+  refreshProductView(productId);
+}
+async function setPrimaryImage(productId, assetId) {
+  const { data: product } = await sb.from("aiq_products").select("version_number").eq("id", productId).maybeSingle();
+  const { data, error } = await invokeGovernance("set_primary_image", { productId, assetId, originalVersion: product?.version_number, section: "assets" });
+  if (error || data?.error) return alert(data?.error || error?.message || "Unable to set primary image.");
+  refreshProductView(productId);
+}
+async function moveImage(productId, assetId, delta) {
+  const { data: images } = await sb.from("mfr_assets").select("id,display_order,archived_at").eq("product_id", productId).is("archived_at", null).order("display_order", { ascending: true }).order("updated_at", { ascending: false });
+  const active = (images || []).filter(row => !row.archived_at);
+  const idx = active.findIndex(row => row.id === assetId);
+  const nextIdx = idx + delta;
+  if (idx < 0 || nextIdx < 0 || nextIdx >= active.length) return;
+  const reordered = active.slice();
+  const [item] = reordered.splice(idx, 1);
+  reordered.splice(nextIdx, 0, item);
+  const { data: product } = await sb.from("aiq_products").select("version_number").eq("id", productId).maybeSingle();
+  const { data, error } = await invokeGovernance("reorder_images", { productId, orderedAssetIds: reordered.map(row => row.id), originalVersion: product?.version_number, section: "assets" });
+  if (error || data?.error) return alert(data?.error || error?.message || "Unable to reorder images.");
+  refreshProductView(productId);
+}
+sectionHtml = function(section, data, product, counts) {
+  if (section === "Documents" || section === "Manuals") return renderDocumentsSection(data, product, section);
+  if (section === "Images") return renderImagesSection(data, product);
+  return originalWorkspaceSectionHtml(section, data, product, counts);
+};
+loadWorkspaceSection = async function(id, section, product) {
+  const key = id + ":" + section;
+  if (workspaceCache.has(key)) return workspaceCache.get(key);
+  let q;
+  switch (section) {
+    case "Documents":
+    case "Manuals":
+      q = sb.from("aiq_documents").select("*").eq("product_id", id).order("document_type", { ascending: true }).order("updated_at", { ascending: false });
+      break;
+    case "Images":
+      q = sb.from("mfr_assets").select("*").eq("product_id", id).order("display_order", { ascending: true }).order("updated_at", { ascending: false });
+      break;
+    default:
+      return originalLoadWorkspaceSection(id, section, product);
+  }
+  const result = await q;
+  workspaceCache.set(key, result);
+  return result;
+};
+if (state.user) render();
 </script></body></html>

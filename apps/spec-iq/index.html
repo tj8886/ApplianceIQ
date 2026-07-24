@@ -711,6 +711,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
   <symbol id="i-printer" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
 </svg>
 
@@ -1254,10 +1255,11 @@ window.openPackageDetail=async function(pkgId){
   const total=prods.reduce((s,p)=>s+(parseFloat(p.msrp)||0)*(p.quantity||1),0);
   const cust=pkg.speciq_projects?.customer_name||'—';
   const proj=pkg.speciq_projects?.project_name||'—';
+  const custEmail=pkg.speciq_projects?.customer_email||'';
 
   // Fetch services for this package
   const{data:svcData}=await sb.from('speciq_package_services').select('*').eq('package_id',pkgId).order('sort_order');
-  // Fetch tax rule (package-specific or org default)
+  // Fetch tax rule
   let taxRule=null;
   if(pkg.tax_rule_id){
     const{data:tr}=await sb.from('speciq_tax_rules').select('*').eq('id',pkg.tax_rule_id).single();
@@ -1266,7 +1268,6 @@ window.openPackageDetail=async function(pkgId){
     const{data:tr}=await sb.from('speciq_tax_rules').select('*').eq('organization_id',userOrgId).eq('is_default',true).single();
     taxRule=tr;
   }
-  // Fetch retailer settings for branding
   if(!retailerSettings){
     const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();
     retailerSettings=rs;
@@ -1275,19 +1276,24 @@ window.openPackageDetail=async function(pkgId){
   const fullPkg={...pkg,customer_name:cust,project_name:proj,property_address:pkg.speciq_projects?.property_address,_services:svcData||[],_taxRule:taxRule};
   const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings);
 
+  // Log view event
+  sb.from('speciq_package_events').insert({package_id:pkgId,event_type:'viewed'}).then(()=>{});
+
+  // Count pages: cover + summary + products + install(maybe) + pricing(maybe)
+  var pageCount=2+prods.length+(prods.some(p=>p.electrical_requirements)?1:0)+(pkg.include_pricing?1:0);
+
   let html='<div class="modal-overlay" onclick="if(event.target===this)closePackageDetail()">';
   html+='<div class="modal-panel" style="max-width:1000px">';
 
   // Header bar
   html+='<div style="padding:16px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10;border-radius:12px 12px 0 0">';
-  html+='<div class="flex" style="gap:16px"><h2 style="font-size:18px">'+esc(pkg.package_name)+'</h2>'+statusBadge(pkg.status)+'</div>';
+  html+='<div class="flex" style="gap:16px"><h2 style="font-size:18px">'+esc(pkg.package_name)+'</h2>'+statusBadge(pkg.status)+'<span style="font-size:12px;color:var(--steel);background:var(--paper);padding:3px 10px;border-radius:100px">'+pageCount+' pages</span></div>';
   html+='<div class="flex" style="gap:8px">';
   if(pkg.status!=='archived'){
     html+='<button class="btn btn-s" onclick="editPackage(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-edit"/></svg> Edit</button>';
-    html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print</button>';
-    if(pkg.status!=='sent'&&pkg.status!=='accepted')html+='<button class="btn btn-ok" onclick="updatePackageStatus(\''+pkgId+'\',\'sent\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Mark Sent</button>';
-    if(pkg.status==='sent')html+='<button class="btn btn-ok" onclick="updatePackageStatus(\''+pkgId+'\',\'accepted\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-check"/></svg> Accepted</button>';
-    html+='<button class="btn btn-g" style="color:var(--amber)" onclick="updatePackageStatus(\''+pkgId+'\',\'archived\');closePackageDetail()">Archive</button>';
+    html+='<button class="btn btn-s" onclick="copyShareLink(\''+esc(pkg.share_token)+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-link"/></svg> Share</button>';
+    html+='<button class="btn btn-p" onclick="printAndLog(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / PDF</button>';
+    html+='<button class="btn btn-ok" onclick="openSendDialog(\''+pkgId+'\',\''+esc(pkg.package_name).replace(/'/g,"\\'")+'\',\''+esc(custEmail).replace(/'/g,"\\'")+'\',\''+esc(cust).replace(/'/g,"\\'")+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Send</button>';
   } else {
     html+='<button class="btn btn-s" onclick="updatePackageStatus(\''+pkgId+'\',\'draft\');closePackageDetail()">Restore</button>';
   }
@@ -1295,25 +1301,35 @@ window.openPackageDetail=async function(pkgId){
   html+='</div></div>';
 
   // Quick stats bar
-  html+='<div style="padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:32px">';
+  html+='<div style="padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:32px;flex-wrap:wrap">';
   var svcTotal=(svcData||[]).reduce((s,sv)=>s+(parseFloat(sv.amount)||0),0);
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Customer</span><div style="font-weight:600;margin-top:2px">'+esc(cust)+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Items</span><div style="font-weight:600;margin-top:2px">'+prods.length+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Total MSRP</span><div style="font-weight:700;font-family:Sora;margin-top:2px">$'+total.toLocaleString()+'</div></div>';
   if(svcTotal>0)html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Services</span><div style="font-weight:600;font-family:Sora;margin-top:2px">$'+svcTotal.toLocaleString()+'</div></div>';
+  if(pkg.total_final>0)html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Final Total</span><div style="font-weight:700;font-family:Sora;margin-top:2px;color:var(--navy)">$'+parseFloat(pkg.total_final).toLocaleString()+'</div></div>';
+  if(pkg.total_savings>0)html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Savings</span><div style="font-weight:600;font-family:Sora;margin-top:2px;color:var(--verified)">$'+parseFloat(pkg.total_savings).toLocaleString()+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Created</span><div style="font-weight:500;margin-top:2px">'+fmtDate(pkg.created_at)+'</div></div>';
   html+='</div>';
 
+  // Send dialog (hidden by default)
+  html+='<div id="send-dialog" class="hidden" style="padding:20px 24px;background:#fff;border-bottom:1px solid var(--line)">';
+  html+='<h3 style="margin-bottom:12px;font-size:15px">Send Package to Customer</h3>';
+  html+='<div class="grid2" style="margin-bottom:12px"><div><label>Recipient Email</label><input id="send-email" type="email" placeholder="customer@email.com" value="'+esc(custEmail)+'" /></div><div><label>Subject</label><input id="send-subject" value="Your Appliance Package: '+esc(pkg.package_name)+'" /></div></div>';
+  html+='<div style="margin-bottom:12px"><label>Message</label><textarea id="send-message" rows="3" style="resize:vertical" placeholder="Personal message to include...">Hi '+esc(cust.split(' ')[0]||'there')+',\n\nPlease find your appliance specification package attached. This includes all product specifications, dimensions, and installation requirements for your project.\n\nPlease don\'t hesitate to reach out with any questions.\n\nBest regards</textarea></div>';
+  html+='<div class="flex" style="gap:8px"><button class="btn btn-ok" onclick="executeSend(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Open Email Client</button><button class="btn btn-s" onclick="el(\'send-dialog\').classList.add(\'hidden\')">Cancel</button></div>';
+  html+='</div>';
+
   // Rendered package preview
-  html+='<div style="padding:24px;background:#e8ecf1;max-height:70vh;overflow-y:auto">';
+  html+='<div style="padding:24px;background:#e8ecf1;max-height:65vh;overflow-y:auto">';
   html+='<div style="background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;max-width:800px;margin:0 auto">';
   html+='<div style="padding:40px 48px;font-size:11pt;color:#000;line-height:1.5">'+previewHTML+'</div>';
   html+='</div></div>';
 
   // Footer
-  html+='<div style="padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:0 0 12px 12px">';
-  html+='<div class="flex" style="gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora;font-weight:600;font-size:12px;color:var(--steel)">ApplianceIQ</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel)">applianceiq.ai</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel);font-style:italic">Spec. Compare. Price verified.</span></div>';
-  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / Save PDF</button>';
+  html+='<div style="padding:12px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:0 0 12px 12px">';
+  html+='<div class="flex" style="gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora;font-weight:600;font-size:12px;color:var(--steel)">ApplianceIQ</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel);font-style:italic">Spec. Compare. Price verified.</span></div>';
+  html+='<div class="flex" style="gap:8px"><button class="btn btn-s" onclick="copyShareLink(\''+esc(pkg.share_token)+'\')"><svg class="icon" style="width:14px;height:14px"><use href="#i-link"/></svg> Copy Share Link</button><button class="btn btn-p" onclick="printAndLog(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / PDF</button></div>';
   html+='</div>';
 
   html+='</div></div>';
@@ -1323,6 +1339,42 @@ window.openPackageDetail=async function(pkgId){
   document.body.style.overflow='hidden';
 };
 window.closePackageDetail=function(){el('pkg-detail-modal').classList.add('hidden');el('pkg-detail-modal').innerHTML='';document.body.style.overflow=''};
+
+/* Send & Share functions */
+window.openSendDialog=function(pkgId,pkgName,custEmail,custName){
+  var d=document.getElementById('send-dialog');
+  if(d)d.classList.remove('hidden');
+};
+window.executeSend=async function(pkgId){
+  var email=el('send-email').value.trim();
+  var subject=el('send-subject').value.trim();
+  var message=el('send-message').value.trim();
+  if(!email){alert('Please enter a recipient email.');return}
+  // Log the send event
+  await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:'emailed',event_data:{recipient:email,subject:subject}});
+  // Update status to sent
+  await sb.from('speciq_packages').update({status:'sent',updated_at:new Date().toISOString()}).eq('id',pkgId);
+  // Open email client
+  var body=encodeURIComponent(message+'\n\n---\nPackage: '+subject+'\n');
+  window.open('mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent(subject)+'&body='+body,'_blank');
+  el('send-dialog').classList.add('hidden');
+  // Refresh packages list
+  loadProjects();
+};
+window.copyShareLink=function(token){
+  var url=window.location.origin+'?share='+token;
+  navigator.clipboard.writeText(url).then(function(){
+    var btn=event.target.closest('button');
+    if(btn){var orig=btn.innerHTML;btn.innerHTML='<svg class="icon" style="width:14px;height:14px"><use href="#i-check"/></svg> Copied!';setTimeout(function(){btn.innerHTML=orig},2000)}
+  }).catch(function(){prompt('Copy this share link:',url)});
+  // Log share event
+  sb.from('speciq_package_events').insert({package_id:null,event_type:'shared',event_data:{share_token:token}}).then(()=>{});
+};
+window.printAndLog=async function(pkgId){
+  await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:'printed'});
+  printPackage(pkgId);
+  closePackageDetail();
+};
 
 /* ==================== EDIT PACKAGE (reopen in builder) ==================== */
 window.editPackage=async function(pkgId){

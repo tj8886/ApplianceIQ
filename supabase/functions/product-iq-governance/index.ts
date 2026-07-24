@@ -17,7 +17,7 @@ const respond = (body: unknown, status = 200) =>
 const cleanModel = (value: string) => value.trim().replace(/\s+/g, " ").toUpperCase();
 const isRecord = (value: unknown): value is JsonObject => !!value && typeof value === "object" && !Array.isArray(value);
 
-const ALLOWED_ACTION_KEYS = new Set(["action", "productId", "originalVersion", "section", "templateId", "changes", "reason", "product", "rules", "formulaVersion", "changeRequestId", "decision", "notes", "suggestionId"]);
+const ALLOWED_ACTION_KEYS = new Set(["action", "productId", "originalVersion", "section", "templateId", "changes", "reason", "product", "rules", "formulaVersion", "changeRequestId", "decision", "notes", "suggestionId", "documentId", "assetId", "orderedAssetIds"]);
 const GROUP_ALLOWLIST = new Set(["configuration", "dimensions", "performance", "electrical", "gas", "installation", "ventilation", "certifications", "warranty", "notes"]);
 const BOOLEAN_KEYS = new Set([
   "counter_depth", "panel_ready", "ice_maker", "water_dispenser", "water_connection_required", "water_filtration", "dual_evaporator",
@@ -288,12 +288,12 @@ const specGroupsToRow = (groups: JsonObject) => ({
   notes: groups.notes ?? {},
 });
 
-const audit = async (db: ReturnType<typeof createClient>, product: JsonObject, action: string, oldRecord: unknown, newRecord: unknown, reason?: string, actorId?: string) =>
+const audit = async (db: ReturnType<typeof createClient>, product: JsonObject, action: string, oldRecord: unknown, newRecord: unknown, reason?: string, actorId?: string, entityType = "aiq_products", entityId?: string | null) =>
   db.from("product_iq_governance_audit_log").insert({
     organization_id: product.organization_id,
     product_id: product.id,
-    entity_type: "aiq_products",
-    entity_id: product.id,
+    entity_type: entityType,
+    entity_id: entityId ?? product.id,
     action,
     actor_id: actorId,
     actor_kind: "service",
@@ -301,6 +301,128 @@ const audit = async (db: ReturnType<typeof createClient>, product: JsonObject, a
     old_record: oldRecord,
     new_record: newRecord,
   });
+
+const DOCUMENT_TYPES = new Map([
+  ["owner_manual", "Owner Manual"],
+  ["installation_guide", "Installation Guide"],
+  ["warranty", "Warranty"],
+  ["energy_guide", "Energy Guide"],
+  ["quick_start_guide", "Quick Start Guide"],
+  ["specification_sheet", "Specification Sheet"],
+  ["dimension_sheet", "Dimension Sheet"],
+  ["parts_list", "Parts List"],
+  ["service_manual", "Service Manual"],
+  ["cad", "CAD"],
+  ["marketing", "Marketing"],
+  ["video", "Video"],
+  ["other", "Other"],
+]);
+
+const IMAGE_TYPES = new Map([
+  ["hero", "Hero"],
+  ["gallery", "Gallery"],
+  ["lifestyle", "Lifestyle"],
+  ["cutout", "Cutout"],
+  ["dimension_drawing", "Dimension Drawing"],
+  ["installation", "Installation"],
+  ["marketing", "Marketing"],
+  ["packaging", "Packaging"],
+  ["thumbnail", "Thumbnail"],
+  ["other", "Other"],
+]);
+
+const PUBLICATION_STATES = new Set(["draft", "submitted", "in_review", "changes_requested", "approved", "published"]);
+const SOURCE_STATES = new Set(["internal", "manufacturer_submitted", "raw_import", "ai_extracted", "ai_suggested", "aiq_reviewed"]);
+
+const normalizeChoice = (value: unknown, allowed: Map<string, string> | Set<string>) => {
+  const text = String(value ?? "").trim();
+  const key = text.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  if (allowed instanceof Map) return allowed.get(key) ?? text;
+  return allowed.has(text) ? text : key;
+};
+
+const loadProductForMutation = async (db: ReturnType<typeof createClient>, productId: string) => {
+  const { data: product, error } = await db.from("aiq_products").select("*").eq("id", productId).maybeSingle();
+  if (error || !product) return { error: error?.message || "Product not found", status: 404 };
+  const allowed = await db.rpc("product_iq_can_manage_product", { p_organization_id: product.organization_id, p_brand_name: product.brand_name });
+  if (!allowed.data) return { error: "Product IQ edit access required", status: 403 };
+  return { product };
+};
+
+const touchProductForVersion = async (db: ReturnType<typeof createClient>, productId: string, versionNumber: number, userId: string, extra: JsonObject = {}) => {
+  const { data: updated, error } = await db.from("aiq_products").update({ updated_by: userId, updated_at: new Date().toISOString(), ...extra }).eq("id", productId).eq("version_number", versionNumber).select("*").maybeSingle();
+  if (error) return { error: error.message, status: 400 };
+  if (!updated) return { conflict: true };
+  return { updated };
+};
+
+const documentFieldErrors = (fields: Record<string, { code: string; message: string; submittedValue?: unknown }>) => Object.keys(fields).length ? { error: "validation_failed", code: "validation_failed", fieldErrors: fields } : null;
+
+const normalizeDocumentType = (value: unknown) => DOCUMENT_TYPES.get(String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")) ?? null;
+const normalizeImageType = (value: unknown) => IMAGE_TYPES.get(String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")) ?? null;
+
+const DOCUMENT_ALLOWED_FIELDS = new Set(["title", "document_type", "language", "version", "source_type", "source_reference", "description", "public_visible", "approval_status"]);
+const IMAGE_ALLOWED_FIELDS = new Set(["title", "image_type", "alt_text", "display_order", "source_type", "source_reference", "is_published", "is_primary"]);
+
+const validateText = (value: unknown, field: string, required = false, max = 256) => {
+  const text = normalizeText(value);
+  if (!text && required) return { code: "required", message: `${field} is required.` };
+  if (text.length > max) return { code: "too_long", message: `${field} must be ${max} characters or fewer.` };
+  return null;
+};
+
+const validateDocChanges = (changes: JsonObject) => {
+  const errors: Record<string, { code: string; message: string; submittedValue?: unknown }> = {};
+  for (const key of Object.keys(changes)) {
+    if (!DOCUMENT_ALLOWED_FIELDS.has(key)) {
+      errors[key] = { code: "unknown_field", message: "This document field cannot be edited." };
+    }
+  }
+  const titleError = validateText(changes.title, "Document title", true, 256);
+  if (titleError) errors.title = titleError;
+  const type = normalizeDocumentType(changes.document_type);
+  if (!type) errors.document_type = { code: "invalid_value", message: `Document type must be one of: ${[...DOCUMENT_TYPES.values()].join(", ")}.` };
+  const sourceType = String(changes.source_type ?? "").trim();
+  if (sourceType && !SOURCE_STATES.has(sourceType)) errors.source_type = { code: "invalid_value", message: `Source must be one of: ${[...SOURCE_STATES].join(", ")}.` };
+  const approval = String(changes.approval_status ?? "").trim();
+  if (approval && !PUBLICATION_STATES.has(approval)) errors.approval_status = { code: "invalid_value", message: `Publication state must be one of: ${[...PUBLICATION_STATES].join(", ")}.` };
+  const language = normalizeText(changes.language);
+  if (language && language.length > 20) errors.language = { code: "too_long", message: "Language must be 20 characters or fewer." };
+  const version = normalizeText(changes.version);
+  if (version && version.length > 64) errors.version = { code: "too_long", message: "Version must be 64 characters or fewer." };
+  const sourceReference = normalizeText(changes.source_reference);
+  if (sourceReference && sourceReference.length > 128) errors.source_reference = { code: "too_long", message: "Source reference must be 128 characters or fewer." };
+  const description = normalizeText(changes.description);
+  if (description && description.length > 1000) errors.description = { code: "too_long", message: "Internal description must be 1000 characters or fewer." };
+  return { errors, type };
+};
+
+const validateImageChanges = (changes: JsonObject) => {
+  const errors: Record<string, { code: string; message: string; submittedValue?: unknown }> = {};
+  for (const key of Object.keys(changes)) {
+    if (!IMAGE_ALLOWED_FIELDS.has(key)) {
+      errors[key] = { code: "unknown_field", message: "This image field cannot be edited." };
+    }
+  }
+  const titleError = validateText(changes.title, "Image title", true, 256);
+  if (titleError) errors.title = titleError;
+  const type = normalizeImageType(changes.image_type);
+  if (!type) errors.image_type = { code: "invalid_value", message: `Image type must be one of: ${[...IMAGE_TYPES.values()].join(", ")}.` };
+  const altText = normalizeText(changes.alt_text);
+  if (altText && altText.length > 500) errors.alt_text = { code: "too_long", message: "Alt text must be 500 characters or fewer." };
+  const sourceType = String(changes.source_type ?? "").trim();
+  if (sourceType && !SOURCE_STATES.has(sourceType)) errors.source_type = { code: "invalid_value", message: `Source must be one of: ${[...SOURCE_STATES].join(", ")}.` };
+  const sourceReference = normalizeText(changes.source_reference);
+  if (sourceReference && sourceReference.length > 128) errors.source_reference = { code: "too_long", message: "Source reference must be 128 characters or fewer." };
+  const displayOrder = changes.display_order;
+  if (displayOrder != null && displayOrder !== "") {
+    const n = Number(displayOrder);
+    if (!Number.isInteger(n) || n < 0) errors.display_order = { code: "invalid_value", message: "Display order must be a non-negative integer." };
+  }
+  return { errors, type };
+};
+
+const cloneRecord = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
 
 Deno.serve(async req => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
