@@ -380,9 +380,11 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div class="status-filter">
           <button class="active" onclick="filterPackages('all',this)">All</button>
           <button onclick="filterPackages('draft',this)">Drafts</button>
+          <button onclick="filterPackages('in_progress',this)">In Progress</button>
           <button onclick="filterPackages('generated',this)">Generated</button>
           <button onclick="filterPackages('sent',this)">Sent</button>
-          <button onclick="filterPackages('viewed',this)">Viewed</button>
+          <button onclick="filterPackages('accepted',this)">Accepted</button>
+          <button onclick="filterPackages('archived',this)">Archived</button>
         </div>
         <div style="position:relative;width:260px"><svg class="icon" style="position:absolute;left:14px;top:12px;color:var(--steel)"><use href="#i-search"/></svg><input id="package-search" placeholder="Search packages..." style="padding-left:38px" oninput="renderPackagesList()" /></div>
       </div>
@@ -423,6 +425,12 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div class="flex between" style="margin-bottom:16px"><h3 id="product-count">0 appliances added</h3><button class="btn btn-p" onclick="toggleAddProduct()"><svg class="icon" style="width:16px;height:16px"><use href="#i-plus"/></svg> Add Appliance</button></div>
         <div id="add-product-form" class="card hidden" style="margin-bottom:16px;border-color:var(--focus)">
           <h4 style="margin-bottom:16px">Add an Appliance</h4>
+          <div style="margin-bottom:16px;position:relative">
+            <label>Search Products</label>
+            <input id="ap-search" placeholder="Search by brand, model, or category..." oninput="searchProducts()" autocomplete="off" />
+            <div id="ap-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:#fff;border:1px solid var(--line);border-top:none;border-radius:0 0 var(--radius) var(--radius);max-height:300px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)"></div>
+          </div>
+          <div id="ap-selected-banner" class="hidden" style="padding:12px 16px;background:var(--verified-soft);border-radius:var(--radius);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center"><div><span style="font-weight:600;color:var(--verified)" id="ap-selected-label">Product selected</span></div><button class="btn btn-g" style="padding:4px 8px;font-size:12px" onclick="clearProductSelection()">Clear</button></div>
           <div class="grid3" style="margin-bottom:12px">
             <div><label>Product Name</label><input id="ap-name" placeholder="French Door Refrigerator" /></div>
             <div><label>Brand</label><input id="ap-brand" placeholder="Sub-Zero" /></div>
@@ -672,7 +680,7 @@ function showLanding(){hide('auth-page','pricing-page','app');el('landing').styl
 function showPricing(){el('landing').style.display='none';hide('auth-page','app');show('pricing-page')}
 function showAuth(mode){authMode=mode;el('landing').style.display='none';hide('pricing-page','app');show('auth-page');el('auth-success').classList.add('hidden');el('auth-form').classList.remove('hidden');el('auth-error').classList.add('hidden');if(mode==='signup'){el('auth-title').textContent='Start your free trial';el('name-field').classList.remove('hidden');el('auth-submit').textContent='Create account';el('auth-switch-text').textContent='Already have an account?';el('auth-switch').textContent='Sign in';el('auth-toggle-text').textContent='14-day free trial. No credit card required.'}else{el('auth-title').textContent='Sign in to your account';el('name-field').classList.add('hidden');el('auth-submit').textContent='Sign in';el('auth-switch-text').textContent="Don't have an account?";el('auth-switch').textContent='Start free trial';el('auth-toggle-text').textContent=''}}
 function toggleAuthMode(e){e.preventDefault();showAuth(authMode==='login'?'signup':'login')}
-function navigate(view){['dashboard','projects','packages','builder','settings','team'].forEach(function(v){el('view-'+v).classList.toggle('hidden',v!==view)});document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.classList.toggle('active',a.dataset.view===view)});if(view==='projects'&&window._loadProjects)window._loadProjects();if(view==='packages')loadPackages();if(view==='builder')resetBuilder();if(view==='settings')loadRetailerSettings();if(view==='team')loadTeam()}
+function navigate(view){['dashboard','projects','packages','builder','settings','team'].forEach(function(v){el('view-'+v).classList.toggle('hidden',v!==view)});document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.classList.toggle('active',a.dataset.view===view)});if(view==='projects'&&window._loadProjects)window._loadProjects();if(view==='packages')loadPackages();if(view==='builder'&&!window._editingPackageId)resetBuilder();if(view==='settings')loadRetailerSettings();if(view==='team')loadTeam()}
 function toggleNewProject(){el('new-project-form').classList.toggle('hidden')}
 function toggleAddProduct(){el('add-product-form').classList.toggle('hidden')}
 function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden')}
@@ -686,6 +694,58 @@ function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
 function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)*(p.quantity||1)});list.innerHTML=builderProducts.map(function(p){var qty=p.quantity||1;var bestPrice=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);var priceLabel=p.negotiated_price>0?'Negotiated':(p.promo_price>0?'Promo':'MSRP');return'<div class="card flex between" style="padding:14px 20px;margin-bottom:8px"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+(qty>1?' <span class="badge badge-b" style="font-size:11px">Ã—'+qty+'</span>':'')+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' Â· '+p.category+(p.finish?' Â· '+esc(p.finish):'')+(p.width_inches?' Â· '+p.width_inches+'"W':'')+'</div></div></div><div class="flex" style="gap:16px"><div style="text-align:right">'+(bestPrice>0?'<div class="num" style="font-weight:600;font-family:Sora">$'+(bestPrice*qty).toLocaleString()+'</div>':'')+(p.msrp>0&&bestPrice<p.msrp?'<div style="font-size:11px;color:var(--steel);text-decoration:line-through">$'+(p.msrp*qty).toLocaleString()+'</div>':'')+'</div><button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('');el('product-total').classList.remove('hidden');el('product-total').textContent='Total MSRP: $'+total.toLocaleString()}
 /* Builder services */
+var _searchTimeout=null;
+var _selectedProductId=null;
+window.searchProducts=function(){
+  clearTimeout(_searchTimeout);
+  var q=el('ap-search').value.trim();
+  if(q.length<2){el('ap-search-results').style.display='none';return}
+  _searchTimeout=setTimeout(async function(){
+    try{
+      var{data}=await window._sb.from('aiq_products').select('id,brand_name,model,category,msrp,short_description,status').or('brand_name.ilike.%'+q+'%,model.ilike.%'+q+'%,category.ilike.%'+q+'%,short_description.ilike.%'+q+'%').order('brand_name').limit(12);
+      var results=el('ap-search-results');
+      if(!data||!data.length){results.innerHTML='<div style="padding:16px;color:var(--steel);font-size:13px">No products found for "'+esc(q)+'"</div>';results.style.display='block';return}
+      var catMap={cooking:'Range',dishwashers:'Dishwasher',refrigeration:'Refrigerator',laundry:'Washer/Dryer',ventilation:'Hood'};
+      results.innerHTML=data.map(function(p){
+        var cat=catMap[p.category]||p.category||'';
+        var statusTag=p.status!=='active'?' <span class="badge badge-y" style="font-size:10px">'+esc(p.status)+'</span>':'';
+        return'<div style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background=\'var(--paper)\'" onmouseout="this.style.background=\'#fff\'" onclick="selectProduct(\''+p.id+'\')"><div><div style="font-weight:600;font-size:14px">'+esc(p.brand_name)+' '+esc(p.model)+statusTag+'</div><div style="font-size:12px;color:var(--steel)">'+esc(cat)+' â€” '+esc(p.short_description||'')+'</div></div><div class="num" style="font-family:Sora;font-weight:600;font-size:14px;color:var(--navy)">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'')+'</div></div>'
+      }).join('');
+      results.style.display='block';
+    }catch(e){console.error('Search error:',e)}
+  },250);
+};
+window.selectProduct=async function(productId){
+  try{
+    var{data:p}=await window._sb.from('aiq_products').select('*').eq('id',productId).single();
+    if(!p)return;
+    _selectedProductId=p.id;
+    var catMap={cooking:'Range',dishwashers:'Dishwasher',refrigeration:'Refrigerator',laundry:'Washer/Dryer',ventilation:'Hood'};
+    el('ap-name').value=p.short_description||p.model||'';
+    el('ap-brand').value=p.brand_name||'';
+    el('ap-model').value=p.model||'';
+    el('ap-msrp').value=p.msrp||'';
+    // Set category dropdown
+    var catSel=el('ap-cat');var catLabel=catMap[p.category]||p.category||'';
+    for(var i=0;i<catSel.options.length;i++){if(catSel.options[i].text.toLowerCase()===catLabel.toLowerCase()){catSel.selectedIndex=i;break}}
+    // Show selected banner
+    el('ap-selected-banner').classList.remove('hidden');
+    el('ap-selected-banner').style.display='flex';
+    el('ap-selected-label').textContent=p.brand_name+' '+p.model+' â€” auto-populated from product database';
+    // Hide search results
+    el('ap-search-results').style.display='none';
+    el('ap-search').value=p.brand_name+' '+p.model;
+  }catch(e){console.error('Select product error:',e)}
+};
+window.clearProductSelection=function(){
+  _selectedProductId=null;
+  el('ap-selected-banner').classList.add('hidden');
+  el('ap-search').value='';
+  ['ap-name','ap-brand','ap-model','ap-msrp','ap-promo','ap-neg','ap-finish','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});
+  el('ap-qty').value='1';el('ap-cat').selectedIndex=0;
+};
+// Close search results when clicking outside
+document.addEventListener('click',function(e){if(!e.target.closest('#ap-search')&&!e.target.closest('#ap-search-results')){var r=document.getElementById('ap-search-results');if(r)r.style.display='none'}});
 window.addBuilderService=function(){var type=el('bs-type').value,desc=el('bs-desc').value,amount=parseFloat(el('bs-amount').value)||0;if(!amount){alert('Enter a service amount.');return}var labels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};builderServices.push({id:Date.now(),service_type:type,description:desc||labels[type],amount:amount,taxable:el('bs-taxable').checked});el('bs-desc').value='';el('bs-amount').value='';el('bs-taxable').checked=true;el('add-service-form').classList.add('hidden');renderBuilderServices()};
 window.removeBuilderService=function(id){builderServices=builderServices.filter(function(s){return s.id!==id});renderBuilderServices()};
 function renderBuilderServices(){var list=el('builder-services-list');if(!list)return;if(!builderServices.length){list.innerHTML='<div style="padding:12px 0;color:var(--steel);font-size:13px">No services added yet.</div>';return}var labels={delivery:'Delivery',installation:'Installation',haul_away:'Removal / Haul-Away',extended_warranty:'Extended Warranty',accessories:'Accessories',environmental_fee:'Environmental Fee',other:'Other'};list.innerHTML=builderServices.map(function(s){return'<div class="flex between" style="padding:10px 16px;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:6px"><div><span style="font-weight:600">'+esc(labels[s.service_type]||s.service_type)+'</span>'+(s.description?' â€” <span style="color:var(--steel);font-size:13px">'+esc(s.description)+'</span>':'')+(s.taxable?'':' <span class="badge badge-y" style="font-size:10px">non-taxable</span>')+'</div><div class="flex" style="gap:12px"><span class="num" style="font-weight:600;font-family:Sora">$'+s.amount.toLocaleString()+'</span><button class="btn btn-g" style="padding:4px" onclick="removeBuilderService('+s.id+')"><svg class="icon" style="width:14px;height:14px;color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('')}
@@ -700,7 +760,7 @@ var PLANS=[{name:'Starter',price:'$99',unit:'/user/month',desc:'For individual s
 function planCard(p){return'<div class="card price-card'+(p.featured?' featured':'')+'">'+(p.featured?'<div class="badge badge-b" style="position:absolute;top:-10px;left:20px">Most popular</div>':'')+'<h3 style="font-size:20px;margin-bottom:2px">'+p.name+'</h3><p style="font-size:13px;color:var(--steel);margin-bottom:16px">'+p.desc+'</p><div style="display:flex;align-items:baseline;gap:4px;margin-bottom:24px"><span class="num" style="font-size:36px;font-weight:700;font-family:Sora">'+p.price+'</span><span style="color:var(--steel);font-size:14px">'+p.unit+'</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">'+p.features.map(function(f){return'<div style="display:flex;gap:8px;font-size:14px;color:var(--steel)"><svg class="icon" style="width:16px;height:16px;color:var(--verified);flex-shrink:0;margin-top:2px"><use href="#i-check"/></svg>'+f+'</div>'}).join('')+'</div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showAuth(\'signup\')">Start free trial</button></div>'}
 
 /* ==================== STATUS HELPERS ==================== */
-function statusBadge(s){var map={draft:'y',generated:'b',sent:'b',viewed:'g',revised:'y',expired:'r',superseded:'r'};return'<span class="badge badge-'+(map[s]||'y')+'">'+s+'</span>'}
+function statusBadge(s){var map={draft:'y',in_progress:'b',ready_for_review:'b',generated:'b',sent:'g',accepted:'g',viewed:'g',revised:'y',expired:'r',superseded:'r',archived:'r'};var labels={draft:'Draft',in_progress:'In Progress',ready_for_review:'Ready for Review',generated:'Generated',sent:'Sent',accepted:'Accepted',archived:'Archived'};return'<span class="badge badge-'+(map[s]||'y')+'">'+(labels[s]||s)+'</span>'}
 
 /* ==================== PACKAGES LIST ==================== */
 function filterPackages(status,btn){currentPkgFilter=status;document.querySelectorAll('.status-filter button').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderPackagesList()}
@@ -958,6 +1018,7 @@ window.savePackage=async(status)=>{
     if(btn){btn.disabled=true;btn.innerHTML='<span style="opacity:.7">Saving...</span>'}
     const orgId=userOrgId;
     if(!orgId){throw new Error('No organization found. Please reload and try again.')}
+    const isEdit=!!window._editingPackageId;
     const totalMsrp=builderProducts.reduce((s,p)=>s+(p.msrp||0)*(p.quantity||1),0);
     var totalSale=0;builderProducts.forEach(function(p){var q=p.quantity||1;var best=p.negotiated_price>0?p.negotiated_price:(p.promo_price>0?p.promo_price:p.msrp);totalSale+=best*q});
     const totalPromo=builderProducts.reduce((s,p)=>s+(p.promo_price||0)*(p.quantity||1),0);
@@ -976,26 +1037,46 @@ window.savePackage=async(status)=>{
     const token=crypto.randomUUID().replace(/-/g,'').slice(0,16);
     const projName=el('b-proj-name').value||el('b-pkg-name').value||'Untitled Project';
     const custName=el('b-cust-name').value||'Unknown Customer';
-    const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
-    if(pe)throw new Error('Project save failed: '+pe.message);
-    const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:proj.id,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,created_by:currentUser.id}).select('id').single();
-    if(ke)throw new Error('Package save failed: '+ke.message);
+    let projId, pkgId;
+    if(isEdit){
+      // UPDATE existing package
+      projId=window._editingProjectId;
+      pkgId=window._editingPackageId;
+      // Update project
+      await sb.from('speciq_projects').update({project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,updated_at:new Date().toISOString()}).eq('id',projId);
+      // Update package
+      const{error:ke}=await sb.from('speciq_packages').update({package_name:el('b-pkg-name').value||projName,status,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,salesperson_name:el('b-salesperson')?.value||null,updated_at:new Date().toISOString(),updated_by:currentUser.id}).eq('id',pkgId);
+      if(ke)throw new Error('Package update failed: '+ke.message);
+      // Delete old products and services, re-insert
+      await sb.from('speciq_package_products').delete().eq('package_id',pkgId);
+      await sb.from('speciq_package_services').delete().eq('package_id',pkgId);
+    } else {
+      // CREATE new project and package
+      const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,customer_phone:el('b-cust-phone')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
+      if(pe)throw new Error('Project save failed: '+pe.message);
+      projId=proj.id;
+      const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:projId,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:totalMsrp,total_promo:totalPromo||null,total_negotiated:totalNeg||null,total_services:svcTotal,total_tax:totalTax,total_final:totalFinal,total_savings:totalSavings>0?totalSavings:0,volume_discount:volDiscount,delivery_method:deliveryMethod,tax_rule_id:taxRuleId||null,include_pricing:el('b-pricing').checked,salesperson_name:el('b-salesperson')?.value||null,created_by:currentUser.id}).select('id').single();
+      if(ke)throw new Error('Package save failed: '+ke.message);
+      pkgId=pkg.id;
+    }
     if(builderProducts.length){
-      const{error:prodErr}=await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:orgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,quantity:p.quantity||1,msrp:p.msrp||null,promo_price:p.promo_price||null,negotiated_price:p.negotiated_price||null,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));
+      const{error:prodErr}=await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkgId,organization_id:orgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,quantity:p.quantity||1,msrp:p.msrp||null,promo_price:p.promo_price||null,negotiated_price:p.negotiated_price||null,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));
       if(prodErr)console.warn('Product insert warning:',prodErr.message);
     }
     if(builderServices.length){
-      const{error:svcErr}=await sb.from('speciq_package_services').insert(builderServices.map((s,i)=>({package_id:pkg.id,organization_id:orgId,service_type:s.service_type,description:s.description,amount:s.amount,taxable:s.taxable,sort_order:i})));
+      const{error:svcErr}=await sb.from('speciq_package_services').insert(builderServices.map((s,i)=>({package_id:pkgId,organization_id:orgId,service_type:s.service_type,description:s.description,amount:s.amount,taxable:s.taxable,sort_order:i})));
       if(svcErr)console.warn('Service insert warning:',svcErr.message);
     }
-    await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created'});
-    if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
-    builderProducts=[];
-    // Navigate to packages and auto-open the new package preview
+    await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:isEdit?'updated':'created'});
+    if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:'sent'});
+    // Clear edit context
+    window._editingPackageId=null;
+    window._editingProjectId=null;
+    builderProducts=[];builderServices=[];
     await loadPackages();
     navigate('packages');
     loadDashboardStats();
-    openPackageDetail(pkg.id);
+    openPackageDetail(pkgId);
   }catch(err){
     console.error('savePackage error:',err);
     alert('Error: '+err.message);
@@ -1027,7 +1108,8 @@ window.renderPackagesList=function(){
     const cust=p.speciq_projects?.customer_name||'â€”';
     const itemCount=p._productCount||0;
     var salePrice=parseFloat(p.total_final)||0;var msrpVal=parseFloat(p.total_msrp)||0;
-    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.speciq_projects?.project_name||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+'</td><td>'+itemCount+' items</td><td class="r num" style="font-family:Sora">$'+msrpVal.toLocaleString()+'</td><td class="r num" style="font-family:Sora;font-weight:600">'+(salePrice>0?'$'+salePrice.toLocaleString():'â€”')+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button><button class="btn btn-g" style="padding:4px" onclick="event.stopPropagation();printPackage(\''+p.id+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg></button></div></td></tr>'}).join('');
+    var canEdit=p.status!=='archived';
+    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.speciq_projects?.project_name||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+'</td><td>'+itemCount+' items</td><td class="r num" style="font-family:Sora">$'+msrpVal.toLocaleString()+'</td><td class="r num" style="font-family:Sora;font-weight:600">'+(salePrice>0?'$'+salePrice.toLocaleString():'â€”')+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button>'+(canEdit?'<button class="btn btn-s" style="padding:5px 10px;font-size:12px" onclick="event.stopPropagation();editPackage(\''+p.id+'\')"><svg class="icon" style="width:14px;height:14px"><use href="#i-edit"/></svg></button>':'')+'<button class="btn btn-g" style="padding:4px" onclick="event.stopPropagation();confirmDeletePackage(\''+p.id+'\',\''+esc(p.package_name).replace(/'/g,"\\'")+'\')"><svg class="icon" style="width:14px;height:14px;color:var(--danger)"><use href="#i-trash"/></svg></button></div></td></tr>'}).join('');
 };
 
 /* ==================== PACKAGE DETAIL / PREVIEW ==================== */
@@ -1067,7 +1149,15 @@ window.openPackageDetail=async function(pkgId){
   html+='<div style="padding:16px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10;border-radius:12px 12px 0 0">';
   html+='<div class="flex" style="gap:16px"><h2 style="font-size:18px">'+esc(pkg.package_name)+'</h2>'+statusBadge(pkg.status)+'</div>';
   html+='<div class="flex" style="gap:8px">';
-  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / Save PDF</button>';
+  if(pkg.status!=='archived'){
+    html+='<button class="btn btn-s" onclick="editPackage(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-edit"/></svg> Edit</button>';
+    html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print</button>';
+    if(pkg.status!=='sent'&&pkg.status!=='accepted')html+='<button class="btn btn-ok" onclick="updatePackageStatus(\''+pkgId+'\',\'sent\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Mark Sent</button>';
+    if(pkg.status==='sent')html+='<button class="btn btn-ok" onclick="updatePackageStatus(\''+pkgId+'\',\'accepted\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-check"/></svg> Accepted</button>';
+    html+='<button class="btn btn-g" style="color:var(--amber)" onclick="updatePackageStatus(\''+pkgId+'\',\'archived\');closePackageDetail()">Archive</button>';
+  } else {
+    html+='<button class="btn btn-s" onclick="updatePackageStatus(\''+pkgId+'\',\'draft\');closePackageDetail()">Restore</button>';
+  }
   html+='<button class="btn btn-g" onclick="closePackageDetail()"><svg class="icon"><use href="#i-x"/></svg></button>';
   html+='</div></div>';
 
@@ -1100,6 +1190,69 @@ window.openPackageDetail=async function(pkgId){
   document.body.style.overflow='hidden';
 };
 window.closePackageDetail=function(){el('pkg-detail-modal').classList.add('hidden');el('pkg-detail-modal').innerHTML='';document.body.style.overflow=''};
+
+/* ==================== EDIT PACKAGE (reopen in builder) ==================== */
+window.editPackage=async function(pkgId){
+  const pkg=allPackages.find(p=>p.id===pkgId);
+  if(!pkg)return;
+  const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
+  const{data:services}=await sb.from('speciq_package_services').select('*').eq('package_id',pkgId).order('sort_order');
+  // Populate builder with existing data
+  el('b-cust-name').value=pkg.speciq_projects?.customer_name||'';
+  el('b-cust-email').value=pkg.speciq_projects?.customer_email||'';
+  if(el('b-cust-phone'))el('b-cust-phone').value=pkg.speciq_projects?.customer_phone||'';
+  el('b-pkg-name').value=pkg.package_name||'';
+  el('b-proj-name').value=pkg.speciq_projects?.project_name||'';
+  el('b-address').value=pkg.speciq_projects?.property_address||'';
+  el('b-room').value=pkg.speciq_projects?.room_name||'';
+  if(el('b-salesperson'))el('b-salesperson').value=pkg.salesperson_name||'';
+  // Load products into builder
+  builderProducts=(products||[]).map(function(p){return{id:p.id||Date.now()+Math.random(),product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,quantity:p.quantity||1,msrp:parseFloat(p.msrp)||0,promo_price:parseFloat(p.promo_price)||0,negotiated_price:parseFloat(p.negotiated_price)||0,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements}});
+  // Load services
+  builderServices=(services||[]).map(function(s){return{id:s.id||Date.now()+Math.random(),service_type:s.service_type,description:s.description,amount:parseFloat(s.amount)||0,taxable:s.taxable}});
+  // Set volume discount and delivery
+  if(el('b-volume-discount'))el('b-volume-discount').value=pkg.volume_discount||'0';
+  if(pkg.delivery_method){var radios=document.querySelectorAll('input[name="b-delivery"]');radios.forEach(function(r){r.checked=r.value===pkg.delivery_method})}
+  el('b-pricing').checked=pkg.include_pricing||false;
+  // Store edit context
+  window._editingPackageId=pkgId;
+  window._editingProjectId=pkg.project_id;
+  // Update status to in_progress if it was draft
+  if(pkg.status==='draft'){await sb.from('speciq_packages').update({status:'in_progress',updated_at:new Date().toISOString()}).eq('id',pkgId)}
+  // Navigate to builder
+  closePackageDetail();
+  navigate('builder');
+  renderProducts();
+  setStep(1);
+};
+
+/* ==================== DELETE PACKAGE ==================== */
+window.confirmDeletePackage=async function(pkgId,pkgName){
+  if(!confirm('Delete "'+pkgName+'"? This cannot be undone.')){return}
+  try{
+    await sb.from('speciq_package_events').delete().eq('package_id',pkgId);
+    await sb.from('speciq_package_services').delete().eq('package_id',pkgId);
+    await sb.from('speciq_package_products').delete().eq('package_id',pkgId);
+    await sb.from('speciq_package_versions').delete().eq('package_id',pkgId);
+    const{error}=await sb.from('speciq_packages').delete().eq('id',pkgId);
+    if(error)throw error;
+    allPackages=allPackages.filter(function(p){return p.id!==pkgId});
+    renderPackagesList();
+    loadDashboardStats();
+  }catch(e){alert('Delete failed: '+(e.message||e))}
+};
+
+/* ==================== UPDATE PACKAGE STATUS ==================== */
+window.updatePackageStatus=async function(pkgId,newStatus){
+  try{
+    const{error}=await sb.from('speciq_packages').update({status:newStatus,updated_at:new Date().toISOString()}).eq('id',pkgId);
+    if(error)throw error;
+    var pkg=allPackages.find(function(p){return p.id===pkgId});
+    if(pkg)pkg.status=newStatus;
+    renderPackagesList();
+    await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:newStatus==='sent'?'sent':(newStatus==='archived'?'archived':'status_change'),event_data:{new_status:newStatus}});
+  }catch(e){alert('Status update failed: '+(e.message||e))}
+};
 
 /* ==================== PRINT HANDLER ==================== */
 window.addEventListener('do-print',async function(e){
