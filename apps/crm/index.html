@@ -177,6 +177,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .invite-card .ie{font-weight:600}.invite-card .ir{font-size:12px;color:var(--steel)}
 .is{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-top:6px}
 .is.pending{background:#fff8e6;color:#b8860b}.is.accepted{background:#e8f5e9;color:#2e7d32}
+.rec-ind{font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;flex-shrink:0;transition:transform .1s}.rec-ind:hover{transform:scale(1.3)}.rec-ind.none{opacity:.6}
 .rec-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);margin-right:8px;animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .rec-timer{font-size:30px;font-weight:800;text-align:center;margin:16px 0;font-variant-numeric:tabular-nums}
@@ -277,7 +278,7 @@ function showLogin(){landingEl.style.display='none';authEl.style.display='flex';
 function showSignup(){showLogin();setTimeout(()=>note('Enter email and password, then tap Create an account.',true),100);}
 function showLanding(){landingEl.style.display='block';authEl.style.display='none';appEl.style.display='none';}
 function showApp(){landingEl.style.display='none';authEl.style.display='none';appEl.style.display='block';}
-window.showLogin=showLogin;window.showSignup=showSignup;window.closeModal=closeModal;
+window.showLogin=showLogin;window.showSignup=showSignup;
 
 let orgs=[],currentOrg=null,currentUser=null,currentView='pipeline',pipeView='active';
 let chatLog=[],coachLog=[],coachPersona=null,assistants=[],currentAssistant=null;
@@ -315,8 +316,8 @@ async function loadCore(){
     sb.from('companies').select('*').eq('organization_id',currentOrg.id).order('name'),
     sb.from('crm_buying_groups').select('*,crm_buying_group_members(id,contact_id,buying_role,is_primary,contacts(id,first_name,last_name,email,phone))').eq('organization_id',currentOrg.id).order('created_at',{ascending:false})
   ]);
-  cache={stages:st.data??[],deals:dl.data??[],contacts:ct.data??[],companies:co.data??[],buyingGroups:bg.data??[],participants:[]};
-  if(cache.deals.length){const ids=cache.deals.map(d=>d.id);const{data:p}=await sb.from('crm_deal_participants').select('*,contacts(id,first_name,last_name)').in('deal_id',ids);cache.participants=p??[];}
+  cache={stages:st.data??[],deals:dl.data??[],contacts:ct.data??[],companies:co.data??[],buyingGroups:bg.data??[],participants:[],recordings:[]};
+  if(cache.deals.length){const ids=cache.deals.map(d=>d.id);const[{data:p},{data:recs}]=await Promise.all([sb.from('crm_deal_participants').select('*,contacts(id,first_name,last_name)').in('deal_id',ids),sb.from('sales_recordings').select('id,deal_id').eq('organization_id',currentOrg.id).not('deal_id','is',null)]);cache.participants=p??[];cache.recordings=recs??[];}
 }
 
 async function render(){
@@ -353,13 +354,14 @@ function renderPipeline(){
       const parts=cache.participants.filter(p=>p.deal_id===d.id);
       const daysSince=d.last_contact_at?Math.floor((Date.now()-new Date(d.last_contact_at).getTime())/864e5):null;
       const expiring=d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5);
+      const hasRec=cache.recordings.some(r=>r.deal_id===d.id);
       let tags='';
       if(d.record_type==='household')tags+='<span class="dtag bg">👥 Group</span>';
       if(d.record_type==='business')tags+='<span class="dtag biz">🏢 Biz</span>';
       if(d.priority==='urgent'||d.priority==='high')tags+=`<span class="dtag hot">${esc(d.priority)}</span>`;
       if(expiring)tags+='<span class="dtag exp">Quote exp</span>';
       if(daysSince&&daysSince>7)tags+=`<span class="dtag warn">${daysSince}d idle</span>`;
-      return`<button class="deal" draggable="true" data-deal="${d.id}"><div class="t">${esc(d.title)}</div>
+      return`<button class="deal" draggable="true" data-deal="${d.id}"><div class="t" style="display:flex;align-items:center;justify-content:space-between">${esc(d.title)}<span class="rec-ind ${hasRec?'has':'none'}" data-rec="${d.id}" title="${hasRec?'Has recording':'No recording — tap to record'}">${hasRec?'🎙':'❌'}</span></div>
         <div class="v num">${money(d.value_amount)}${d.margin_pct?` <span style="font-size:11px;color:var(--steel)">${d.margin_pct}%</span>`:''}</div>
         <div class="m">${esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')}${parts.length>1?' +'+(parts.length-1):''}${d.next_action?' · '+esc(d.next_action):''}</div>
         ${tags?`<div class="dm">${tags}</div>`:''}</button>`;
@@ -372,7 +374,8 @@ function renderPipeline(){
   $$('#vt button').forEach(b=>{b.onclick=()=>{pipeView=b.dataset.pv;renderPipeline();};});
   $('#newDealBtn').onclick=()=>openDealModal(null);
   $('#editStagesBtn').onclick=openStagesEditor;
-  $$('[data-deal]').forEach(b=>{b.onclick=()=>openDealModal(cache.deals.find(d=>d.id===b.dataset.deal));});
+  $$('[data-deal]').forEach(b=>{b.onclick=e=>{if(e.target.closest('[data-rec]'))return;openDealModal(cache.deals.find(d=>d.id===b.dataset.deal));};});
+  $$('[data-rec]').forEach(b=>{b.onclick=e=>{e.stopPropagation();openRecorderModal(b.dataset.rec);};});
   // Drag & drop
   $$('.deal[draggable]').forEach(c=>{
     c.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',c.dataset.deal);c.classList.add('dragging');});
@@ -636,7 +639,7 @@ function renderCompanies(){
 function openCompanyModal(co){
   const isNew=!co;const cts=isNew?[]:cache.contacts.filter(c=>c.company_id===co?.id);const dls=isNew?[]:cache.deals.filter(d=>d.company_id===co?.id);
   openModal(`<h2>${isNew?'New Business':'Edit Business'}</h2>
-    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc(co?.display_name||co?.name||'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc(co?.display_name||co?.name??'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
     <div class="field-row"><div class="field"><label>Type</label><select id="co_t"><option value="">—</option><option ${co?.business_type==='property_management'?'selected':''}>Property Management</option><option ${co?.business_type==='builder'?'selected':''}>Builder</option><option ${co?.business_type==='contractor'?'selected':''}>Contractor</option><option ${co?.business_type==='designer'?'selected':''}>Designer</option><option ${co?.business_type==='developer'?'selected':''}>Developer</option><option ${co?.business_type==='other'?'selected':''}>Other</option></select></div><div class="field"><label>Industry</label><input id="co_ind" value="${esc(co?.industry??'')}"></div></div>
     <div class="field-row"><div class="field"><label>Phone</label><input id="co_ph" value="${esc(co?.main_phone??'')}"></div><div class="field"><label>Email</label><input id="co_em" value="${esc(co?.general_email??'')}"></div></div>
     <div class="field"><label>Website</label><input id="co_web" value="${esc(co?.website??'')}"></div>
@@ -663,18 +666,20 @@ async function renderRecordings(){const{data:recs}=await sb.from('sales_recordin
 mainEl.innerHTML=`<div class="page-head"><div><h1>Recordings</h1><div class="sub num">${(recs??[]).length}</div></div><div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 Record</button></div></div><table><thead><tr><th>Recording</th><th>Status</th><th>Score</th><th></th></tr></thead><tbody>${(recs??[]).map(r=>{const sc=r.coaching_review_id&&rvs[r.coaching_review_id]?.overall_score!=null?Number(rvs[r.coaching_review_id].overall_score).toFixed(1)+'/10':'—';return`<tr><td><b>${esc(r.file_name??'Recording')}</b><div class="sub num">${new Date(r.created_at).toLocaleDateString()}${r.duration_seconds?' · '+fmtTime(r.duration_seconds):''}</div></td><td><span class="chip ${r.status==='complete'?'g':r.status==='failed'?'r':'n'}">${esc(r.status)}</span></td><td class="num">${sc}</td><td><button class="btn btn-ghost btn-sm" data-play="${r.id}">Play</button></td></tr>`;}).join('')||'<tr><td colspan="4" class="empty">No recordings.</td></tr>'}</tbody></table><div id="recP"></div>`;
 $('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
 $$('[data-play]').forEach(b=>{b.onclick=async()=>{const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;const{data}=await sb.storage.from('crm-media').createSignedUrl(rec.file_path,300);if(data?.signedUrl)$('#recP').innerHTML=`<div class="dash-panel" style="margin-top:16px"><audio controls src="${data.signedUrl}" style="width:100%"></audio></div>`;};});}
-function openRecorderModal(){
+function openRecorderModal(dealId){
   if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){openModal('<h2>Not supported</h2><p>Use Chrome or Safari.</p><div class="sheet-actions"><button class="btn btn-primary" onclick="closeModal()">OK</button></div>');return;}
+  const deal=dealId?cache.deals.find(d=>d.id===dealId):null;
   let stream,recorder,chunks=[],elapsed=0,timer;
-  openModal(`<h2>Record</h2><div class="consent-row"><input type="checkbox" id="rc"><div>All participants informed this is recorded for coaching.</div></div><div class="rec-timer" id="rT">0:00</div><div id="rS" style="text-align:center;color:var(--steel);font-size:13px"></div><div class="sheet-actions"><button class="btn btn-ghost" id="r_cancel">Cancel</button><button class="btn btn-primary" id="r_start" disabled>Start</button><button class="btn btn-danger" id="r_stop" style="display:none">Stop</button></div>`);
+  openModal(`<h2>🎙 Record${deal?' — '+esc(deal.title):''}</h2>${deal?`<div class="sub" style="margin-bottom:10px">${money(deal.value_amount)} · ${esc(deal.stage)}</div>`:''}
+    <div class="consent-row"><input type="checkbox" id="rc"><div>All participants informed this is recorded for coaching.</div></div><div class="rec-timer" id="rT">0:00</div><div id="rS" style="text-align:center;color:var(--steel);font-size:13px"></div><div class="sheet-actions"><button class="btn btn-ghost" id="r_cancel">Cancel</button><button class="btn btn-primary" id="r_start" disabled>Start</button><button class="btn btn-danger" id="r_stop" style="display:none">Stop</button></div>`);
   $('#rc').onchange=()=>{$('#r_start').disabled=!$('#rc').checked;};
   $('#r_start').onclick=async()=>{try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch{return formErr('Mic denied.');}recorder=new MediaRecorder(stream);chunks=[];elapsed=0;
     recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
     recorder.onstop=async()=>{clearInterval(timer);stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:recorder.mimeType});$('#rS').innerHTML='<div class="spin" style="margin:8px auto"></div> Uploading…';
-      const ext=recorder.mimeType.includes('webm')?'webm':'ogg';const fn=`pitch_${Date.now()}.${ext}`;const path=`${currentOrg.id}/${currentUser.id}/${fn}`;
+      const ext=recorder.mimeType.includes('webm')?'webm':'ogg';const fn=`${deal?esc(deal.title).replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_':'pitch_'}${Date.now()}.${ext}`;const path=`${currentOrg.id}/${currentUser.id}/${fn}`;
       const{error:ue}=await sb.storage.from('crm-media').upload(path,blob,{contentType:recorder.mimeType});if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
-      await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_obtained:true,consent_method:'in_app_checkbox'});
-      openModal(`<h2>Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ ${fmtTime(elapsed)} recorded</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>`);$('#r_done').onclick=()=>{closeModal();render();};};
+      await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_obtained:true,consent_method:'in_app_checkbox'});
+      openModal(`<h2>Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ ${fmtTime(elapsed)} recorded${deal?' for '+esc(deal.title):''}</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>`);$('#r_done').onclick=()=>{closeModal();render();};};
     recorder.start(1000);$('#r_start').style.display='none';$('#r_stop').style.display='';
     timer=setInterval(()=>{elapsed++;$('#rT').textContent=fmtTime(elapsed);if(elapsed>=REC_MAX)recorder.stop();},1000);$('#rS').innerHTML='<span class="rec-dot"></span> Recording…';};
   $('#r_stop').onclick=()=>{if(recorder?.state==='recording')recorder.stop();};
