@@ -262,7 +262,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <div id="modalRoot"></div>
 
 <script type="module">
-import{createClient}from'https://esm.sh/@supabase/supabase-js@2';
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://fumwwhyozeouoqscolke.supabase.co';
 const SUPABASE_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
@@ -639,7 +639,7 @@ function renderCompanies(){
 function openCompanyModal(co){
   const isNew=!co;const cts=isNew?[]:cache.contacts.filter(c=>c.company_id===co?.id);const dls=isNew?[]:cache.deals.filter(d=>d.company_id===co?.id);
   openModal(`<h2>${isNew?'New Business':'Edit Business'}</h2>
-    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc(co?.display_name||co?.name??'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc((co?.display_name||co?.name)??'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
     <div class="field-row"><div class="field"><label>Type</label><select id="co_t"><option value="">—</option><option ${co?.business_type==='property_management'?'selected':''}>Property Management</option><option ${co?.business_type==='builder'?'selected':''}>Builder</option><option ${co?.business_type==='contractor'?'selected':''}>Contractor</option><option ${co?.business_type==='designer'?'selected':''}>Designer</option><option ${co?.business_type==='developer'?'selected':''}>Developer</option><option ${co?.business_type==='other'?'selected':''}>Other</option></select></div><div class="field"><label>Industry</label><input id="co_ind" value="${esc(co?.industry??'')}"></div></div>
     <div class="field-row"><div class="field"><label>Phone</label><input id="co_ph" value="${esc(co?.main_phone??'')}"></div><div class="field"><label>Email</label><input id="co_em" value="${esc(co?.general_email??'')}"></div></div>
     <div class="field"><label>Website</label><input id="co_web" value="${esc(co?.website??'')}"></div>
