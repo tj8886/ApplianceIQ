@@ -179,6 +179,18 @@ const fmt$=v=>v?'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,
 const fmtDate=v=>v?new Date(v).toLocaleDateString():'—';
 const DOC_ICONS={owners_manual:'📖',installation_guide:'🔧',spec_sheet:'📋',energy_guide:'⚡',quick_start:'🚀',warranty_card:'🛡️',safety_data_sheet:'⚠️',troubleshooting:'🔍',parts_list:'🔩',wiring_diagram:'🔌',rough_in_template:'📐',cad_drawing:'📏',revit_file:'🏗️',rebate_form:'💰',sell_sheet:'📄',comparison_chart:'📊'};
 const VID_ICONS={product_overview:'🎬',installation_video:'🛠️',how_to_video:'💡',testimonial_video:'⭐','360_view':'🔄',comparison_video:'⚖️'};
+const TIERS=[['all','🌐','All Retailers'],['national','🏢','National Accounts'],['independent','🏪','Independent Dealers'],['buying_group','🤝','Buying Groups'],['builder','🏗️','Builders'],['designer','🎨','Designers'],['exclusive','🔒','Exclusive']];
+const TIER_LABEL=id=>(TIERS.find(t=>t[0]===id)||[id,'','']).slice(1).join(' ');
+function liveState(a){
+  const now=Date.now();
+  if(a.embargoed)return['embargoed','Embargoed','pill-red'];
+  const f=a.available_from?new Date(a.available_from).getTime():null;
+  const u=a.available_until?new Date(a.available_until).getTime():null;
+  if(f&&f>now)return['scheduled','Scheduled','pill-amber'];
+  if(u&&u<now)return['expired','Expired','pill-gray'];
+  if(u&&u-now<14*864e5)return['ending','Ending Soon','pill-amber'];
+  return['live','Live','pill-green'];
+}
 const MKT_ICONS={sell_sheet_print:'🖨️',social_media_kit:'📱',co_op_ad_template:'📰',pop_display:'🏪',brand_logo:'🏷️',product_badge:'🏆',email_template:'📧',training_deck:'🎓',catalog_page:'📕'};
 
 /* ── ECOSYSTEM APPS ── */
@@ -379,6 +391,7 @@ function navItems(){
     ['_sep'],['_label',canEdit()?'MANAGE':'TOOLS']];
   if(canEdit())n.push(['add-product','＋','Add Product']);
   n.push(['rebates','💰','Rebates & Promos'],['certifications','⚡','Certifications'],['export','⇩','Export Data']);
+  n.push(['_sep'],['_label','SCHEDULING'],['board','🗓️','Availability Board'],['notifications','🔔','Notifications']);
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
@@ -388,6 +401,7 @@ const NAV=[['dashboard','⌂','Dashboard'],['catalog','☷','Product Catalog'],[
   ['images','📸','Images'],['videos','🎬','Videos'],['documents','📄','Documents'],['marketing','📢','Marketing Assets'],
   ['add-product','＋','Add Product'],['rebates','💰','Rebates & Promos'],['certifications','⚡','Certifications'],
   ['export','⇩','Export Data'],['data-quality','◎','Data Quality'],['activity','↻','Activity Log'],
+  ['board','🗓️','Availability Board'],['notifications','🔔','Notifications'],
   ['team','👥','Team & Access'],['product-detail','☷','Product Detail']];
 
 function go(page,detail){S.page=page;S.detail=detail||null;S.editMode=false;S.detailTab='overview';S.pg=0;render()}
@@ -425,7 +439,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,board:renderBoard,notifications:renderNotifications};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -631,14 +645,14 @@ async function renderDocuments(C){
     <span class="tiny" style="margin-left:auto">${filtered.length} documents</span>
   </div>
   ${filtered.length?`<div class="tablewrap"><table>
-    <thead><tr><th>Document</th><th>Type</th><th>Product</th><th>Language</th><th>Version</th><th>Date</th><th></th></tr></thead>
-    <tbody>${filtered.map(d=>{const p=pMap[d.product_id];return`<tr>
+    <thead><tr><th>Document</th><th>Type</th><th>Product</th><th>Availability</th><th>Audience</th><th>Version</th><th></th></tr></thead>
+    <tbody>${filtered.map(d=>{const p=pMap[d.product_id];const st=liveState(d);return`<tr>
       <td><span class="model-name">${DOC_ICONS[d.doc_type]||'📄'} ${esc(d.title)}</span><br/><span class="tiny">${esc(d.file_name||'')}</span></td>
       <td><span class="pill pill-indigo">${(d.doc_type||'').replace(/_/g,' ')}</span></td>
       <td class="tiny">${p?esc(p.brand_name+' '+p.model):'—'}</td>
-      <td class="tiny">${esc(d.language||'en')} ${d.locale?'('+d.locale+')':''}</td>
+      <td><span class="pill ${st[2]}">${st[1]}</span><br/><span class="tiny">${d.available_from?fmtDate(d.available_from):'—'}${d.available_until?' → '+fmtDate(d.available_until):''}</span></td>
+      <td class="tiny">${(d.audience_tiers||['all']).map(t=>`<span class="pill pill-gray" style="margin:1px">${esc(TIER_LABEL(t))}</span>`).join('')}${(d.exclusive_codes||[]).map(c=>`<span class="pill pill-red">🔒${esc(c)}</span>`).join('')}</td>
       <td class="tiny">${esc(d.version||'—')}</td>
-      <td class="tiny">${fmtDate(d.created_at)}</td>
       <td><a href="${esc(d.file_url)}" target="_blank" class="btn btn-secondary btn-sm">Download ↗</a></td>
     </tr>`}).join('')}</tbody>
   </table></div>`:'<div class="empty">No documents uploaded yet. Upload owner manuals, spec sheets, energy guides, installation instructions, and more.</div>'}`;
@@ -665,7 +679,8 @@ async function renderMarketing(C){
   ${filtered.length?`<div class="asset-grid">${filtered.map(a=>{const p=pMap[a.product_id];return`<div class="asset-card">
     <div class="preview">${MKT_ICONS[a.asset_type]||'📢'}</div>
     <div class="info"><h4>${esc(a.title)}</h4>
-      <span class="tiny"><span class="pill pill-teal">${(a.asset_type||'').replace(/_/g,' ')}</span></span>
+      <span class="tiny"><span class="pill pill-teal">${(a.asset_type||'').replace(/_/g,' ')}</span> <span class="pill ${liveState(a)[2]}">${liveState(a)[1]}</span></span>
+      <span class="tiny">${(a.audience_tiers||['all']).map(t=>`<span class="pill pill-gray" style="margin:1px">${esc(TIER_LABEL(t))}</span>`).join('')}</span>
       <span class="tiny">${p?esc(p.brand_name+' '+p.model):a.campaign?'Campaign: '+esc(a.campaign):''} ${a.season?'· '+esc(a.season):''}</span>
       <span class="tiny">${a.usage_rights?esc(a.usage_rights):''}</span></div>
     <div class="actions"><a href="${esc(a.file_url)}" target="_blank" class="btn btn-secondary btn-sm">Download ↗</a></div>
@@ -936,10 +951,28 @@ async function showAddVideoModal(productId){
     <div class="form-row full"><label>Direct Video URL (optional)</label><input id="m-url" placeholder="https://..."/></div>
     <div class="form-row"><label>Duration (seconds)</label><input id="m-dur" type="number" placeholder="120"/></div>
     <div class="form-row"><label>Thumbnail URL</label><input id="m-thumb" placeholder="https://..."/></div>
+    <div class="form-row full" style="border-top:1px solid var(--line);padding-top:12px"><label>Who can access this?</label>
+      <div id="m-tiers" style="display:flex;flex-wrap:wrap;gap:8px">
+        ${TIERS.map(t=>`<label class="tiny" style="display:flex;gap:5px;align-items:center;background:#f4f6f8;padding:5px 9px;border-radius:8px;cursor:pointer">
+          <input type="checkbox" value="${t[0]}" ${t[0]==='all'?'checked':''} style="width:auto"/>${t[1]} ${t[2]}</label>`).join('')}
+      </div>
+      <div class="tiny" style="margin-top:4px">Leave "All Retailers" ticked for open material. Tick specific buckets for national, independent or exclusive programs.</div></div>
+    <div class="form-row"><label>Exclusive Codes (optional)</label><input id="m-excl" placeholder="ABC-GROUP, XYZ-CHAIN"/>
+      <div class="tiny">Comma-separated. Only accounts holding these codes gain access.</div></div>
+    <div class="form-row"><label>Hold as Embargoed</label>
+      <select id="m-emb"><option value="false">No — release per schedule</option><option value="true">Yes — hide until I release it</option></select></div>
+    <div class="form-row"><label>Available From</label><input id="m-from" type="datetime-local"/></div>
+    <div class="form-row"><label>Available Until</label><input id="m-until" type="datetime-local"/></div>
   </div><div class="form-actions"><button class="btn btn-indigo" onclick="saveVideo()">Save Video</button></div>`);
 }
 async function saveVideo(){
-  const row={product_id:document.getElementById('m-prod').value,title:document.getElementById('m-title').value,video_type:document.getElementById('m-type').value,
+  const tiers=[...document.querySelectorAll('#m-tiers input:checked')].map(i=>i.value);
+  const excl=(document.getElementById('m-excl')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const sched={audience_tiers:tiers.length?tiers:['all'],exclusive_codes:excl,
+    embargoed:document.getElementById('m-emb')?.value==='true',
+    available_from:document.getElementById('m-from')?.value||null,
+    available_until:document.getElementById('m-until')?.value||null};
+  const row={...sched,product_id:document.getElementById('m-prod').value,title:document.getElementById('m-title').value,video_type:document.getElementById('m-type').value,
     embed_url:document.getElementById('m-embed').value||null,video_url:document.getElementById('m-url').value||null,
     duration_seconds:document.getElementById('m-dur').value?parseInt(document.getElementById('m-dur').value):null,
     resolution:document.getElementById('m-res').value||null,thumbnail_url:document.getElementById('m-thumb').value||null,
@@ -962,10 +995,28 @@ async function showAddDocModal(productId){
     <div class="form-row"><label>File Name</label><input id="m-fname" placeholder="manual-xyz.pdf"/></div>
     <div class="form-row"><label>Version</label><input id="m-ver" placeholder="Rev A"/></div>
     <div class="form-row"><label>Locale</label><select id="m-locale"><option value="">—</option><option>en-US</option><option>en-CA</option><option>fr-CA</option><option>es-MX</option></select></div>
+    <div class="form-row full" style="border-top:1px solid var(--line);padding-top:12px"><label>Who can access this?</label>
+      <div id="m-tiers" style="display:flex;flex-wrap:wrap;gap:8px">
+        ${TIERS.map(t=>`<label class="tiny" style="display:flex;gap:5px;align-items:center;background:#f4f6f8;padding:5px 9px;border-radius:8px;cursor:pointer">
+          <input type="checkbox" value="${t[0]}" ${t[0]==='all'?'checked':''} style="width:auto"/>${t[1]} ${t[2]}</label>`).join('')}
+      </div>
+      <div class="tiny" style="margin-top:4px">Leave "All Retailers" ticked for open material. Tick specific buckets for national, independent or exclusive programs.</div></div>
+    <div class="form-row"><label>Exclusive Codes (optional)</label><input id="m-excl" placeholder="ABC-GROUP, XYZ-CHAIN"/>
+      <div class="tiny">Comma-separated. Only accounts holding these codes gain access.</div></div>
+    <div class="form-row"><label>Hold as Embargoed</label>
+      <select id="m-emb"><option value="false">No — release per schedule</option><option value="true">Yes — hide until I release it</option></select></div>
+    <div class="form-row"><label>Available From</label><input id="m-from" type="datetime-local"/></div>
+    <div class="form-row"><label>Available Until</label><input id="m-until" type="datetime-local"/></div>
   </div><div class="form-actions"><button class="btn btn-indigo" onclick="saveDoc()">Save Document</button></div>`);
 }
 async function saveDoc(){
-  const row={product_id:document.getElementById('m-prod').value,title:document.getElementById('m-title').value,doc_type:document.getElementById('m-type').value,
+  const tiers=[...document.querySelectorAll('#m-tiers input:checked')].map(i=>i.value);
+  const excl=(document.getElementById('m-excl')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const sched={audience_tiers:tiers.length?tiers:['all'],exclusive_codes:excl,
+    embargoed:document.getElementById('m-emb')?.value==='true',
+    available_from:document.getElementById('m-from')?.value||null,
+    available_until:document.getElementById('m-until')?.value||null};
+  const row={...sched,product_id:document.getElementById('m-prod').value,title:document.getElementById('m-title').value,doc_type:document.getElementById('m-type').value,
     file_url:document.getElementById('m-url').value,file_name:document.getElementById('m-fname').value||null,
     language:document.getElementById('m-lang').value,locale:document.getElementById('m-locale').value||null,version:document.getElementById('m-ver').value||null,
     source:'manufacturer',uploaded_by:S.user.id};
@@ -985,16 +1036,31 @@ async function showAddMarketingModal(){
     <div class="form-row"><label>Campaign / Season</label><input id="m-campaign" placeholder="Spring 2026"/></div>
     <div class="form-row full"><label>File URL</label><input id="m-url" placeholder="https://..."/></div>
     <div class="form-row"><label>Usage Rights</label><select id="m-rights"><option value="">—</option><option>Authorized Dealer Only</option><option>Open Use</option><option>Co-Op Approved</option></select></div>
-    <div class="form-row"><label>Effective Date</label><input id="m-eff" type="date"/></div>
-    <div class="form-row"><label>Expiry Date</label><input id="m-exp" type="date"/></div>
+    <div class="form-row full" style="border-top:1px solid var(--line);padding-top:12px"><label>Who can access this?</label>
+      <div id="m-tiers" style="display:flex;flex-wrap:wrap;gap:8px">
+        ${TIERS.map(t=>`<label class="tiny" style="display:flex;gap:5px;align-items:center;background:#f4f6f8;padding:5px 9px;border-radius:8px;cursor:pointer">
+          <input type="checkbox" value="${t[0]}" ${t[0]==='all'?'checked':''} style="width:auto"/>${t[1]} ${t[2]}</label>`).join('')}
+      </div>
+      <div class="tiny" style="margin-top:4px">Leave "All Retailers" ticked for open material. Tick specific buckets for national, independent or exclusive programs.</div></div>
+    <div class="form-row"><label>Exclusive Codes (optional)</label><input id="m-excl" placeholder="ABC-GROUP, XYZ-CHAIN"/>
+      <div class="tiny">Comma-separated. Only accounts holding these codes gain access.</div></div>
+    <div class="form-row"><label>Hold as Embargoed</label>
+      <select id="m-emb"><option value="false">No — release per schedule</option><option value="true">Yes — hide until I release it</option></select></div>
+    <div class="form-row"><label>Available From</label><input id="m-from" type="datetime-local"/></div>
+    <div class="form-row"><label>Available Until</label><input id="m-until" type="datetime-local"/></div>
   </div><div class="form-actions"><button class="btn btn-indigo" onclick="saveMarketing()">Save Asset</button></div>`);
 }
 async function saveMarketing(){
+  const tiers=[...document.querySelectorAll('#m-tiers input:checked')].map(i=>i.value);
+  const excl=(document.getElementById('m-excl')?.value||'').split(',').map(x=>x.trim()).filter(Boolean);
+  const sched={audience_tiers:tiers.length?tiers:['all'],exclusive_codes:excl,
+    embargoed:document.getElementById('m-emb')?.value==='true',
+    available_from:document.getElementById('m-from')?.value||null,
+    available_until:document.getElementById('m-until')?.value||null};
   const prodVal=document.getElementById('m-prod').value;
-  const row={product_id:prodVal||null,title:document.getElementById('m-title').value,asset_type:document.getElementById('m-type').value,
+  const row={...sched,product_id:prodVal||null,title:document.getElementById('m-title').value,asset_type:document.getElementById('m-type').value,
     file_url:document.getElementById('m-url').value,campaign:document.getElementById('m-campaign').value||null,
     usage_rights:document.getElementById('m-rights').value||null,
-    effective_date:document.getElementById('m-eff').value||null,expiry_date:document.getElementById('m-exp').value||null,
     source:'manufacturer',uploaded_by:S.user.id};
   if(!row.file_url||!row.title)return alert('Title and File URL are required');
   const {error}=await sb.from('pim_marketing_assets').insert(row);
@@ -1227,7 +1293,103 @@ async function renderExport(C){
   </div>`;
 }
 
-/* ══════════════════ TEAM & ACCESS (admin only) ══════════════════ */
+/* ══════════════════ AVAILABILITY BOARD ══════════════════ */
+const BOARD_SOURCES=[
+  {t:'pim_product_documents',label:'Documents',icon:'📄',name:'title',sub:'doc_type'},
+  {t:'pim_marketing_assets', label:'Marketing', icon:'📢',name:'title',sub:'asset_type'},
+  {t:'pim_product_videos',   label:'Videos',    icon:'🎬',name:'title',sub:'video_type'},
+  {t:'pim_product_rebates',  label:'Promotions',icon:'💰',name:'rebate_name',sub:'rebate_type'},
+];
+async function renderBoard(C){
+  const results=await Promise.all(BOARD_SOURCES.map(async src=>{
+    const {data}=await sb.from(src.t).select('*');
+    return (data||[]).map(r=>({...r,_src:src,_name:r[src.name]||'Untitled',_sub:r[src.sub]||''}));
+  }));
+  const all=results.flat().map(r=>({...r,_st:liveState(r)}));
+  const buckets={live:[],ending:[],scheduled:[],expired:[],embargoed:[]};
+  all.forEach(r=>buckets[r._st[0]].push(r));
+  const sortBy=(a,b)=>new Date(a.available_from||0)-new Date(b.available_from||0);
+  Object.values(buckets).forEach(b=>b.sort(sortBy));
+
+  const col=(key,title,note,color)=>`
+    <div class="panel" style="margin:0">
+      <h2 style="display:flex;justify-content:space-between;align-items:center">
+        <span>${title}</span><span class="pill ${color}">${buckets[key].length}</span></h2>
+      <div class="tiny" style="margin-bottom:10px">${note}</div>
+      ${buckets[key].length?buckets[key].slice(0,25).map(r=>`
+        <div style="padding:9px 0;border-bottom:1px solid #f0f2f5">
+          <div style="font-weight:700;font-size:13px">${r._src.icon} ${esc(r._name)}</div>
+          <div class="tiny">${esc(r.brand_name||'')} ${r._sub?'· '+esc(String(r._sub).replace(/_/g,' ')):''}</div>
+          <div class="tiny">${r.available_from?'From '+fmtDate(r.available_from):'No start date'}${r.available_until?' → '+fmtDate(r.available_until):''}</div>
+          <div style="margin-top:4px">${(r.audience_tiers||['all']).map(t=>`<span class="pill pill-indigo" style="margin-right:3px">${esc(TIER_LABEL(t))}</span>`).join('')}
+          ${(r.exclusive_codes||[]).map(c=>`<span class="pill pill-red">🔒 ${esc(c)}</span>`).join('')}</div>
+        </div>`).join(''):'<div class="empty" style="border:0;padding:14px">Nothing here</div>'}
+    </div>`;
+
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>🗓️ Availability Board</h1><p class="sub">Exactly what retailers can access right now, what's coming, and what has closed.</p></div></div>
+  <div class="cards" style="grid-template-columns:repeat(5,1fr)">
+    <div class="metric"><div class="label">Live Now</div><div class="value" style="color:var(--green)">${buckets.live.length+buckets.ending.length}</div></div>
+    <div class="metric"><div class="label">Ending Soon</div><div class="value" style="color:var(--amber)">${buckets.ending.length}</div><div class="note">within 14 days</div></div>
+    <div class="metric"><div class="label">Scheduled</div><div class="value">${buckets.scheduled.length}</div><div class="note">not yet visible</div></div>
+    <div class="metric"><div class="label">Embargoed</div><div class="value" style="color:var(--red)">${buckets.embargoed.length}</div><div class="note">held back</div></div>
+    <div class="metric"><div class="label">Expired</div><div class="value" style="color:var(--muted)">${buckets.expired.length}</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px">
+    ${col('live','✅ Live Now','Retailers can access these today','pill-green')}
+    ${col('ending','⏳ Ending Soon','Windows closing within 14 days','pill-amber')}
+    ${col('scheduled','📆 Scheduled','Will open automatically on their start date','pill-indigo')}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+    ${col('embargoed','🚫 Embargoed','Hidden from retailers and excluded from alerts','pill-red')}
+    ${col('expired','📁 Expired','Window closed — no longer downloadable','pill-gray')}
+  </div>`;
+}
+
+/* ══════════════════ NOTIFICATIONS ══════════════════ */
+const NOTIF_ICON={price_sheet:'💲',new_document:'📄',new_marketing:'📢',video:'🎬',image:'📸',rebate:'💰'};
+async function renderNotifications(C){
+  const [{data:notes},{data:reads},{data:prof}]=await Promise.all([
+    sb.from('piq_notifications').select('*').order('publish_at',{ascending:false}).limit(100),
+    sb.from('piq_notification_reads').select('notification_id'),
+    sb.from('piq_retailer_profiles').select('*').maybeSingle()
+  ]);
+  const readSet=new Set((reads||[]).map(r=>r.notification_id));
+  const all=notes||[];
+  const unread=all.filter(n=>!readSet.has(n.id));
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>🔔 Notifications</h1>
+    <p class="sub">${unread.length?unread.length+' new update'+(unread.length===1?'':'s'):'You are all caught up'} — new price sheets, promotions and marketing materials for your account.</p></div>
+    ${unread.length?'<button class="btn btn-secondary" onclick="markAllRead()">Mark all read</button>':''}</div>
+  ${prof?`<div class="panel" style="background:#eef0ff;border-color:#c7d2fe">
+    <strong>Your account bucket: ${esc(TIER_LABEL(prof.account_type))}</strong>
+    <div class="tiny">${esc(prof.company_name||'')}${prof.buying_group?' · Buying group: '+esc(prof.buying_group):''}${(prof.exclusive_codes||[]).length?' · Exclusive access: '+prof.exclusive_codes.map(esc).join(', '):''}</div>
+    <div class="tiny">You only receive materials released to this bucket.</div>
+  </div>`:''}
+  ${all.length?all.map(n=>{
+    const isNew=!readSet.has(n.id);
+    return `<div class="panel" style="margin-bottom:10px;${isNew?'border-left:4px solid var(--indigo)':''}">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="font-size:22px">${NOTIF_ICON[n.kind]||'🔔'}</div>
+        <div style="flex:1">
+          <div style="font-weight:700">${esc(n.title)} ${isNew?'<span class="pill pill-indigo">New</span>':''}</div>
+          <div class="tiny">${esc(n.body||'')}</div>
+          <div class="tiny">${esc(n.brand_name||'')} · released ${fmtDate(n.publish_at)}${n.expires_at?' · available until '+fmtDate(n.expires_at):''}</div>
+          <div style="margin-top:5px">${(n.audience_tiers||[]).map(t=>`<span class="pill pill-gray" style="margin-right:3px">${esc(TIER_LABEL(t))}</span>`).join('')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${n.link_url?`<a class="btn btn-secondary btn-sm" href="${esc(n.link_url)}" target="_blank">Open ↗</a>`:''}
+          ${n.product_id?`<button class="btn btn-secondary btn-sm" onclick="go('product-detail','${n.product_id}')">Product →</button>`:''}
+        </div>
+      </div>
+    </div>`}).join('')
+  :'<div class="empty">No notifications yet. When manufacturers release price sheets, promotions or marketing materials to your account type, they appear here.</div>'}`;
+}
+async function markAllRead(){
+  const {data}=await sb.from('piq_notifications').select('id');
+  if(data&&data.length)await sb.rpc('piq_mark_read',{p_ids:data.map(n=>n.id)});
+  renderPage();
+}
 async function renderTeam(C){
   if(!S.role.isAdmin)return C.innerHTML='<div class="empty">Team &amp; Access is restricted to platform administrators.</div>';
   const [{data:members},{data:vendors},{data:admins},{data:invites},{data:groups}]=await Promise.all([
