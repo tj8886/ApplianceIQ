@@ -762,22 +762,34 @@ async function renderProductDetail(C){
   const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length,rebates:(rebates||[]).length,history:(versions||[]).length,pricing:(priceHistory||[]).length};
   const tab=S.detailTab||'overview';
 
+  // Pre-compute complex values
+  const condBadges=[];
+  if(p.is_discontinued)condBadges.push('<span class="pill pill-red">🚫 Discontinued</span>');
+  if(p.is_clearance)condBadges.push('<span class="pill pill-amber">🏷️ Clearance</span>');
+  if(p.is_end_of_life)condBadges.push('<span class="pill pill-amber">⚠️ End of Life</span>');
+  if(p.is_open_box)condBadges.push('<span class="pill pill-amber">📦 Open Box</span>');
+  if(p.is_refurbished)condBadges.push('<span class="pill pill-amber">🔧 Refurbished</span>');
+  (p.condition_flags||[]).filter(f=>!['discontinued','clearance','end_of_life','open_box','refurbished'].includes(f)).forEach(f=>condBadges.push('<span class="pill pill-gray">'+f.replace(/_/g,' ')+'</span>'));
+  if(p.replacement_model)condBadges.push('<span class="pill pill-indigo">→ '+esc(p.replacement_model)+'</span>');
+  const condHtml=condBadges.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+condBadges.join('')+'</div>':'';
+  const condNote=p.condition_notes?'<div style="background:var(--amberbg);color:var(--amber);padding:8px 14px;border-radius:8px;font-size:13px;margin-bottom:14px">ℹ️ '+esc(p.condition_notes)+'</div>':'';
+
+  let colorsArr=[];
+  try{colorsArr=typeof p.available_colors==='string'?JSON.parse(p.available_colors||'[]'):(p.available_colors||[]);}catch(e){}
+  const colorsHtml=colorsArr.length?'<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:8px">Available Colors & Finishes ('+colorsArr.length+')</h3><div style="display:flex;gap:8px;flex-wrap:wrap">'+colorsArr.map(function(c){return '<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px"><strong style="font-size:13px">'+esc(c.color||c.finish||'')+'</strong>'+(c.model_number?'<br/><span style="font-size:11px;color:var(--muted);font-family:monospace">'+esc(c.model_number)+'</span>':'')+(c.msrp?'<br/><span style="font-size:12px;font-weight:700;color:var(--indigo)">'+fmt$(c.msrp)+'</span>':'')+(c.sale_price?'<span style="font-size:12px;font-weight:700;color:var(--red);margin-left:6px">'+fmt$(c.sale_price)+'</span>':'')+'</div>';}).join('')+'</div></div>':'';
+
+  let specsObj={};
+  try{specsObj=typeof p.specs_json==='string'?JSON.parse(p.specs_json||'{}'):(p.specs_json||{});}catch(e){}
+  const specsKeys=Object.keys(specsObj).filter(function(k){return specsObj[k]!==null&&specsObj[k]!=='';});
+  const specsHtml=specsKeys.length?'<div class="panel"><h2>Detailed Specifications</h2><div class="kv">'+specsKeys.map(function(k){return '<div><small>'+k.replace(/_/g,' ')+'</small>'+esc(String(specsObj[k]))+'</div>';}).join('')+'</div></div>':'<div class="empty">No detailed specifications yet.</div>';
+
+  const priceRows=(priceHistory||[]).map(function(ph){return '<tr><td class="tiny">'+new Date(ph.checked_at).toLocaleDateString()+'</td><td>'+fmt$(ph.msrp)+'</td><td style="color:var(--red)">'+fmt$(ph.sale_price)+'</td><td style="color:var(--green)">'+fmt$(ph.lowest_price)+'</td><td class="tiny">'+esc(ph.lowest_price_source||'')+'</td></tr>';}).join('');
+
   const tabContent={
-    overview:`
-      ${(p.condition_flags||[]).length||p.is_discontinued||p.is_clearance||p.is_end_of_life||p.is_open_box||p.is_refurbished?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-        ${p.is_discontinued?'<span class="pill pill-red">🚫 Discontinued</span>':''}
-        ${p.is_clearance?'<span class="pill pill-amber">🏷️ Clearance</span>':''}
-        ${p.is_end_of_life?'<span class="pill pill-amber">⚠️ End of Life</span>':''}
-        ${p.is_open_box?'<span class="pill pill-amber">📦 Open Box</span>':''}
-        ${p.is_refurbished?'<span class="pill pill-amber">🔧 Refurbished</span>':''}
-        ${(p.condition_flags||[]).filter(f=>!['discontinued','clearance','end_of_life','open_box','refurbished'].includes(f)).map(f=>'<span class="pill pill-gray">'+f.replace(/_/g,' ')+'</span>').join('')}
-        ${p.replacement_model?'<span class="pill pill-indigo">→ '+esc(p.replacement_model)+'</span>':''}
-      </div>`:''}
-      ${p.condition_notes?'<div style="background:var(--amberbg);color:var(--amber);padding:8px 14px;border-radius:8px;font-size:13px;margin-bottom:14px">ℹ️ '+esc(p.condition_notes)+'</div>':''}
-      <div class="kv">
+    overview:condHtml+condNote+`<div class="kv">
       <div><small>Brand</small>${esc(p.brand_name)}</div><div><small>Manufacturer</small>${esc(p.manufacturer_name)}</div><div><small>Model</small>${esc(p.model)}</div>
       <div><small>Category</small>${esc(p.category)}</div><div><small>Series</small>${esc(p.series||'—')}</div><div><small>Product Line</small>${esc(p.product_line||'—')}</div>
-      <div><small>MSRP</small>${fmt$(p.msrp)}</div><div><small>Sale Price</small><span style="color:${p.sale_price?'var(--red)':'inherit'}">${fmt$(p.sale_price)}</span></div><div><small>Lowest Found</small><span style="color:${p.lowest_price?'var(--green)':'inherit'}">${fmt$(p.lowest_price)}${p.lowest_price_source?' <small>('+esc(p.lowest_price_source)+')</small>':''}</span></div>
+      <div><small>MSRP</small>${fmt$(p.msrp)}</div><div><small>Sale Price</small><span style="color:${p.sale_price?'var(--red)':'inherit'}">${fmt$(p.sale_price)}</span></div><div><small>Lowest Found</small><span style="color:${p.lowest_price?'var(--green)':'inherit'}">${fmt$(p.lowest_price)}</span></div>
       <div><small>MAP Price</small>${fmt$(p.map_price)}</div><div><small>Dealer Cost</small>${fmt$(p.dealer_cost)}</div><div><small>Price Checked</small>${p.price_checked_at?new Date(p.price_checked_at).toLocaleDateString():'—'}</div>
       <div><small>UPC</small>${esc(p.upc||'—')}</div><div><small>Finish</small>${esc(p.finish||'—')}</div><div><small>Color</small>${esc(p.color||'—')}</div>
       <div><small>ENERGY STAR</small>${p.energy_star?'✅ Yes':'—'}</div><div><small>ADA Compliant</small>${p.ada_compliant?'✅ Yes':'—'}</div><div><small>Made In</small>${esc(p.made_in||'—')}</div>
@@ -786,11 +798,10 @@ async function renderProductDetail(C){
       <div><small>Capacity</small>${p.capacity_cu_ft?p.capacity_cu_ft+' cu ft':'—'}</div><div><small>Voltage</small>${esc(p.voltage||'—')}</div><div><small>Amperage</small>${p.amperage?p.amperage+'A':'—'}</div>
       <div><small>Wattage</small>${p.wattage?p.wattage+'W':'—'}</div><div><small>Frequency</small>${esc(p.frequency_hz||'—')}</div><div><small>Installation</small>${esc(p.installation_type||'—')}</div>
       <div><small>Launch Date</small>${fmtDate(p.launch_date)}</div><div><small>Country</small>${(p.country_availability||[]).join(', ')||'—'}</div><div><small>Version</small>v${p.version_number}</div>
-    </div>
-    ${(()=>{const colors=typeof p.available_colors==='string'?JSON.parse(p.available_colors||'[]'):(p.available_colors||[]);return colors.length?'<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:8px">Available Colors & Finishes ('+colors.length+')</h3><div style="display:flex;gap:8px;flex-wrap:wrap">'+colors.map(c=>'<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px"><strong style="font-size:13px">'+esc(c.color||c.finish||'')+'</strong>'+(c.model_number?'<br/><span style="font-size:11px;color:var(--muted);font-family:monospace">'+esc(c.model_number)+'</span>':'')+(c.msrp?'<br/><span style="font-size:12px;font-weight:700;color:var(--indigo)">'+fmt$(c.msrp)+'</span>':'')+(c.sale_price?'<span style="font-size:12px;font-weight:700;color:var(--red);margin-left:6px">'+fmt$(c.sale_price)+'</span>':'')+'</div>').join('')+'</div></div>':'';})()}
-    ${p.short_description?'<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:6px">Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(p.short_description)+'</p></div>':''}
-    ${p.long_description?'<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Long Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(p.long_description)+'</p></div>':''}
-    ${p.features_html?'<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Features</h3><div style="color:var(--muted);font-size:13px;line-height:1.7">'+p.features_html+'</div></div>':''}`,
+    </div>`+colorsHtml
+    +(p.short_description?'<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:6px">Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(p.short_description)+'</p></div>':'')
+    +(p.long_description?'<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Long Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(p.long_description)+'</p></div>':'')
+    +(p.features_html?'<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Features</h3><div style="color:var(--muted);font-size:13px;line-height:1.7">'+p.features_html+'</div></div>':''),
 
     pricing:`<div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
       <div class="metric"><div class="label">MSRP</div><div class="value">${fmt$(p.msrp)}</div></div>
@@ -799,10 +810,9 @@ async function renderProductDetail(C){
       <div class="metric"><div class="label">Savings</div><div class="value" style="color:var(--indigo)">${p.msrp&&p.lowest_price?Math.round((1-p.lowest_price/p.msrp)*100)+'%':'—'}</div>${p.msrp&&p.lowest_price?'<div class="tiny" style="margin-top:2px">'+fmt$(p.msrp-p.lowest_price)+' off</div>':''}</div>
     </div>
     ${p.price_checked_at?'<div style="font-size:12px;color:var(--muted);margin-bottom:16px">Last checked: '+new Date(p.price_checked_at).toLocaleString()+'</div>':''}
-    ${(priceHistory||[]).length?'<div class="panel"><h2>Price History</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>MSRP</th><th>Sale</th><th>Lowest</th><th>Source</th></tr></thead><tbody>'+(priceHistory||[]).map(ph=>'<tr><td class="tiny">'+new Date(ph.checked_at).toLocaleDateString()+'</td><td>'+fmt$(ph.msrp)+'</td><td style="color:var(--red)">'+fmt$(ph.sale_price)+'</td><td style="color:var(--green)">'+fmt$(ph.lowest_price)+'</td><td class="tiny">'+esc(ph.lowest_price_source||'')+'</td></tr>').join('')+'</tbody></table></div></div>':'<div class="empty">No price history yet. Run the PIM Scraper price check to start tracking prices over time.</div>'}`,
+    ${priceRows?'<div class="panel"><h2>Price History</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>MSRP</th><th>Sale</th><th>Lowest</th><th>Source</th></tr></thead><tbody>'+priceRows+'</tbody></table></div></div>':'<div class="empty">No price history yet.</div>'}`,
 
-    specs:(()=>{const sj=typeof p.specs_json==='string'?JSON.parse(p.specs_json||'{}'):(p.specs_json||{});const keys=Object.keys(sj).filter(k=>sj[k]!==null&&sj[k]!=='');
-      return keys.length?'<div class="panel"><h2>Detailed Specifications</h2><div class="kv">'+keys.map(k=>'<div><small>'+k.replace(/_/g,' ')+'</small>'+esc(String(sj[k]))+'</div>').join('')+'</div></div>':'<div class="empty">No detailed specifications yet. Scrape this product to populate specs.</div>';})(),(images||[]).length?`<div class="asset-grid">${(images||[]).map(img=>`<div class="asset-card">
+    specs:specsHtml,(images||[]).length?`<div class="asset-grid">${(images||[]).map(img=>`<div class="asset-card">
       <div class="preview">${img.file_url?`<img src="${esc(img.file_url)}" onerror="this.parentNode.innerHTML='📸'"/>`:'📸'}${img.is_primary?'<span class="pill pill-green" style="position:absolute;top:6px;right:6px">Primary</span>':''}</div>
       <div class="info"><h4>${(img.image_type||'').replace(/_/g,' ')}</h4><span class="tiny">${esc(img.finish_shown||'')} ${esc(img.angle||'')} ${img.width_px?img.width_px+'×'+img.height_px:''}</span></div>
       <div class="actions"><a href="${esc(img.file_url)}" target="_blank" class="btn btn-secondary btn-sm">View ↗</a>
