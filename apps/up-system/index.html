@@ -106,7 +106,7 @@ h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
 .fb-metrics{display:flex;gap:20px}
 .fb-m{text-align:center}.fb-m .fv{font-size:22px;font-weight:800}.fb-m .fl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.7}
 .queue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
-.rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative;transition:all .15s}
+.rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative}
 .rep-card.current-up{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-tint)}
 .rep-card.next-up{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
 .rep-card.with-customer{border-color:var(--amber);background:#fffbf5}
@@ -388,9 +388,13 @@ function closeModal(){modalRoot.innerHTML='';}
 function formErr(msg){const el=$('#formErr');if(el){el.textContent=msg;el.classList.add('show');}}
 
 let floorTickerId=null;
+let _rc=0;
 async function render(){
+  _rc++;
   if(floorTickerId){clearInterval(floorTickerId);floorTickerId=null;}
-  mainEl.innerHTML='<div class="empty">Loading…</div>';
+  /* debug bar — shows render count so we can see what's happening */
+  let dbg=document.getElementById('_dbg');if(!dbg){dbg=document.createElement('div');dbg.id='_dbg';dbg.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#c02d1e;color:#fff;font:bold 13px monospace;padding:6px 12px;z-index:99999';document.body.appendChild(dbg);}
+  dbg.textContent='render #'+_rc+' at '+new Date().toLocaleTimeString();
   const views={floor:renderFloor,greeter:renderGreeter,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,analytics:renderAnalytics,staffing:renderStaffing,settings:renderSettings};
   try{await(views[currentView]||renderFloor)();}catch(err){mainEl.innerHTML=`<div class="empty">Error: ${esc(err.message)}</div>`;console.error(err);}
 }
@@ -510,9 +514,11 @@ async function renderFloor(){
   const currentUpEntry=queueEntries.find(e=>e.is_current_up&&e.up_offered_at);
   if(currentUpEntry){
     const secsSince=Math.floor((Date.now()-new Date(currentUpEntry.up_offered_at).getTime())/1000);
-    if(secsSince>=upTimeout){handleAcceptUpTimeout(sid,currentUpEntry).then(render);}
+    /* timeout handler disabled to debug flashing */
+    // if(secsSince>=upTimeout){handleAcceptUpTimeout(sid,currentUpEntry).then(render);}
   }
-  floorTickerId=setInterval(()=>{if(currentView==='floor')render();},5000);
+  /* auto-refresh disabled to debug flashing — data only refreshes on user action */
+  // floorTickerId=setInterval(()=>{if(currentView==='floor')render();},5000);
 }
 
 function waitCardHtml(c){
