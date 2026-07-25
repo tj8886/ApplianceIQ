@@ -6,21 +6,14 @@
   <title>PIM Scraper — Appliance IQ</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🔍</text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0f1117; color: #e4e6ed; font-family: 'Inter', -apple-system, sans-serif; }
-    #root { min-height: 100vh; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #181a22; }
-    ::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }
-  </style>
+  <style>* { margin: 0; padding: 0; box-sizing: border-box; } body { background: #0f1117; color: #e4e6ed; font-family: 'Inter', -apple-system, sans-serif; } #root { min-height: 100vh; } ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #181a22; } ::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }</style>
 </head>
 <body>
-  <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="text/babel">
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
 const { useState, useCallback, useRef } = React;
 
 const SUPABASE_URL = "https://fumwwhyozeouoqscolke.supabase.co";
@@ -246,7 +239,7 @@ async function callClaude(systemPrompt, userMsg, retries = 3) {
         method: "POST",
         headers,
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: "claude-haiku-4-5-20251001",
           max_tokens: 8000,
           system: systemPrompt,
           messages: [{ role: "user", content: userMsg }],
@@ -623,8 +616,8 @@ function PIMScraper() {
       const specs = data.specs || {};
 
       const productData = {
-        manufacturer_name: data.manufacturer_name || data.brand_name,
-        brand_name: data.brand_name, model: data.model,
+        manufacturer_name: data.manufacturer_name || data.brand_name || "Unknown",
+        brand_name: data.brand_name || data.manufacturer_name || "Unknown", model: data.model,
         category: data.category || "refrigeration",
         product_line: data.product_line || null, series: data.series || null,
         short_description: data.short_description || null, long_description: data.long_description || null,
@@ -658,7 +651,7 @@ function PIMScraper() {
         made_in: data.made_in || null, country_availability: data.country_availability || ["CA", "US"],
         source_type: "web_scrape", source_reference: data.source_url || null,
         source_confidence: 0.85, source_extracted_at: new Date().toISOString(),
-        source_review_status: "approved", updated_at: new Date().toISOString(),
+        source_review_status: "accepted", updated_at: new Date().toISOString(),
       };
 
       let productId;
@@ -1401,9 +1394,8 @@ function PIMScraper() {
     </div>
   );
 }
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(PIMScraper));
-  </script>
+</script>
 </body>
 </html>
