@@ -238,7 +238,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .onb-steps{display:flex;gap:8px;margin-bottom:24px}.onb-dot{width:32px;height:4px;border-radius:2px;background:var(--line)}.onb-dot.active{background:var(--teal)}.onb-dot.done{background:var(--verified)}
 .role-badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:4px;background:var(--teal-tint);color:var(--teal)}
 .role-badge.member{background:#f0f3f9;color:var(--steel)}
-.nav-btn.admin-only{display:none !important}.is-admin .nav-btn.admin-only{display:flex !important}
+.nav-btn.admin-only{display:none}
 .rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative}
 </style>
 </head>
@@ -441,17 +441,17 @@ async function boot(){
         stores=locs||[];currentStore=stores[0]||null;
         const sel=$('#storeSelect');sel.innerHTML=stores.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')||'<option>No stores</option>';
         try{const{data:p}=await sb.rpc('get_org_member_profiles',{p_org_id:currentOrg.id});(p||[]).forEach(u=>profiles[u.user_id]=u.display_name||u.email?.split('@')[0]||'Unknown');}catch{}
-        const shell=$('#app .shell');if(['admin','owner'].includes(userRole))shell.classList.add('is-admin');else shell.classList.remove('is-admin');
+        $$('.nav-btn.admin-only').forEach(b=>{b.style.display=['admin','owner'].includes(userRole)?'flex':'none';});
         setupRealtime();render();
       }
     };
   } else{orgSel.style.display='none';}
 
-  // Role-gate the sidebar
-  const shell=$('#app .shell');
-  console.log('User role:',userRole,'orgs:',orgs.length);
-  if(['admin','owner'].includes(userRole)){shell.classList.add('is-admin');console.log('Admin mode ON');}
-  else shell.classList.remove('is-admin');
+  // Role-gate the sidebar — directly show/hide admin buttons
+  console.log('User role:',userRole);
+  $$('.nav-btn.admin-only').forEach(b=>{
+    b.style.display=['admin','owner'].includes(userRole)?'flex':'none';
+  });
 
   // Get stores
   const{data:locs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).eq('location_type','store').order('name');
