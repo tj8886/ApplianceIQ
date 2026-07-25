@@ -427,10 +427,11 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
     <div id="view-builder" class="hidden">
       <div style="margin-bottom:32px"><h1 style="font-size:26px;margin-bottom:4px">Package Builder</h1><p style="color:var(--steel)">Build a professional appliance specification package.</p></div>
       <div class="steps">
-        <button class="step-btn active" onclick="setStep(1)">1. Customer &amp; Project</button>
-        <button class="step-btn" onclick="setStep(2)">2. Add Appliances</button>
-        <button class="step-btn" onclick="setStep(3)">3. Quote &amp; Validity</button>
-        <button class="step-btn" onclick="setStep(4)">4. Review &amp; Send</button>
+        <button class="step-btn active" onclick="setStep(1)">1. Customer</button>
+        <button class="step-btn" onclick="setStep(2)">2. Appliances</button>
+        <button class="step-btn" onclick="setStep(3)">3. Services</button>
+        <button class="step-btn" onclick="setStep(4)">4. Validity</button>
+        <button class="step-btn" onclick="setStep(5)">5. Review</button>
       </div>
       <div id="step-1"><div class="card"><h3 style="margin-bottom:20px">Customer &amp; Project Details</h3><div class="grid2">
         <div><label>Customer Name</label><input id="b-cust-name" placeholder="John Smith" /></div>
@@ -467,12 +468,51 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div id="product-total" class="hidden" style="text-align:right;margin-top:8px;font-family:Sora;font-size:18px;font-weight:700"></div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
           <button class="btn btn-s" onclick="setStep(1)">← Customer Details</button>
-          <button class="btn btn-p" onclick="setStep(3)">Quote &amp; Validity →</button>
+          <button class="btn btn-p" onclick="setStep(3)">Services →</button>
         </div>
       </div>
 
-      <!-- STEP 3: QUOTE VALIDITY -->
+      <!-- STEP 3: SERVICES -->
       <div id="step-3" class="hidden">
+        <div class="card" style="margin-bottom:16px">
+          <h3 style="margin-bottom:20px">Services &amp; Protection Plans</h3>
+          <div id="warranty-summary-section" class="hidden" style="margin-bottom:24px">
+            <h4 style="font-size:14px;margin-bottom:12px;color:var(--navy)">Protection Plans</h4>
+            <div id="warranty-summary-list" style="display:flex;flex-direction:column;gap:8px"></div>
+            <div style="text-align:right;margin-top:10px;font-family:Sora;font-weight:700;font-size:16px" id="warranty-subtotal">Warranty Total: $0</div>
+          </div>
+          <h4 style="font-size:14px;margin-bottom:12px;color:var(--navy)">Additional Services</h4>
+          <div id="services-list" style="margin-bottom:16px"></div>
+          <div id="add-service-form" class="hidden" style="border:1px solid var(--focus);border-radius:var(--radius);padding:16px;margin-bottom:16px">
+            <div class="grid3" style="gap:12px;margin-bottom:12px">
+              <div><label>Service Type</label><select id="svc-type">
+                <option value="delivery">Delivery</option>
+                <option value="installation">Installation</option>
+                <option value="haul_away">Haul-Away</option>
+                <option value="accessory">Accessory</option>
+                <option value="other">Other</option>
+              </select></div>
+              <div><label>Description</label><input id="svc-desc" placeholder="e.g. White-glove delivery" /></div>
+              <div><label>Amount ($)</label><input id="svc-amount" type="number" step="0.01" placeholder="149" /></div>
+            </div>
+            <div class="flex" style="gap:8px"><button class="btn btn-p" onclick="addService()">Add Service</button><button class="btn btn-s" onclick="el('add-service-form').classList.add('hidden')">Cancel</button></div>
+          </div>
+          <button class="btn btn-s" onclick="el('add-service-form').classList.remove('hidden')"><svg class="icon" style="width:16px;height:16px"><use href="#i-plus"/></svg> Add Service</button>
+          <div id="services-total" style="text-align:right;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">
+            <div style="display:flex;justify-content:flex-end;gap:40px">
+              <div><div style="font-size:13px;color:var(--steel)">Services Total</div><div class="num" style="font-family:Sora;font-weight:700;font-size:18px" id="svc-total-display">$0</div></div>
+              <div><div style="font-size:13px;color:var(--steel)">Grand Total</div><div class="num" style="font-family:Sora;font-weight:700;font-size:22px;color:var(--navy)" id="grand-total-display">$0</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:24px;display:flex;justify-content:space-between">
+          <button class="btn btn-s" onclick="setStep(2)">← Appliances</button>
+          <button class="btn btn-p" onclick="setStep(4)">Quote &amp; Validity →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: QUOTE VALIDITY -->
+      <div id="step-4" class="hidden">
         <div class="card" style="margin-bottom:16px">
           <h3 style="margin-bottom:20px">Quote Validity Period</h3>
           <div class="grid2" style="margin-bottom:20px">
@@ -532,13 +572,13 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         </div>
         <div class="card" style="margin-bottom:16px"><div class="flex" style="gap:12px"><input type="checkbox" id="b-pricing" style="width:18px;height:18px;flex-shrink:0" /><label for="b-pricing" style="margin:0;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer">Include pricing page in package</label></div></div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
-          <button class="btn btn-s" onclick="setStep(2)">← Edit Appliances</button>
-          <button class="btn btn-p" onclick="setStep(4)">Review &amp; Send →</button>
+          <button class="btn btn-s" onclick="setStep(3)">← Services</button>
+          <button class="btn btn-p" onclick="setStep(5)">Review &amp; Send →</button>
         </div>
       </div>
 
-      <!-- STEP 4: REVIEW & SEND -->
-      <div id="step-4" class="hidden">
+      <!-- STEP 5: REVIEW & SEND -->
+      <div id="step-5" class="hidden">
         <div class="card" style="margin-bottom:16px"><h3 style="margin-bottom:16px">Package Summary</h3>
           <div class="grid4" style="margin-bottom:20px">
             <div><div style="font-size:13px;color:var(--steel)">Customer</div><div style="font-weight:600" id="sum-customer">—</div></div>
@@ -554,7 +594,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
           <div style="border-top:1px solid var(--line);padding-top:16px"><table class="tbl"><thead><tr><th>Category</th><th>Brand</th><th>Model</th><th>Finish</th><th>Dimensions</th><th class="r">Price</th></tr></thead><tbody id="sum-table"></tbody></table></div>
         </div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
-          <button class="btn btn-s" onclick="setStep(3)">← Quote &amp; Validity</button>
+          <button class="btn btn-s" onclick="setStep(4)">← Quote &amp; Validity</button>
           <div class="flex" style="gap:8px">
             <button class="btn btn-s" onclick="savePackage('draft')"><svg class="icon" style="width:16px;height:16px"><use href="#i-save"/></svg> Save Draft</button>
             <button class="btn btn-purple" onclick="savePackage('pending_approval')"><svg class="icon" style="width:16px;height:16px"><use href="#i-shield"/></svg> Send for Approval</button>
@@ -748,7 +788,7 @@ function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-
 function fmtDateTime(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}
 function daysRemaining(expiryStr){if(!expiryStr)return null;var diff=Math.ceil((new Date(expiryStr)-new Date())/(1000*60*60*24));return diff}
 function expiryLabel(days){if(days===null)return'';if(days<0)return'Expired';if(days===0)return'Expires today';if(days===1)return'Expires tomorrow';if(days<=3)return days+' days remaining';return days+' days remaining'}
-var authMode='login',builderProducts=[],currentStep=1,currentPkgFilter='all',currentApprovalFilter='all';
+var authMode='login',builderProducts=[],builderServices=[],warrantyCatalog=[],currentStep=1,currentPkgFilter='all',currentApprovalFilter='all';
 
 /* ==================== NAVIGATION ==================== */
 function showLanding(){hide('auth-page','pricing-page','app');el('landing').style.display=''}
@@ -761,11 +801,84 @@ function toggleAddProduct(){el('add-product-form').classList.toggle('hidden')}
 function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden')}
 
 /* ==================== BUILDER ==================== */
-function setStep(n){currentStep=n;[1,2,3,4].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)initValidityStep();if(n===4)renderSummary()}
-function resetBuilder(){builderProducts=[];currentStep=1;setStep(1);renderProducts();el('b-issue-date').value=new Date().toISOString().split('T')[0];el('b-validity').value='14';updateExpiryPreview()}
+function setStep(n){currentStep=n;[1,2,3,4,5].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)renderServicesStep();if(n===4)initValidityStep();if(n===5)renderSummary()}
+function resetBuilder(){builderProducts=[];builderServices=[];currentStep=1;setStep(1);renderProducts();el('b-issue-date').value=new Date().toISOString().split('T')[0];el('b-validity').value='14';updateExpiryPreview()}
 function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,msrp:parseFloat(el('ap-msrp').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null});['ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');renderProducts()}
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
-function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});list.innerHTML=builderProducts.map(function(p){return'<div class="card flex between" style="padding:14px 20px;margin-bottom:8px"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+p.category+(p.finish?' · '+esc(p.finish):'')+(p.width_inches?' · '+p.width_inches+'"W':'')+'</div></div></div><div class="flex" style="gap:16px">'+(p.msrp>0?'<span class="num" style="font-weight:600;font-family:Sora">$'+p.msrp.toLocaleString()+'</span>':'')+'<button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('');el('product-total').classList.remove('hidden');el('product-total').textContent='Total MSRP: $'+total.toLocaleString()}
+function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});
+  var warOpts=warrantyCatalog.map(function(w){return'<option value="'+w.id+'" data-price="'+(w.selling_price||0)+'" data-included="'+(w.is_included?'1':'0')+'">'+esc(w.warranty_name)+(w.is_included?' (Included)':w.selling_price>0?' — $'+parseFloat(w.selling_price).toLocaleString():'')+'</option>'}).join('');
+  list.innerHTML=builderProducts.map(function(p){
+    var warSel=p.warranty_id||'';
+    var warName=p.warranty_name||'';
+    var warPrice=p.warranty_price||0;
+    return'<div class="card" style="padding:14px 20px;margin-bottom:8px"><div class="flex between"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+p.category+(p.finish?' · '+esc(p.finish):'')+(p.width_inches?' · '+p.width_inches+'"W':'')+'</div></div></div><div class="flex" style="gap:16px">'+(p.msrp>0?'<span class="num" style="font-weight:600;font-family:Sora">$'+p.msrp.toLocaleString()+'</span>':'')+'<button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'
+    +(warrantyCatalog.length?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px"><svg class="icon" style="width:14px;height:14px;color:var(--verified);flex-shrink:0"><use href="#i-shield"/></svg><select style="flex:1;padding:8px 12px;font-size:13px" onchange="selectWarranty('+p.id+',this)"><option value="">No warranty selected</option>'+warOpts+'</select>'+(warPrice>0?'<span class="num" style="font-size:13px;font-weight:600;color:var(--verified)">+$'+warPrice.toLocaleString()+'</span>':'')+'</div>':'')
+    +'</div>'
+  }).join('');
+  // Restore warranty selections
+  builderProducts.forEach(function(p){if(p.warranty_id){var selects=list.querySelectorAll('select');builderProducts.forEach(function(bp,i){if(bp.id===p.id&&selects[i])selects[i].value=p.warranty_id})}});
+  el('product-total').classList.remove('hidden');
+  var warTotal=builderProducts.reduce(function(s,p){return s+(p.warranty_price||0)},0);
+  el('product-total').textContent='Product MSRP: $'+total.toLocaleString()+(warTotal>0?' + Warranties: $'+warTotal.toLocaleString():'')
+}
+window.selectWarranty=function(prodId,sel){
+  var opt=sel.options[sel.selectedIndex];
+  var p=builderProducts.find(function(x){return x.id===prodId});
+  if(!p)return;
+  if(!opt.value){p.warranty_id=null;p.warranty_name=null;p.warranty_price=0;p.warranty_included=false}
+  else{
+    var w=warrantyCatalog.find(function(x){return x.id===opt.value});
+    if(w){p.warranty_id=w.id;p.warranty_name=w.warranty_name;p.warranty_price=w.is_included?0:(w.selling_price||0);p.warranty_included=w.is_included;p.warranty_type=w.warranty_type;p.warranty_snapshot=w}
+  }
+  renderProducts();
+}
+
+/* ==================== SERVICES ==================== */
+function renderServicesStep(){
+  // Show warranty summary from product selections
+  var warProds=builderProducts.filter(function(p){return p.warranty_id});
+  var ws=el('warranty-summary-section');
+  var wl=el('warranty-summary-list');
+  if(warProds.length){
+    ws.classList.remove('hidden');
+    wl.innerHTML=warProds.map(function(p){
+      var label=p.warranty_included?'Included':'$'+(p.warranty_price||0).toLocaleString();
+      return'<div class="flex between" style="padding:8px 14px;background:var(--paper);border-radius:8px"><div><span style="font-weight:600">'+esc(p.brand)+' '+esc(p.product_name)+'</span><span style="color:var(--steel);margin-left:8px;font-size:13px">'+esc(p.warranty_name)+'</span></div><span class="num" style="font-weight:600;color:'+(p.warranty_included?'var(--verified)':'var(--ink)')+'">'+label+'</span></div>'
+    }).join('');
+    var warTotal=warProds.reduce(function(s,p){return s+(p.warranty_price||0)},0);
+    el('warranty-subtotal').textContent='Protection Plans Total: $'+warTotal.toLocaleString();
+  }else{ws.classList.add('hidden')}
+  renderServicesList();
+  updateServicesTotals();
+}
+function renderServicesList(){
+  var list=el('services-list');
+  if(!builderServices.length){list.innerHTML='<div style="padding:16px;color:var(--steel);font-size:14px;text-align:center;background:var(--paper);border-radius:8px">No additional services added. Add delivery, installation, or other services.</div>';return}
+  list.innerHTML=builderServices.map(function(s,i){
+    var typeLabel={delivery:'Delivery',installation:'Installation',haul_away:'Haul-Away',accessory:'Accessory',other:'Other'}[s.service_type]||s.service_type;
+    return'<div class="flex between" style="padding:10px 14px;background:var(--paper);border-radius:8px;margin-bottom:6px"><div class="flex" style="gap:10px"><span class="badge badge-b" style="font-size:11px">'+typeLabel+'</span><span style="font-weight:500">'+esc(s.description||typeLabel)+'</span></div><div class="flex" style="gap:10px"><span class="num" style="font-weight:600;font-family:Sora">$'+parseFloat(s.amount).toLocaleString()+'</span><button class="btn btn-g" style="padding:4px" onclick="removeService('+i+')"><svg class="icon" style="width:14px;height:14px;color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'
+  }).join('');
+}
+window.addService=function(){
+  var type=el('svc-type').value;
+  var desc=el('svc-desc').value;
+  var amount=parseFloat(el('svc-amount').value)||0;
+  if(!amount){alert('Enter a service amount.');return}
+  builderServices.push({service_type:type,description:desc||type,amount:amount,taxable:true});
+  el('svc-desc').value='';el('svc-amount').value='';
+  el('add-service-form').classList.add('hidden');
+  renderServicesList();updateServicesTotals();
+}
+window.removeService=function(i){builderServices.splice(i,1);renderServicesList();updateServicesTotals()}
+function updateServicesTotals(){
+  var svcTotal=builderServices.reduce(function(s,x){return s+x.amount},0);
+  var warTotal=builderProducts.reduce(function(s,p){return s+(p.warranty_price||0)},0);
+  var prodTotal=builderProducts.reduce(function(s,p){return s+(p.msrp||0)},0);
+  var servicesAll=svcTotal+warTotal;
+  var grand=prodTotal+servicesAll;
+  el('svc-total-display').textContent='$'+servicesAll.toLocaleString();
+  el('grand-total-display').textContent='$'+grand.toLocaleString();
+}
 
 /* ==================== QUOTE VALIDITY ==================== */
 function initValidityStep(){
@@ -800,7 +913,15 @@ function updateExpiryPreview(){
   el('expiry-disclaimer').textContent=disText;
 }
 
-function renderSummary(){var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});el('sum-customer').textContent=el('b-cust-name').value||'—';el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';el('sum-count').textContent=builderProducts.length+' items';el('sum-msrp').textContent='$'+total.toLocaleString();
+function renderSummary(){
+  var prodTotal=0;builderProducts.forEach(function(p){prodTotal+=(p.msrp||0)});
+  var warTotal=builderProducts.reduce(function(s,p){return s+(p.warranty_price||0)},0);
+  var svcTotal=builderServices.reduce(function(s,x){return s+x.amount},0);
+  var grandTotal=prodTotal+warTotal+svcTotal;
+  el('sum-customer').textContent=el('b-cust-name').value||'—';
+  el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';
+  el('sum-count').textContent=builderProducts.length+' items';
+  el('sum-msrp').textContent='$'+grandTotal.toLocaleString();
   var issueDate=el('b-issue-date').value;
   el('sum-issued').textContent=issueDate?fmtDate(issueDate+'T12:00:00'):'—';
   var val=el('b-validity').value;
@@ -808,7 +929,22 @@ function renderSummary(){var total=0;builderProducts.forEach(function(p){total+=
   el('sum-validity').textContent=days+(val!=='custom'?' days':'');
   var id=new Date(issueDate||new Date().toISOString().split('T')[0]);
   if(val==='custom'){var ce=el('b-custom-expiry').value;el('sum-expiry').textContent=ce?fmtDate(ce+'T12:00:00'):'—'}else{var ed=new Date(id);ed.setDate(ed.getDate()+parseInt(val));el('sum-expiry').textContent=fmtDate(ed.toISOString())}
-  el('sum-table').innerHTML=builderProducts.map(function(p){var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');return'<tr><td>'+p.category+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(p.msrp>0?'$'+p.msrp.toLocaleString():'—')+'</td></tr>'}).join('')}
+  var rows=builderProducts.map(function(p){var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');return'<tr><td>'+p.category+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(p.msrp>0?'$'+p.msrp.toLocaleString():'—')+'</td></tr>'+(p.warranty_name?'<tr style="background:var(--verified-soft)"><td colspan="4" style="padding-left:32px;font-size:13px;color:var(--verified)"><svg class="icon" style="width:12px;height:12px;display:inline;vertical-align:-1px;margin-right:4px"><use href="#i-shield"/></svg>'+esc(p.warranty_name)+'</td><td></td><td class="r num" style="font-family:Sora;color:var(--verified);font-size:13px">'+(p.warranty_included?'Included':p.warranty_price>0?'+$'+p.warranty_price.toLocaleString():'')+'</td></tr>':'')}).join('');
+  // Services rows
+  if(builderServices.length){
+    rows+='<tr><td colspan="6" style="padding-top:12px;font-weight:700;font-size:13px;text-transform:uppercase;color:var(--steel);letter-spacing:.5px">Services</td></tr>';
+    builderServices.forEach(function(s){
+      var label={delivery:'Delivery',installation:'Installation',haul_away:'Haul-Away',accessory:'Accessory',other:'Other'}[s.service_type]||s.service_type;
+      rows+='<tr><td colspan="5">'+label+(s.description&&s.description!==s.service_type?' — '+esc(s.description):'')+'</td><td class="r num" style="font-family:Sora">$'+parseFloat(s.amount).toLocaleString()+'</td></tr>';
+    });
+  }
+  // Totals
+  rows+='<tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="5">Product MSRP</td><td class="r num" style="font-family:Sora">$'+prodTotal.toLocaleString()+'</td></tr>';
+  if(warTotal>0)rows+='<tr style="font-weight:600"><td colspan="5">Protection Plans</td><td class="r num" style="font-family:Sora;color:var(--verified)">$'+warTotal.toLocaleString()+'</td></tr>';
+  if(svcTotal>0)rows+='<tr style="font-weight:600"><td colspan="5">Services</td><td class="r num" style="font-family:Sora">$'+svcTotal.toLocaleString()+'</td></tr>';
+  if(warTotal>0||svcTotal>0)rows+='<tr style="border-top:2px solid var(--navy);font-weight:700;font-size:16px"><td colspan="5">Grand Total</td><td class="r num" style="font-family:Sora">$'+grandTotal.toLocaleString()+'</td></tr>';
+  el('sum-table').innerHTML=rows;
+}
 
 /* ==================== STATUS HELPERS ==================== */
 function statusBadge(s){var map={draft:'y',generated:'b',pending_approval:'p',submitted_for_approval:'p',approved:'g',approved_with_conditions:'g',changes_requested:'y',rejected:'r',sent:'b',viewed:'g',expired:'r',superseded:'r',cancelled:'r',ready_to_send:'b',sold:'g',extended:'b',expiring_soon:'y'};return'<span class="badge badge-'+(map[s]||'y')+'">'+s.replace(/_/g,' ')+'</span>'}
@@ -849,7 +985,8 @@ async function resolveOrg(){
   await sb.from('profiles').upsert({user_id:currentUser.id,full_name:name,email:currentUser.email},{onConflict:'user_id'});
 }
 function isManager(){return['sales_manager','store_manager','admin','owner'].includes(userRole)}
-function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';el('welcome-msg').textContent='Welcome back, '+(currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there');resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings();loadPendingCount()})}
+function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';el('welcome-msg').textContent='Welcome back, '+(currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there');resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings();loadPendingCount();loadWarrantyCatalog()})}
+async function loadWarrantyCatalog(){try{const{data}=await sb.from('speciq_warranty_catalog').select('*').eq('active',true).order('sort_order');warrantyCatalog=data||[]}catch(e){warrantyCatalog=[]}}
 
 /* ==================== AUTH ==================== */
 window.handleAuth=async(e)=>{e.preventDefault();el('auth-error').classList.add('hidden');el('auth-submit').textContent=authMode==='login'?'Signing in...':'Creating account...';const email=el('auth-email').value,pass=el('auth-pass').value;if(authMode==='signup'){const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:el('auth-name').value,app:'speciq'}}});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Create account';return}el('auth-form').classList.add('hidden');el('auth-success').classList.remove('hidden')}else{const{data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Sign in';return}currentUser=data.user;showApp()}};
@@ -919,7 +1056,37 @@ window.savePackage=async(status)=>{
     if(ke)throw new Error('Package: '+ke.message);
 
     if(builderProducts.length){
-      await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:userOrgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));
+      const{data:savedProds}=await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:userOrgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i,warranty_status:p.warranty_id?(p.warranty_included?'included':'selected'):'none',warranty_snapshot:p.warranty_snapshot||null}))).select('id');
+      // Save warranty selections
+      if(savedProds){
+        const warInserts=[];
+        builderProducts.forEach((p,i)=>{
+          if(p.warranty_id&&savedProds[i]){
+            const w=p.warranty_snapshot||{};
+            warInserts.push({package_id:pkg.id,package_product_id:savedProds[i].id,organization_id:userOrgId,warranty_catalog_id:p.warranty_id,warranty_name:p.warranty_name,warranty_type:w.warranty_type||'retailer_protection',warranty_provider:w.warranty_provider||null,coverage_length_months:w.coverage_length_months||null,coverage_label:w.coverage_label||null,parts_coverage:w.parts_coverage!==false,labour_coverage:w.labour_coverage!==false,designation:w.designation||'residential',registration_required:w.registration_required||false,transferable:w.transferable||false,coverage_summary:w.coverage_summary||null,selling_price:p.warranty_price||0,msrp:w.msrp||0,cost:w.cost||0,taxable:w.taxable!==false,is_included:p.warranty_included||false,selection_status:p.warranty_included?'included':'selected',selected_by:currentUser.id});
+          }
+        });
+        if(warInserts.length)await sb.from('speciq_product_warranties').insert(warInserts);
+      }
+    }
+    // Save services
+    const warTotal=builderProducts.reduce((s,p)=>s+(p.warranty_price||0),0);
+    const svcTotal=builderServices.reduce((s,x)=>s+x.amount,0);
+    if(builderServices.length||warTotal>0){
+      const svcInserts=[];
+      // Add warranty services
+      builderProducts.forEach(p=>{
+        if(p.warranty_id&&p.warranty_price>0){
+          svcInserts.push({package_id:pkg.id,organization_id:userOrgId,service_type:'warranty',description:p.warranty_name+' — '+esc(p.brand)+' '+esc(p.product_name),amount:p.warranty_price,taxable:true,sort_order:svcInserts.length});
+        }
+      });
+      // Add regular services
+      builderServices.forEach(s=>{
+        svcInserts.push({package_id:pkg.id,organization_id:userOrgId,service_type:s.service_type,description:s.description,amount:s.amount,taxable:s.taxable!==false,sort_order:svcInserts.length});
+      });
+      if(svcInserts.length)await sb.from('speciq_package_services').insert(svcInserts);
+      // Update package totals
+      await sb.from('speciq_packages').update({total_services:svcTotal+warTotal,warranty_total:warTotal,total_final:total+svcTotal+warTotal}).eq('id',pkg.id);
     }
     await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created',event_data:{status:pkgStatus}});
     if(needsApproval){
@@ -989,8 +1156,12 @@ function renderApprovalsList(){
 }
 
 /* ==================== PRINT / PDF ==================== */
-function buildPrintHTML(pkg,products,retailer){
+function buildPrintHTML(pkg,products,retailer,services,warranties){
+  services=services||[];warranties=warranties||[];
   var total=0;products.forEach(function(p){total+=(parseFloat(p.msrp)||0)});
+  var svcTotal=services.reduce(function(s,x){return s+(parseFloat(x.amount)||0)},0);
+  var warTotal=warranties.reduce(function(s,w){return s+(w.is_included?0:(parseFloat(w.selling_price)||0))},0);
+  var grandTotal=total+svcTotal;
   var salesperson=pkg.salesperson_name||pkg.created_by_name||'';
   var hasElec=products.some(function(p){return p.electrical_requirements});
   var logoHTML='';
@@ -1060,12 +1231,39 @@ function buildPrintHTML(pkg,products,retailer){
     html+='</tbody></table><div style="margin-top:20px;padding:12px;background:#fef0e6;border-radius:6px;font-size:9pt;color:#e8590c"><strong>Important:</strong> All connections must be verified on-site by a licensed contractor.</div></div>';
   }
 
-  /* --- PRICING --- */
+  /* --- WARRANTY & PROTECTION --- */
+  var warProds=warranties.filter(function(w){return w.warranty_name});
+  if(warProds.length){
+    html+='<div class="print-page"><h2 class="print-section-title">Protection Plans</h2>';
+    html+='<table class="print-pricing-table"><thead><tr><th>Appliance</th><th>Protection Plan</th><th>Coverage</th><th style="text-align:right">Price</th></tr></thead><tbody>';
+    warProds.forEach(function(w){
+      var prodName='';
+      products.forEach(function(p){if(p.id===w.package_product_id)prodName=esc(p.brand)+' '+esc(p.product_name)});
+      var covLabel=w.coverage_label||(w.coverage_length_months?w.coverage_length_months+' months':'—');
+      var priceLabel=w.is_included?'Included':w.selling_price>0?'$'+parseFloat(w.selling_price).toLocaleString():'$0';
+      html+='<tr><td>'+prodName+'</td><td style="font-weight:600">'+esc(w.warranty_name)+'</td><td>'+esc(covLabel)+(w.parts_coverage&&w.labour_coverage?' (Parts & Labour)':w.parts_coverage?' (Parts)':w.labour_coverage?' (Labour)':'')+'</td><td style="text-align:right;font-family:Sora,sans-serif;color:'+(w.is_included?'#1a9e56':'inherit')+'">'+priceLabel+'</td></tr>';
+      if(w.coverage_summary)html+='<tr><td colspan="4" style="font-size:8pt;color:#5b6b85;padding-top:0">'+esc(w.coverage_summary)+'</td></tr>';
+    });
+    if(warTotal>0)html+='<tr class="total-row"><td colspan="3">Protection Plans Total</td><td style="text-align:right;font-family:Sora,sans-serif">$'+warTotal.toLocaleString()+'</td></tr>';
+    html+='</tbody></table></div>';
+  }
+
+  /* --- PRICING (with services) --- */
   if(pkg.include_pricing){
     html+='<div class="print-page"><h2 class="print-section-title">Pricing Summary</h2>';
-    html+='<table class="print-pricing-table"><thead><tr><th>Appliance</th><th>Model</th><th>Finish</th><th style="text-align:right">MSRP</th></tr></thead><tbody>';
-    products.forEach(function(p){html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td style="text-align:right;font-family:Sora,sans-serif">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>'});
-    html+='<tr class="total-row"><td colspan="3">Total MSRP</td><td style="text-align:right;font-family:Sora,sans-serif">$'+total.toLocaleString()+'</td></tr>';
+    html+='<table class="print-pricing-table"><thead><tr><th>Item</th><th>Model / Details</th><th>Category</th><th style="text-align:right">Price</th></tr></thead><tbody>';
+    products.forEach(function(p){html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.category)||'—')+'</td><td style="text-align:right;font-family:Sora,sans-serif">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>'});
+    html+='<tr style="font-weight:600;border-top:1px solid #0f1f3d"><td colspan="3">Product Subtotal</td><td style="text-align:right;font-family:Sora,sans-serif">$'+total.toLocaleString()+'</td></tr>';
+    // Services section
+    if(services.length){
+      html+='<tr><td colspan="4" style="padding-top:16px;font-weight:700;font-size:9pt;text-transform:uppercase;color:#5b6b85;letter-spacing:.5px;border-bottom:none">Services</td></tr>';
+      services.forEach(function(s){
+        var typeLabel={delivery:'Delivery',installation:'Installation',haul_away:'Haul-Away',accessory:'Accessory',warranty:'Protection Plan',other:'Other'}[s.service_type]||s.service_type;
+        html+='<tr><td>'+(s.service_type==='warranty'?'<span style="color:#1a9e56">✓</span> ':'')+esc(s.description||typeLabel)+'</td><td>'+typeLabel+'</td><td>'+(s.service_type==='warranty'?'Protection':'Service')+'</td><td style="text-align:right;font-family:Sora,sans-serif">$'+parseFloat(s.amount).toLocaleString()+'</td></tr>';
+      });
+      html+='<tr style="font-weight:600"><td colspan="3">Services Subtotal</td><td style="text-align:right;font-family:Sora,sans-serif">$'+svcTotal.toLocaleString()+'</td></tr>';
+    }
+    html+='<tr class="total-row"><td colspan="3">Grand Total</td><td style="text-align:right;font-family:Sora,sans-serif">$'+grandTotal.toLocaleString()+'</td></tr>';
     html+='</tbody></table>';
     if(retailer&&retailer.default_disclaimer)html+='<div style="margin-top:24px;font-size:9pt;color:#5b6b85;font-style:italic">'+esc(retailer.default_disclaimer)+'</div>';
     html+='</div>';
@@ -1081,12 +1279,18 @@ window.openPackageDetail=async function(pkgId){
   if(!pkg){await loadPackages();const p2=allPackages.find(p=>p.id===pkgId);if(!p2)return;return openPackageDetail(pkgId)}
   const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
   const prods=products||[];
+  const{data:svcs}=await sb.from('speciq_package_services').select('*').eq('package_id',pkgId).order('sort_order');
+  const services=svcs||[];
+  const{data:wars}=await sb.from('speciq_product_warranties').select('*').eq('package_id',pkgId);
+  const warranties=wars||[];
   const total=prods.reduce((s,p)=>s+(parseFloat(p.msrp)||0),0);
+  const svcTotal=services.reduce((s,x)=>s+(parseFloat(x.amount)||0),0);
+  const grandTotal=total+svcTotal;
   const cust=pkg.speciq_projects?.customer_name||'—';
   const proj=pkg.speciq_projects?.project_name||'—';
   if(!retailerSettings){const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();retailerSettings=rs}
   const fullPkg={...pkg,customer_name:cust,project_name:proj,property_address:pkg.speciq_projects?.property_address};
-  const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings);
+  const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings,services,warranties);
   const days=daysRemaining(pkg.quote_expires_at);
   const canSend=pkg.approval_status==='not_required'||pkg.approval_status==='approved'||pkg.approval_status==='approved_with_conditions';
   const isPending=pkg.approval_status==='pending';
@@ -1123,7 +1327,7 @@ window.openPackageDetail=async function(pkgId){
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Quote #</span><div style="font-weight:600;margin-top:2px">'+(pkg.quote_number||'—')+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Customer</span><div style="font-weight:600;margin-top:2px">'+esc(cust)+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Items</span><div style="font-weight:600;margin-top:2px">'+prods.length+'</div></div>';
-  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Total</span><div style="font-weight:700;font-family:Sora;margin-top:2px">$'+total.toLocaleString()+'</div></div>';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Total</span><div style="font-weight:700;font-family:Sora;margin-top:2px">$'+grandTotal.toLocaleString()+'</div>'+(svcTotal>0?'<div style="font-size:11px;color:var(--steel)">incl. $'+svcTotal.toLocaleString()+' services</div>':'')+'</div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Issued</span><div style="font-weight:500;margin-top:2px">'+fmtDate(pkg.quote_issued_at||pkg.created_at)+'</div></div>';
   if(pkg.quote_expires_at){
     var exColor=days!==null&&days<=3?'var(--danger)':days!==null&&days<=7?'var(--amber)':'var(--focus)';
@@ -1169,9 +1373,11 @@ window.openApprovalReview=async function(pkgId){
   const total=prods.reduce((s,p)=>s+(parseFloat(p.msrp)||0),0);
   const cust=pkg.speciq_projects?.customer_name||'—';
   const{data:history}=await sb.from('speciq_approval_history').select('*').eq('package_id',pkgId).order('created_at',{ascending:false});
+  const{data:arSvcs}=await sb.from('speciq_package_services').select('*').eq('package_id',pkgId).order('sort_order');
+  const{data:arWars}=await sb.from('speciq_product_warranties').select('*').eq('package_id',pkgId);
   if(!retailerSettings){const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();retailerSettings=rs}
   const fullPkg={...pkg,customer_name:cust,project_name:pkg.speciq_projects?.project_name,property_address:pkg.speciq_projects?.property_address};
-  const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings);
+  const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings,arSvcs||[],arWars||[]);
   const isPending=pkg.approval_status==='pending';
 
   let html='<div class="modal-overlay" onclick="if(event.target===this)closeApprovalReview()">';
@@ -1304,9 +1510,11 @@ window.addEventListener('do-print',async function(e){
   if(!pkg){const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address)').eq('id',pkgId).single();pkg=data}
   if(!pkg)return;
   const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
+  const{data:svcs2}=await sb.from('speciq_package_services').select('*').eq('package_id',pkgId).order('sort_order');
+  const{data:wars2}=await sb.from('speciq_product_warranties').select('*').eq('package_id',pkgId);
   const fullPkg={...pkg,customer_name:pkg.speciq_projects?.customer_name,project_name:pkg.speciq_projects?.project_name,property_address:pkg.speciq_projects?.property_address};
   if(!retailerSettings){const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();retailerSettings=rs}
-  const printHTML=buildPrintHTML(fullPkg,products||[],retailerSettings);
+  const printHTML=buildPrintHTML(fullPkg,products||[],retailerSettings,svcs2||[],wars2||[]);
   const footer='<div class="print-footer"><div class="print-footer-brand"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6b85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora,sans-serif;font-weight:600;font-size:8pt;color:#5b6b85">ApplianceIQ</span></div><div style="font-style:italic">Spec. Compare. Price verified.</div></div>';
   el('print-package').innerHTML=printHTML+footer;
   setTimeout(()=>window.print(),300);
