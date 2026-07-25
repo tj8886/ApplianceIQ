@@ -530,7 +530,7 @@ function renderPipeline(){
       if(d.record_type==='business')tags+='<span class="dtag biz">🏢 Biz</span>';
       if(expiring)tags+='<span class="dtag exp">Quote exp</span>';
       if(daysSince&&daysSince>7)tags+=`<span class="dtag warn">${daysSince}d idle</span>`;
-      return`<button class="deal" draggable="true" data-deal="${d.id}"><div class="t" style="display:flex;align-items:center;justify-content:space-between">${esc(d.title)}<span class="rec-ind ${hasRec?'has':'none'}" data-rec="${d.id}" title="${hasRec?'Has recording':'No recording — tap to record'}">${hasRec?'🎙':'❌'}</span></div>
+      return`<button class="deal" draggable="true" data-deal="${d.id}"><div class="t" style="display:flex;align-items:center;justify-content:space-between">${esc(d.title)}${hasRec?`<span class="rec-ind has" data-rec="${d.id}" title="Has recording">🎙</span>`:''}</div>
         <div class="v num">${money(d.value_amount)}${d.margin_pct?` <span style="font-size:11px;color:var(--steel)">${d.margin_pct}%</span>`:''}</div>
         <div class="m">${esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')}${parts.length>1?' +'+(parts.length-1):''}${d.next_action?' · '+esc(d.next_action):''}</div>
         ${tags?`<div class="dm">${tags}</div>`:''}</button>`;
