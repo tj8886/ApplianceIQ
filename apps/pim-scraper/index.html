@@ -13,7 +13,6 @@
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #181a22; }
     ::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #6c5ce7; }
   </style>
 </head>
 <body>
@@ -26,6 +25,9 @@ const { useState, useCallback, useRef } = React;
 
 const SUPABASE_URL = "https://fumwwhyozeouoqscolke.supabase.co";
 const SUPABASE_KEY = "sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
+
+let ANTHROPIC_API_KEY = "";
+try { ANTHROPIC_API_KEY = localStorage.getItem("aiq_anthropic_key") || ""; } catch(e) {}
 
 const CATEGORIES = [
   "refrigeration","cooking","dishwashers","laundry","ventilation",
@@ -193,12 +195,18 @@ function extractJSON(text) {
   return null;
 }
 
-async function callClaude(systemPrompt, userMsg, retries = 2) {
+async function callClaude(systemPrompt, userMsg, retries = 3) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (ANTHROPIC_API_KEY) {
+        headers["x-api-key"] = ANTHROPIC_API_KEY;
+        headers["anthropic-version"] = "2023-06-01";
+        headers["anthropic-dangerous-direct-browser-access"] = "true";
+      }
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
           max_tokens: 8000,
@@ -207,10 +215,21 @@ async function callClaude(systemPrompt, userMsg, retries = 2) {
           tools: [{ type: "web_search_20250305", name: "web_search" }],
         }),
       });
+      // Rate limited — wait and retry
+      if (res.status === 429) {
+        const wait = Math.min(15000, 5000 * (attempt + 1));
+        if (attempt < retries) { await new Promise(r => setTimeout(r, wait)); continue; }
+        return { found: false, error: "Rate limited — try again in a minute" };
+      }
+      // Overloaded
+      if (res.status === 529 || res.status === 503) {
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 8000)); continue; }
+        return { found: false, error: "API overloaded — try again shortly" };
+      }
       if (!res.ok) {
         const errText = await res.text();
-        if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
-        return { found: false, error: `API error ${res.status}: ${errText.slice(0, 200)}` };
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 4000)); continue; }
+        return { found: false, error: "API error " + res.status + ": " + errText.slice(0, 200) };
       }
       const data = await res.json();
       const allText = (data.content || [])
@@ -222,14 +241,13 @@ async function callClaude(systemPrompt, userMsg, retries = 2) {
         parsed.found = true;
         return parsed;
       }
-      // If we got text but couldn't parse, retry with a stricter nudge
       if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 3000));
         continue;
       }
       return { found: false, error: "Could not parse product data from response", raw: allText.slice(0, 500) };
     } catch (e) {
-      if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 4000)); continue; }
       return { found: false, error: e.message };
     }
   }
@@ -520,6 +538,8 @@ function PIMScraper() {
   const [existingProducts, setExistingProducts] = useState([]);
   const [savingIdx, setSavingIdx] = useState(null);
   const abortRef = useRef(false);
+  const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
+  const [showKeyInput, setShowKeyInput] = useState(!ANTHROPIC_API_KEY);
   
   // Discovery state
   const [discoverBrand, setDiscoverBrand] = useState("");
@@ -583,7 +603,7 @@ function PIMScraper() {
         price_checked_at: new Date().toISOString(),
         upc: data.upc || null, ean: data.ean || null,
         finish: data.finish || null, color: data.color || null, color_family: data.color_family || null,
-        available_colors: data.available_colors ? JSON.stringify(data.available_colors) : "[]",
+        available_colors: data.available_colors || [],
         energy_star: data.energy_star, ada_compliant: data.ada_compliant,
         width_inches: data.width_inches ? parseFloat(data.width_inches) : null,
         height_inches: data.height_inches ? parseFloat(data.height_inches) : null,
@@ -594,7 +614,7 @@ function PIMScraper() {
         capacity_cu_ft: specs.capacity_cu_ft ? parseFloat(specs.capacity_cu_ft) : null,
         voltage: specs.voltage || null, amperage: specs.amperage ? parseFloat(specs.amperage) : null,
         wattage: specs.wattage ? parseFloat(specs.wattage) : null, frequency_hz: specs.frequency_hz || null,
-        installation_type: specs.installation_type || null, specs_json: JSON.stringify(specs),
+        installation_type: specs.installation_type || null, specs_json: specs,
         status: cond.status || data.status || "active",
         condition_flags: cond.flags || [], is_discontinued: cond.is_discontinued || false,
         is_clearance: cond.is_clearance || false, is_end_of_life: cond.is_end_of_life || false,
@@ -736,8 +756,16 @@ function PIMScraper() {
 
   const scrapeAndMaybeSave = async (q) => {
     const r = await runScrape(q);
-    if (autoSave && r.found) {
-      await doSave(r);
+    if (r.found) {
+      setResults(p => [...p, r]); // Always show the result
+      if (autoSave) {
+        const ok = await doSave(r);
+        if (ok) {
+          // Remove from results since it saved successfully
+          setResults(p => p.filter(x => x !== r));
+        }
+        // If save failed, it stays in results so user can retry manually
+      }
     } else {
       setResults(p => [...p, r]);
     }
@@ -762,7 +790,7 @@ function PIMScraper() {
       if (abortRef.current) break;
       setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
       await scrapeAndMaybeSave(lines[i]);
-      if (i < lines.length - 1) await new Promise((r) => setTimeout(r, 1500));
+      if (i < lines.length - 1) await new Promise((r) => setTimeout(r, 6000));
     }
     setLoading(false);
   };
@@ -824,7 +852,7 @@ function PIMScraper() {
         if (result.found && result.products) {
           allProducts = [...allProducts, ...result.products];
         }
-        if (i < subcats.length - 1) await new Promise(r => setTimeout(r, 1500));
+        if (i < subcats.length - 1) await new Promise(r => setTimeout(r, 6000));
       }
     }
 
@@ -886,7 +914,7 @@ function PIMScraper() {
       } else {
         setResults(prev => [...prev, r]);
       }
-      if (i < toScrape.length - 1) await new Promise(r => setTimeout(r, 2000));
+      if (i < toScrape.length - 1) await new Promise(r => setTimeout(r, 6000));
     }
     
     setLoading(false);
@@ -929,6 +957,25 @@ function PIMScraper() {
               <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: autoSave ? 18 : 2, transition: "left 0.2s" }} />
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: autoSave ? palette.green : palette.textMuted }}>Auto-save to PIM</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {showKeyInput ? (
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <input style={{ ...s.input, width: 220, padding: "6px 10px", fontSize: 11 }} type="password"
+                  placeholder="Anthropic API key (sk-ant-...)" value={apiKey}
+                  onChange={e => setApiKey(e.target.value)} />
+                <button style={{ ...s.btn, ...s.btnSm, padding: "6px 10px", fontSize: 11 }} onClick={() => {
+                  ANTHROPIC_API_KEY = apiKey;
+                  try { localStorage.setItem("aiq_anthropic_key", apiKey); } catch(e) {}
+                  setShowKeyInput(false);
+                }}>Save</button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }} onClick={() => setShowKeyInput(true)}>
+                <div style={{ width: 8, height: 8, borderRadius: 4, background: apiKey ? palette.green : palette.yellow }} />
+                <span style={{ fontSize: 11, color: palette.textDim }}>{apiKey ? "API Key Set" : "No API Key"}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
