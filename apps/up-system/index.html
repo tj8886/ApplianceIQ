@@ -106,7 +106,9 @@ h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
 .fb-metrics{display:flex;gap:20px}
 .fb-m{text-align:center}.fb-m .fv{font-size:22px;font-weight:800}.fb-m .fl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.7}
 .queue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px}
-.rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative}
+</style>
+</head>
+<body>
 .rep-card.current-up{border-color:var(--teal);box-shadow:0 0 0 3px var(--teal-tint)}
 .rep-card.next-up{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
 .rep-card.with-customer{border-color:var(--amber);background:#fffbf5}
@@ -227,11 +229,15 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .predict-card .pc-staff{font-size:20px;font-weight:800;color:var(--navy);margin:4px 0}
 .predict-card .pc-detail{font-size:11px;color:var(--steel)}
 
-@media(max-width:860px){.shell{grid-template-columns:1fr}aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5;padding:8px}aside .mark{margin:0 8px 0 0}.spacer,.nav-sep{display:none}.queue-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.queue-grid{grid-template-columns:1fr}.field-row{grid-template-columns:1fr}.staff-vs-cust{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
+@media(max-width:860px){.shell{grid-template-columns:1fr}aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5;padding:8px;gap:4px}aside .mark{margin:0 8px 0 0}.spacer,.nav-sep{display:none}.queue-grid{grid-template-columns:1fr 1fr}.nav-btn{font-size:11px;padding:6px 8px;white-space:nowrap}}
+@media(max-width:480px){.queue-grid{grid-template-columns:1fr}.field-row{grid-template-columns:1fr}.staff-vs-cust{grid-template-columns:1fr}.fb-metrics{gap:8px}.fb-m .fv{font-size:18px}.unav-links a{display:none}.uhero h1{font-size:32px}}
+.onb-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px}
+.onb-card h2{font-size:20px;margin-bottom:6px}.onb-card p{color:var(--steel);margin-bottom:20px}
+.onb-steps{display:flex;gap:8px;margin-bottom:24px}.onb-dot{width:32px;height:4px;border-radius:2px;background:var(--line)}.onb-dot.active{background:var(--teal)}.onb-dot.done{background:var(--verified)}
+.role-badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:4px;background:var(--teal-tint);color:var(--teal)}
+.role-badge.member{background:#f0f3f9;color:var(--steel)}
+.nav-btn.admin-only{display:none}.is-admin .nav-btn.admin-only{display:block}
+.rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative}
 
 <!-- ===== LANDING PAGE ===== -->
 <div id="landing">
@@ -278,8 +284,8 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <div class="ulogin-card">
 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span class="unav-pill" style="width:28px;height:28px;font-size:10px">UP</span><span style="font-weight:800;font-size:16px">IQ Up System</span></div>
 <p>Floor intelligence for your team.</p>
-<div class="ufield"><label>Email</label><input id="upEmail" type="email" value="sarah.m@applianceiq.ai"></div>
-<div class="ufield"><label>Password</label><input id="upPassword" type="password" value="Demo1234!"></div>
+<div class="ufield"><label>Email</label><input id="upEmail" type="email" placeholder="you@yourstore.com"></div>
+<div class="ufield"><label>Password</label><input id="upPassword" type="password" placeholder="••••••••"></div>
 <button class="ubtn" style="width:100%;padding:12px;font-size:14px;border-radius:10px" id="upSigninBtn">Sign In</button>
 <div class="ulogin-alt">New here? <a id="upSignupLink">Create an account</a></div>
 <div class="ulogin-notice" id="upNotice"></div>
@@ -299,14 +305,22 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="disputes">⚡ Disputes</button>
 <button class="nav-btn" data-view="missed">🚫 Missed Ups</button>
 <button class="nav-btn" data-view="analytics">📈 Analytics</button>
-<button class="nav-btn" data-view="staffing">📊 Shift Analysis</button>
-<button class="nav-btn" data-view="settings">⚙️ Settings</button>
+<button class="nav-btn admin-only" data-view="staffing">📊 Shift Analysis</button>
+<button class="nav-btn admin-only" data-view="settings">⚙️ Settings</button>
 <div class="spacer"></div>
 <button class="signout" id="signoutBtn">Sign out</button>
 </aside>
 <main><div class="main-content" id="main"></div></main>
 </div></div>
 <div id="modalRoot"></div>
+
+<!-- ===== ONBOARDING ===== -->
+<div id="onboarding" style="display:none">
+<div style="max-width:520px;margin:80px auto;padding:0 20px">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:32px"><span class="unav-pill">UP</span><span style="font-weight:800;font-size:20px">IQ Up System</span></div>
+<div id="onbStep"></div>
+</div>
+</div>
 
 <script>
 // UI wiring first — no dependencies, always works even if Supabase is slow/fails
@@ -343,6 +357,8 @@ const STATUS_GROUPS={selling:['available','current_up','next_in_line','with_cust
 const statusClass=s=>{if(['available'].includes(s))return'available';if(s==='current_up')return'current_up';if(s==='next_in_line')return'next_in_line';if(['with_customer','scheduled_appointment','client_meeting','follow_up_activity'].includes(s))return'with_customer';if(['break','lunch'].includes(s))return'on_break';return'unavailable';};
 
 let currentUser=null,currentOrg=null,currentStore=null,currentView='floor',profiles={},orgs=[],stores=[];
+let userRole='member'; // 'owner','admin','member'
+let realtimeChannel=null;
 let sb=null;
 
 async function initSupabase(){
@@ -351,35 +367,141 @@ async function initSupabase(){
     sb=mod.createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
   }catch(e){console.error('Supabase init failed:',e);upNote('Connection error — please refresh.',false);return;}
   document.getElementById('upSigninBtn').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signInWithPassword({email,password:pw});if(error)return upNote(error.message);upNote('Signed in!',true);boot();}catch(e){upNote('Connection error: '+e.message);}});
-  document.getElementById('upSignupLink').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signUp({email,password:pw});if(error)return upNote(error.message);upNote('Account created! Sign in now.',true);}catch(e){upNote('Connection error: '+e.message);}});
-  document.getElementById('signoutBtn').addEventListener('click',async()=>{await sb.auth.signOut();$('#app').style.display='none';$('#landing').style.display='block';});
+  document.getElementById('upSignupLink').addEventListener('click',async()=>{const email=$('#upEmail').value.trim(),pw=$('#upPassword').value;if(!email||!pw)return upNote('Enter email and password.');try{const{error}=await sb.auth.signUp({email,password:pw});if(error)return upNote(error.message);upNote('Account created! Signing you in…',true);const{error:e2}=await sb.auth.signInWithPassword({email,password:pw});if(!e2)boot();}catch(e){upNote('Connection error: '+e.message);}});
+  document.getElementById('signoutBtn').addEventListener('click',async()=>{if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}await sb.auth.signOut();$('#app').style.display='none';$('#onboarding').style.display='none';$('#landing').style.display='block';});
   boot();
 }
 initSupabase();
 
 async function boot(){
   const{data:{session}}=await sb.auth.getSession();
-  if(!session){$('#landing').style.display='block';$('#app').style.display='none';return;}
+  if(!session){$('#landing').style.display='block';$('#app').style.display='none';$('#onboarding').style.display='none';return;}
   currentUser=session.user;
+
+  // Ensure profile exists
+  await sb.from('profiles').upsert({id:currentUser.id,email:currentUser.email,updated_at:new Date().toISOString()},{onConflict:'id',ignoreDuplicates:true});
+
+  // Check for pending invites and auto-accept
+  const{data:invites}=await sb.from('org_invites').select('*').eq('invited_email',currentUser.email.toLowerCase()).eq('status','pending');
+  if(invites?.length){
+    for(const inv of invites){
+      if(inv.expires_at&&new Date(inv.expires_at)<new Date())continue;
+      await sb.from('organization_members').insert({organization_id:inv.organization_id,user_id:currentUser.id,role:inv.role||'member',status:'active'});
+      await sb.from('org_invites').update({status:'accepted',accepted_at:new Date().toISOString()}).eq('id',inv.id);
+    }
+  }
+
   // Get orgs
   const{data:memberships}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('user_id',currentUser.id).eq('status','active');
-  orgs=(memberships??[]).map(m=>m.organizations).filter(Boolean);
-  if(!orgs.length){mainEl.innerHTML='<div class="empty">No organization found.</div>';return;}
+  orgs=(memberships??[]).map(m=>({...m.organizations,_role:m.role})).filter(Boolean);
+
+  if(!orgs.length){
+    // No org — show onboarding
+    $('#landing').style.display='none';$('#loginOverlay').classList.remove('show');$('#app').style.display='none';$('#onboarding').style.display='block';
+    showOnboarding();
+    return;
+  }
+
   currentOrg=orgs[0];
+  userRole=orgs[0]._role||'member';
+
+  // Role-gate the sidebar
+  const shell=$('#app .shell');
+  if(['admin','owner'].includes(userRole))shell.classList.add('is-admin');
+  else shell.classList.remove('is-admin');
+
   // Get stores
   const{data:locs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).eq('location_type','store').order('name');
   stores=locs??[];
   if(stores.length)currentStore=stores[0];
   const sel=$('#storeSelect');
   sel.innerHTML=stores.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')||'<option>No stores</option>';
-  sel.onchange=()=>{currentStore=stores.find(s=>s.id===sel.value);render();};
+  sel.onchange=()=>{currentStore=stores.find(s=>s.id===sel.value);setupRealtime();render();};
   // Get profiles
   try{const{data:p}=await sb.rpc('get_org_member_profiles',{p_org_id:currentOrg.id});(p??[]).forEach(u=>profiles[u.user_id]=u.display_name||u.email?.split('@')[0]||'Unknown');}catch{/* fallback */}
   // Nav
   $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;render();};});
   // Show app
-  $('#landing').style.display='none';$('#loginOverlay').classList.remove('show');$('#app').style.display='block';
+  $('#landing').style.display='none';$('#loginOverlay').classList.remove('show');$('#onboarding').style.display='none';$('#app').style.display='block';
+
+  // Subscribe to realtime changes for instant floor updates
+  setupRealtime();
+
   render();
+}
+
+function setupRealtime(){
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}
+  if(!currentStore)return;
+  realtimeChannel=sb.channel('floor-'+currentStore.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_up_queue_entries',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_shift_records',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_customer_waiting_queue',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_status_sessions',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
+    .subscribe();
+}
+
+// ===== ONBOARDING WIZARD =====
+let onbStep=1;
+function showOnboarding(){
+  const el=$('#onbStep');
+  if(onbStep===1){
+    el.innerHTML=`<div class="onb-steps"><div class="onb-dot active"></div><div class="onb-dot"></div><div class="onb-dot"></div></div>
+    <div class="onb-card"><h2>Welcome! Let's set up your store.</h2><p>First, create your organization. This is your business — you can add multiple store locations later.</p>
+    <div class="field"><label>Business Name</label><input id="onbOrgName" placeholder="e.g. Hamilton Appliance Centre"></div>
+    <div class="field"><label>Your Display Name</label><input id="onbDisplayName" placeholder="e.g. TJ Robar"></div>
+    <div id="onbErr" class="form-err"></div>
+    <button class="btn btn-primary btn-block" id="onbNext1" style="margin-top:16px">Continue →</button></div>`;
+    $('#onbNext1').onclick=onbCreateOrg;
+  } else if(onbStep===2){
+    el.innerHTML=`<div class="onb-steps"><div class="onb-dot done"></div><div class="onb-dot active"></div><div class="onb-dot"></div></div>
+    <div class="onb-card"><h2>Add your first store.</h2><p>This is a physical location where your team works the floor.</p>
+    <div class="field"><label>Store Name</label><input id="onbStoreName" placeholder="e.g. Main Showroom"></div>
+    <div class="field"><label>City</label><input id="onbStoreCity" placeholder="e.g. Hamilton"></div>
+    <div id="onbErr" class="form-err"></div>
+    <button class="btn btn-primary btn-block" id="onbNext2" style="margin-top:16px">Continue →</button></div>`;
+    $('#onbNext2').onclick=onbCreateStore;
+  } else if(onbStep===3){
+    el.innerHTML=`<div class="onb-steps"><div class="onb-dot done"></div><div class="onb-dot done"></div><div class="onb-dot active"></div></div>
+    <div class="onb-card"><h2>Invite your team.</h2><p>Add reps by email. They'll create accounts and join your floor automatically. You can skip this and invite later from Settings.</p>
+    <div class="field"><label>Email addresses (one per line)</label><textarea id="onbEmails" rows="4" placeholder="sarah@yourstore.com&#10;mike@yourstore.com"></textarea></div>
+    <div id="onbErr" class="form-err"></div>
+    <div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-ghost" id="onbSkip" style="flex:1">Skip for now</button><button class="btn btn-primary" id="onbNext3" style="flex:1">Send Invites & Start →</button></div></div>`;
+    $('#onbNext3').onclick=onbInviteTeam;
+    $('#onbSkip').onclick=()=>boot();
+  }
+}
+async function onbCreateOrg(){
+  const name=$('#onbOrgName').value.trim();const display=$('#onbDisplayName').value.trim();
+  if(!name){$('#onbErr').textContent='Enter your business name.';$('#onbErr').classList.add('show');return;}
+  // Update display name
+  if(display)await sb.from('profiles').update({display_name:display}).eq('id',currentUser.id);
+  // Create org
+  const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const{data:org,error}=await sb.from('organizations').insert({name,slug}).select().single();
+  if(error){$('#onbErr').textContent=error.message;$('#onbErr').classList.add('show');return;}
+  // Add self as owner
+  await sb.from('organization_members').insert({organization_id:org.id,user_id:currentUser.id,role:'owner',status:'active'});
+  currentOrg=org;userRole='owner';
+  onbStep=2;showOnboarding();
+}
+async function onbCreateStore(){
+  const name=$('#onbStoreName').value.trim();const city=$('#onbStoreCity').value.trim();
+  if(!name){$('#onbErr').textContent='Enter a store name.';$('#onbErr').classList.add('show');return;}
+  const{error}=await sb.from('org_locations').insert({organization_id:currentOrg.id,name,city:city||null,location_type:'store'});
+  if(error){$('#onbErr').textContent=error.message;$('#onbErr').classList.add('show');return;}
+  onbStep=3;showOnboarding();
+}
+async function onbInviteTeam(){
+  const raw=$('#onbEmails').value.trim();
+  if(raw){
+    const emails=raw.split(/[\n,]+/).map(e=>e.trim().toLowerCase()).filter(e=>e.includes('@'));
+    for(const email of emails){
+      const code=crypto.randomUUID().slice(0,8);
+      await sb.from('org_invites').insert({organization_id:currentOrg.id,invited_email:email,invite_code:code,role:'member',invited_by:currentUser.id,status:'pending',expires_at:new Date(Date.now()+7*86400000).toISOString()});
+    }
+  }
+  onbStep=1;boot();
 }
 
 function pName(uid){return profiles[uid]||uid?.slice(0,8)+'…'||'Unknown';}
@@ -388,13 +510,8 @@ function closeModal(){modalRoot.innerHTML='';}
 function formErr(msg){const el=$('#formErr');if(el){el.textContent=msg;el.classList.add('show');}}
 
 let floorTickerId=null;
-let _rc=0;
 async function render(){
-  _rc++;
   if(floorTickerId){clearInterval(floorTickerId);floorTickerId=null;}
-  /* debug bar — shows render count so we can see what's happening */
-  let dbg=document.getElementById('_dbg');if(!dbg){dbg=document.createElement('div');dbg.id='_dbg';dbg.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#c02d1e;color:#fff;font:bold 13px monospace;padding:6px 12px;z-index:99999';document.body.appendChild(dbg);}
-  dbg.textContent='render #'+_rc+' at '+new Date().toLocaleTimeString();
   const views={floor:renderFloor,greeter:renderGreeter,customers:renderCustomers,shifts:renderShifts,disputes:renderDisputes,missed:renderMissed,analytics:renderAnalytics,staffing:renderStaffing,settings:renderSettings};
   try{await(views[currentView]||renderFloor)();}catch(err){mainEl.innerHTML=`<div class="empty">Error: ${esc(err.message)}</div>`;console.error(err);}
 }
@@ -472,9 +589,9 @@ async function renderFloor(){
         ${pos?`<div class="rc-pos">#${pos}</div>`:''}
         <div class="rc-name">${pName(r.user_id)}${r.user_id===currentUser.id?' <span style="font-size:10px;color:var(--teal)">(You)</span>':''}</div>
         <div class="rc-status ${st}">${isUp?'🟢 ':isNext?'🔵 ':''}${STATUS_LABELS[st]||st}</div>
-        ${upSecsLeft!==null?`<div class="accept-timer ${upSecsLeft<15?'urgent':''}">⏱ Accept up: ${upSecsLeft}s</div>`:''}
-        ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}</div>`:''}
-        <div class="rc-timer">${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):onBrk?'':'Clocked in '+elapsed(r.login_at)}</div>
+        ${upSecsLeft!==null?`<div class="accept-timer ${upSecsLeft<15?'urgent':''}" data-deadline="${new Date(new Date(offeredAt).getTime()+upTimeout*1000).toISOString()}">⏱ Accept up: ${upSecsLeft}s</div>`:''}
+        ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}" data-ts="${statusMap[r.user_id]?.started_at||''}" data-limit="${(st==='lunch'?lunchMinutes:breakMinutes)*60}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}</div>`:''}
+        <div class="rc-timer" ${st==='with_customer'&&statusMap[r.user_id]?.started_at?'data-ts="'+statusMap[r.user_id].started_at+'" data-prefix="With customer "':!onBrk&&r.login_at?'data-ts="'+r.login_at+'" data-prefix="Clocked in "':''}>${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):onBrk?'':'Clocked in '+elapsed(r.login_at)}</div>
         <div class="rc-stats"><span>Ups: <b>${r.ups_accepted}</b></span><span>Sold: <b>${r.closed_sales}</b></span><span>Cust: <b>${r.customers_served}</b></span></div>
         <div class="rc-actions">
           <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}">Status</button>
@@ -514,11 +631,16 @@ async function renderFloor(){
   const currentUpEntry=queueEntries.find(e=>e.is_current_up&&e.up_offered_at);
   if(currentUpEntry){
     const secsSince=Math.floor((Date.now()-new Date(currentUpEntry.up_offered_at).getTime())/1000);
-    /* timeout handler disabled to debug flashing */
-    // if(secsSince>=upTimeout){handleAcceptUpTimeout(sid,currentUpEntry).then(render);}
+    if(secsSince>=upTimeout&&!window._toHandling){window._toHandling=true;handleAcceptUpTimeout(sid,currentUpEntry).then(()=>{window._toHandling=false;render();});}
   }
-  /* auto-refresh disabled to debug flashing — data only refreshes on user action */
-  // floorTickerId=setInterval(()=>{if(currentView==='floor')render();},5000);
+  // Realtime handles data changes — this interval only updates elapsed clocks in-place
+  floorTickerId=setInterval(()=>{
+    if(currentView!=='floor')return;
+    $$('.rc-timer').forEach(el=>{const ts=el.dataset.ts;if(ts)el.textContent=el.dataset.prefix+elapsed(ts);});
+    $$('.cq-wait').forEach(el=>{const ts=el.dataset.ts;if(ts){const mins=Math.floor((Date.now()-new Date(ts).getTime())/60000);el.textContent=elapsed(ts)+' wait';el.classList.toggle('long-wait',mins>15);}});
+    $$('.accept-timer').forEach(el=>{const dl=el.dataset.deadline;if(dl){const left=Math.max(0,Math.floor((new Date(dl).getTime()-Date.now())/1000));el.textContent='\u23F1 Accept up: '+left+'s';el.classList.toggle('urgent',left<15);}});
+    $$('.rc-break-timer').forEach(el=>{const ts=el.dataset.ts;if(ts){const secs=Math.floor((Date.now()-new Date(ts).getTime())/1000);const lim=Number(el.dataset.limit)||900;el.textContent='\u23F1 '+fmtTime(secs)+' / '+(lim/60)+'m'+(secs>lim?' \u2014 OVER':'');el.classList.toggle('over',secs>lim);}});
+  },1000);
 }
 
 function waitCardHtml(c){
@@ -1070,8 +1192,11 @@ async function renderSettings(){
     <div class="field"><label>Lunch (min)</label><input id="ss_ln" type="number" value="${s.lunch_minutes??30}"></div></div>
     <div class="field"><label><input type="checkbox" id="ss_or" ${s.is_open_rotation_enabled?'checked':''}> Enable open rotation mode</label></div>
     <button class="btn btn-primary" id="ss_save">Save Settings</button></div>
-    <div class="dash-panel"><h3>Store Members</h3><p class="sub">Team members are managed in the CRM organization settings.</p>
-    ${Object.entries(profiles).map(([id,n])=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${esc(n)}</b> <span style="color:var(--steel);font-size:11px">${id.slice(0,8)}…</span></div>`).join('')}</div>`;
+    <div class="dash-panel"><h3>Team Members</h3>
+    ${Object.entries(profiles).map(([id,n])=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${esc(n)}</b> <span style="color:var(--steel);font-size:11px">${id===currentUser.id?' (you)':id.slice(0,8)+'…'}</span></div>`).join('')}
+    <div style="margin-top:12px;display:flex;gap:8px"><input id="inviteEmail" type="email" placeholder="newrep@yourstore.com" style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px"><button class="btn btn-primary btn-sm" id="inviteTeamBtn">Invite</button></div>
+    <p style="font-size:11px;color:var(--steel);margin-top:6px">Invited users will be added as team members when they sign up.</p>
+    </div>`;
   
   $('#ss_save')?.addEventListener('click',async()=>{
     const greeterUser=$('#ss_greeter_user').value||null;
@@ -1081,6 +1206,16 @@ async function renderSettings(){
     if(row.greeter_enabled&&row.greeter_user_id){await sb.from('iq_up_queue_entries').update({is_in_queue:false,is_current_up:false,is_next_in_line:false}).eq('store_id',currentStore.id).eq('user_id',row.greeter_user_id);}
     await recalcQueueOrder(currentStore.id);
     render();
+  });
+
+  // Team invite (admin only)
+  $('#inviteTeamBtn')?.addEventListener('click',async()=>{
+    const email=$('#inviteEmail')?.value.trim().toLowerCase();
+    if(!email||!email.includes('@'))return;
+    const code=crypto.randomUUID().slice(0,8);
+    const{error}=await sb.from('org_invites').insert({organization_id:currentOrg.id,invited_email:email,invite_code:code,role:'member',invited_by:currentUser.id,status:'pending',expires_at:new Date(Date.now()+7*86400000).toISOString()});
+    if(error){alert('Error: '+error.message);return;}
+    $('#inviteEmail').value='';render();
   });
 }
 </script>
