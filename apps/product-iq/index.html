@@ -521,7 +521,7 @@ async function renderDashboard(C){
 
 /* ══════════════════ CATALOG ══════════════════ */
 async function renderCatalog(C){
-  const {data:products,error}=await sb.from('aiq_products').select('id,brand_name,manufacturer_name,model,category,status,msrp,public_visible,series,updated_at');
+  const {data:products,error}=await sb.from('aiq_products').select('id,brand_name,manufacturer_name,model,category,status,msrp,sale_price,lowest_price,public_visible,series,updated_at,is_discontinued,is_clearance,is_end_of_life,is_open_box,is_refurbished,finish');
   if(error)return C.innerHTML=`<div class="error">${esc(error.message)}</div>`;
   const all=products||[];
   const brands=[...new Set(all.map(p=>p.brand_name))].sort();
@@ -539,11 +539,14 @@ async function renderCatalog(C){
     <select class="control" onchange="S.filters.category=this.value;S.pg=0;renderPage()"><option value="">All Categories</option>${cats.map(c=>`<option${S.filters.category===c?' selected':''}>${esc(c)}</option>`).join('')}</select>
   </div>
   <div class="tablewrap"><table>
-    <thead><tr><th>Product</th><th>Brand</th><th>Category</th><th>Series</th><th>MSRP</th><th>Status</th></tr></thead>
+    <thead><tr><th>Product</th><th>Brand</th><th>Category</th><th>MSRP</th><th>Sale</th><th>Lowest</th><th>Condition</th><th>Status</th></tr></thead>
     <tbody>${page.map(p=>`<tr class="clickable" onclick="go('product-detail','${p.id}')">
-      <td><span class="model-name">${esc(p.model)}</span></td>
-      <td>${esc(p.brand_name)}</td><td>${esc(p.category)}</td><td class="tiny">${esc(p.series||'—')}</td>
+      <td><span class="model-name">${esc(p.model)}</span>${p.finish?'<br/><span class="tiny">'+esc(p.finish)+'</span>':''}</td>
+      <td>${esc(p.brand_name)}</td><td>${esc(p.category)}</td>
       <td>${fmt$(p.msrp)}</td>
+      <td style="color:var(--red)">${fmt$(p.sale_price)}</td>
+      <td style="color:var(--green)">${fmt$(p.lowest_price)}</td>
+      <td>${p.is_discontinued?'<span class="pill pill-red">Disco</span>':p.is_clearance?'<span class="pill pill-amber">Clear</span>':p.is_end_of_life?'<span class="pill pill-amber">EOL</span>':p.is_open_box?'<span class="pill pill-amber">OB</span>':p.is_refurbished?'<span class="pill pill-amber">Refurb</span>':'—'}</td>
       <td>${p.public_visible?'<span class="pill pill-green">Published</span>':'<span class="pill pill-gray">Draft</span>'}</td>
     </tr>`).join('')}</tbody>
   </table></div>
@@ -737,7 +740,7 @@ async function renderCertifications(C){
 /* ══════════════════ PRODUCT DETAIL ══════════════════ */
 async function renderProductDetail(C){
   if(!S.detail)return go('catalog');
-  const [{data:p,error},{data:dims},{data:versions},{data:accessories},{data:images},{data:videos},{data:docs},{data:features},{data:certs},{data:warranty},{data:rebates}]=await Promise.all([
+  const [{data:p,error},{data:dims},{data:versions},{data:accessories},{data:images},{data:videos},{data:docs},{data:features},{data:certs},{data:warranty},{data:rebates},{data:priceHistory}]=await Promise.all([
     sb.from('aiq_products').select('*').eq('id',S.detail).maybeSingle(),
     sb.from('pim_product_dimensions').select('*').eq('product_id',S.detail).maybeSingle(),
     sb.from('aiq_product_versions').select('*').eq('product_id',S.detail).order('version_number',{ascending:false}),
@@ -748,31 +751,58 @@ async function renderProductDetail(C){
     sb.from('pim_product_features').select('*').eq('product_id',S.detail).order('display_order'),
     sb.from('pim_product_certifications').select('*').eq('product_id',S.detail),
     sb.from('pim_warranty_details').select('*').eq('product_id',S.detail).order('display_order'),
-    sb.from('pim_product_rebates').select('*').eq('product_id',S.detail)
+    sb.from('pim_product_rebates').select('*').eq('product_id',S.detail),
+    sb.from('pim_price_history').select('*').eq('product_id',S.detail).order('checked_at',{ascending:false}).limit(20)
   ]);
   if(error||!p)return C.innerHTML=`<div class="error">Product not found.</div>`;
   if(S.editMode)return renderProductEdit(C,p);
 
   const heroImg=(images||[]).find(i=>i.is_primary)||images?.[0];
-  const allTabs=['overview','images','videos','documents','marketing','dimensions','features','accessories','certifications','warranty','rebates','history'];
-  const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length,rebates:(rebates||[]).length,history:(versions||[]).length};
+  const allTabs=['overview','pricing','specs','images','videos','documents','marketing','dimensions','features','accessories','certifications','warranty','rebates','history'];
+  const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length,rebates:(rebates||[]).length,history:(versions||[]).length,pricing:(priceHistory||[]).length};
   const tab=S.detailTab||'overview';
 
   const tabContent={
-    overview:`<div class="kv">
+    overview:`
+      ${(p.condition_flags||[]).length||p.is_discontinued||p.is_clearance||p.is_end_of_life||p.is_open_box||p.is_refurbished?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        ${p.is_discontinued?'<span class="pill pill-red">🚫 Discontinued</span>':''}
+        ${p.is_clearance?'<span class="pill pill-amber">🏷️ Clearance</span>':''}
+        ${p.is_end_of_life?'<span class="pill pill-amber">⚠️ End of Life</span>':''}
+        ${p.is_open_box?'<span class="pill pill-amber">📦 Open Box</span>':''}
+        ${p.is_refurbished?'<span class="pill pill-amber">🔧 Refurbished</span>':''}
+        ${(p.condition_flags||[]).filter(f=>!['discontinued','clearance','end_of_life','open_box','refurbished'].includes(f)).map(f=>'<span class="pill pill-gray">'+f.replace(/_/g,' ')+'</span>').join('')}
+        ${p.replacement_model?'<span class="pill pill-indigo">→ '+esc(p.replacement_model)+'</span>':''}
+      </div>`:''}
+      ${p.condition_notes?'<div style="background:var(--amberbg);color:var(--amber);padding:8px 14px;border-radius:8px;font-size:13px;margin-bottom:14px">ℹ️ '+esc(p.condition_notes)+'</div>':''}
+      <div class="kv">
       <div><small>Brand</small>${esc(p.brand_name)}</div><div><small>Manufacturer</small>${esc(p.manufacturer_name)}</div><div><small>Model</small>${esc(p.model)}</div>
       <div><small>Category</small>${esc(p.category)}</div><div><small>Series</small>${esc(p.series||'—')}</div><div><small>Product Line</small>${esc(p.product_line||'—')}</div>
-      <div><small>MSRP</small>${fmt$(p.msrp)}</div><div><small>MAP Price</small>${fmt$(p.map_price)}</div><div><small>Dealer Cost</small>${fmt$(p.dealer_cost)}</div>
+      <div><small>MSRP</small>${fmt$(p.msrp)}</div><div><small>Sale Price</small><span style="color:${p.sale_price?'var(--red)':'inherit'}">${fmt$(p.sale_price)}</span></div><div><small>Lowest Found</small><span style="color:${p.lowest_price?'var(--green)':'inherit'}">${fmt$(p.lowest_price)}${p.lowest_price_source?' <small>('+esc(p.lowest_price_source)+')</small>':''}</span></div>
+      <div><small>MAP Price</small>${fmt$(p.map_price)}</div><div><small>Dealer Cost</small>${fmt$(p.dealer_cost)}</div><div><small>Price Checked</small>${p.price_checked_at?new Date(p.price_checked_at).toLocaleDateString():'—'}</div>
       <div><small>UPC</small>${esc(p.upc||'—')}</div><div><small>Finish</small>${esc(p.finish||'—')}</div><div><small>Color</small>${esc(p.color||'—')}</div>
       <div><small>ENERGY STAR</small>${p.energy_star?'✅ Yes':'—'}</div><div><small>ADA Compliant</small>${p.ada_compliant?'✅ Yes':'—'}</div><div><small>Made In</small>${esc(p.made_in||'—')}</div>
       <div><small>Width</small>${p.width_inches?p.width_inches+'"':'—'}</div><div><small>Height</small>${p.height_inches?p.height_inches+'"':'—'}</div><div><small>Depth</small>${p.depth_inches?p.depth_inches+'"':'—'}</div>
-      <div><small>Weight</small>${p.weight_lbs?p.weight_lbs+' lbs':'—'}</div><div><small>Freight Class</small>${esc(p.freight_class||'—')}</div><div><small>Lead Time</small>${p.lead_time_days?p.lead_time_days+' days':'—'}</div>
+      <div><small>Depth w/ Handles</small>${p.depth_with_handles?p.depth_with_handles+'"':'—'}</div><div><small>Depth w/o Handles</small>${p.depth_without_handles?p.depth_without_handles+'"':'—'}</div><div><small>Weight</small>${p.weight_lbs?p.weight_lbs+' lbs':'—'}</div>
+      <div><small>Capacity</small>${p.capacity_cu_ft?p.capacity_cu_ft+' cu ft':'—'}</div><div><small>Voltage</small>${esc(p.voltage||'—')}</div><div><small>Amperage</small>${p.amperage?p.amperage+'A':'—'}</div>
+      <div><small>Wattage</small>${p.wattage?p.wattage+'W':'—'}</div><div><small>Frequency</small>${esc(p.frequency_hz||'—')}</div><div><small>Installation</small>${esc(p.installation_type||'—')}</div>
       <div><small>Launch Date</small>${fmtDate(p.launch_date)}</div><div><small>Country</small>${(p.country_availability||[]).join(', ')||'—'}</div><div><small>Version</small>v${p.version_number}</div>
     </div>
-    ${p.short_description?`<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:6px">Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">${esc(p.short_description)}</p></div>`:''}
-    ${p.long_description?`<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Long Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">${esc(p.long_description)}</p></div>`:''}`,
+    ${(()=>{const colors=typeof p.available_colors==='string'?JSON.parse(p.available_colors||'[]'):(p.available_colors||[]);return colors.length?'<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:8px">Available Colors & Finishes ('+colors.length+')</h3><div style="display:flex;gap:8px;flex-wrap:wrap">'+colors.map(c=>'<div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px"><strong style="font-size:13px">'+esc(c.color||c.finish||'')+'</strong>'+(c.model_number?'<br/><span style="font-size:11px;color:var(--muted);font-family:monospace">'+esc(c.model_number)+'</span>':'')+(c.msrp?'<br/><span style="font-size:12px;font-weight:700;color:var(--indigo)">'+fmt$(c.msrp)+'</span>':'')+(c.sale_price?'<span style="font-size:12px;font-weight:700;color:var(--red);margin-left:6px">'+fmt$(c.sale_price)+'</span>':'')+'</div>').join('')+'</div></div>':'';})()}
+    ${p.short_description?'<div style="margin-top:16px"><h3 style="font-size:14px;margin-bottom:6px">Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(p.short_description)+'</p></div>':''}
+    ${p.long_description?'<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Long Description</h3><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(p.long_description)+'</p></div>':''}
+    ${p.features_html?'<div style="margin-top:12px"><h3 style="font-size:14px;margin-bottom:6px">Features</h3><div style="color:var(--muted);font-size:13px;line-height:1.7">'+p.features_html+'</div></div>':''}`,
 
-    images:(images||[]).length?`<div class="asset-grid">${(images||[]).map(img=>`<div class="asset-card">
+    pricing:`<div class="cards" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px">
+      <div class="metric"><div class="label">MSRP</div><div class="value">${fmt$(p.msrp)}</div></div>
+      <div class="metric" style="${p.sale_price?'border-color:var(--red)':''}"><div class="label" style="${p.sale_price?'color:var(--red)':''}">Sale Price</div><div class="value" style="${p.sale_price?'color:var(--red)':''}">${fmt$(p.sale_price)}</div></div>
+      <div class="metric" style="${p.lowest_price?'border-color:var(--green)':''}"><div class="label" style="${p.lowest_price?'color:var(--green)':''}">Lowest Found</div><div class="value" style="${p.lowest_price?'color:var(--green)':''}">${fmt$(p.lowest_price)}</div><div class="tiny" style="margin-top:2px">${esc(p.lowest_price_source||'')}</div></div>
+      <div class="metric"><div class="label">Savings</div><div class="value" style="color:var(--indigo)">${p.msrp&&p.lowest_price?Math.round((1-p.lowest_price/p.msrp)*100)+'%':'—'}</div>${p.msrp&&p.lowest_price?'<div class="tiny" style="margin-top:2px">'+fmt$(p.msrp-p.lowest_price)+' off</div>':''}</div>
+    </div>
+    ${p.price_checked_at?'<div style="font-size:12px;color:var(--muted);margin-bottom:16px">Last checked: '+new Date(p.price_checked_at).toLocaleString()+'</div>':''}
+    ${(priceHistory||[]).length?'<div class="panel"><h2>Price History</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>MSRP</th><th>Sale</th><th>Lowest</th><th>Source</th></tr></thead><tbody>'+(priceHistory||[]).map(ph=>'<tr><td class="tiny">'+new Date(ph.checked_at).toLocaleDateString()+'</td><td>'+fmt$(ph.msrp)+'</td><td style="color:var(--red)">'+fmt$(ph.sale_price)+'</td><td style="color:var(--green)">'+fmt$(ph.lowest_price)+'</td><td class="tiny">'+esc(ph.lowest_price_source||'')+'</td></tr>').join('')+'</tbody></table></div></div>':'<div class="empty">No price history yet. Run the PIM Scraper price check to start tracking prices over time.</div>'}`,
+
+    specs:(()=>{const sj=typeof p.specs_json==='string'?JSON.parse(p.specs_json||'{}'):(p.specs_json||{});const keys=Object.keys(sj).filter(k=>sj[k]!==null&&sj[k]!=='');
+      return keys.length?'<div class="panel"><h2>Detailed Specifications</h2><div class="kv">'+keys.map(k=>'<div><small>'+k.replace(/_/g,' ')+'</small>'+esc(String(sj[k]))+'</div>').join('')+'</div></div>':'<div class="empty">No detailed specifications yet. Scrape this product to populate specs.</div>';})(),(images||[]).length?`<div class="asset-grid">${(images||[]).map(img=>`<div class="asset-card">
       <div class="preview">${img.file_url?`<img src="${esc(img.file_url)}" onerror="this.parentNode.innerHTML='📸'"/>`:'📸'}${img.is_primary?'<span class="pill pill-green" style="position:absolute;top:6px;right:6px">Primary</span>':''}</div>
       <div class="info"><h4>${(img.image_type||'').replace(/_/g,' ')}</h4><span class="tiny">${esc(img.finish_shown||'')} ${esc(img.angle||'')} ${img.width_px?img.width_px+'×'+img.height_px:''}</span></div>
       <div class="actions"><a href="${esc(img.file_url)}" target="_blank" class="btn btn-secondary btn-sm">View ↗</a>
@@ -884,9 +914,16 @@ async function renderProductDetail(C){
         <div class="record-meta">
           ${p.public_visible?'<span class="pill pill-green">Published</span>':'<span class="pill pill-gray">Draft</span>'}
           <span class="pill pill-indigo">${esc(p.status)}</span>
+          ${p.is_discontinued?'<span class="pill pill-red">Discontinued</span>':''}
+          ${p.is_clearance?'<span class="pill pill-amber">Clearance</span>':''}
+          ${p.is_end_of_life?'<span class="pill pill-amber">End of Life</span>':''}
+          ${p.is_open_box?'<span class="pill pill-amber">Open Box</span>':''}
+          ${p.is_refurbished?'<span class="pill pill-amber">Refurbished</span>':''}
           ${p.energy_star?'<span class="pill pill-teal">ENERGY STAR</span>':''}
-          ${p.msrp?`<span class="pill pill-gray">${fmt$(p.msrp)}</span>`:''}
-          ${p.finish?`<span class="pill pill-gray">${esc(p.finish)}</span>`:''}
+          ${p.msrp?'<span class="pill pill-gray">MSRP '+fmt$(p.msrp)+'</span>':''}
+          ${p.sale_price?'<span class="pill pill-red">Sale '+fmt$(p.sale_price)+'</span>':''}
+          ${p.lowest_price?'<span class="pill pill-green">Low '+fmt$(p.lowest_price)+'</span>':''}
+          ${p.finish?'<span class="pill pill-gray">'+esc(p.finish)+'</span>':''}
         </div>
       </div>
       ${canEdit()?'<button class="btn btn-secondary" onclick="S.editMode=true;renderPage()">✏️ Edit Product</button>':''}
