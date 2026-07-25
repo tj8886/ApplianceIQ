@@ -167,6 +167,44 @@ const APPLIANCE_CATEGORIES = [
   "warming-drawers", "trash-compactors", "disposers",
 ];
 
+const PRICE_CHECK_PROMPT = `You are an appliance price checker. Search for the current pricing and availability status of the given appliance product. Check the manufacturer's Canadian website AND major Canadian retailers (bestbuy.ca, homedepot.ca, lowes.ca, ajmadison.com).
+
+Return ONLY valid JSON, no markdown, no backticks:
+
+{
+  "found": true,
+  "brand_name": "",
+  "model": "",
+  "source_url": "",
+  "pricing": {
+    "msrp": null,
+    "sale_price": null,
+    "lowest_price": null,
+    "lowest_price_source": "",
+    "price_currency": "CAD",
+    "on_sale": false,
+    "sale_ends": null,
+    "price_checked_sources": ["lg.com", "bestbuy.ca", "homedepot.ca"]
+  },
+  "condition": {
+    "status": "active",
+    "flags": [],
+    "is_discontinued": false,
+    "is_clearance": false,
+    "is_end_of_life": false,
+    "is_open_box": false,
+    "is_refurbished": false,
+    "is_floor_model": false,
+    "is_scratch_dent": false,
+    "is_second_hand": false,
+    "is_last_chance": false,
+    "replacement_model": null,
+    "notes": ""
+  }
+}
+
+ONLY return pricing and condition data. Do NOT look up specs, features, images, or documents. Keep it minimal.`;
+
 function supaFetch(path, opts = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...opts,
@@ -254,21 +292,18 @@ async function callClaude(systemPrompt, userMsg, retries = 3) {
 }
 
 async function scrapeProduct(query) {
-  // First attempt with the main prompt
-  let result = await callClaude(SCRAPE_PROMPT, `Find all product specifications for: ${query}`);
+  let result = await callClaude(SCRAPE_PROMPT, "Find all product specifications for: " + query);
   if (result.found) return result;
-  
-  // Retry with a simpler, more direct prompt
-  const fallbackPrompt = `Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.
-
-The JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).
-
-Return ALL image URLs from the product gallery. Return ALL color/finish options.`;
-  
-  result = await callClaude(fallbackPrompt, `${query} — search the manufacturer website for full specs, all images, all colors, and MSRP price`);
+  const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
+  result = await callClaude(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price");
   if (result.found) return result;
-  
   return { found: false, query, error: result.error || "Product not found after multiple attempts" };
+}
+
+async function priceCheckProduct(query) {
+  const result = await callClaude(PRICE_CHECK_PROMPT, "Check current pricing and availability for: " + query, 2);
+  if (result.found || result.pricing) { result.found = true; result._priceOnly = true; return result; }
+  return { found: false, query, error: result.error || "Price check failed", _priceOnly: true };
 }
 
 // ── Styles ──
@@ -740,7 +775,68 @@ function PIMScraper() {
       saveCountRef.current.saved++;
       return true;
     } catch (e) {
-      setErrors(p => [...p, `Auto-save ${data.model}: ${e.message}`]);
+      setErrors(p => [...p, "Auto-save " + (data.model || "") + ": " + e.message]);
+      saveCountRef.current.failed++;
+      return false;
+    }
+  };
+
+  // Price-only save — updates ONLY pricing and condition fields
+  const doPriceSave = async (data) => {
+    try {
+      const model = data.model;
+      const brand = data.brand_name;
+      if (!model || !brand) return false;
+      const checkRes = await supaFetch("aiq_products?model=eq." + encodeURIComponent(model) + "&brand_name=eq." + encodeURIComponent(brand) + "&select=id");
+      const existing = await checkRes.json();
+      if (!existing || !existing.length) {
+        setErrors(p => [...p, "Price check " + model + ": product not in PIM, run full scrape first"]);
+        return false;
+      }
+      const productId = existing[0].id;
+      const pricing = data.pricing || {};
+      const cond = data.condition || {};
+      const updates = {
+        msrp: pricing.msrp ? parseFloat(pricing.msrp) : null,
+        sale_price: pricing.sale_price ? parseFloat(pricing.sale_price) : null,
+        lowest_price: pricing.lowest_price ? parseFloat(pricing.lowest_price) : null,
+        lowest_price_source: pricing.lowest_price_source || null,
+        price_currency: pricing.price_currency || "CAD",
+        price_checked_at: new Date().toISOString(),
+        condition_flags: cond.flags || [],
+        is_discontinued: cond.is_discontinued || false,
+        is_clearance: cond.is_clearance || false,
+        is_end_of_life: cond.is_end_of_life || false,
+        is_open_box: cond.is_open_box || false,
+        is_refurbished: cond.is_refurbished || false,
+        replacement_model: cond.replacement_model || null,
+        condition_notes: cond.notes || null,
+        updated_at: new Date().toISOString(),
+      };
+      // Only update status if condition says discontinued
+      if (cond.is_discontinued) updates.status = "discontinued";
+      else if (cond.is_clearance) updates.status = "clearance";
+      else if (cond.is_end_of_life) updates.status = "end_of_life";
+
+      const res = await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify(updates) });
+      if (!res.ok) throw new Error(await res.text());
+
+      // Log to price history
+      await supaFetch("pim_price_history", { method: "POST", body: JSON.stringify({
+        product_id: productId,
+        msrp: pricing.msrp ? parseFloat(pricing.msrp) : null,
+        sale_price: pricing.sale_price ? parseFloat(pricing.sale_price) : null,
+        lowest_price: pricing.lowest_price ? parseFloat(pricing.lowest_price) : null,
+        lowest_price_source: pricing.lowest_price_source || null,
+        price_currency: pricing.price_currency || "CAD",
+        source_url: data.source_url || null,
+      }), headers: { Prefer: "return=minimal" } }).catch(() => {});
+
+      setSaved(p => [...p, { model, action: "price updated", id: productId }]);
+      saveCountRef.current.saved++;
+      return true;
+    } catch (e) {
+      setErrors(p => [...p, "Price save " + (data.model || "") + ": " + e.message]);
       saveCountRef.current.failed++;
       return false;
     }
@@ -947,7 +1043,7 @@ function PIMScraper() {
         <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 4 }}>
-            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["existing", "Enrich Existing"]].map(([m, label]) => (
+            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["existing", "Enrich Existing"]].map(([m, label]) => (
               <button key={m} style={{ ...s.tab, ...(mode === m ? s.tabActive : {}) }} onClick={() => { setMode(m); if (m === "existing") loadExisting(); }}>{label}</button>
             ))}
           </div>
@@ -1063,6 +1159,76 @@ function PIMScraper() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Price Check mode */}
+        {mode === "pricecheck" && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={s.card}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>💰 Price Check & Condition Update</div>
+              <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
+                Updates ONLY pricing and condition flags — no specs, images, or docs. ~10x cheaper than full scrape. Great for weekly price monitoring.
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                <button style={{ ...s.btn, ...s.btnSm }} onClick={async () => {
+                  if (!existingProducts.length) await loadExisting();
+                  const lines = existingProducts.map(p => p.brand_name + " " + p.model);
+                  setBulkText(lines.join("\n"));
+                  setProgress({ current: 0, total: lines.length, currentQuery: "" });
+                }}>Load All PIM Products ({existingProducts.length || "..."})</button>
+                <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                  if (!existingProducts.length) await loadExisting();
+                  const lines = existingProducts.filter(p => !p.msrp).map(p => p.brand_name + " " + p.model);
+                  setBulkText(lines.join("\n"));
+                }}>Load Missing Prices</button>
+              </div>
+
+              <textarea style={s.textarea} rows={6} placeholder={"One product per line:\nLG LRMVS3006S\nWhirlpool WRF555SDFZ\nSamsung RF23A9671SR"} value={bulkText} onChange={e => setBulkText(e.target.value)} />
+
+              <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                <button style={{ ...s.btn, background: "#e17055" }} disabled={loading} onClick={async () => {
+                  const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
+                  if (!lines.length) return;
+                  setLoading(true);
+                  abortRef.current = false;
+                  saveCountRef.current = { saved: 0, failed: 0 };
+                  for (let i = 0; i < lines.length; i++) {
+                    if (abortRef.current) break;
+                    setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
+                    try {
+                      const r = await priceCheckProduct(lines[i]);
+                      if (r.found) {
+                        // Extract brand+model from the query if not in response
+                        if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
+                        if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
+                        if (autoSave) {
+                          const ok = await doPriceSave(r);
+                          if (!ok) setResults(p => [...p, r]);
+                        } else {
+                          setResults(p => [...p, r]);
+                        }
+                      } else {
+                        setResults(p => [...p, { ...r, query: lines[i] }]);
+                      }
+                    } catch (e) {
+                      setErrors(p => [...p, "Price check " + lines[i] + ": " + e.message]);
+                    }
+                    if (i < lines.length - 1) await new Promise(r => setTimeout(r, 3000));
+                  }
+                  setLoading(false);
+                }}>
+                  {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "💰 Price Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                </button>
+                {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+              </div>
+
+              <div style={{ marginTop: 12, fontSize: 12, color: palette.textMuted }}>
+                ⚡ ~0.3¢ per product vs ~3¢ for full scrape · 3 sec delay between checks · Updates pricing + condition flags only
+              </div>
+            </div>
           </div>
         )}
 
