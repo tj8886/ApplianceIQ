@@ -258,11 +258,11 @@ async function showInvite(code,err){
     <div class="mark">PIQ</div>
     <h1>You're Invited</h1>
     <p class="sub">${inv.persona==='manufacturer'
-      ? 'Manage product content for <b>'+esc(inv.vendor_name)+'</b>'+(inv.scope_type==='group'?' ('+inv.brand_count+' brands)':'')
+      ? 'Manage product content for <b>'+esc(inv.vendor_name)+'</b>'
       : 'Retailer access to the Product IQ catalog'}</p>
     <div class="panel" style="text-align:left;background:#eef0ff;border-color:#c7d2fe;margin-bottom:16px">
       <div class="tiny"><b>${esc(inv.email)}</b></div>
-      <div class="tiny">${inv.persona==='manufacturer'?'Role: '+esc(inv.invite_role||'').replace(/_/g,' ')+' · '+(inv.scope_type==='group'?'all brands in this group':'this brand only'):'Browse and export published product data'}</div>
+      <div class="tiny">${inv.persona==='manufacturer'?'Role: '+esc(inv.invite_role||'').replace(/_/g,' '):'Browse and export published product data'}</div>
     </div>
     ${err?`<div class="error" style="margin-bottom:12px">${esc(err)}</div>`:''}
     <div class="form-row"><label>Create a Password</label><input id="inv-pw" type="password" placeholder="At least 8 characters"/></div>
@@ -1230,23 +1230,22 @@ async function renderExport(C){
 /* ══════════════════ TEAM & ACCESS (admin only) ══════════════════ */
 async function renderTeam(C){
   if(!S.role.isAdmin)return C.innerHTML='<div class="empty">Team &amp; Access is restricted to platform administrators.</div>';
-  const [{data:members},{data:vendors},{data:admins},{data:invites},{data:groups}]=await Promise.all([
+  const [{data:members},{data:vendors},{data:admins},{data:invites},{data:brandRows}]=await Promise.all([
     sb.from('mfr_members').select('user_id,role,status,created_at,mfr_vendors(name)').order('created_at',{ascending:false}),
-    sb.from('mfr_vendors').select('id,name,status,group_id,brand_id').order('name'),
+    sb.from('mfr_vendors').select('id,name,status').order('name'),
     sb.from('product_iq_platform_roles').select('user_id,role,status'),
     sb.from('mfr_invites').select('*').order('created_at',{ascending:false}).limit(50),
-    sb.from('mfr_vendor_groups').select('id,name').order('name')
+    sb.from('brand_catalog').select('manufacturer_id')
   ]);
-  const brands=(vendors||[]).filter(v=>v.brand_id);
-  const gCount={};brands.forEach(v=>{if(v.group_id)gCount[v.group_id]=(gCount[v.group_id]||0)+1});
-  const groupsWith=(groups||[]).filter(g=>gCount[g.id]).sort((a,b)=>gCount[b.id]-gCount[a.id]);
+  const bc={};(brandRows||[]).forEach(b=>{if(b.manufacturer_id)bc[b.manufacturer_id]=(bc[b.manufacturer_id]||0)+1});
+  const owning=(vendors||[]).filter(v=>bc[v.id]).sort((a,b)=>bc[b.id]-bc[a.id]);
   const pending=(invites||[]).filter(i=>i.status==='pending');
   const ROLES=['vendor_owner','vendor_admin','brand_admin','product_editor','product_reviewer','asset_editor','training_editor','viewer'];
 
   C.innerHTML=`
   <div class="pagehead"><div><h1>👥 Team &amp; Access</h1><p class="sub">Invite manufacturers and retailers, and manage brand ownership.</p></div></div>
   <div class="cards" style="grid-template-columns:repeat(4,1fr)">
-    <div class="metric"><div class="label">Brands</div><div class="value">${brands.length}</div><div class="note">each managed independently</div></div>
+    <div class="metric"><div class="label">Companies</div><div class="value">${owning.length}</div><div class="note">owning brands</div></div>
     <div class="metric"><div class="label">Assigned Users</div><div class="value">${(members||[]).length}</div></div>
     <div class="metric"><div class="label">Pending Invites</div><div class="value" style="color:${pending.length?'var(--amber)':'var(--navy)'}">${pending.length}</div></div>
     <div class="metric"><div class="label">Platform Admins</div><div class="value">${(admins||[]).length}</div></div>
@@ -1261,19 +1260,10 @@ async function renderTeam(C){
           <option value="retailer">Retailer — browse &amp; export only</option>
         </select></div>
       <span id="inv-mfr-fields" style="display:contents">
-        <div class="form-row"><label>Assign To</label>
-          <select id="inv-scope" onchange="toggleScope(this.value)">
-            <option value="brand">A single brand</option>
-            <option value="group">An entire ownership group</option>
-          </select></div>
+        <div class="form-row"><label>Company</label>
+          <select id="inv-vendor">${owning.map(v=>`<option value="${v.id}">${esc(v.name)} (${bc[v.id]} brand${bc[v.id]===1?'':'s'})</option>`).join('')}</select></div>
         <div class="form-row"><label>Role</label>
           <select id="inv-role">${ROLES.map(r=>`<option value="${r}"${r==='product_editor'?' selected':''}>${r.replace(/_/g,' ')}</option>`).join('')}</select></div>
-        <div class="form-row full" id="inv-brand-row"><label>Brand</label>
-          <select id="inv-vendor">${brands.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select>
-          <div class="tiny" style="margin-top:4px">Brands are independent — assigning Bosch does not grant Thermador.</div></div>
-        <div class="form-row full" id="inv-group-row" style="display:none"><label>Ownership Group</label>
-          <select id="inv-group">${groupsWith.map(g=>`<option value="${g.id}">${esc(g.name)} — ${gCount[g.id]} brand${gCount[g.id]===1?'':'s'}</option>`).join('')}</select>
-          <div class="tiny" style="margin-top:4px">Grants every brand in the group. Use only for corporate teams that genuinely span brands.</div></div>
       </span>
     </div>
     <div class="form-actions"><button class="btn btn-indigo" onclick="createInvite()">Generate Invite Link</button></div>
@@ -1304,40 +1294,32 @@ async function renderTeam(C){
       </tr>`).join('')}</tbody></table></div>`:'<div class="empty">No manufacturer users assigned yet.</div>'}
   </div>
 
-  <div class="panel"><h2>Brands &amp; Ownership Groups</h2>
-    <p class="tiny" style="margin-bottom:10px">Every brand is its own tenant with separate content, pricing and logo. Ownership groups are organisational only — they never merge brand access.</p>
+  <div class="panel"><h2>Companies &amp; Brand Ownership</h2>
     <div class="tablewrap"><table>
-      <thead><tr><th>Ownership Group</th><th>Brands</th></tr></thead>
-      <tbody>${groupsWith.map(g=>`<tr>
-        <td><span class="model-name">${esc(g.name)}</span></td>
-        <td class="tiny">${brands.filter(v=>v.group_id===g.id).map(v=>'<span class="pill pill-gray" style="margin:2px">'+esc(v.name)+'</span>').join('')}</td>
+      <thead><tr><th>Company</th><th>Brands Owned</th><th>Status</th></tr></thead>
+      <tbody>${owning.map(v=>`<tr>
+        <td><span class="model-name">${esc(v.name)}</span></td>
+        <td><span class="pill pill-gray">${bc[v.id]}</span></td>
+        <td>${v.status==='active'?'<span class="pill pill-green">Active</span>':'<span class="pill pill-gray">'+esc(v.status||'—')+'</span>'}</td>
       </tr>`).join('')}</tbody></table></div>
   </div>`;
 }
 function inviteURL(code){return location.origin+location.pathname+'?invite='+code}
-function toggleScope(v){
-  document.getElementById('inv-brand-row').style.display=v==='brand'?'':'none';
-  document.getElementById('inv-group-row').style.display=v==='group'?'':'none';
-}
 async function createInvite(){
   const email=document.getElementById('inv-email').value.trim();
   const persona=document.getElementById('inv-persona').value;
-  const scope=document.getElementById('inv-scope')?.value||'brand';
   const vendor=document.getElementById('inv-vendor')?.value||null;
-  const group=document.getElementById('inv-group')?.value||null;
   const role=document.getElementById('inv-role')?.value||'product_editor';
   const R=document.getElementById('inv-result');
   if(!email)return R.innerHTML='<div class="error" style="margin-top:12px">Email address is required.</div>';
-  const isMfr=persona==='manufacturer';
   const {data,error}=await sb.rpc('piq_create_invite',{p_email:email,p_persona:persona,
-    p_vendor_id:isMfr&&scope==='brand'?vendor:null,p_role:role,
-    p_group_id:isMfr&&scope==='group'?group:null});
+    p_vendor_id:persona==='manufacturer'?vendor:null,p_role:role});
   if(error)return R.innerHTML=`<div class="error" style="margin-top:12px">${esc(error.message)}</div>`;
   const inv=Array.isArray(data)?data[0]:data;
   const url=inviteURL(inv.code);
   R.innerHTML=`<div class="panel" style="margin-top:14px;background:var(--greenbg);border-color:#a7e0bd">
     <strong>✅ Invite created for ${esc(inv.email)}</strong>
-    <div class="tiny" style="margin:6px 0">${esc(inv.scope_name||'Retailer access')}${inv.scope_type==='group'?' (entire group)':inv.scope_type==='brand'?' (this brand only)':''} · expires in 30 days</div>
+    <div class="tiny" style="margin:6px 0">${inv.vendor_name?'Company: '+esc(inv.vendor_name):'Retailer access'} · expires in 30 days</div>
     <input class="control" style="width:100%;margin-top:6px" readonly value="${esc(url)}" onclick="this.select()"/>
     <div style="margin-top:8px"><button class="btn btn-indigo btn-sm" onclick="copyInvite('${inv.code}')">📋 Copy Link</button></div>
     <div class="tiny" style="margin-top:8px">Send this link to ${esc(inv.email)}. They set their own password and are granted access automatically.</div>
