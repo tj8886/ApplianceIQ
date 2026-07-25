@@ -238,7 +238,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .onb-steps{display:flex;gap:8px;margin-bottom:24px}.onb-dot{width:32px;height:4px;border-radius:2px;background:var(--line)}.onb-dot.active{background:var(--teal)}.onb-dot.done{background:var(--verified)}
 .role-badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:4px;background:var(--teal-tint);color:var(--teal)}
 .role-badge.member{background:#f0f3f9;color:var(--steel)}
-.nav-btn.admin-only{display:none}.is-admin .nav-btn.admin-only{display:block}
+.nav-btn.admin-only{display:none !important}.is-admin .nav-btn.admin-only{display:flex !important}
 .rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative}
 </style>
 </head>
@@ -449,7 +449,8 @@ async function boot(){
 
   // Role-gate the sidebar
   const shell=$('#app .shell');
-  if(['admin','owner'].includes(userRole))shell.classList.add('is-admin');
+  console.log('User role:',userRole,'orgs:',orgs.length);
+  if(['admin','owner'].includes(userRole)){shell.classList.add('is-admin');console.log('Admin mode ON');}
   else shell.classList.remove('is-admin');
 
   // Get stores
@@ -1156,7 +1157,7 @@ async function renderAnalytics(){
   const totalCustomers=wt.length;
   const served=wt.filter(w=>w.status==='with_salesperson').length;
   const conversion=totalCustomers?Math.round(served/totalCustomers*100):0;
-  const avgWait=(()=>{const waits=ix.filter(i=>i.started_at&&i.accepted_at).map(i=>(new Date(i.accepted_at)-new Date(i.started_at))/1000);return waits.length?Math.round(waits.reduce((a,b)=>a+b,0)/waits.length):0;})();
+  const avgWait=(()=>{const waits=ix.filter(i=>i.started_at&&i.accepted_at).map(i=>Math.abs((new Date(i.accepted_at)-new Date(i.started_at))/1000)).filter(w=>w<3600);return waits.length?Math.round(waits.reduce((a,b)=>a+b,0)/waits.length):0;})();
 
   mainEl.innerHTML=`<div class="page-head"><h1>📈 Floor Analytics</h1><div class="sub">Today — ${esc(currentStore?.name)}</div></div>
     <div class="stat-grid">
