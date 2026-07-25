@@ -581,7 +581,7 @@ async function renderFloor(){
   const getStatus=uid=>statusMap[uid]?.status??repData.find(r=>r.user_id===uid)?.initial_status??'available';
   const onFloor=repData.filter(r=>!['ended_shift','off_sales_floor'].includes(getStatus(r.user_id)));
   const withCust=repData.filter(r=>getStatus(r.user_id)==='with_customer');
-  const avail=repData.filter(r=>getStatus(r.user_id)==='available');
+  const avail=repData.filter(r=>{const s=getStatus(r.user_id);return s==='available'||r.queue?.is_current_up||r.queue?.is_next_in_line;});
   const onBreak=repData.filter(r=>['break','lunch'].includes(getStatus(r.user_id)));
 
   // My status for the break/lunch quick bar
