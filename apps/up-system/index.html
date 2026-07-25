@@ -614,7 +614,7 @@ async function renderFloor(){
     </div>`:''}
     <div class="disputes-mini ${openDisputes.length?'has-open':''}"><div class="dm-left">${openDisputes.length?`<span class="dm-count">${openDisputes.length}</span><span>open dispute${openDisputes.length!==1?'s':''}</span>`:'<span style="color:var(--steel)">No open disputes</span>'}</div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="viewDisputes">View Disputes</button><button class="btn btn-danger btn-sm" id="fileDispute">⚡ File Dispute</button></div></div>
     ${aiText?`<div class="ai-insight"><div class="ai-icon">🤖</div><div class="ai-text">${aiText}</div></div>`:''}
-    <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions"><button class="btn btn-primary" id="logWalkIn">👋 Log Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button></div></div>
+    <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${['admin','owner'].includes(userRole)?`<button class="btn btn-primary" id="logWalkIn">👋 Log Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button>`:''}</div></div>
     ${currentReq.length?`<div class="wait-section-label">Current — Requesting a Specific Rep</div><div class="customer-queue">${currentReq.map(c=>waitCardHtml(c)).join('')}</div>`:''}
     ${waitlist.length?`<div class="wait-section-label">Waitlist</div><div class="customer-queue">${waitlist.map(c=>waitCardHtml(c)).join('')}</div>`:''}
     <div class="queue-grid">${repData.length?repData.map(r=>{
@@ -639,9 +639,14 @@ async function renderFloor(){
         <div class="rc-actions">
           ${isUp&&!upSecsLeft?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue?.id}">✅ Accept Up</button>`:''}
           ${upSecsLeft!==null?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue.id}">✅ Accept (${upSecsLeft}s)</button>`:''}
-          ${st==='with_customer'?`<button class="btn btn-primary btn-sm" data-endvisit="${r.user_id}">🏁 End Visit</button><button class="btn btn-ghost btn-sm" data-reassign="${r.user_id}">🔁 Reassign</button>`:''}
-          ${st==='available'&&!isUp&&!isNext?`<button class="btn btn-ghost btn-sm" data-bump="${r.user_id}">↑ Bump Up</button>`:''}
-          ${['admin','owner'].includes(userRole)?`<button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}" style="opacity:.6">⋯</button>`:''}
+          ${st==='with_customer'?`<button class="btn btn-primary btn-sm" data-endvisit="${r.user_id}">🏁 End Visit</button>${['admin','owner'].includes(userRole)?`<button class="btn btn-ghost btn-sm" data-reassign="${r.user_id}">🔁 Reassign</button>`:''}`:''}
+          ${['admin','owner'].includes(userRole)?`
+            ${st==='available'&&!isUp&&!isNext?`<button class="btn btn-ghost btn-sm" data-bump="${r.user_id}">↑ Bump Up</button>`:''}
+            <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}" style="opacity:.6">⋯</button>
+          `:`
+            ${r.user_id===currentUser.id&&st==='available'?`<button class="btn btn-ghost btn-sm" data-goaway="${r.user_id}" data-shift="${r.queue?.shift_id||''}">🚫 Unavailable</button>`:''}
+            ${r.user_id===currentUser.id&&['temporarily_unavailable','personal_matter','off_sales_floor'].includes(st)?`<button class="btn btn-primary btn-sm" data-goback="${r.user_id}" data-shift="${r.queue?.shift_id||''}">✅ Back on Floor</button>`:''}
+          `}
         </div></div>`;}).join(''):'<div class="empty" style="grid-column:1/-1;padding:40px 20px;text-align:center"><div style="font-size:36px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">No one on the floor yet</div><div style="color:var(--steel);margin-bottom:16px">Clock in your first rep to start the rotation.</div><button class="btn btn-primary" id="clockInEmpty">⏱ Clock In a Rep</button></div>'}</div>`;
   
   $('#logWalkIn')?.addEventListener('click',openWalkInModal);
@@ -669,6 +674,32 @@ async function renderFloor(){
     const uid=b.dataset.bump;
     await sb.from('iq_up_queue_entries').update({queue_position:0}).eq('store_id',sid).eq('user_id',uid).eq('is_in_queue',true);
     await recalcQueueOrder(sid);
+    render();
+  };});
+
+  // Rep self-service: go unavailable
+  $$('[data-goaway]').forEach(b=>{b.onclick=async()=>{
+    const uid=b.dataset.goaway;
+    const{data:sh}=await sb.from('iq_shift_records').select('id').eq('store_id',sid).eq('user_id',uid).eq('is_active',true).maybeSingle();
+    if(!sh)return;
+    const now=new Date().toISOString();
+    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',sh.id).eq('user_id',uid).is('ended_at',null);
+    await sb.from('iq_status_sessions').insert({shift_id:sh.id,organization_id:currentOrg.id,store_id:sid,user_id:uid,status:'temporarily_unavailable',started_at:now});
+    await sb.from('iq_up_queue_entries').update({status_code:'temporarily_unavailable',is_available_for_assignment:false}).eq('store_id',sid).eq('user_id',uid).eq('is_in_queue',true);
+    await recalcQueueOrder(sid);
+    render();
+  };});
+
+  // Rep self-service: back on floor (goes to back of rotation)
+  $$('[data-goback]').forEach(b=>{b.onclick=async()=>{
+    const uid=b.dataset.goback;
+    const{data:sh}=await sb.from('iq_shift_records').select('id').eq('store_id',sid).eq('user_id',uid).eq('is_active',true).maybeSingle();
+    if(!sh)return;
+    const now=new Date().toISOString();
+    await sb.from('iq_status_sessions').update({ended_at:now}).eq('shift_id',sh.id).eq('user_id',uid).is('ended_at',null);
+    await sb.from('iq_status_sessions').insert({shift_id:sh.id,organization_id:currentOrg.id,store_id:sid,user_id:uid,status:'available',started_at:now});
+    await sb.from('iq_up_queue_entries').update({status_code:'available',is_available_for_assignment:true}).eq('store_id',sid).eq('user_id',uid).eq('is_in_queue',true);
+    await rotateToBackOfQueue(sid,uid);
     render();
   };});
 
