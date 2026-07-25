@@ -631,16 +631,17 @@ async function renderFloor(){
       return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''}">
         ${pos?`<div class="rc-pos">#${pos}</div>`:''}
         <div class="rc-name">${pName(r.user_id)}${r.user_id===currentUser.id?' <span style="font-size:10px;color:var(--teal)">(You)</span>':''}</div>
-        <div class="rc-status ${st}">${isUp?'🟢 ':isNext?'🔵 ':''}${STATUS_LABELS[st]||st}</div>
+        <div class="rc-status ${st}">${isUp?'🟢 YOUR UP':isNext?'🔵 Next Up':st==='with_customer'?'🟠 With Customer':onBrk?(st==='lunch'?'🍽 Lunch':'☕ Break'):STATUS_LABELS[st]||st}</div>
         ${upSecsLeft!==null?`<div class="accept-timer ${upSecsLeft<15?'urgent':''}" data-deadline="${new Date(new Date(offeredAt).getTime()+upTimeout*1000).toISOString()}">⏱ Accept up: ${upSecsLeft}s</div>`:''}
         ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}" data-ts="${statusMap[r.user_id]?.started_at||''}" data-limit="${(st==='lunch'?lunchMinutes:breakMinutes)*60}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}</div>`:''}
         <div class="rc-timer" ${st==='with_customer'&&statusMap[r.user_id]?.started_at?'data-ts="'+statusMap[r.user_id].started_at+'" data-prefix="With customer "':!onBrk&&r.login_at?'data-ts="'+r.login_at+'" data-prefix="Clocked in "':''}>${st==='with_customer'?'With customer '+elapsed(statusMap[r.user_id]?.started_at):onBrk?'':'Clocked in '+elapsed(r.login_at)}</div>
         <div class="rc-stats"><span>Ups: <b>${r.ups_accepted}</b></span><span>Sold: <b>${r.closed_sales}</b></span><span>Cust: <b>${r.customers_served}</b></span></div>
         <div class="rc-actions">
-          <button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}">Status</button>
-          ${st==='available'&&!isUp?`<button class="btn btn-primary btn-sm" data-bump="${r.user_id}">Bump Up</button>`:''}
-          ${upSecsLeft!==null?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue.id}">✅ Accept</button>`:''}
-          ${st==='with_customer'?`<button class="btn btn-ghost btn-sm" data-reassign="${r.user_id}">🔁 Reassign</button><button class="btn btn-primary btn-sm" data-endvisit="${r.user_id}">🏁 End Visit</button>`:''}
+          ${isUp&&!upSecsLeft?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue?.id}">✅ Accept Up</button>`:''}
+          ${upSecsLeft!==null?`<button class="btn btn-primary btn-sm" data-acceptup="${r.queue.id}">✅ Accept (${upSecsLeft}s)</button>`:''}
+          ${st==='with_customer'?`<button class="btn btn-primary btn-sm" data-endvisit="${r.user_id}">🏁 End Visit</button><button class="btn btn-ghost btn-sm" data-reassign="${r.user_id}">🔁 Reassign</button>`:''}
+          ${st==='available'&&!isUp&&!isNext?`<button class="btn btn-ghost btn-sm" data-bump="${r.user_id}">↑ Bump Up</button>`:''}
+          ${['admin','owner'].includes(userRole)?`<button class="btn btn-ghost btn-sm" data-status="${r.user_id}" data-shift="${r.id}" style="opacity:.6">⋯</button>`:''}
         </div></div>`;}).join(''):'<div class="empty" style="grid-column:1/-1;padding:40px 20px;text-align:center"><div style="font-size:36px;margin-bottom:12px">🏪</div><div style="font-size:16px;font-weight:700;margin-bottom:6px">No one on the floor yet</div><div style="color:var(--steel);margin-bottom:16px">Clock in your first rep to start the rotation.</div><button class="btn btn-primary" id="clockInEmpty">⏱ Clock In a Rep</button></div>'}</div>`;
   
   $('#logWalkIn')?.addEventListener('click',openWalkInModal);
