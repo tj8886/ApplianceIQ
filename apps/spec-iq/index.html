@@ -18,6 +18,7 @@
   --focus:#2f6fed;--focus-soft:#e8effd;--focus-hover:#1b5ad4;
   --amber:#e8590c;--amber-soft:#fef0e6;
   --danger:#c02d1e;--danger-soft:#fce8e6;
+  --purple:#7c3aed;--purple-soft:#ede9fe;
   --radius:10px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -43,6 +44,8 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 .btn-ok{background:var(--verified);color:#fff;border-color:var(--verified)}
 .btn-ok:hover{background:#158c4a}
 .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn-purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn-purple:hover{background:#6d28d9}
 .btn-lg{padding:14px 28px;font-size:16px}
 .btn[disabled]{opacity:.5;pointer-events:none}
 
@@ -52,6 +55,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 .badge-g{background:var(--verified-soft);color:var(--verified)}
 .badge-y{background:var(--amber-soft);color:var(--amber)}
 .badge-r{background:var(--danger-soft);color:var(--danger)}
+.badge-p{background:var(--purple-soft);color:var(--purple)}
 
 .container{max-width:1200px;margin:0 auto;padding:0 24px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -80,6 +84,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 .sidebar a:hover{color:rgba(255,255,255,.8);background:rgba(255,255,255,.04)}
 .sidebar a.active{color:#fff;background:rgba(47,111,237,.12);border-left-color:var(--focus);font-weight:600}
 .sidebar .nav-sep{height:1px;background:rgba(255,255,255,.08);margin:12px 20px}
+.sidebar .nav-badge{margin-left:auto;background:var(--danger);color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:100px;min-width:20px;text-align:center}
 .main{margin-left:240px;background:var(--paper);min-height:100vh;padding:32px}
 .main-inner{max-width:1100px}
 
@@ -111,6 +116,21 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 .logo-upload-zone:hover{border-color:var(--focus);background:var(--focus-soft)}
 .logo-upload-zone img{width:100%;height:100%;object-fit:contain;padding:12px}
 
+/* Quote validity card */
+.validity-card{border:2px solid var(--focus);border-radius:12px;padding:20px 24px;margin-bottom:20px;background:linear-gradient(135deg,var(--focus-soft) 0%,#fff 100%)}
+.validity-card.expiring{border-color:var(--amber);background:linear-gradient(135deg,var(--amber-soft) 0%,#fff 100%)}
+.validity-card.expired{border-color:var(--danger);background:linear-gradient(135deg,var(--danger-soft) 0%,#fff 100%)}
+.validity-card.promo{border-color:var(--purple);background:linear-gradient(135deg,var(--purple-soft) 0%,#fff 100%)}
+.validity-card h3{font-size:18px;margin-bottom:8px}
+.validity-card .countdown{font-family:Sora;font-weight:700;font-size:32px;letter-spacing:-.02em}
+
+/* Approval banner */
+.approval-banner{padding:14px 20px;border-radius:var(--radius);margin-bottom:20px;display:flex;align-items:center;gap:14px}
+.approval-banner.pending{background:var(--amber-soft);border:1px solid rgba(232,89,12,.2)}
+.approval-banner.approved{background:var(--verified-soft);border:1px solid rgba(26,158,86,.2)}
+.approval-banner.rejected{background:var(--danger-soft);border:1px solid rgba(192,45,30,.2)}
+.approval-banner.changes{background:var(--purple-soft);border:1px solid rgba(124,58,237,.2)}
+
 /* Landing hero */
 .hero-bg{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-3) 100%);color:#fff;padding:100px 0 80px;text-align:center}
 .hero-bg h1{color:#fff}
@@ -125,7 +145,6 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 }
 
 /* ==================== PRINT STYLES ==================== */
-/* On-screen preview styles (inside modal) */
 .print-page{padding:32px 0;border-bottom:2px dashed #e3e8f0;margin-bottom:24px}
 .print-page:last-child{border-bottom:none;margin-bottom:0}
 .print-cover{text-align:center;padding:40px 0}
@@ -133,9 +152,14 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 .print-cover-logos img{max-height:80px;max-width:200px;object-fit:contain}
 .print-cover h1{font-size:26pt;margin-bottom:8px;color:#0f1f3d}
 .print-cover .cover-subtitle{font-size:14pt;color:#5b6b85;margin-bottom:32px}
-.print-cover-info{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;max-width:400px;margin:0 auto;font-size:10pt}
+.print-cover-info{display:grid;grid-template-columns:1fr 1fr;gap:16px;text-align:left;max-width:500px;margin:0 auto;font-size:10pt}
 .print-cover-info dt{color:#5b6b85;font-size:9pt;text-transform:uppercase;letter-spacing:.5px}
 .print-cover-info dd{font-weight:600;margin:2px 0 8px}
+.print-validity-box{border:2px solid #2f6fed;border-radius:10px;padding:16px 24px;margin:24px auto;max-width:420px;text-align:center}
+.print-validity-box h3{font-size:14pt;color:#0f1f3d;margin-bottom:4px}
+.print-validity-box .vdate{font-family:Sora,sans-serif;font-weight:700;font-size:16pt;color:#2f6fed}
+.print-validity-box .vdisclaimer{font-size:8pt;color:#5b6b85;margin-top:8px}
+.print-approval-stamp{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border:2px solid #1a9e56;border-radius:8px;font-family:Sora,sans-serif;font-weight:700;font-size:10pt;color:#1a9e56;margin-top:12px}
 .print-section-title{font-size:16pt;color:#0f1f3d;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid #0f1f3d}
 .print-product{border:1px solid #e3e8f0;border-radius:8px;padding:20px;margin-bottom:16px}
 .print-product h3{font-size:13pt;margin-bottom:8px;color:#0f1f3d}
@@ -153,14 +177,12 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 @media print{
   @page{size:letter;margin:0.5in}
   body{background:#fff!important;font-size:11pt;color:#000}
-  #landing,#auth-page,#pricing-page,.sidebar,.main,#pkg-detail-modal{display:none!important}
+  #landing,#auth-page,#pricing-page,.sidebar,.main,#pkg-detail-modal,#approval-modal{display:none!important}
   #print-package{display:block!important}
   .no-print{display:none!important}
-
   .print-page{page-break-after:always;padding:0;position:relative;min-height:9in;border-bottom:none;margin-bottom:0}
   .print-page:last-child{page-break-after:avoid}
   .print-cover{min-height:9.5in;padding:1in}
-
   .print-footer{position:fixed;bottom:0;left:0;right:0;padding:8px 0.5in;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e3e8f0;font-size:8pt;color:#5b6b85}
   .print-footer-brand{display:flex;align-items:center;gap:8px}
   .print-footer-brand svg{width:16px;height:16px}
@@ -221,7 +243,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div class="card flex" style="gap:16px;align-items:flex-start"><div style="width:44px;height:44px;border-radius:10px;background:var(--focus-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="icon" style="width:22px;height:22px;color:var(--focus)"><use href="#i-package"/></svg></div><div><h3 style="font-size:16px;margin-bottom:6px">Package Builder</h3><p style="font-size:14px;color:var(--steel)">Build professional appliance spec packages with cover pages, product summaries, installation requirements, and technical appendices.</p></div></div>
         <div class="card flex" style="gap:16px;align-items:flex-start"><div style="width:44px;height:44px;border-radius:10px;background:var(--verified-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="icon" style="width:22px;height:22px;color:var(--verified)"><use href="#i-shield"/></svg></div><div><h3 style="font-size:16px;margin-bottom:6px">Source of Truth</h3><p style="font-size:14px;color:var(--steel)">Every specification is versioned, audited, and traceable. Change a refrigerator width and know exactly which kitchens are affected.</p></div></div>
         <div class="card flex" style="gap:16px;align-items:flex-start"><div style="width:44px;height:44px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="icon" style="width:22px;height:22px;color:var(--amber)"><use href="#i-zap"/></svg></div><div><h3 style="font-size:16px;margin-bottom:6px">CRM Integration</h3><p style="font-size:14px;color:var(--steel)">Every package creates CRM activities, follow-up tasks, and engagement tracking. Know when your customer opens page three.</p></div></div>
-        <div class="card flex" style="gap:16px;align-items:flex-start"><div style="width:44px;height:44px;border-radius:10px;background:var(--focus-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="icon" style="width:22px;height:22px;color:var(--focus)"><use href="#i-users"/></svg></div><div><h3 style="font-size:16px;margin-bottom:6px">Builder &amp; Designer Access</h3><p style="font-size:14px;color:var(--steel)">Give builders and designers direct access to create projects, download spec books, and collaborate on appliance selections.</p></div></div>
+        <div class="card flex" style="gap:16px;align-items:flex-start"><div style="width:44px;height:44px;border-radius:10px;background:var(--purple-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="icon" style="width:22px;height:22px;color:var(--purple)"><use href="#i-clock"/></svg></div><div><h3 style="font-size:16px;margin-bottom:6px">Quote Validity &amp; Approval</h3><p style="font-size:14px;color:var(--steel)">Configurable quote expiry, manager authorization workflow, approval history, and controlled send-to-customer gating.</p></div></div>
       </div>
     </div>
   </section>
@@ -311,6 +333,8 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       <a href="#" data-view="packages"><svg class="icon"><use href="#i-package"/></svg> Packages</a>
       <a href="#" data-view="builder"><svg class="icon"><use href="#i-plus"/></svg> New Package</a>
       <div class="nav-sep"></div>
+      <a href="#" data-view="approvals"><svg class="icon"><use href="#i-shield"/></svg> Approvals <span id="approval-badge" class="nav-badge hidden">0</span></a>
+      <div class="nav-sep"></div>
       <a href="#" data-view="settings"><svg class="icon"><use href="#i-settings"/></svg> Settings</a>
       <a href="#" data-view="team"><svg class="icon"><use href="#i-users"/></svg> Team</a>
     </nav>
@@ -331,13 +355,13 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       <div class="grid4" style="margin-bottom:32px">
         <div class="card flex" style="gap:16px"><div style="width:42px;height:42px;border-radius:10px;background:var(--focus-soft);display:flex;align-items:center;justify-content:center"><svg class="icon" style="width:20px;height:20px;color:var(--focus)"><use href="#i-folder"/></svg></div><div><div class="num" style="font-size:22px;font-weight:700;font-family:Sora" id="stat-projects">—</div><div style="font-size:13px;color:var(--steel)">Active Projects</div></div></div>
         <div class="card flex" style="gap:16px"><div style="width:42px;height:42px;border-radius:10px;background:var(--focus-soft);display:flex;align-items:center;justify-content:center"><svg class="icon" style="width:20px;height:20px;color:var(--focus)"><use href="#i-package"/></svg></div><div><div class="num" style="font-size:22px;font-weight:700;font-family:Sora" id="stat-packages">—</div><div style="font-size:13px;color:var(--steel)">Packages Created</div></div></div>
+        <div class="card flex" style="gap:16px"><div style="width:42px;height:42px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center"><svg class="icon" style="width:20px;height:20px;color:var(--amber)"><use href="#i-clock"/></svg></div><div><div class="num" style="font-size:22px;font-weight:700;font-family:Sora" id="stat-pending">—</div><div style="font-size:13px;color:var(--steel)">Pending Approval</div></div></div>
         <div class="card flex" style="gap:16px"><div style="width:42px;height:42px;border-radius:10px;background:var(--verified-soft);display:flex;align-items:center;justify-content:center"><svg class="icon" style="width:20px;height:20px;color:var(--verified)"><use href="#i-send"/></svg></div><div><div class="num" style="font-size:22px;font-weight:700;font-family:Sora" id="stat-sent">—</div><div style="font-size:13px;color:var(--steel)">Packages Sent</div></div></div>
-        <div class="card flex" style="gap:16px"><div style="width:42px;height:42px;border-radius:10px;background:var(--amber-soft);display:flex;align-items:center;justify-content:center"><svg class="icon" style="width:20px;height:20px;color:var(--amber)"><use href="#i-eye"/></svg></div><div><div class="num" style="font-size:22px;font-weight:700;font-family:Sora" id="stat-views">—</div><div style="font-size:13px;color:var(--steel)">Customer Views</div></div></div>
       </div>
       <div class="grid2" style="gap:20px">
         <div class="card"><h3 style="font-size:16px;margin-bottom:16px">Quick Actions</h3>
           <a href="#" onclick="navigate('builder');return false" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--paper);border-radius:8px;color:var(--ink);margin-bottom:8px"><span class="flex" style="gap:10px"><svg class="icon" style="color:var(--focus)"><use href="#i-package"/></svg> Create specification package</span><span style="color:var(--steel)">→</span></a>
-          <a href="#" onclick="navigate('projects');return false" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--paper);border-radius:8px;color:var(--ink);margin-bottom:8px"><span class="flex" style="gap:10px"><svg class="icon" style="color:var(--focus)"><use href="#i-folder"/></svg> View all projects</span><span style="color:var(--steel)">→</span></a>
+          <a href="#" onclick="navigate('approvals');return false" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--paper);border-radius:8px;color:var(--ink);margin-bottom:8px"><span class="flex" style="gap:10px"><svg class="icon" style="color:var(--purple)"><use href="#i-shield"/></svg> Review pending approvals</span><span style="color:var(--steel)">→</span></a>
           <a href="#" onclick="navigate('packages');return false" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--paper);border-radius:8px;color:var(--ink)"><span class="flex" style="gap:10px"><svg class="icon" style="color:var(--focus)"><use href="#i-file"/></svg> View all packages</span><span style="color:var(--steel)">→</span></a>
         </div>
         <div class="card"><h3 style="font-size:16px;margin-bottom:16px">Recent Activity</h3><div id="recent-activity" style="color:var(--steel);font-size:14px;padding:24px 0;text-align:center">No recent activity yet. Create your first package to get started.</div></div>
@@ -380,15 +404,16 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div class="status-filter">
           <button class="active" onclick="filterPackages('all',this)">All</button>
           <button onclick="filterPackages('draft',this)">Drafts</button>
-          <button onclick="filterPackages('generated',this)">Generated</button>
+          <button onclick="filterPackages('pending_approval',this)">Pending</button>
+          <button onclick="filterPackages('approved',this)">Approved</button>
           <button onclick="filterPackages('sent',this)">Sent</button>
-          <button onclick="filterPackages('viewed',this)">Viewed</button>
+          <button onclick="filterPackages('expired',this)">Expired</button>
         </div>
         <div style="position:relative;width:260px"><svg class="icon" style="position:absolute;left:14px;top:12px;color:var(--steel)"><use href="#i-search"/></svg><input id="package-search" placeholder="Search packages..." style="padding-left:38px" oninput="renderPackagesList()" /></div>
       </div>
       <div class="card" style="padding:0;overflow:hidden">
         <table class="tbl">
-          <thead><tr><th>Package</th><th>Customer</th><th>Status</th><th>Items</th><th class="r">MSRP</th><th>Created</th><th></th></tr></thead>
+          <thead><tr><th>Package</th><th>Customer</th><th>Status</th><th>Expires</th><th class="r">MSRP</th><th>Created</th><th></th></tr></thead>
           <tbody id="packages-tbody"></tbody>
         </table>
       </div>
@@ -404,7 +429,8 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       <div class="steps">
         <button class="step-btn active" onclick="setStep(1)">1. Customer &amp; Project</button>
         <button class="step-btn" onclick="setStep(2)">2. Add Appliances</button>
-        <button class="step-btn" onclick="setStep(3)">3. Review &amp; Generate</button>
+        <button class="step-btn" onclick="setStep(3)">3. Quote &amp; Validity</button>
+        <button class="step-btn" onclick="setStep(4)">4. Review &amp; Send</button>
       </div>
       <div id="step-1"><div class="card"><h3 style="margin-bottom:20px">Customer &amp; Project Details</h3><div class="grid2">
         <div><label>Customer Name</label><input id="b-cust-name" placeholder="John Smith" /></div>
@@ -441,11 +467,78 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div id="product-total" class="hidden" style="text-align:right;margin-top:8px;font-family:Sora;font-size:18px;font-weight:700"></div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
           <button class="btn btn-s" onclick="setStep(1)">← Customer Details</button>
-          <button class="btn btn-p" onclick="setStep(3)">Review &amp; Generate →</button>
+          <button class="btn btn-p" onclick="setStep(3)">Quote &amp; Validity →</button>
         </div>
       </div>
 
+      <!-- STEP 3: QUOTE VALIDITY -->
       <div id="step-3" class="hidden">
+        <div class="card" style="margin-bottom:16px">
+          <h3 style="margin-bottom:20px">Quote Validity Period</h3>
+          <div class="grid2" style="margin-bottom:20px">
+            <div>
+              <label>Validity Period</label>
+              <select id="b-validity" onchange="updateExpiryPreview()">
+                <option value="3">3 days — Promotional</option>
+                <option value="7">7 days</option>
+                <option value="14" selected>14 days — Retail (default)</option>
+                <option value="30">30 days — Builder</option>
+                <option value="60">60 days — Commercial</option>
+                <option value="90">90 days</option>
+                <option value="custom">Custom date</option>
+              </select>
+            </div>
+            <div>
+              <label>Issue Date</label>
+              <input type="date" id="b-issue-date" onchange="updateExpiryPreview()" />
+            </div>
+          </div>
+          <div id="custom-expiry-row" class="hidden" style="margin-bottom:20px">
+            <div class="grid2">
+              <div><label>Custom Expiry Date</label><input type="date" id="b-custom-expiry" onchange="updateExpiryPreview()" /></div>
+              <div><label>Custom Expiry Time</label><input type="time" id="b-custom-time" value="23:59" /></div>
+            </div>
+          </div>
+          <div id="b-validity-reason-row" class="hidden" style="margin-bottom:20px">
+            <label>Reason for Non-Standard Validity</label>
+            <select id="b-validity-reason">
+              <option value="">Select reason...</option>
+              <option value="commercial_project">Commercial project</option>
+              <option value="builder_bid">Builder bid</option>
+              <option value="manufacturer_promotion">Manufacturer promotion</option>
+              <option value="inventory_hold">Inventory hold</option>
+              <option value="manager_extension">Manager-approved extension</option>
+              <option value="customer_request">Customer-requested extension</option>
+              <option value="project_tender">Project tender</option>
+              <option value="special_order">Special-order product</option>
+              <option value="price_protection">Price-protection agreement</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <!-- Expiry Preview -->
+          <div id="expiry-preview" class="validity-card">
+            <div class="flex between">
+              <div>
+                <div style="font-size:12px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Quote Valid Until</div>
+                <div class="countdown" id="expiry-date-display">—</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:12px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Validity</div>
+                <div style="font-family:Sora;font-weight:700;font-size:18px" id="expiry-days-display">14 days</div>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--steel);margin-top:12px" id="expiry-disclaimer">Pricing and promotional availability are valid for 14 days, subject to product availability and manufacturer program terms.</div>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px"><div class="flex" style="gap:12px"><input type="checkbox" id="b-pricing" style="width:18px;height:18px;flex-shrink:0" /><label for="b-pricing" style="margin:0;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer">Include pricing page in package</label></div></div>
+        <div style="margin-top:24px;display:flex;justify-content:space-between">
+          <button class="btn btn-s" onclick="setStep(2)">← Edit Appliances</button>
+          <button class="btn btn-p" onclick="setStep(4)">Review &amp; Send →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: REVIEW & SEND -->
+      <div id="step-4" class="hidden">
         <div class="card" style="margin-bottom:16px"><h3 style="margin-bottom:16px">Package Summary</h3>
           <div class="grid4" style="margin-bottom:20px">
             <div><div style="font-size:13px;color:var(--steel)">Customer</div><div style="font-weight:600" id="sum-customer">—</div></div>
@@ -453,13 +546,18 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
             <div><div style="font-size:13px;color:var(--steel)">Appliances</div><div style="font-weight:600" id="sum-count">0 items</div></div>
             <div><div style="font-size:13px;color:var(--steel)">Total MSRP</div><div class="num" style="font-weight:700;font-family:Sora" id="sum-msrp">$0</div></div>
           </div>
+          <div class="grid3" style="margin-bottom:20px;padding-top:16px;border-top:1px solid var(--line)">
+            <div><div style="font-size:13px;color:var(--steel)">Quote Issued</div><div style="font-weight:600" id="sum-issued">—</div></div>
+            <div><div style="font-size:13px;color:var(--steel)">Valid Until</div><div style="font-weight:700;color:var(--focus)" id="sum-expiry">—</div></div>
+            <div><div style="font-size:13px;color:var(--steel)">Validity</div><div style="font-weight:600" id="sum-validity">14 days</div></div>
+          </div>
           <div style="border-top:1px solid var(--line);padding-top:16px"><table class="tbl"><thead><tr><th>Category</th><th>Brand</th><th>Model</th><th>Finish</th><th>Dimensions</th><th class="r">Price</th></tr></thead><tbody id="sum-table"></tbody></table></div>
         </div>
-        <div class="card" style="margin-bottom:16px"><div class="flex" style="gap:12px"><input type="checkbox" id="b-pricing" style="width:18px;height:18px;flex-shrink:0" /><label for="b-pricing" style="margin:0;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer">Include pricing page in package</label></div></div>
         <div style="margin-top:24px;display:flex;justify-content:space-between">
-          <button class="btn btn-s" onclick="setStep(2)">← Edit Appliances</button>
+          <button class="btn btn-s" onclick="setStep(3)">← Quote &amp; Validity</button>
           <div class="flex" style="gap:8px">
             <button class="btn btn-s" onclick="savePackage('draft')"><svg class="icon" style="width:16px;height:16px"><use href="#i-save"/></svg> Save Draft</button>
+            <button class="btn btn-purple" onclick="savePackage('pending_approval')"><svg class="icon" style="width:16px;height:16px"><use href="#i-shield"/></svg> Send for Approval</button>
             <button class="btn btn-p" onclick="savePackage('generated')"><svg class="icon" style="width:16px;height:16px"><use href="#i-file"/></svg> Generate Package</button>
             <button class="btn btn-ok" onclick="savePackage('sent')"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Generate &amp; Send</button>
           </div>
@@ -467,10 +565,36 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       </div>
     </div>
 
+    <!-- APPROVALS -->
+    <div id="view-approvals" class="hidden">
+      <div class="flex between mb3">
+        <div><h1 style="font-size:26px">Approvals</h1><p style="color:var(--steel);margin-top:4px">Review and authorize quote packages.</p></div>
+      </div>
+      <div class="flex between" style="margin-bottom:20px">
+        <div class="status-filter">
+          <button class="active" onclick="filterApprovals('all',this)">All</button>
+          <button onclick="filterApprovals('pending_approval',this)">Pending</button>
+          <button onclick="filterApprovals('approved',this)">Approved</button>
+          <button onclick="filterApprovals('changes_requested',this)">Changes Req.</button>
+          <button onclick="filterApprovals('rejected',this)">Rejected</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="tbl">
+          <thead><tr><th>Quote</th><th>Customer</th><th>Rep</th><th>Status</th><th class="r">MSRP</th><th>Expires</th><th></th></tr></thead>
+          <tbody id="approvals-tbody"></tbody>
+        </table>
+      </div>
+      <div id="approvals-empty" class="hidden card center" style="padding:48px;color:var(--steel);margin-top:16px">
+        <svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-shield"/></svg>
+        <p>No packages pending approval.</p>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="view-settings" class="hidden">
       <div class="flex between mb3">
-        <div><h1 style="font-size:26px">Store Settings</h1><p style="color:var(--steel);margin-top:4px">Configure your store branding and information for packages.</p></div>
+        <div><h1 style="font-size:26px">Store Settings</h1><p style="color:var(--steel);margin-top:4px">Configure your store branding, quote defaults, and approval rules.</p></div>
         <button class="btn btn-p" id="save-settings-btn" onclick="saveRetailerSettings()"><svg class="icon" style="width:16px;height:16px"><use href="#i-save"/></svg> Save Settings</button>
       </div>
       <div id="settings-saved-msg" class="hidden" style="padding:12px 20px;background:var(--verified-soft);color:var(--verified);border-radius:var(--radius);margin-bottom:20px;font-weight:500">Settings saved successfully.</div>
@@ -486,13 +610,12 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
               </div>
               <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(event)" />
               <div style="flex:1">
-                <p style="font-size:13px;color:var(--steel);margin-bottom:12px">Upload your store logo. It will appear on the cover page of every package alongside the ApplianceIQ mark.</p>
-                <p style="font-size:12px;color:var(--steel)">Recommended: PNG or SVG, at least 400px wide, transparent background.</p>
-                <button class="btn btn-g" style="margin-top:12px;font-size:13px;color:var(--danger)" id="remove-logo-btn" class="hidden" onclick="removeLogo()">Remove logo</button>
+                <p style="font-size:13px;color:var(--steel);margin-bottom:12px">Upload your store logo for cover pages.</p>
+                <button class="btn btn-g" style="font-size:13px;color:var(--danger)" onclick="removeLogo()">Remove logo</button>
               </div>
             </div>
           </div>
-          <div class="card">
+          <div class="card" style="margin-bottom:20px">
             <h3 style="font-size:16px;margin-bottom:20px">Store Information</h3>
             <div style="display:flex;flex-direction:column;gap:16px">
               <div><label>Store Name</label><input id="s-name" placeholder="Your Store Name" /></div>
@@ -515,10 +638,25 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
             </div>
           </div>
           <div class="card" style="margin-bottom:20px">
+            <h3 style="font-size:16px;margin-bottom:20px">Quote Validity Defaults</h3>
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <div class="grid2">
+                <div><label>Default Validity (days)</label><input type="number" id="s-validity-days" value="14" min="1" max="365" /></div>
+                <div><label>Max Rep Authority (days)</label><input type="number" id="s-max-rep-days" value="14" min="1" max="365" /></div>
+              </div>
+              <div class="grid2">
+                <div><label>Max Manager Authority (days)</label><input type="number" id="s-max-mgr-days" value="30" min="1" max="365" /></div>
+                <div><label>Max Store Manager (days)</label><input type="number" id="s-max-sm-days" value="60" min="1" max="365" /></div>
+              </div>
+              <div><label>Validity Disclaimer</label><textarea id="s-validity-disclaimer" rows="2" placeholder="Pricing valid for the stated period..."></textarea></div>
+              <div><label>Commercial Disclaimer</label><textarea id="s-commercial-disclaimer" rows="2" placeholder="Commercial pricing valid for 60 days..."></textarea></div>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom:20px">
             <h3 style="font-size:16px;margin-bottom:20px">Package Defaults</h3>
             <div style="display:flex;flex-direction:column;gap:16px">
-              <div><label>Default Welcome Message</label><textarea id="s-welcome" rows="3" placeholder="Thank you for choosing us for your appliance needs..."></textarea></div>
-              <div><label>Default Disclaimer</label><textarea id="s-disclaimer" rows="3" placeholder="Prices are subject to change. Installation estimates are approximate..."></textarea></div>
+              <div><label>Default Welcome Message</label><textarea id="s-welcome" rows="3" placeholder="Thank you for choosing us..."></textarea></div>
+              <div><label>Default Disclaimer</label><textarea id="s-disclaimer" rows="3" placeholder="Prices are subject to change..."></textarea></div>
             </div>
           </div>
           <div class="card">
@@ -564,11 +702,12 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
   </div></div>
 </div>
 
-<!-- ==================== PRINT PACKAGE (hidden, used for printing) ==================== -->
+<!-- Print container -->
 <div id="print-package"></div>
-
-<!-- ==================== PACKAGE DETAIL MODAL ==================== -->
+<!-- Package detail modal -->
 <div id="pkg-detail-modal" class="hidden"></div>
+<!-- Approval modal -->
+<div id="approval-modal" class="hidden"></div>
 
 <!-- SVG icon sprite -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
@@ -594,6 +733,9 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
   <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
 </svg>
 
 <script>
@@ -603,48 +745,260 @@ function show(id){el(id).style.display='block'}
 function hide(){for(var i=0;i<arguments.length;i++)el(arguments[i]).style.display='none'}
 function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'})}
-var authMode='login',builderProducts=[],currentStep=1,currentPkgFilter='all';
+function fmtDateTime(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}
+function daysRemaining(expiryStr){if(!expiryStr)return null;var diff=Math.ceil((new Date(expiryStr)-new Date())/(1000*60*60*24));return diff}
+function expiryLabel(days){if(days===null)return'';if(days<0)return'Expired';if(days===0)return'Expires today';if(days===1)return'Expires tomorrow';if(days<=3)return days+' days remaining';return days+' days remaining'}
+var authMode='login',builderProducts=[],currentStep=1,currentPkgFilter='all',currentApprovalFilter='all';
 
 /* ==================== NAVIGATION ==================== */
 function showLanding(){hide('auth-page','pricing-page','app');el('landing').style.display=''}
 function showPricing(){el('landing').style.display='none';hide('auth-page','app');show('pricing-page')}
 function showAuth(mode){authMode=mode;el('landing').style.display='none';hide('pricing-page','app');show('auth-page');el('auth-success').classList.add('hidden');el('auth-form').classList.remove('hidden');el('auth-error').classList.add('hidden');if(mode==='signup'){el('auth-title').textContent='Start your free trial';el('name-field').classList.remove('hidden');el('auth-submit').textContent='Create account';el('auth-switch-text').textContent='Already have an account?';el('auth-switch').textContent='Sign in';el('auth-toggle-text').textContent='14-day free trial. No credit card required.'}else{el('auth-title').textContent='Sign in to your account';el('name-field').classList.add('hidden');el('auth-submit').textContent='Sign in';el('auth-switch-text').textContent="Don't have an account?";el('auth-switch').textContent='Start free trial';el('auth-toggle-text').textContent=''}}
 function toggleAuthMode(e){e.preventDefault();showAuth(authMode==='login'?'signup':'login')}
-function navigate(view){['dashboard','projects','packages','builder','settings','team'].forEach(function(v){el('view-'+v).classList.toggle('hidden',v!==view)});document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.classList.toggle('active',a.dataset.view===view)});if(view==='projects'&&window._loadProjects)window._loadProjects();if(view==='packages')loadPackages();if(view==='builder')resetBuilder();if(view==='settings')loadRetailerSettings();if(view==='team')loadTeam()}
+function navigate(view){['dashboard','projects','packages','builder','approvals','settings','team'].forEach(function(v){el('view-'+v).classList.toggle('hidden',v!==view)});document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.classList.toggle('active',a.dataset.view===view)});if(view==='projects'&&window._loadProjects)window._loadProjects();if(view==='packages')loadPackages();if(view==='builder')resetBuilder();if(view==='approvals')loadApprovals();if(view==='settings')loadRetailerSettings();if(view==='team')loadTeam()}
 function toggleNewProject(){el('new-project-form').classList.toggle('hidden')}
 function toggleAddProduct(){el('add-product-form').classList.toggle('hidden')}
 function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden')}
 
 /* ==================== BUILDER ==================== */
-function setStep(n){currentStep=n;[1,2,3].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)renderSummary()}
-function resetBuilder(){builderProducts=[];currentStep=1;setStep(1);renderProducts()}
+function setStep(n){currentStep=n;[1,2,3,4].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)initValidityStep();if(n===4)renderSummary()}
+function resetBuilder(){builderProducts=[];currentStep=1;setStep(1);renderProducts();el('b-issue-date').value=new Date().toISOString().split('T')[0];el('b-validity').value='14';updateExpiryPreview()}
 function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,msrp:parseFloat(el('ap-msrp').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null});['ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');renderProducts()}
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
 function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});list.innerHTML=builderProducts.map(function(p){return'<div class="card flex between" style="padding:14px 20px;margin-bottom:8px"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+p.category+(p.finish?' · '+esc(p.finish):'')+(p.width_inches?' · '+p.width_inches+'"W':'')+'</div></div></div><div class="flex" style="gap:16px">'+(p.msrp>0?'<span class="num" style="font-weight:600;font-family:Sora">$'+p.msrp.toLocaleString()+'</span>':'')+'<button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'}).join('');el('product-total').classList.remove('hidden');el('product-total').textContent='Total MSRP: $'+total.toLocaleString()}
-function renderSummary(){var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});el('sum-customer').textContent=el('b-cust-name').value||'—';el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';el('sum-count').textContent=builderProducts.length+' items';el('sum-msrp').textContent='$'+total.toLocaleString();el('sum-table').innerHTML=builderProducts.map(function(p){var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');return'<tr><td>'+p.category+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(p.msrp>0?'$'+p.msrp.toLocaleString():'—')+'</td></tr>'}).join('')}
+
+/* ==================== QUOTE VALIDITY ==================== */
+function initValidityStep(){
+  if(!el('b-issue-date').value)el('b-issue-date').value=new Date().toISOString().split('T')[0];
+  updateExpiryPreview();
+}
+function updateExpiryPreview(){
+  var val=el('b-validity').value;
+  var isCustom=val==='custom';
+  el('custom-expiry-row').classList.toggle('hidden',!isCustom);
+  var isStandard=val==='14';
+  el('b-validity-reason-row').classList.toggle('hidden',isStandard);
+  var issueDate=new Date(el('b-issue-date').value||new Date().toISOString().split('T')[0]);
+  var expiryDate;
+  var days;
+  if(isCustom){
+    var ce=el('b-custom-expiry').value;
+    if(!ce){el('expiry-date-display').textContent='Select a date';el('expiry-days-display').textContent='—';return}
+    expiryDate=new Date(ce);
+    days=Math.ceil((expiryDate-issueDate)/(1000*60*60*24));
+  }else{
+    days=parseInt(val);
+    expiryDate=new Date(issueDate);
+    expiryDate.setDate(expiryDate.getDate()+days);
+  }
+  el('expiry-date-display').textContent=expiryDate.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  el('expiry-days-display').textContent=days+' day'+(days!==1?'s':'');
+  var card=el('expiry-preview');
+  card.className='validity-card'+(days<=3?' expiring':'');
+  var disText='Pricing and promotional availability are valid for '+days+' day'+(days!==1?'s':'')+', subject to product availability and manufacturer program terms.';
+  if(days>=60)disText='Commercial pricing valid for '+days+' days, subject to phased quantity, delivery schedule, product availability, manufacturer increases, and the terms stated in this proposal.';
+  el('expiry-disclaimer').textContent=disText;
+}
+
+function renderSummary(){var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});el('sum-customer').textContent=el('b-cust-name').value||'—';el('sum-project').textContent=el('b-proj-name').value||el('b-pkg-name').value||'—';el('sum-count').textContent=builderProducts.length+' items';el('sum-msrp').textContent='$'+total.toLocaleString();
+  var issueDate=el('b-issue-date').value;
+  el('sum-issued').textContent=issueDate?fmtDate(issueDate+'T12:00:00'):'—';
+  var val=el('b-validity').value;
+  var days=val==='custom'?'Custom':val;
+  el('sum-validity').textContent=days+(val!=='custom'?' days':'');
+  var id=new Date(issueDate||new Date().toISOString().split('T')[0]);
+  if(val==='custom'){var ce=el('b-custom-expiry').value;el('sum-expiry').textContent=ce?fmtDate(ce+'T12:00:00'):'—'}else{var ed=new Date(id);ed.setDate(ed.getDate()+parseInt(val));el('sum-expiry').textContent=fmtDate(ed.toISOString())}
+  el('sum-table').innerHTML=builderProducts.map(function(p){var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');return'<tr><td>'+p.category+'</td><td>'+esc(p.brand)+'</td><td style="font-weight:600">'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td>'+(dims||'—')+'</td><td class="r num" style="font-family:Sora">'+(p.msrp>0?'$'+p.msrp.toLocaleString():'—')+'</td></tr>'}).join('')}
+
+/* ==================== STATUS HELPERS ==================== */
+function statusBadge(s){var map={draft:'y',generated:'b',pending_approval:'p',submitted_for_approval:'p',approved:'g',approved_with_conditions:'g',changes_requested:'y',rejected:'r',sent:'b',viewed:'g',expired:'r',superseded:'r',cancelled:'r',ready_to_send:'b',sold:'g',extended:'b',expiring_soon:'y'};return'<span class="badge badge-'+(map[s]||'y')+'">'+s.replace(/_/g,' ')+'</span>'}
+function approvalBadge(s){var map={not_required:'',pending:'p',approved:'g',approved_with_conditions:'g',changes_requested:'y',rejected:'r'};if(!s||s==='not_required')return'';return'<span class="badge badge-'+(map[s]||'y')+'">'+s.replace(/_/g,' ')+'</span>'}
 
 /* ==================== PRICING PLANS ==================== */
 var PLANS=[{name:'Starter',price:'$99',unit:'/user/month',desc:'For individual salespeople',features:['Product search','Product Passport access','Spec package builder','PDF generation','Customer sharing links','Basic CRM connection']},{name:'Professional',price:'$199',unit:'/user/month',desc:'For teams that sell',featured:true,features:['Everything in Starter','Pricing pages with approval','Package versioning','Installation summaries','Automated CRM follow-up','Custom branding','Customer engagement tracking']},{name:'Retail Location',price:'$599',unit:'/location/month',desc:'For a store team',features:['Up to 10 users','Retailer branding','Full CRM integration','Shared templates','Manager controls','Pricing approvals','Store analytics']},{name:'Multi-Location',price:'$1,500+',unit:'/month',desc:'For multi-store operations',features:['Multiple stores','Central administration','Shared catalog','Location-specific pricing','Enterprise reporting','SSO','API access']},{name:'Builder & Designer',price:'$149',unit:'/user/month',desc:'For trade professionals',features:['Project management','Spec books','CAD/BIM access','Collaboration tools','Client presentation tools']}];
 function planCard(p){return'<div class="card price-card'+(p.featured?' featured':'')+'">'+(p.featured?'<div class="badge badge-b" style="position:absolute;top:-10px;left:20px">Most popular</div>':'')+'<h3 style="font-size:20px;margin-bottom:2px">'+p.name+'</h3><p style="font-size:13px;color:var(--steel);margin-bottom:16px">'+p.desc+'</p><div style="display:flex;align-items:baseline;gap:4px;margin-bottom:24px"><span class="num" style="font-size:36px;font-weight:700;font-family:Sora">'+p.price+'</span><span style="color:var(--steel);font-size:14px">'+p.unit+'</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">'+p.features.map(function(f){return'<div style="display:flex;gap:8px;font-size:14px;color:var(--steel)"><svg class="icon" style="width:16px;height:16px;color:var(--verified);flex-shrink:0;margin-top:2px"><use href="#i-check"/></svg>'+f+'</div>'}).join('')+'</div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showAuth(\'signup\')">Start free trial</button></div>'}
+function filterPackages(status,btn){currentPkgFilter=status;document.querySelectorAll('#view-packages .status-filter button').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderPackagesList()}
+function filterApprovals(status,btn){currentApprovalFilter=status;document.querySelectorAll('#view-approvals .status-filter button').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderApprovalsList()}
 
-/* ==================== STATUS HELPERS ==================== */
-function statusBadge(s){var map={draft:'y',generated:'b',sent:'b',viewed:'g',revised:'y',expired:'r',superseded:'r'};return'<span class="badge badge-'+(map[s]||'y')+'">'+s+'</span>'}
+/* ==================== INIT DOM ==================== */
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();navigate(a.dataset.view)})});
+  var t=PLANS.slice(0,3).map(planCard).join(''),x=PLANS.slice(3).map(planCard).join('');
+  if(el('plan-cards'))el('plan-cards').innerHTML=t;
+  if(el('pricing-cards-full'))el('pricing-cards-full').innerHTML=t;
+  if(el('pricing-cards-extra'))el('pricing-cards-extra').innerHTML=x;
+  el('s-color1').addEventListener('input',function(){el('s-color1-hex').value=this.value});
+  el('s-color2').addEventListener('input',function(){el('s-color2-hex').value=this.value});
+  el('b-issue-date').value=new Date().toISOString().split('T')[0];
+})
+</script>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
+let currentUser=null;let userOrgId=null;let userRole=null;let retailerSettings=null;let allPackages=[];let allApprovals=[];
+
+async function resolveOrg(){
+  const{data}=await sb.from('organization_members').select('organization_id,role').eq('user_id',currentUser.id).limit(1).single();
+  if(data?.organization_id){userOrgId=data.organization_id;userRole=data.role||'sales_rep';return}
+  const name=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'User';
+  const{data:org}=await sb.from('organizations').insert({name:name+"'s Store"}).select('id').single();
+  if(!org){userOrgId='00000000-0000-0000-0000-000000000002';userRole='owner';return}
+  userOrgId=org.id;userRole='owner';
+  await sb.from('organization_members').insert({organization_id:org.id,user_id:currentUser.id,role:'owner'});
+  await sb.from('profiles').upsert({user_id:currentUser.id,full_name:name,email:currentUser.email},{onConflict:'user_id'});
+}
+function isManager(){return['sales_manager','store_manager','admin','owner'].includes(userRole)}
+function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';el('welcome-msg').textContent='Welcome back, '+(currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there');resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings();loadPendingCount()})}
+
+/* ==================== AUTH ==================== */
+window.handleAuth=async(e)=>{e.preventDefault();el('auth-error').classList.add('hidden');el('auth-submit').textContent=authMode==='login'?'Signing in...':'Creating account...';const email=el('auth-email').value,pass=el('auth-pass').value;if(authMode==='signup'){const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:el('auth-name').value,app:'speciq'}}});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Create account';return}el('auth-form').classList.add('hidden');el('auth-success').classList.remove('hidden')}else{const{data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Sign in';return}currentUser=data.user;showApp()}};
+window.doSignOut=async()=>{await sb.auth.signOut();currentUser=null;showLanding()};
+
+/* ==================== DASHBOARD ==================== */
+async function loadDashboardStats(){try{const{count:pc}=await sb.from('speciq_projects').select('*',{count:'exact',head:true}).eq('status','active');const{count:pkc}=await sb.from('speciq_packages').select('*',{count:'exact',head:true});const{count:sc}=await sb.from('speciq_packages').select('*',{count:'exact',head:true}).eq('status','sent');const{count:pa}=await sb.from('speciq_packages').select('*',{count:'exact',head:true}).eq('approval_status','pending');el('stat-projects').textContent=pc??0;el('stat-packages').textContent=pkc??0;el('stat-pending').textContent=pa??0;el('stat-sent').textContent=sc??0}catch(e){}}
+async function loadPendingCount(){try{const{count}=await sb.from('speciq_packages').select('*',{count:'exact',head:true}).eq('approval_status','pending');if(count>0){el('approval-badge').textContent=count;el('approval-badge').classList.remove('hidden')}else{el('approval-badge').classList.add('hidden')}}catch(e){}}
+
+/* ==================== PROJECTS ==================== */
+let projects=[];
+async function loadProjects(){try{const{data}=await sb.from('speciq_projects').select('*').order('created_at',{ascending:false});projects=data||[]}catch(e){projects=[]}const q=(el('project-search')?.value||'').toLowerCase();const f=projects.filter(p=>(p.project_name||'').toLowerCase().includes(q)||(p.customer_name||'').toLowerCase().includes(q));const list=el('projects-list');if(!list)return;if(!f.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>';return}list.innerHTML=f.map(p=>'<div class="card flex between" style="padding:16px 24px;margin-bottom:8px"><div><div style="font-weight:600">'+esc(p.project_name)+'</div><div style="font-size:13px;color:var(--steel);margin-top:2px">'+esc(p.customer_name)+(p.room_name?' · '+esc(p.room_name):'')+'</div></div><div class="flex" style="gap:12px"><span class="badge badge-'+(p.status==='active'?'g':'y')+'">'+p.status+'</span><button class="btn btn-s" style="padding:6px 14px;font-size:13px" onclick="navigate(\'builder\');el(\'b-proj-name\').value=\''+esc(p.project_name)+'\';el(\'b-cust-name\').value=\''+esc(p.customer_name)+'\'">Build Package</button></div></div>').join('')}
+window._loadProjects=loadProjects;window.renderProjects=loadProjects;
+
+window.createProject=async(e)=>{e.preventDefault();const{error}=await sb.from('speciq_projects').insert({project_name:el('pj-name').value,customer_name:el('pj-customer').value,customer_email:el('pj-email').value||null,property_address:el('pj-address').value||null,room_name:el('pj-room').value||null,builder_name:el('pj-builder').value||null,designer_name:el('pj-designer').value||null,expected_purchase_date:el('pj-date').value||null,created_by:currentUser.id,organization_id:userOrgId});if(error){alert('Error: '+error.message);return}el('new-project-form').classList.add('hidden');['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(function(id){el(id).value=''});loadProjects()};
+
+/* ==================== SAVE PACKAGE ==================== */
+window.savePackage=async(status)=>{
+  const btn=event?.target?.closest?.('button');
+  const origText=btn?.innerHTML;
+  try{
+    if(btn){btn.disabled=true;btn.innerHTML='<span style="opacity:.7">Saving...</span>'}
+    if(!userOrgId)throw new Error('No organization found.');
+    const total=builderProducts.reduce((s,p)=>s+(p.msrp||0),0);
+    const token=crypto.randomUUID().replace(/-/g,'').slice(0,16);
+    const projName=el('b-proj-name').value||el('b-pkg-name').value||'Untitled Project';
+    const custName=el('b-cust-name').value||'Unknown Customer';
+    // Validity
+    const validityVal=el('b-validity').value;
+    const issueDate=el('b-issue-date').value||new Date().toISOString().split('T')[0];
+    let validityDays=validityVal==='custom'?null:parseInt(validityVal);
+    let expiresAt;
+    if(validityVal==='custom'){
+      const ce=el('b-custom-expiry').value;
+      const ct=el('b-custom-time').value||'23:59';
+      expiresAt=ce?new Date(ce+'T'+ct+':00').toISOString():null;
+      if(expiresAt)validityDays=Math.ceil((new Date(expiresAt)-new Date(issueDate))/(1000*60*60*24));
+    }else{
+      const ed=new Date(issueDate);ed.setDate(ed.getDate()+parseInt(validityVal));ed.setHours(23,59,59);
+      expiresAt=ed.toISOString();
+    }
+    const validityReason=el('b-validity-reason')?.value||null;
+    // Approval logic
+    const needsApproval=status==='pending_approval';
+    const approvalStatus=needsApproval?'pending':'not_required';
+    const pkgStatus=needsApproval?'pending_approval':status;
+
+    const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:userOrgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
+    if(pe)throw new Error('Project: '+pe.message);
+
+    const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({
+      organization_id:userOrgId,project_id:proj.id,
+      package_name:el('b-pkg-name').value||projName,
+      status:pkgStatus,share_token:token,total_msrp:total,
+      include_pricing:el('b-pricing').checked,created_by:currentUser.id,
+      salesperson_name:el('b-salesperson').value||null,
+      quote_issued_at:issueDate+'T12:00:00Z',
+      quote_expires_at:expiresAt,
+      validity_days:validityDays,
+      validity_type:validityVal==='custom'?'date':'days',
+      validity_reason:validityReason,
+      approval_status:approvalStatus,
+      approval_required:needsApproval,
+      submitted_by:needsApproval?currentUser.id:null,
+      submitted_at:needsApproval?new Date().toISOString():null
+    }).select('id,quote_number').single();
+    if(ke)throw new Error('Package: '+ke.message);
+
+    if(builderProducts.length){
+      await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:userOrgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));
+    }
+    await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created',event_data:{status:pkgStatus}});
+    if(needsApproval){
+      await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'submitted_for_approval'});
+      await sb.from('speciq_approval_history').insert({package_id:pkg.id,organization_id:userOrgId,submission_id:'SUB-'+Date.now(),quote_version:1,submitted_by:currentUser.id,approval_trigger:'manual_submission',requested_expiry:expiresAt,requested_validity_days:validityDays});
+    }
+    if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
+
+    builderProducts=[];
+    await loadPackages();
+    navigate('packages');
+    loadDashboardStats();loadPendingCount();
+    openPackageDetail(pkg.id);
+  }catch(err){
+    console.error('savePackage:',err);alert('Error: '+err.message);
+    if(btn){btn.disabled=false;btn.innerHTML=origText}
+  }
+};
 
 /* ==================== PACKAGES LIST ==================== */
-function filterPackages(status,btn){currentPkgFilter=status;document.querySelectorAll('.status-filter button').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderPackagesList()}
+async function loadPackages(){
+  try{
+    const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address)').order('created_at',{ascending:false});
+    allPackages=data||[];
+    const pkgIds=allPackages.map(p=>p.id);
+    if(pkgIds.length){const{data:prods}=await sb.from('speciq_package_products').select('package_id').in('package_id',pkgIds);const counts={};(prods||[]).forEach(p=>{counts[p.package_id]=(counts[p.package_id]||0)+1});allPackages.forEach(p=>{p._productCount=counts[p.id]||0})}
+  }catch(e){allPackages=[]}
+  renderPackagesList();
+}
+window.renderPackagesList=function(){
+  const q=(el('package-search')?.value||'').toLowerCase();
+  let filtered=allPackages;
+  if(currentPkgFilter!=='all'){
+    if(currentPkgFilter==='expired')filtered=filtered.filter(p=>p.quote_expires_at&&new Date(p.quote_expires_at)<new Date());
+    else filtered=filtered.filter(p=>p.status===currentPkgFilter||p.approval_status===currentPkgFilter);
+  }
+  if(q)filtered=filtered.filter(p=>(p.package_name||'').toLowerCase().includes(q)||(p.speciq_projects?.customer_name||'').toLowerCase().includes(q)||(p.quote_number||'').toLowerCase().includes(q));
+  const tbody=el('packages-tbody');const empty=el('packages-empty');
+  if(!filtered.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  tbody.innerHTML=filtered.map(p=>{
+    const cust=p.speciq_projects?.customer_name||'—';
+    const days=daysRemaining(p.quote_expires_at);
+    const expiryTxt=p.quote_expires_at?fmtDate(p.quote_expires_at):'—';
+    const expiryBadge=days!==null?(days<0?'<span class="badge badge-r">Expired</span>':days<=3?'<span class="badge badge-y">'+expiryLabel(days)+'</span>':'<span style="font-size:12px;color:var(--steel)">'+expiryLabel(days)+'</span>'):'';
+    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+(p.quote_number||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+(p.approval_status&&p.approval_status!=='not_required'?' '+approvalBadge(p.approval_status):'')+'</td><td>'+expiryTxt+'<div>'+expiryBadge+'</div></td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button></div></td></tr>'}).join('');
+};
+
+/* ==================== APPROVALS LIST ==================== */
+async function loadApprovals(){
+  try{
+    const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name)').in('approval_status',['pending','approved','approved_with_conditions','changes_requested','rejected']).order('submitted_at',{ascending:false});
+    allApprovals=data||[];
+  }catch(e){allApprovals=[]}
+  renderApprovalsList();
+}
+function renderApprovalsList(){
+  let filtered=allApprovals;
+  if(currentApprovalFilter!=='all')filtered=filtered.filter(p=>p.approval_status===currentApprovalFilter||(currentApprovalFilter==='pending_approval'&&p.approval_status==='pending'));
+  const tbody=el('approvals-tbody');const empty=el('approvals-empty');
+  if(!filtered.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  tbody.innerHTML=filtered.map(p=>{
+    const cust=p.speciq_projects?.customer_name||'—';
+    const expiryTxt=p.quote_expires_at?fmtDate(p.quote_expires_at):'—';
+    return'<tr style="cursor:pointer" onclick="openApprovalReview(\''+p.id+'\')"><td><div style="font-weight:600">'+(p.quote_number||p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.package_name)+'</div></td><td>'+esc(cust)+'</td><td>'+(p.salesperson_name||'—')+'</td><td>'+approvalBadge(p.approval_status)+'</td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+expiryTxt+'</td><td><button class="btn btn-purple" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openApprovalReview(\''+p.id+'\')">Review</button></td></tr>'}).join('');
+}
 
 /* ==================== PRINT / PDF ==================== */
 function buildPrintHTML(pkg,products,retailer){
   var total=0;products.forEach(function(p){total+=(parseFloat(p.msrp)||0)});
-  var salesperson=pkg.created_by_name||'';
+  var salesperson=pkg.salesperson_name||pkg.created_by_name||'';
   var hasElec=products.some(function(p){return p.electrical_requirements});
   var logoHTML='';
-  if(retailer&&retailer.logo_url){logoHTML='<img src="'+esc(retailer.logo_url)+'" style="max-height:80px;max-width:200px;object-fit:contain" />'}
+  if(retailer&&retailer.logo_url)logoHTML='<img src="'+esc(retailer.logo_url)+'" style="max-height:80px;max-width:200px;object-fit:contain" />';
   var aiqLogo='<svg viewBox="0 0 24 24" fill="none" stroke="#0f1f3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:28px;height:28px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>';
-
   var html='';
 
-  /* --- COVER PAGE --- */
+  /* --- COVER PAGE with validity --- */
   html+='<div class="print-page print-cover">';
   html+='<div class="print-cover-logos">';
   if(logoHTML)html+=logoHTML+'<div style="width:1px;height:60px;background:#e3e8f0"></div>';
@@ -655,229 +1009,140 @@ function buildPrintHTML(pkg,products,retailer){
   html+='<div class="cover-subtitle">Appliance Specification Package</div>';
   html+='<div class="print-cover-info">';
   html+='<div><dt>Customer</dt><dd>'+esc(pkg.customer_name||'—')+'</dd></div>';
-  html+='<div><dt>Project</dt><dd>'+esc(pkg.project_name||'—')+'</dd></div>';
-  html+='<div><dt>Date</dt><dd>'+fmtDate(pkg.created_at)+'</dd></div>';
+  html+='<div><dt>Quote Number</dt><dd>'+esc(pkg.quote_number||'—')+'</dd></div>';
+  html+='<div><dt>Issued</dt><dd>'+fmtDate(pkg.quote_issued_at||pkg.created_at)+'</dd></div>';
   html+='<div><dt>Appliances</dt><dd>'+products.length+' items</dd></div>';
   if(salesperson)html+='<div><dt>Salesperson</dt><dd>'+esc(salesperson)+'</dd></div>';
   if(pkg.property_address)html+='<div><dt>Property</dt><dd>'+esc(pkg.property_address)+'</dd></div>';
   html+='</div>';
+
+  /* Quote Validity Box */
+  if(pkg.quote_expires_at){
+    var daysLeft=daysRemaining(pkg.quote_expires_at);
+    var vdays=pkg.validity_days||14;
+    var vclass=daysLeft!==null&&daysLeft<=3?'style="border-color:#e8590c"':'';
+    html+='<div class="print-validity-box" '+vclass+'>';
+    html+='<h3>Quote Valid Until</h3>';
+    html+='<div class="vdate">'+fmtDate(pkg.quote_expires_at)+'</div>';
+    var disclaimer=vdays>=60
+      ?'Commercial pricing valid for '+vdays+' days, subject to phased quantity, delivery schedule, product availability, manufacturer increases, and the terms stated in this proposal.'
+      :'This proposal and its pricing are valid for '+vdays+' calendar days, subject to product availability and any earlier manufacturer promotion expiry.';
+    if(retailer?.validity_disclaimer)disclaimer=retailer.validity_disclaimer;
+    html+='<div class="vdisclaimer">'+esc(disclaimer)+'</div>';
+    html+='</div>';
+  }
+  if(pkg.approval_status==='approved'||pkg.approval_status==='approved_with_conditions'){
+    html+='<div class="print-approval-stamp">✓ AUTHORIZED</div>';
+  }
   if(retailer&&retailer.store_phone)html+='<div style="margin-top:40px;font-size:9pt;color:#5b6b85">'+esc(retailer.store_phone)+(retailer.store_email?' · '+esc(retailer.store_email):'')+(retailer.store_website?' · '+esc(retailer.store_website):'')+'</div>';
   html+='</div>';
 
   /* --- PRODUCT PAGES --- */
   html+='<div class="print-page">';
   html+='<h2 class="print-section-title">Appliance Specifications</h2>';
-  products.forEach(function(p,i){
+  products.forEach(function(p){
     var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean);
-    html+='<div class="print-product">';
-    html+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-    html+='<h3>'+esc(p.brand)+' '+esc(p.product_name)+'</h3>';
+    html+='<div class="print-product"><div style="display:flex;justify-content:space-between;align-items:flex-start"><h3>'+esc(p.brand)+' '+esc(p.product_name)+'</h3>';
     if(p.msrp>0)html+='<span style="font-family:Sora,sans-serif;font-weight:700;font-size:13pt">$'+parseFloat(p.msrp).toLocaleString()+'</span>';
-    html+='</div>';
-    html+='<div style="font-size:9pt;color:#5b6b85;margin-bottom:10px">Model '+esc(p.model_number)+' · '+esc(p.category)+(p.finish?' · '+esc(p.finish):'')+'</div>';
+    html+='</div><div style="font-size:9pt;color:#5b6b85;margin-bottom:10px">Model '+esc(p.model_number)+' · '+esc(p.category)+(p.finish?' · '+esc(p.finish):'')+'</div>';
     html+='<div class="specs-grid">';
     if(dims.length)html+='<div><dt>Dimensions</dt><dd>'+dims.map(function(d){return d+'"'}).join(' × ')+(p.width_inches?' (W×H×D)':'')+'</dd></div>';
     if(p.electrical_requirements)html+='<div><dt>Electrical</dt><dd>'+esc(p.electrical_requirements)+'</dd></div>';
-    if(p.installation_type)html+='<div><dt>Installation</dt><dd>'+esc(p.installation_type)+'</dd></div>';
-    if(p.door_swing)html+='<div><dt>Door Swing</dt><dd>'+esc(p.door_swing)+'</dd></div>';
-    if(p.gas_requirements)html+='<div><dt>Gas</dt><dd>'+esc(p.gas_requirements)+'</dd></div>';
-    if(p.water_requirements)html+='<div><dt>Water</dt><dd>'+esc(p.water_requirements)+'</dd></div>';
     html+='</div></div>';
   });
   html+='</div>';
 
-  /* --- INSTALLATION SUMMARY --- */
+  /* --- INSTALLATION --- */
   if(hasElec){
-    html+='<div class="print-page">';
-    html+='<h2 class="print-section-title">Installation Requirements Summary</h2>';
-    html+='<table class="print-install-table"><thead><tr><th>Appliance</th><th>Model</th><th>Electrical</th><th>Dimensions (W×H×D)</th></tr></thead><tbody>';
-    products.forEach(function(p){
-      var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');
-      html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.electrical_requirements)||'—')+'</td><td>'+(dims||'—')+'</td></tr>';
-    });
-    html+='</tbody></table>';
-    html+='<div style="margin-top:20px;padding:12px;background:#fef0e6;border-radius:6px;font-size:9pt;color:#e8590c"><strong>Important:</strong> All electrical, plumbing, and gas connections must be verified on-site by a licensed contractor before installation. Specifications are from manufacturer documentation and may vary.</div>';
-    html+='</div>';
+    html+='<div class="print-page"><h2 class="print-section-title">Installation Requirements Summary</h2>';
+    html+='<table class="print-install-table"><thead><tr><th>Appliance</th><th>Model</th><th>Electrical</th><th>Dimensions</th></tr></thead><tbody>';
+    products.forEach(function(p){var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.electrical_requirements)||'—')+'</td><td>'+(dims||'—')+'</td></tr>'});
+    html+='</tbody></table><div style="margin-top:20px;padding:12px;background:#fef0e6;border-radius:6px;font-size:9pt;color:#e8590c"><strong>Important:</strong> All connections must be verified on-site by a licensed contractor.</div></div>';
   }
 
-  /* --- PRICING PAGE --- */
+  /* --- PRICING --- */
   if(pkg.include_pricing){
-    html+='<div class="print-page">';
-    html+='<h2 class="print-section-title">Pricing Summary</h2>';
+    html+='<div class="print-page"><h2 class="print-section-title">Pricing Summary</h2>';
     html+='<table class="print-pricing-table"><thead><tr><th>Appliance</th><th>Model</th><th>Finish</th><th style="text-align:right">MSRP</th></tr></thead><tbody>';
-    products.forEach(function(p){
-      html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td style="text-align:right;font-family:Sora,sans-serif">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>';
-    });
+    products.forEach(function(p){html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.finish)||'—')+'</td><td style="text-align:right;font-family:Sora,sans-serif">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>'});
     html+='<tr class="total-row"><td colspan="3">Total MSRP</td><td style="text-align:right;font-family:Sora,sans-serif">$'+total.toLocaleString()+'</td></tr>';
     html+='</tbody></table>';
     if(retailer&&retailer.default_disclaimer)html+='<div style="margin-top:24px;font-size:9pt;color:#5b6b85;font-style:italic">'+esc(retailer.default_disclaimer)+'</div>';
     html+='</div>';
   }
-
   return html;
 }
 
-function printPackage(pkgId){
-  window._printPkgId=pkgId;
-  // Trigger via module scope
-  window.dispatchEvent(new CustomEvent('do-print',{detail:{pkgId:pkgId}}));
-}
-
-/* ==================== INIT ==================== */
-document.addEventListener('DOMContentLoaded',function(){
-  document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();navigate(a.dataset.view)})});
-  var t=PLANS.slice(0,3).map(planCard).join(''),x=PLANS.slice(3).map(planCard).join('');
-  if(el('plan-cards'))el('plan-cards').innerHTML=t;
-  if(el('pricing-cards-full'))el('pricing-cards-full').innerHTML=t;
-  if(el('pricing-cards-extra'))el('pricing-cards-extra').innerHTML=x;
-  el('s-color1').addEventListener('input',function(){el('s-color1-hex').value=this.value});
-  el('s-color2').addEventListener('input',function(){el('s-color2-hex').value=this.value});
-})
-</script>
-
-<script type="module">
-import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
-let currentUser=null;let userOrgId=null;let retailerSettings=null;let allPackages=[];
-
-async function resolveOrg(){
-  const{data}=await sb.from('organization_members').select('organization_id').eq('user_id',currentUser.id).limit(1).single();
-  if(data?.organization_id){userOrgId=data.organization_id;return}
-  // First login — create org, profile, and membership
-  const name=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'User';
-  const{data:org}=await sb.from('organizations').insert({name:name+"'s Store"}).select('id').single();
-  if(!org){userOrgId='00000000-0000-0000-0000-000000000002';return}
-  userOrgId=org.id;
-  await sb.from('organization_members').insert({organization_id:org.id,user_id:currentUser.id,role:'owner'});
-  await sb.from('profiles').upsert({user_id:currentUser.id,full_name:name,email:currentUser.email},{onConflict:'user_id'});
-}
-function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';el('welcome-msg').textContent='Welcome back, '+(currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there');resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings()})}
-
-/* ==================== AUTH ==================== */
-window.handleAuth=async(e)=>{e.preventDefault();el('auth-error').classList.add('hidden');el('auth-submit').textContent=authMode==='login'?'Signing in...':'Creating account...';const email=el('auth-email').value,pass=el('auth-pass').value;if(authMode==='signup'){const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:el('auth-name').value,app:'speciq'}}});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Create account';return}el('auth-form').classList.add('hidden');el('auth-success').classList.remove('hidden')}else{const{data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Sign in';return}currentUser=data.user;showApp()}};
-window.doSignOut=async()=>{await sb.auth.signOut();currentUser=null;showLanding()};
-
-/* ==================== DASHBOARD ==================== */
-async function loadDashboardStats(){try{const{count:pc}=await sb.from('speciq_projects').select('*',{count:'exact',head:true}).eq('status','active');const{count:pkc}=await sb.from('speciq_packages').select('*',{count:'exact',head:true});const{count:sc}=await sb.from('speciq_packages').select('*',{count:'exact',head:true}).eq('status','sent');const{count:vc}=await sb.from('speciq_package_events').select('*',{count:'exact',head:true}).eq('event_type','link_opened');el('stat-projects').textContent=pc??0;el('stat-packages').textContent=pkc??0;el('stat-sent').textContent=sc??0;el('stat-views').textContent=vc??0}catch(e){}}
-
-/* ==================== PROJECTS ==================== */
-let projects=[];
-async function loadProjects(){try{const{data}=await sb.from('speciq_projects').select('*').order('created_at',{ascending:false});projects=data||[]}catch(e){projects=[]}const q=(el('project-search')?.value||'').toLowerCase();const f=projects.filter(p=>p.project_name.toLowerCase().includes(q)||p.customer_name.toLowerCase().includes(q));const list=el('projects-list');if(!list)return;if(!f.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>';return}list.innerHTML=f.map(p=>'<div class="card flex between" style="padding:16px 24px;margin-bottom:8px"><div><div style="font-weight:600">'+esc(p.project_name)+'</div><div style="font-size:13px;color:var(--steel);margin-top:2px">'+esc(p.customer_name)+(p.room_name?' · '+esc(p.room_name):'')+'</div></div><div class="flex" style="gap:12px"><span class="badge badge-'+(p.status==='active'?'g':'y')+'">'+p.status+'</span><button class="btn btn-s" style="padding:6px 14px;font-size:13px" onclick="navigate(\'builder\');el(\'b-proj-name\').value=\''+esc(p.project_name)+'\';el(\'b-cust-name\').value=\''+esc(p.customer_name)+'\'">Build Package</button></div></div>').join('')}
-window._loadProjects=loadProjects;window.renderProjects=loadProjects;
-
-window.createProject=async(e)=>{e.preventDefault();const orgId=userOrgId;const{error}=await sb.from('speciq_projects').insert({project_name:el('pj-name').value,customer_name:el('pj-customer').value,customer_email:el('pj-email').value||null,property_address:el('pj-address').value||null,room_name:el('pj-room').value||null,builder_name:el('pj-builder').value||null,designer_name:el('pj-designer').value||null,expected_purchase_date:el('pj-date').value||null,created_by:currentUser.id,organization_id:orgId});if(error){alert('Error: '+error.message);return}el('new-project-form').classList.add('hidden');['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(function(id){el(id).value=''});loadProjects()};
-
-/* ==================== SAVE PACKAGE ==================== */
-window.savePackage=async(status)=>{
-  const btn=event?.target?.closest?.('button');
-  const origText=btn?.innerHTML;
-  try{
-    if(btn){btn.disabled=true;btn.innerHTML='<span style="opacity:.7">Saving...</span>'}
-    const orgId=userOrgId;
-    if(!orgId){throw new Error('No organization found. Please reload and try again.')}
-    const total=builderProducts.reduce((s,p)=>s+(p.msrp||0),0);
-    const token=crypto.randomUUID().replace(/-/g,'').slice(0,16);
-    const projName=el('b-proj-name').value||el('b-pkg-name').value||'Untitled Project';
-    const custName=el('b-cust-name').value||'Unknown Customer';
-    const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:orgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
-    if(pe)throw new Error('Project save failed: '+pe.message);
-    const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({organization_id:orgId,project_id:proj.id,package_name:el('b-pkg-name').value||projName,status,share_token:token,total_msrp:total,include_pricing:el('b-pricing').checked,created_by:currentUser.id}).select('id').single();
-    if(ke)throw new Error('Package save failed: '+ke.message);
-    if(builderProducts.length){
-      const{error:prodErr}=await sb.from('speciq_package_products').insert(builderProducts.map((p,i)=>({package_id:pkg.id,organization_id:orgId,product_name:p.product_name,brand:p.brand,model_number:p.model_number,category:p.category,finish:p.finish,msrp:p.msrp,width_inches:p.width_inches,height_inches:p.height_inches,depth_inches:p.depth_inches,electrical_requirements:p.electrical_requirements,sort_order:i})));
-      if(prodErr)console.warn('Product insert warning:',prodErr.message);
-    }
-    await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created'});
-    if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
-    builderProducts=[];
-    // Navigate to packages and auto-open the new package preview
-    await loadPackages();
-    navigate('packages');
-    loadDashboardStats();
-    openPackageDetail(pkg.id);
-  }catch(err){
-    console.error('savePackage error:',err);
-    alert('Error: '+err.message);
-    if(btn){btn.disabled=false;btn.innerHTML=origText}
-  }
-};
-
-/* ==================== PACKAGES LIST ==================== */
-async function loadPackages(){
-  try{
-    const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address)').order('created_at',{ascending:false});
-    allPackages=data||[];
-    // Fetch product counts for each package
-    const pkgIds=allPackages.map(p=>p.id);
-    if(pkgIds.length){const{data:prods}=await sb.from('speciq_package_products').select('package_id').in('package_id',pkgIds);const counts={};(prods||[]).forEach(p=>{counts[p.package_id]=(counts[p.package_id]||0)+1});allPackages.forEach(p=>{p._productCount=counts[p.id]||0})}
-  }catch(e){allPackages=[]}
-  renderPackagesList();
-}
-window.renderPackagesList=function(){
-  const q=(el('package-search')?.value||'').toLowerCase();
-  let filtered=allPackages;
-  if(currentPkgFilter!=='all')filtered=filtered.filter(p=>p.status===currentPkgFilter);
-  if(q)filtered=filtered.filter(p=>(p.package_name||'').toLowerCase().includes(q)||(p.speciq_projects?.customer_name||'').toLowerCase().includes(q));
-  const tbody=el('packages-tbody');
-  const empty=el('packages-empty');
-  if(!filtered.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
-  empty.classList.add('hidden');
-  tbody.innerHTML=filtered.map(p=>{
-    const cust=p.speciq_projects?.customer_name||'—';
-    const itemCount=p._productCount||0;
-    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+esc(p.speciq_projects?.project_name||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+'</td><td>'+itemCount+' items</td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button><button class="btn btn-g" style="padding:4px" onclick="event.stopPropagation();printPackage(\''+p.id+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg></button></div></td></tr>'}).join('');
-};
+function printPackage(pkgId){window.dispatchEvent(new CustomEvent('do-print',{detail:{pkgId}}))}
 
 /* ==================== PACKAGE DETAIL / PREVIEW ==================== */
 window.openPackageDetail=async function(pkgId){
   const pkg=allPackages.find(p=>p.id===pkgId);
-  if(!pkg){console.error('Package not found in allPackages');return}
+  if(!pkg){await loadPackages();const p2=allPackages.find(p=>p.id===pkgId);if(!p2)return;return openPackageDetail(pkgId)}
   const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
   const prods=products||[];
   const total=prods.reduce((s,p)=>s+(parseFloat(p.msrp)||0),0);
   const cust=pkg.speciq_projects?.customer_name||'—';
   const proj=pkg.speciq_projects?.project_name||'—';
-
-  // Fetch retailer settings for branding
-  if(!retailerSettings){
-    const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();
-    retailerSettings=rs;
-  }
-
+  if(!retailerSettings){const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();retailerSettings=rs}
   const fullPkg={...pkg,customer_name:cust,project_name:proj,property_address:pkg.speciq_projects?.property_address};
   const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings);
+  const days=daysRemaining(pkg.quote_expires_at);
+  const canSend=pkg.approval_status==='not_required'||pkg.approval_status==='approved'||pkg.approval_status==='approved_with_conditions';
+  const isPending=pkg.approval_status==='pending';
+  const isLocked=pkg.locked;
 
   let html='<div class="modal-overlay" onclick="if(event.target===this)closePackageDetail()">';
   html+='<div class="modal-panel" style="max-width:1000px">';
-
-  // Header bar
+  // Header
   html+='<div style="padding:16px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10;border-radius:12px 12px 0 0">';
-  html+='<div class="flex" style="gap:16px"><h2 style="font-size:18px">'+esc(pkg.package_name)+'</h2>'+statusBadge(pkg.status)+'</div>';
+  html+='<div class="flex" style="gap:16px"><h2 style="font-size:18px">'+esc(pkg.package_name)+'</h2>'+statusBadge(pkg.status);
+  if(pkg.approval_status&&pkg.approval_status!=='not_required')html+=' '+approvalBadge(pkg.approval_status);
+  if(isLocked)html+=' <span class="badge badge-b" style="gap:4px"><svg class="icon" style="width:12px;height:12px"><use href="#i-lock"/></svg> Locked</span>';
+  html+='</div>';
   html+='<div class="flex" style="gap:8px">';
-  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / Save PDF</button>';
+  if(canSend&&!isPending)html+='<button class="btn btn-ok" onclick="sendToCustomer(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Send to Customer</button>';
+  if(isPending)html+='<button class="btn btn-purple" disabled><svg class="icon" style="width:16px;height:16px"><use href="#i-clock"/></svg> Awaiting Approval</button>';
+  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print</button>';
   html+='<button class="btn btn-g" onclick="closePackageDetail()"><svg class="icon"><use href="#i-x"/></svg></button>';
   html+='</div></div>';
 
-  // Quick stats bar
-  html+='<div style="padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:32px">';
+  // Approval banner
+  if(pkg.approval_status==='approved'){
+    html+='<div class="approval-banner approved"><svg class="icon" style="color:var(--verified)"><use href="#i-check"/></svg><div><div style="font-weight:600;color:var(--verified)">Approved</div><div style="font-size:13px;color:var(--steel)">Approved '+(pkg.reviewed_at?fmtDateTime(pkg.reviewed_at):'')+(pkg.manager_comments?' — '+esc(pkg.manager_comments):'')+'</div></div></div>';
+  }else if(pkg.approval_status==='pending'){
+    html+='<div class="approval-banner pending"><svg class="icon" style="color:var(--amber)"><use href="#i-clock"/></svg><div><div style="font-weight:600;color:var(--amber)">Pending Manager Approval</div><div style="font-size:13px;color:var(--steel)">Submitted '+fmtDateTime(pkg.submitted_at)+'. Send to customer is disabled until approved.</div></div></div>';
+  }else if(pkg.approval_status==='changes_requested'){
+    html+='<div class="approval-banner changes"><svg class="icon" style="color:var(--purple)"><use href="#i-edit"/></svg><div><div style="font-weight:600;color:var(--purple)">Changes Requested</div><div style="font-size:13px;color:var(--steel)">'+(pkg.manager_comments?esc(pkg.manager_comments):'Manager has requested revisions.')+'</div></div></div>';
+  }else if(pkg.approval_status==='rejected'){
+    html+='<div class="approval-banner rejected"><svg class="icon" style="color:var(--danger)"><use href="#i-x"/></svg><div><div style="font-weight:600;color:var(--danger)">Rejected</div><div style="font-size:13px;color:var(--steel)">'+(pkg.rejection_reason?esc(pkg.rejection_reason):'Authorization denied.')+'</div></div></div>';
+  }
+
+  // Quick stats with validity
+  html+='<div style="padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;gap:32px;flex-wrap:wrap">';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Quote #</span><div style="font-weight:600;margin-top:2px">'+(pkg.quote_number||'—')+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Customer</span><div style="font-weight:600;margin-top:2px">'+esc(cust)+'</div></div>';
   html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Items</span><div style="font-weight:600;margin-top:2px">'+prods.length+'</div></div>';
-  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Total MSRP</span><div style="font-weight:700;font-family:Sora;margin-top:2px">$'+total.toLocaleString()+'</div></div>';
-  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Created</span><div style="font-weight:500;margin-top:2px">'+fmtDate(pkg.created_at)+'</div></div>';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Total</span><div style="font-weight:700;font-family:Sora;margin-top:2px">$'+total.toLocaleString()+'</div></div>';
+  html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Issued</span><div style="font-weight:500;margin-top:2px">'+fmtDate(pkg.quote_issued_at||pkg.created_at)+'</div></div>';
+  if(pkg.quote_expires_at){
+    var exColor=days!==null&&days<=3?'var(--danger)':days!==null&&days<=7?'var(--amber)':'var(--focus)';
+    html+='<div><span style="font-size:12px;color:var(--steel);text-transform:uppercase">Expires</span><div style="font-weight:700;margin-top:2px;color:'+exColor+'">'+fmtDate(pkg.quote_expires_at)+'</div>';
+    if(days!==null)html+='<div style="font-size:12px;color:'+exColor+'">'+expiryLabel(days)+'</div>';
+    html+='</div>';
+  }
   html+='</div>';
 
-  // Rendered package preview
-  html+='<div style="padding:24px;background:#e8ecf1;max-height:70vh;overflow-y:auto">';
-  html+='<div style="background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;max-width:800px;margin:0 auto">';
-  html+='<div style="padding:40px 48px;font-size:11pt;color:#000;line-height:1.5">'+previewHTML+'</div>';
-  html+='</div></div>';
+  // Preview
+  html+='<div style="padding:24px;background:#e8ecf1;max-height:65vh;overflow-y:auto"><div style="background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;max-width:800px;margin:0 auto"><div style="padding:40px 48px;font-size:11pt;color:#000;line-height:1.5">'+previewHTML+'</div></div></div>';
 
   // Footer
   html+='<div style="padding:16px 24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:0 0 12px 12px">';
-  html+='<div class="flex" style="gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora;font-weight:600;font-size:12px;color:var(--steel)">ApplianceIQ</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel)">applianceiq.ai</span><span style="color:var(--line);margin:0 4px">·</span><span style="font-size:12px;color:var(--steel);font-style:italic">Spec. Compare. Price verified.</span></div>';
-  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print / Save PDF</button>';
-  html+='</div>';
-
+  html+='<div class="flex" style="gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--steel)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora;font-weight:600;font-size:12px;color:var(--steel)">ApplianceIQ</span></div>';
+  html+='<div class="flex" style="gap:8px">';
+  if(canSend&&!isPending)html+='<button class="btn btn-ok" onclick="sendToCustomer(\''+pkgId+'\')"><svg class="icon" style="width:16px;height:16px"><use href="#i-send"/></svg> Send to Customer</button>';
+  html+='<button class="btn btn-p" onclick="printPackage(\''+pkgId+'\');closePackageDetail()"><svg class="icon" style="width:16px;height:16px"><use href="#i-printer"/></svg> Print</button>';
+  html+='</div></div>';
   html+='</div></div>';
 
   el('pkg-detail-modal').innerHTML=html;
@@ -886,23 +1151,163 @@ window.openPackageDetail=async function(pkgId){
 };
 window.closePackageDetail=function(){el('pkg-detail-modal').classList.add('hidden');el('pkg-detail-modal').innerHTML='';document.body.style.overflow=''};
 
+/* Send to customer */
+window.sendToCustomer=async function(pkgId){
+  if(!confirm('Send this quote to the customer?'))return;
+  await sb.from('speciq_packages').update({status:'sent',sent_at:new Date().toISOString()}).eq('id',pkgId);
+  await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:'sent'});
+  alert('Quote sent to customer.');
+  closePackageDetail();loadPackages();loadDashboardStats();
+};
+
+/* ==================== MANAGER APPROVAL REVIEW ==================== */
+window.openApprovalReview=async function(pkgId){
+  const pkg=allApprovals.find(p=>p.id===pkgId)||allPackages.find(p=>p.id===pkgId);
+  if(!pkg){return}
+  const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
+  const prods=products||[];
+  const total=prods.reduce((s,p)=>s+(parseFloat(p.msrp)||0),0);
+  const cust=pkg.speciq_projects?.customer_name||'—';
+  const{data:history}=await sb.from('speciq_approval_history').select('*').eq('package_id',pkgId).order('created_at',{ascending:false});
+  if(!retailerSettings){const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();retailerSettings=rs}
+  const fullPkg={...pkg,customer_name:cust,project_name:pkg.speciq_projects?.project_name,property_address:pkg.speciq_projects?.property_address};
+  const previewHTML=buildPrintHTML(fullPkg,prods,retailerSettings);
+  const isPending=pkg.approval_status==='pending';
+
+  let html='<div class="modal-overlay" onclick="if(event.target===this)closeApprovalReview()">';
+  html+='<div class="modal-panel" style="max-width:1100px">';
+  // Header
+  html+='<div style="padding:16px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:10;border-radius:12px 12px 0 0">';
+  html+='<div><h2 style="font-size:18px">Manager Review</h2><div style="font-size:13px;color:var(--steel)">'+(pkg.quote_number||'')+' · '+esc(pkg.package_name)+'</div></div>';
+  html+='<button class="btn btn-g" onclick="closeApprovalReview()"><svg class="icon"><use href="#i-x"/></svg></button>';
+  html+='</div>';
+
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;min-height:500px">';
+
+  // LEFT: Deal review
+  html+='<div style="padding:24px;border-right:1px solid var(--line);overflow-y:auto;max-height:75vh">';
+  html+='<h3 style="font-size:16px;margin-bottom:16px">Deal Summary</h3>';
+  // Customer & Deal
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Customer</div><div style="font-weight:600">'+esc(cust)+'</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Rep</div><div style="font-weight:600">'+(pkg.salesperson_name||'—')+'</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Quote #</div><div style="font-weight:600">'+(pkg.quote_number||'—')+'</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Version</div><div style="font-weight:600">'+(pkg.quote_version||1)+'</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Issued</div><div style="font-weight:600">'+fmtDate(pkg.quote_issued_at||pkg.created_at)+'</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Expires</div><div style="font-weight:700;color:var(--focus)">'+fmtDate(pkg.quote_expires_at)+'</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Validity</div><div style="font-weight:600">'+(pkg.validity_days||14)+' days</div></div>';
+  html+='<div><div style="font-size:12px;color:var(--steel);text-transform:uppercase">Status</div><div>'+approvalBadge(pkg.approval_status)+'</div></div>';
+  html+='</div>';
+
+  // Products
+  html+='<h4 style="font-size:14px;margin-bottom:10px;padding-top:16px;border-top:1px solid var(--line)">Products ('+prods.length+')</h4>';
+  html+='<table class="tbl" style="font-size:13px;margin-bottom:16px"><thead><tr><th>Product</th><th>Model</th><th class="r">MSRP</th></tr></thead><tbody>';
+  prods.forEach(p=>{html+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td class="r num" style="font-family:Sora">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>'});
+  html+='<tr style="font-weight:700;border-top:2px solid var(--navy)"><td colspan="2">Total MSRP</td><td class="r num" style="font-family:Sora">$'+total.toLocaleString()+'</td></tr>';
+  html+='</tbody></table>';
+
+  // Approval history
+  if(history&&history.length){
+    html+='<h4 style="font-size:14px;margin-bottom:10px;padding-top:16px;border-top:1px solid var(--line)">Approval History</h4>';
+    history.forEach(h=>{
+      html+='<div style="padding:8px 12px;background:var(--paper);border-radius:8px;margin-bottom:8px;font-size:13px">';
+      html+='<div class="flex between"><span style="font-weight:600">'+(h.manager_decision||'Submitted').replace(/_/g,' ')+'</span><span style="color:var(--steel)">'+fmtDateTime(h.decision_at||h.submitted_at)+'</span></div>';
+      if(h.comments)html+='<div style="color:var(--steel);margin-top:4px">'+esc(h.comments)+'</div>';
+      if(h.conditions)html+='<div style="color:var(--amber);margin-top:4px">Conditions: '+esc(h.conditions)+'</div>';
+      html+='</div>';
+    });
+  }
+  html+='</div>';
+
+  // RIGHT: Preview + Actions
+  html+='<div style="display:flex;flex-direction:column">';
+  // Actions bar (only for pending)
+  if(isPending){
+    html+='<div style="padding:16px 20px;background:var(--paper);border-bottom:1px solid var(--line)">';
+    html+='<h4 style="font-size:14px;margin-bottom:12px">Authorization Decision</h4>';
+    html+='<div style="margin-bottom:12px"><label>Manager Comments</label><textarea id="mgr-comments" rows="2" placeholder="Optional comments..." style="font-size:13px"></textarea></div>';
+    html+='<div style="margin-bottom:12px"><label>Conditions (if approving with conditions)</label><input id="mgr-conditions" placeholder="e.g. Approved if purchased by August 1" style="font-size:13px" /></div>';
+    html+='<div class="flex" style="gap:8px;flex-wrap:wrap">';
+    html+='<button class="btn btn-ok" onclick="managerDecision(\''+pkgId+'\',\'approved\')"><svg class="icon" style="width:14px;height:14px"><use href="#i-check"/></svg> Approve</button>';
+    html+='<button class="btn btn-focus" onclick="managerDecision(\''+pkgId+'\',\'approved_with_conditions\')">Approve w/ Conditions</button>';
+    html+='<button class="btn btn-s" onclick="managerDecision(\''+pkgId+'\',\'changes_requested\')"><svg class="icon" style="width:14px;height:14px"><use href="#i-edit"/></svg> Request Changes</button>';
+    html+='<button class="btn btn-danger" onclick="managerDecision(\''+pkgId+'\',\'rejected\')"><svg class="icon" style="width:14px;height:14px"><use href="#i-x"/></svg> Reject</button>';
+    html+='</div></div>';
+  }else{
+    html+='<div class="approval-banner '+(pkg.approval_status==='approved'?'approved':pkg.approval_status==='rejected'?'rejected':'changes')+'" style="margin:16px 20px">';
+    html+='<div style="font-weight:600">'+pkg.approval_status.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())+'</div>';
+    if(pkg.manager_comments)html+='<div style="font-size:13px;margin-top:4px">'+esc(pkg.manager_comments)+'</div>';
+    html+='</div>';
+  }
+  // Preview
+  html+='<div style="flex:1;padding:16px 20px;overflow-y:auto;max-height:55vh;background:#e8ecf1"><div style="background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;transform:scale(.85);transform-origin:top center"><div style="padding:32px 40px;font-size:10pt;color:#000;line-height:1.4">'+previewHTML+'</div></div></div>';
+  html+='</div></div></div></div>';
+
+  el('approval-modal').innerHTML=html;
+  el('approval-modal').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+};
+window.closeApprovalReview=function(){el('approval-modal').classList.add('hidden');el('approval-modal').innerHTML='';document.body.style.overflow=''};
+
+/* Manager decision handler */
+window.managerDecision=async function(pkgId,decision){
+  const comments=el('mgr-comments')?.value||'';
+  const conditions=el('mgr-conditions')?.value||'';
+  if(decision==='rejected'&&!comments){alert('Please provide a reason for rejection.');return}
+  if(decision==='approved_with_conditions'&&!conditions){alert('Please specify the conditions.');return}
+  const now=new Date().toISOString();
+  const updateData={
+    approval_status:decision==='changes_requested'?'changes_requested':decision,
+    reviewed_by:currentUser.id,
+    reviewed_at:now,
+    manager_comments:comments||null,
+    approval_conditions:conditions||null,
+    returned_to_rep_at:now
+  };
+  if(decision==='approved'||decision==='approved_with_conditions'){
+    updateData.status='approved';
+    updateData.approved_at=now;
+    updateData.locked=true;
+  }
+  if(decision==='rejected'){
+    updateData.status='rejected';
+    updateData.rejection_reason=comments;
+  }
+  if(decision==='changes_requested'){
+    updateData.status='changes_requested';
+  }
+  await sb.from('speciq_packages').update(updateData).eq('id',pkgId);
+  // Log to approval history
+  await sb.from('speciq_approval_history').insert({
+    package_id:pkgId,organization_id:userOrgId,
+    submission_id:'DEC-'+Date.now(),
+    manager_decision:decision,
+    assigned_manager:currentUser.id,
+    conditions:conditions||null,
+    comments:comments||null,
+    decision_at:now,
+    returned_to_rep_at:now
+  });
+  // Log CRM event
+  const eventType=decision==='approved'?'manager_approved':decision==='approved_with_conditions'?'manager_approved_with_conditions':decision==='changes_requested'?'manager_changes_requested':'manager_rejected';
+  await sb.from('speciq_package_events').insert({package_id:pkgId,event_type:eventType,event_data:{decision,comments,conditions}});
+
+  closeApprovalReview();
+  loadApprovals();loadPackages();loadDashboardStats();loadPendingCount();
+  alert('Decision recorded: '+decision.replace(/_/g,' '));
+};
+
 /* ==================== PRINT HANDLER ==================== */
 window.addEventListener('do-print',async function(e){
   const pkgId=e.detail.pkgId;
   let pkg=allPackages.find(p=>p.id===pkgId);
-  if(!pkg){
-    const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address)').eq('id',pkgId).single();
-    pkg=data;
-  }
+  if(!pkg){const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address)').eq('id',pkgId).single();pkg=data}
   if(!pkg)return;
   const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkgId).order('sort_order');
   const fullPkg={...pkg,customer_name:pkg.speciq_projects?.customer_name,project_name:pkg.speciq_projects?.project_name,property_address:pkg.speciq_projects?.property_address};
-  if(!retailerSettings){
-    const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();
-    retailerSettings=rs;
-  }
+  if(!retailerSettings){const{data:rs}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();retailerSettings=rs}
   const printHTML=buildPrintHTML(fullPkg,products||[],retailerSettings);
-  const footer='<div class="print-footer"><div class="print-footer-brand"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6b85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora,sans-serif;font-weight:600;font-size:8pt;color:#5b6b85">ApplianceIQ</span><span style="color:#aaa;margin:0 4px">·</span><span>applianceiq.ai</span></div><div style="font-style:italic">Spec. Compare. Price verified.</div></div>';
+  const footer='<div class="print-footer"><div class="print-footer-brand"><svg viewBox="0 0 24 24" fill="none" stroke="#5b6b85" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora,sans-serif;font-weight:600;font-size:8pt;color:#5b6b85">ApplianceIQ</span></div><div style="font-style:italic">Spec. Compare. Price verified.</div></div>';
   el('print-package').innerHTML=printHTML+footer;
   setTimeout(()=>window.print(),300);
 });
@@ -928,6 +1333,12 @@ async function loadRetailerSettings(){
     el('s-color1-hex').value=data.primary_color||'#0f1f3d';
     el('s-color2').value=data.secondary_color||'#2f6fed';
     el('s-color2-hex').value=data.secondary_color||'#2f6fed';
+    el('s-validity-days').value=data.default_validity_days||14;
+    el('s-max-rep-days').value=data.max_rep_validity_days||14;
+    el('s-max-mgr-days').value=data.max_manager_validity_days||30;
+    el('s-max-sm-days').value=data.max_store_manager_validity_days||60;
+    el('s-validity-disclaimer').value=data.validity_disclaimer||'';
+    el('s-commercial-disclaimer').value=data.commercial_disclaimer||'';
     if(data.logo_url){el('logo-preview').src=data.logo_url;el('logo-preview').classList.remove('hidden')}
     else{el('logo-preview').classList.add('hidden')}
   }
@@ -947,6 +1358,12 @@ window.saveRetailerSettings=async function(){
     default_disclaimer:el('s-disclaimer').value||null,
     primary_color:el('s-color1').value,
     secondary_color:el('s-color2').value,
+    default_validity_days:parseInt(el('s-validity-days').value)||14,
+    max_rep_validity_days:parseInt(el('s-max-rep-days').value)||14,
+    max_manager_validity_days:parseInt(el('s-max-mgr-days').value)||30,
+    max_store_manager_validity_days:parseInt(el('s-max-sm-days').value)||60,
+    validity_disclaimer:el('s-validity-disclaimer').value||null,
+    commercial_disclaimer:el('s-commercial-disclaimer').value||null,
     updated_at:new Date().toISOString()
   };
   if(retailerSettings?.logo_url)payload.logo_url=retailerSettings.logo_url;
@@ -965,16 +1382,13 @@ window.handleLogoUpload=async function(e){
   const{data:{publicUrl}}=sb.storage.from('retailer-logos').getPublicUrl(path);
   retailerSettings=retailerSettings||{};
   retailerSettings.logo_url=publicUrl;
-  el('logo-preview').src=publicUrl;
-  el('logo-preview').classList.remove('hidden');
-  // Save immediately
+  el('logo-preview').src=publicUrl;el('logo-preview').classList.remove('hidden');
   await sb.from('speciq_retailer_settings').upsert({organization_id:userOrgId,logo_url:publicUrl,updated_at:new Date().toISOString()},{onConflict:'organization_id'});
 };
 window.removeLogo=async function(){
   if(!retailerSettings?.logo_url)return;
   retailerSettings.logo_url=null;
-  el('logo-preview').classList.add('hidden');
-  el('logo-preview').src='';
+  el('logo-preview').classList.add('hidden');el('logo-preview').src='';
   await sb.from('speciq_retailer_settings').update({logo_url:null,updated_at:new Date().toISOString()}).eq('organization_id',userOrgId);
 };
 
@@ -985,7 +1399,6 @@ async function loadTeam(){
   try{
     const{data:members}=await sb.from('organization_members').select('*').eq('organization_id',userOrgId).order('created_at',{ascending:true});
     const mems=members||[];
-    // Fetch profiles for all member user_ids
     const uids=mems.map(m=>m.user_id);
     if(uids.length){
       const{data:profs}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids);
@@ -993,14 +1406,11 @@ async function loadTeam(){
       mems.forEach(m=>{m.profiles=profMap[m.user_id]||null});
     }
     teamMembers=mems;
-  }catch(e){
-    teamMembers=[];
-  }
+  }catch(e){teamMembers=[]}
   renderTeam();
 }
 function renderTeam(){
-  const tbody=el('team-tbody');
-  const empty=el('team-empty');
+  const tbody=el('team-tbody');const empty=el('team-empty');
   if(!teamMembers.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
   empty.classList.add('hidden');
   tbody.innerHTML=teamMembers.map(m=>{
@@ -1015,17 +1425,13 @@ window.sendInvite=async function(){
   const email=el('inv-email').value;const name=el('inv-name').value;const role=el('inv-role').value;
   el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden');
   if(!email){el('invite-error').textContent='Email is required.';el('invite-error').classList.remove('hidden');return}
-  // Create auth user via invite (admin action) — for now, create the membership record
-  // In production this would send an invite email via Supabase Auth admin API
-  // Check if user already exists in profiles
   const{data:existingProfile}=await sb.from('profiles').select('user_id').eq('email',email).single();
   if(existingProfile){
-    // User exists — add them directly
     const{error:memErr}=await sb.from('organization_members').insert({organization_id:userOrgId,user_id:existingProfile.user_id,role:role});
-    if(memErr){el('invite-error').textContent=memErr.message.includes('duplicate')?'This user is already on your team.':memErr.message;el('invite-error').classList.remove('hidden');return}
-    el('invite-success').textContent=email+' has been added to your team as '+role+'.';
+    if(memErr){el('invite-error').textContent=memErr.message.includes('duplicate')?'Already on your team.':memErr.message;el('invite-error').classList.remove('hidden');return}
+    el('invite-success').textContent=email+' added as '+role+'.';
   }else{
-    el('invite-success').textContent='When '+email+' signs up for Spec IQ, they will be added to your team. Share this link: '+window.location.origin;
+    el('invite-success').textContent='When '+email+' signs up, they will join your team.';
   }
   el('invite-success').classList.remove('hidden');
   el('inv-email').value='';el('inv-name').value='';el('inv-role').selectedIndex=0;
