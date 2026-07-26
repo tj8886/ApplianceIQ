@@ -20,6 +20,31 @@ const SUPABASE_KEY = "sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
 let ANTHROPIC_API_KEY = "";
 try { ANTHROPIC_API_KEY = localStorage.getItem("aiq_anthropic_key") || ""; } catch(e) {}
 
+let OPENAI_API_KEY = "";
+try { OPENAI_API_KEY = localStorage.getItem("aiq_openai_key") || ""; } catch(e) {}
+
+const MODELS = [
+  { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", short: "H4.5", cost: "~0.3¢", color: "#00b894", desc: "Fast & cheap — bulk scraping", provider: "anthropic" },
+  { id: "claude-sonnet-4-6", label: "Sonnet 4.6", short: "S4.6", cost: "~1.5¢", color: "#6c5ce7", desc: "Balanced — good for most tasks", provider: "anthropic" },
+  { id: "claude-opus-4-6", label: "Opus 4.6", short: "O4.6", cost: "~7.5¢", color: "#e17055", desc: "Most capable — complex research", provider: "anthropic" },
+  { id: "gpt-4o-mini", label: "GPT-4o Mini", short: "4oM", cost: "~0.2¢", color: "#10a37f", desc: "OpenAI fast & cheap", provider: "openai" },
+  { id: "gpt-4o", label: "GPT-4o", short: "4o", cost: "~1.5¢", color: "#1a7f64", desc: "OpenAI balanced", provider: "openai" },
+  { id: "o3-mini", label: "o3-mini", short: "o3m", cost: "~0.6¢", color: "#0d6e4f", desc: "OpenAI reasoning — mini", provider: "openai" },
+];
+
+const MODE_DEFAULT_MODELS = {
+  single: "claude-haiku-4-5-20251001",
+  bulk: "claude-haiku-4-5-20251001",
+  discover: "claude-haiku-4-5-20251001",
+  existing: "claude-haiku-4-5-20251001",
+  pricecheck: "claude-haiku-4-5-20251001",
+  retailer: "claude-sonnet-4-6",
+  intel: "claude-sonnet-4-6",
+};
+
+let SAVED_MODEL = "";
+try { SAVED_MODEL = localStorage.getItem("aiq_scraper_model") || ""; } catch(e) {}
+
 const CATEGORIES = [
   "refrigeration","cooking","dishwashers","laundry","ventilation",
   "wine_refrigeration","beverage_centers","ice_makers","outdoor","small_appliances"
@@ -374,22 +399,22 @@ Find as many relevant recent articles as possible. Check industry sources like:
 - Trade show coverage (KBIS, IBS, CES)
 Focus on the last 6 months but include major older stories if significant.`;
 
-async function retailerPriceCheck(query, country) {
+async function retailerPriceCheck(query, country, model) {
   const prompt = country === "US" ? RETAILER_PRICE_PROMPT_US : RETAILER_PRICE_PROMPT;
   const suffix = country === "US" ? " — check US retailers, prices in USD" : " — check Canadian retailers, prices in CAD";
-  const result = await callClaude(prompt, "Find retail prices for: " + query + suffix, 2, "claude-sonnet-4-6");
+  const result = await callAI(prompt, "Find retail prices for: " + query + suffix, 2, model || "claude-sonnet-4-6");
   if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; result._country = country || "CA"; return result; }
   return { found: false, query, error: result.error || "Retailer price check failed", _retailerCheck: true, _country: country || "CA" };
 }
 
-async function companyIntelScrape(query) {
-  const result = await callClaude(COMPANY_INTEL_PROMPT, "Research this appliance industry company thoroughly: " + query, 2, "claude-sonnet-4-6");
+async function companyIntelScrape(query, model) {
+  const result = await callAI(COMPANY_INTEL_PROMPT, "Research this appliance industry company thoroughly: " + query, 2, model || "claude-sonnet-4-6");
   if (result.found || result.name) { result.found = true; result._intel = true; return result; }
   return { found: false, query, error: result.error || "Company intel scrape failed", _intel: true };
 }
 
-async function newsScrape(query) {
-  const result = await callClaude(NEWS_SCRAPE_PROMPT, "Find the latest appliance industry news about: " + query, 2, "claude-sonnet-4-6");
+async function newsScrape(query, model) {
+  const result = await callAI(NEWS_SCRAPE_PROMPT, "Find the latest appliance industry news about: " + query, 2, model || "claude-sonnet-4-6");
   if (result.found || result.news) { result.found = true; result._news = true; return result; }
   return { found: false, query, error: result.error || "News scrape failed", _news: true };
 }
@@ -480,17 +505,76 @@ async function callClaude(systemPrompt, userMsg, retries = 3, modelOverride = nu
   }
 }
 
-async function scrapeProduct(query) {
-  let result = await callClaude(SCRAPE_PROMPT, "Find all product specifications for: " + query);
+async function callOpenAI(systemPrompt, userMsg, retries = 3, model = "gpt-4o-mini") {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (!OPENAI_API_KEY) return { found: false, error: "No OpenAI API key set" };
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + OPENAI_API_KEY,
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 8000,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMsg },
+          ],
+          tools: [{ type: "function", function: { name: "web_search", description: "Search the web", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } } }],
+          tool_choice: "auto",
+        }),
+      });
+      if (res.status === 429) {
+        const wait = Math.min(15000, 5000 * (attempt + 1));
+        if (attempt < retries) { await new Promise(r => setTimeout(r, wait)); continue; }
+        return { found: false, error: "Rate limited — try again in a minute" };
+      }
+      if (res.status === 503 || res.status === 529) {
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 8000)); continue; }
+        return { found: false, error: "API overloaded — try again shortly" };
+      }
+      if (!res.ok) {
+        const errText = await res.text();
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 4000)); continue; }
+        return { found: false, error: "API error " + res.status + ": " + errText.slice(0, 200) };
+      }
+      const data = await res.json();
+      const allText = (data.choices || []).map(c => c.message?.content || "").join("\n");
+      const parsed = extractJSON(allText);
+      if (parsed && (parsed.found === true || parsed.model || parsed.brand_name)) {
+        parsed.found = true;
+        return parsed;
+      }
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 3000)); continue; }
+      return { found: false, error: "Could not parse product data from response", raw: allText.slice(0, 500) };
+    } catch (e) {
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 4000)); continue; }
+      return { found: false, error: e.message };
+    }
+  }
+}
+
+function callAI(systemPrompt, userMsg, retries = 3, model = "claude-haiku-4-5-20251001") {
+  const modelInfo = MODELS.find(m => m.id === model);
+  if (modelInfo && modelInfo.provider === "openai") {
+    return callOpenAI(systemPrompt, userMsg, retries, model);
+  }
+  return callClaude(systemPrompt, userMsg, retries, model);
+}
+
+async function scrapeProduct(query, model) {
+  let result = await callAI(SCRAPE_PROMPT, "Find all product specifications for: " + query, 3, model);
   if (result.found) return result;
   const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
-  result = await callClaude(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price");
+  result = await callAI(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price", 3, model);
   if (result.found) return result;
   return { found: false, query, error: result.error || "Product not found after multiple attempts" };
 }
 
-async function priceCheckProduct(query) {
-  const result = await callClaude(PRICE_CHECK_PROMPT, "Check current pricing and availability for: " + query, 2);
+async function priceCheckProduct(query, model) {
+  const result = await callAI(PRICE_CHECK_PROMPT, "Check current pricing and availability for: " + query, 2, model);
   if (result.found || result.pricing) { result.found = true; result._priceOnly = true; return result; }
   return { found: false, query, error: result.error || "Price check failed", _priceOnly: true };
 }
@@ -599,7 +683,10 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
         </div>
       </div>
 
-      {data.source_url && <div style={{ fontSize: 12, color: palette.blue, marginBottom: 16 }}>Source: <a href={data.source_url} target="_blank" rel="noreferrer" style={{ color: palette.blue }}>{data.source_url}</a></div>}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+        {data.source_url && <span style={{ fontSize: 12, color: palette.blue }}>Source: <a href={data.source_url} target="_blank" rel="noreferrer" style={{ color: palette.blue }}>{data.source_url}</a></span>}
+        {data._model && (() => { const mi = MODELS.find(m => m.id === data._model); return mi ? <span style={{ ...s.badge, background: mi.color + "20", color: mi.color, fontSize: 9 }}>{mi.short}</span> : null; })()}
+      </div>
 
       <div style={s.grid}>
         <Field label="Brand" value={data.brand_name} editable={editing} onChange={(v) => upd("brand_name", v)} />
@@ -869,7 +956,20 @@ function PIMScraper() {
   const [savingIdx, setSavingIdx] = useState(null);
   const abortRef = useRef(false);
   const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
-  const [showKeyInput, setShowKeyInput] = useState(!ANTHROPIC_API_KEY);
+  const [openaiKey, setOpenaiKey] = useState(OPENAI_API_KEY);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(SAVED_MODEL || "");
+  const [showModelPicker, setShowModelPicker] = useState(false);
+
+  // Get the effective model for the current mode
+  const getModel = useCallback(() => {
+    if (selectedModel) return selectedModel;
+    return MODE_DEFAULT_MODELS[mode] || "claude-haiku-4-5-20251001";
+  }, [selectedModel, mode]);
+
+  const activeModel = getModel();
+  const activeModelInfo = MODELS.find(m => m.id === activeModel) || MODELS[0];
+
   const [priceMode, setPriceMode] = useState("pc-single");
   const [retailerMode, setRetailerMode] = useState("rt-single");
   const [retailerCountry, setRetailerCountry] = useState("CA");
@@ -1346,8 +1446,9 @@ function PIMScraper() {
 
   const runScrape = async (q) => {
     try {
-      const r = await scrapeProduct(q);
+      const r = await scrapeProduct(q, activeModel);
       r.query = q;
+      r._model = activeModel;
       return r;
     } catch (e) { return { found: false, query: q, error: e.message }; }
   };
@@ -1432,7 +1533,7 @@ function PIMScraper() {
     if (url) {
       // Single URL discovery
       setProgress({ current: 1, total: 1, currentQuery: "Scanning page…" });
-      const result = await callClaude(DISCOVER_PROMPT, `Find all product model numbers listed on: ${url}`);
+      const result = await callAI(DISCOVER_PROMPT, `Find all product model numbers listed on: ${url}`, 3, activeModel);
       if (result.found && result.products) allProducts = result.products;
     } else {
       // Break into subcategory chunks to avoid overload
@@ -1446,7 +1547,7 @@ function PIMScraper() {
           ? `Find ALL ${brand} ${subcat} currently available on the ${brand} Canadian website. List every model number.`
           : `Find ALL ${brand} ${category || "appliance"} products on the ${brand} Canadian website. List every model number. Search each subcategory.`;
         
-        const result = await callClaude(DISCOVER_PROMPT, searchQuery);
+        const result = await callAI(DISCOVER_PROMPT, searchQuery, 3, activeModel);
         if (result.found && result.products) {
           allProducts = [...allProducts, ...result.products];
         }
@@ -1557,22 +1658,104 @@ function PIMScraper() {
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: autoSave ? palette.green : palette.textMuted }}>Auto-save to PIM</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {showKeyInput ? (
-              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                <input style={{ ...s.input, width: 220, padding: "6px 10px", fontSize: 11 }} type="password"
-                  placeholder="Anthropic API key (sk-ant-...)" value={apiKey}
-                  onChange={e => setApiKey(e.target.value)} />
-                <button style={{ ...s.btn, ...s.btnSm, padding: "6px 10px", fontSize: 11 }} onClick={() => {
-                  ANTHROPIC_API_KEY = apiKey;
-                  try { localStorage.setItem("aiq_anthropic_key", apiKey); } catch(e) {}
-                  setShowKeyInput(false);
-                }}>Save</button>
+          {/* Model Switcher */}
+          <div style={{ position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: palette.card, border: "1px solid " + palette.border, borderRadius: 8, cursor: "pointer", userSelect: "none" }}
+              onClick={() => setShowModelPicker(!showModelPicker)}>
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: activeModelInfo.color }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: palette.text }}>{activeModelInfo.short}</span>
+              <span style={{ fontSize: 10, color: palette.textMuted }}>{activeModelInfo.cost}</span>
+              <span style={{ fontSize: 10, color: palette.textMuted, marginLeft: 2 }}>▾</span>
+            </div>
+            {showModelPicker && (
+              <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: palette.card, border: "1px solid " + palette.border, borderRadius: 10, padding: 8, zIndex: 100, minWidth: 280, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                <div style={{ padding: "4px 8px", fontSize: 10, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Anthropic</div>
+                {MODELS.filter(m => m.provider === "anthropic").map(m => (
+                  <div key={m.id} onClick={() => { if (!apiKey && m.provider === "anthropic") return; setSelectedModel(m.id); try { localStorage.setItem("aiq_scraper_model", m.id); } catch(e) {} setShowModelPicker(false); }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 6, cursor: !apiKey ? "not-allowed" : "pointer", background: activeModel === m.id ? m.color + "20" : "transparent", marginBottom: 2, opacity: !apiKey ? 0.4 : 1 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 5, background: m.color, border: activeModel === m.id ? "2px solid " + m.color : "2px solid transparent", boxShadow: activeModel === m.id ? "0 0 6px " + m.color + "60" : "none" }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: palette.text }}>{m.label} <span style={{ fontSize: 11, fontWeight: 400, color: palette.textDim }}>{m.cost}/call</span></div>
+                      <div style={{ fontSize: 11, color: palette.textMuted }}>{m.desc}</div>
+                    </div>
+                    {activeModel === m.id && <span style={{ color: m.color, fontSize: 14 }}>✓</span>}
+                  </div>
+                ))}
+                {!apiKey && <div style={{ padding: "2px 10px 6px", fontSize: 10, color: palette.red }}>⚠ No Anthropic key set</div>}
+
+                <div style={{ borderTop: "1px solid " + palette.border, marginTop: 4, paddingTop: 4 }}>
+                  <div style={{ padding: "4px 8px", fontSize: 10, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>OpenAI</div>
+                  {MODELS.filter(m => m.provider === "openai").map(m => (
+                    <div key={m.id} onClick={() => { if (!openaiKey && m.provider === "openai") return; setSelectedModel(m.id); try { localStorage.setItem("aiq_scraper_model", m.id); } catch(e) {} setShowModelPicker(false); }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 6, cursor: !openaiKey ? "not-allowed" : "pointer", background: activeModel === m.id ? m.color + "20" : "transparent", marginBottom: 2, opacity: !openaiKey ? 0.4 : 1 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: 5, background: m.color, border: activeModel === m.id ? "2px solid " + m.color : "2px solid transparent", boxShadow: activeModel === m.id ? "0 0 6px " + m.color + "60" : "none" }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: palette.text }}>{m.label} <span style={{ fontSize: 11, fontWeight: 400, color: palette.textDim }}>{m.cost}/call</span></div>
+                        <div style={{ fontSize: 11, color: palette.textMuted }}>{m.desc}</div>
+                      </div>
+                      {activeModel === m.id && <span style={{ color: m.color, fontSize: 14 }}>✓</span>}
+                    </div>
+                  ))}
+                  {!openaiKey && <div style={{ padding: "2px 10px 6px", fontSize: 10, color: palette.red }}>⚠ No OpenAI key set</div>}
+                </div>
+
+                <div style={{ borderTop: "1px solid " + palette.border, marginTop: 4, paddingTop: 6 }}>
+                  <div onClick={() => { setSelectedModel(""); try { localStorage.setItem("aiq_scraper_model", ""); } catch(e) {} setShowModelPicker(false); }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 6, cursor: "pointer", background: !selectedModel ? palette.accentSoft : "transparent" }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 5, border: "2px dashed " + palette.textMuted }} />
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: palette.textDim }}>Auto (per mode)</div>
+                      <div style={{ fontSize: 10, color: palette.textMuted }}>Haiku for scrape/price · Sonnet for intel/retailer</div>
+                    </div>
+                    {!selectedModel && <span style={{ color: palette.accent, fontSize: 14 }}>✓</span>}
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }} onClick={() => setShowKeyInput(true)}>
-                <div style={{ width: 8, height: 8, borderRadius: 4, background: apiKey ? palette.green : palette.yellow }} />
-                <span style={{ fontSize: 11, color: palette.textDim }}>{apiKey ? "API Key Set" : "No API Key"}</span>
+            )}
+          </div>
+          <div style={{ position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: palette.card, border: "1px solid " + palette.border, borderRadius: 8, cursor: "pointer" }}
+              onClick={() => setShowKeyInput(!showKeyInput)}>
+              <div style={{ display: "flex", gap: 3 }}>
+                <div style={{ width: 6, height: 6, borderRadius: 3, background: apiKey ? palette.green : palette.red }} title="Claude" />
+                <div style={{ width: 6, height: 6, borderRadius: 3, background: openaiKey ? palette.green : palette.red }} title="GPT" />
+              </div>
+              <span style={{ fontSize: 11, color: palette.textDim }}>API Keys</span>
+              <span style={{ fontSize: 10, color: palette.textMuted }}>▾</span>
+            </div>
+            {showKeyInput && (
+              <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: palette.card, border: "1px solid " + palette.border, borderRadius: 10, padding: 12, zIndex: 100, minWidth: 320, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: apiKey ? palette.green : palette.red }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: palette.text }}>Anthropic (Claude)</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input style={{ ...s.input, flex: 1, padding: "6px 10px", fontSize: 11 }} type="password"
+                      placeholder="sk-ant-..." value={apiKey}
+                      onChange={e => setApiKey(e.target.value)} />
+                    <button style={{ ...s.btn, ...s.btnSm, padding: "6px 10px", fontSize: 11 }} onClick={() => {
+                      ANTHROPIC_API_KEY = apiKey;
+                      try { localStorage.setItem("aiq_anthropic_key", apiKey); } catch(e) {}
+                    }}>Save</button>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 4, background: openaiKey ? "#10a37f" : palette.red }} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: palette.text }}>OpenAI (GPT)</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input style={{ ...s.input, flex: 1, padding: "6px 10px", fontSize: 11 }} type="password"
+                      placeholder="sk-..." value={openaiKey}
+                      onChange={e => setOpenaiKey(e.target.value)} />
+                    <button style={{ ...s.btn, ...s.btnSm, padding: "6px 10px", fontSize: 11, background: "#10a37f" }} onClick={() => {
+                      OPENAI_API_KEY = openaiKey;
+                      try { localStorage.setItem("aiq_openai_key", openaiKey); } catch(e) {}
+                    }}>Save</button>
+                  </div>
+                </div>
+                <div style={{ marginTop: 8, fontSize: 10, color: palette.textMuted }}>Keys stored in browser localStorage. Switch users by pasting a different key.</div>
               </div>
             )}
           </div>
@@ -1686,11 +1869,11 @@ function PIMScraper() {
                 <div>
                   <div style={s.inputRow}>
                     <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S) or product page URL" value={query} onChange={e => setQuery(e.target.value)}
-                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); priceCheckProduct(query).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){doPriceSave(r).then(ok=>{if(!ok)setResults(p=>[...p,r]);})}else setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); priceCheckProduct(query, activeModel).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){doPriceSave(r).then(ok=>{if(!ok)setResults(p=>[...p,r]);})}else setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
                     <button style={{ ...s.btn, background: "#e17055" }} disabled={loading} onClick={async () => {
                       if(!query.trim())return; setLoading(true);
                       setProgress({current:1,total:1,currentQuery:query});
-                      const r=await priceCheckProduct(query); r.query=query;
+                      const r=await priceCheckProduct(query, activeModel); r.query=query;
                       if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){const ok=await doPriceSave(r);if(!ok)setResults(p=>[...p,r])}else setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
                       setLoading(false);
                     }}>{loading?"Checking…":"💰 Check Price"}</button>
@@ -1721,7 +1904,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await priceCheckProduct(lines[i]);
+                          const r = await priceCheckProduct(lines[i], activeModel);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -1809,7 +1992,7 @@ function PIMScraper() {
                                 const q = p.url || (discoverBrand + " " + p.model);
                                 setProgress({ current: i + 1, total: toCheck.length, currentQuery: p.model + " — price check" });
                                 try {
-                                  const r = await priceCheckProduct(q);
+                                  const r = await priceCheckProduct(q, activeModel);
                                   if (r.found) {
                                     if (!r.model) r.model = p.model;
                                     if (!r.brand_name && discoverBrand) r.brand_name = discoverBrand;
@@ -1881,11 +2064,11 @@ function PIMScraper() {
               {retailerMode === "rt-single" && (
                 <div style={s.inputRow}>
                   <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S)" value={query} onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query, retailerCountry).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                    onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query, retailerCountry, activeModel).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
                   <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
                     if(!query.trim())return; setLoading(true);
                     setProgress({current:1,total:1,currentQuery:query});
-                    const r=await retailerPriceCheck(query, retailerCountry); r.query=query;
+                    const r=await retailerPriceCheck(query, retailerCountry, activeModel); r.query=query;
                     if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)await doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
                     setLoading(false);
                   }}>{loading?"Checking…":"🏪 Check Retailers"}</button>
@@ -1905,7 +2088,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await retailerPriceCheck(lines[i], retailerCountry);
+                          const r = await retailerPriceCheck(lines[i], retailerCountry, activeModel);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -1948,7 +2131,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await retailerPriceCheck(lines[i], retailerCountry);
+                          const r = await retailerPriceCheck(lines[i], retailerCountry, activeModel);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -1996,11 +2179,11 @@ function PIMScraper() {
                   <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 12 }}>Enter a manufacturer, retailer, or distributor name to get full company intelligence.</div>
                   <div style={s.inputRow}>
                     <input style={s.input} placeholder="e.g. Whirlpool Corporation, Goemans Appliances, BSH Home Appliances" value={query} onChange={e => setQuery(e.target.value)}
-                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); companyIntelScrape(query).then(r=>{if(r.found){if(autoSave)doIntelSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); companyIntelScrape(query, activeModel).then(r=>{if(r.found){if(autoSave)doIntelSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
                     <button style={{ ...s.btn, background: "#0984e3" }} disabled={loading} onClick={async () => {
                       if(!query.trim())return; setLoading(true);
                       setProgress({current:1,total:1,currentQuery:query});
-                      const r = await companyIntelScrape(query);
+                      const r = await companyIntelScrape(query, activeModel);
                       if(r.found){if(autoSave)await doIntelSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);
                       setLoading(false);
                     }}>{loading?"Researching…":"🔎 Research"}</button>
@@ -2020,11 +2203,11 @@ function PIMScraper() {
                   <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 12 }}>Search for the latest appliance industry news by company, topic, or trend.</div>
                   <div style={s.inputRow}>
                     <input style={s.input} placeholder="e.g. LG new refrigerator launch, Whirlpool layoffs, KBIS 2026" value={query} onChange={e => setQuery(e.target.value)}
-                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); newsScrape(query).then(r=>{if(r.found){r.query=query;if(autoSave)doNewsSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); newsScrape(query, activeModel).then(r=>{if(r.found){r.query=query;if(autoSave)doNewsSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
                     <button style={{ ...s.btn, background: "#0984e3" }} disabled={loading} onClick={async () => {
                       if(!query.trim())return; setLoading(true);
                       setProgress({current:1,total:1,currentQuery:query});
-                      const r = await newsScrape(query); r.query = query;
+                      const r = await newsScrape(query, activeModel); r.query = query;
                       if(r.found){if(autoSave)await doNewsSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);
                       setLoading(false);
                     }}>{loading?"Searching…":"📰 Find News"}</button>
@@ -2062,7 +2245,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await companyIntelScrape(lines[i]);
+                          const r = await companyIntelScrape(lines[i], activeModel);
                           if (r.found) { if(autoSave) await doIntelSave(r); setResults(p => [...p, r]); }
                           else setResults(p => [...p, { ...r, query: lines[i] }]);
                         } catch (e) { setErrors(p => [...p, "Intel " + lines[i] + ": " + e.message]); }
