@@ -381,6 +381,8 @@ function navItems(){
   n.push(['rebates','💰','Rebates & Promos'],['certifications','⚡','Certifications'],['export','⇩','Export Data']);
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
+  n.push(['_sep'],['_label','INTELLIGENCE'],
+    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
   return n;
 }
@@ -425,7 +427,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -1435,6 +1437,237 @@ async function renderActivity(C){
 const origRenderProductDetail=renderProductDetail;
 const _renderProductDetail=async C=>{if(S.editMode)return renderProductEdit(C);return origRenderProductDetail(C)};
 // Override in router handled by editMode check inside renderProductDetail
+
+/* ── INTELLIGENCE PAGES ── */
+async function renderCompanies(C){
+  const {data:companies}=await sb.from('intel_companies').select('*').order('name');
+  const all=companies||[];
+  const mfrs=all.filter(c=>c.type==='manufacturer');
+  const retailers=all.filter(c=>c.type==='retailer');
+  const others=all.filter(c=>c.type!=='manufacturer'&&c.type!=='retailer');
+  const typeFilter=S.assetFilter||'all';
+  const filtered=typeFilter==='manufacturer'?mfrs:typeFilter==='retailer'?retailers:all;
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>🏢 Companies & Industry Profiles</h1><p class="sub">${all.length} companies — ${mfrs.length} manufacturers, ${retailers.length} retailers</p></div>
+    <div style="display:flex;gap:8px">
+      <select class="control" onchange="S.assetFilter=this.value;renderPage()">
+        <option value="all"${typeFilter==='all'?' selected':''}>All Types</option>
+        <option value="manufacturer"${typeFilter==='manufacturer'?' selected':''}>🏭 Manufacturers (${mfrs.length})</option>
+        <option value="retailer"${typeFilter==='retailer'?' selected':''}>🏪 Retailers (${retailers.length})</option>
+      </select>
+    </div>
+  </div>
+  <div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+    ${filtered.map(c=>{
+      var brands=(c.brands||[]).slice(0,5);
+      var leaders=(c.leadership||[]).slice(0,2);
+      return '<div class="metric clickable" onclick="go(\'company-detail\',\''+c.id+'\')" style="text-align:left;cursor:pointer">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+          '<div><div style="font-size:16px;font-weight:700">'+esc(c.name)+'</div>'+
+          (c.parent_company?'<div class="tiny" style="margin-top:2px">'+esc(c.parent_company)+'</div>':'')+
+          '</div>'+
+          '<span class="pill '+(c.type==='manufacturer'?'pill-indigo':'pill-teal')+'">'+esc(c.type)+'</span>'+
+        '</div>'+
+        (c.description?'<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:8px">'+esc(c.description).slice(0,150)+(c.description.length>150?'…':'')+'</div>':'')+
+        '<div style="display:flex;gap:12px;font-size:11px;color:var(--muted)">'+
+          (c.headquarters?'<span>📍 '+esc(c.headquarters)+'</span>':'')+
+          (c.founded?'<span>📅 '+esc(c.founded)+'</span>':'')+
+          (c.employee_count?'<span>👥 '+esc(c.employee_count)+'</span>':'')+
+        '</div>'+
+        (brands.length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px">'+brands.map(function(b){return '<span class="pill pill-gray" style="font-size:10px">'+esc(b)+'</span>';}).join('')+(c.brands.length>5?'<span class="pill pill-gray" style="font-size:10px">+'+(c.brands.length-5)+' more</span>':'')+'</div>':'')+
+      '</div>';
+    }).join('')}
+  </div>
+  ${!filtered.length?'<div class="empty">No companies found. Use the PIM Scraper\'s 🔎 Intelligence tab to research companies.</div>':''}`;
+}
+
+async function renderCompanyDetail(C){
+  const {data:co}=await sb.from('intel_companies').select('*').eq('id',S.detail).maybeSingle();
+  if(!co){C.innerHTML='<div class="empty">Company not found</div>';return;}
+  const {data:news}=await sb.from('intel_news').select('*').eq('company_id',co.id).order('scraped_at',{ascending:false}).limit(50);
+  const {data:locs}=await sb.from('intel_locations').select('*').eq('company_id',co.id).order('city');
+  var brands=(co.brands||[]);
+  var leaders=(co.leadership||[]);
+  var mfg=(co.manufacturing_locations||[]);
+  C.innerHTML=`
+  <div class="pagehead"><div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <button class="ghost" onclick="go('companies')">← Companies</button>
+      <h1>${esc(co.name)}</h1>
+      <span class="pill ${co.type==='manufacturer'?'pill-indigo':'pill-teal'}">${esc(co.type)}</span>
+    </div>
+    ${co.parent_company?'<p class="sub">Part of '+esc(co.parent_company)+'</p>':''}
+  </div></div>
+
+  <div class="kv" style="margin-bottom:20px">
+    <div><small>Headquarters</small>${esc(co.headquarters||'—')}</div>
+    <div><small>Country</small>${esc(co.country||'—')}</div>
+    <div><small>Founded</small>${esc(co.founded||'—')}</div>
+    <div><small>Website</small>${co.website?'<a href="'+esc(co.website)+'" target="_blank" style="color:var(--indigo)">'+esc(co.website)+'</a>':'—'}</div>
+    <div><small>Employees</small>${esc(co.employee_count||'—')}</div>
+    <div><small>Revenue</small>${esc(co.annual_revenue||'—')}</div>
+    <div><small>Market Segment</small>${esc(co.market_segment||'—')}</div>
+    <div><small>Stock Ticker</small>${esc(co.stock_ticker||'—')}</div>
+    <div><small>Last Scraped</small>${co.scraped_at?new Date(co.scraped_at).toLocaleDateString():'—'}</div>
+  </div>
+
+  ${co.description?'<div class="panel"><h2>Overview</h2><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(co.description)+'</p></div>':''}
+  ${co.history?'<div class="panel"><h2>History</h2><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(co.history)+'</p></div>':''}
+
+  ${brands.length?'<div class="panel"><h2>Brands ('+brands.length+')</h2><div style="display:flex;gap:8px;flex-wrap:wrap">'+brands.map(function(b){return '<span class="pill pill-indigo" style="font-size:13px;padding:6px 14px">'+esc(b)+'</span>';}).join('')+'</div></div>':''}
+
+  ${leaders.length?'<div class="panel"><h2>Leadership ('+leaders.length+')</h2>'+leaders.map(function(l){return '<div style="padding:8px 0;border-bottom:1px solid var(--line)"><strong>'+esc(l.name)+'</strong> — '+esc(l.title)+(l.since?' <span class="tiny">(since '+esc(l.since)+')</span>':'')+'</div>';}).join('')+'</div>':''}
+
+  ${mfg.length?'<div class="panel"><h2>Manufacturing ('+mfg.length+')</h2>'+mfg.map(function(m){return '<div style="padding:6px 0;font-size:13px">📍 '+esc(m.city||'')+', '+esc(m.country||'')+(m.what?' — <span class="tiny">'+esc(m.what)+'</span>':'')+'</div>';}).join('')+'</div>':''}
+
+  ${co.distribution_notes?'<div class="panel"><h2>Distribution</h2><p style="color:var(--muted);font-size:13px">'+esc(co.distribution_notes)+'</p></div>':''}
+
+  ${(news||[]).length?'<div class="panel"><h2>📰 News ('+news.length+')</h2>'+news.map(function(n){return '<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="font-size:14px;font-weight:600">'+esc(n.headline)+'</div>'+(n.summary?'<div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5">'+esc(n.summary)+'</div>':'')+'<div style="font-size:11px;color:var(--dimmed);margin-top:4px">'+(n.category?'<span class="pill pill-gray" style="font-size:10px">'+n.category.replace(/_/g,' ')+'</span> ':'')+esc(n.source_name||'')+' · '+esc(n.published_date||'')+(n.source_url?' · <a href="'+esc(n.source_url)+'" target="_blank" style="color:var(--indigo)">Read ↗</a>':'')+'</div></div>';}).join('')+'</div>':''}
+
+  ${(locs||[]).length?'<div class="panel"><h2>📍 Locations ('+locs.length+')</h2><div class="tablewrap"><table><thead><tr><th>Name</th><th>City</th><th>Province/State</th><th>Country</th><th>Status</th></tr></thead><tbody>'+locs.map(function(l){return '<tr><td>'+esc(l.name||'—')+'</td><td>'+esc(l.city||'')+'</td><td>'+esc(l.province_state||'')+'</td><td>'+esc(l.country||'')+'</td><td>'+(l.status==='closed'?'<span class="pill pill-red">Closed</span>':'<span class="pill pill-green">Active</span>')+'</td></tr>';}).join('')+'</tbody></table></div></div>':''}`;
+}
+
+async function renderIndustryNews(C){
+  const {data:news}=await sb.from('intel_news').select('*').order('scraped_at',{ascending:false}).limit(100);
+  const all=news||[];
+  const categories=[...new Set(all.map(function(n){return n.category;}).filter(Boolean))].sort();
+  const catFilter=S.assetFilter||'all';
+  const filtered=catFilter==='all'?all:all.filter(function(n){return n.category===catFilter;});
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>📰 Industry News</h1><p class="sub">${all.length} articles from across the appliance industry</p></div>
+    <select class="control" onchange="S.assetFilter=this.value;renderPage()">
+      <option value="all">All Categories</option>
+      ${categories.map(function(c){return '<option value="'+c+'"'+(catFilter===c?' selected':'')+'>'+c.replace(/_/g,' ')+'</option>';}).join('')}
+    </select>
+  </div>
+  ${filtered.map(function(n){return '<div class="panel" style="margin-bottom:12px;padding:16px"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="font-size:15px;font-weight:600">'+esc(n.headline)+'</div>'+(n.summary?'<div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6">'+esc(n.summary)+'</div>':'')+'</div></div><div style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:11px;color:var(--dimmed)">'+(n.category?'<span class="pill pill-indigo" style="font-size:10px">'+n.category.replace(/_/g,' ')+'</span>':'')+(n.company_name?'<span>🏢 '+esc(n.company_name)+'</span>':'')+(n.source_name?'<span>'+esc(n.source_name)+'</span>':'')+(n.published_date?'<span>'+esc(n.published_date)+'</span>':'')+(n.source_url?'<a href="'+esc(n.source_url)+'" target="_blank" style="color:var(--indigo)">Read ↗</a>':'')+'</div></div>';}).join('')}
+  ${!filtered.length?'<div class="empty">No news articles yet. Use the PIM Scraper\'s 🔎 Intelligence → 📰 Industry News tab to find articles.</div>':''}`;
+}
+
+async function renderLocations(C){
+  const {data:locs}=await sb.from('intel_locations').select('*').order('company_name,city');
+  const all=locs||[];
+  const companies=[...new Set(all.map(function(l){return l.company_name;}).filter(Boolean))].sort();
+  const coFilter=S.assetFilter||'all';
+  const filtered=coFilter==='all'?all:all.filter(function(l){return l.company_name===coFilter;});
+  const active=filtered.filter(function(l){return l.status!=='closed';});
+  const closed=filtered.filter(function(l){return l.status==='closed';});
+  C.innerHTML=`
+  <div class="pagehead"><div><h1>📍 Store & Facility Locations</h1><p class="sub">${all.length} locations — ${active.length} active, ${closed.length} closed</p></div>
+    <select class="control" onchange="S.assetFilter=this.value;renderPage()">
+      <option value="all">All Companies</option>
+      ${companies.map(function(c){return '<option value="'+c+'"'+(coFilter===c?' selected':'')+'>'+esc(c)+'</option>';}).join('')}
+    </select>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Company</th><th>Location</th><th>City</th><th>Province/State</th><th>Country</th><th>Type</th><th>Status</th></tr></thead>
+    <tbody>${filtered.map(function(l){return '<tr><td><strong>'+esc(l.company_name)+'</strong></td><td>'+esc(l.name||'—')+'</td><td>'+esc(l.city||'')+'</td><td>'+esc(l.province_state||'')+'</td><td>'+esc(l.country||'')+'</td><td class="tiny">'+esc(l.location_type||'store')+'</td><td>'+(l.status==='closed'?'<span class="pill pill-red">Closed'+(l.closed_date?' '+esc(l.closed_date):'')+'</span>':'<span class="pill pill-green">Active</span>')+'</td></tr>';}).join('')}</tbody>
+  </table></div>
+  ${!filtered.length?'<div class="empty">No locations yet. Use the PIM Scraper to research retailer locations.</div>':''}`;
+}
+
+/* ── RETAILER PAGES ── */
+function renderRetailerList(C, country, flag, label) {
+  return async function() {
+    var {data:retailers} = await sb.from('aiq_retailers').select('*').eq('country',country).order('name');
+    var all = retailers || [];
+    var active = all.filter(function(r){return r.status==='active';});
+    var closed = all.filter(function(r){return r.status!=='active';});
+    var types = [...new Set(all.map(function(r){return r.type;}).filter(Boolean))].sort();
+    var typeFilter = S.assetFilter || 'all';
+    var filtered = typeFilter === 'all' ? all : all.filter(function(r){return r.type===typeFilter;});
+
+    var typeLabels = {big_box:'🏬 Big Box',appliance_specialist:'🔌 Specialist',furniture_appliance:'🛋️ Furniture+Appliance',electronics:'📺 Electronics',warehouse:'📦 Warehouse',online:'🌐 Online',distributor:'🚚 Distributor'};
+
+    C.innerHTML = '<div class="pagehead"><div><h1>'+flag+' '+label+'</h1><p class="sub">'+active.length+' active, '+closed.length+' closed</p></div>'+
+      '<select class="control" onchange="S.assetFilter=this.value;renderPage()">'+
+        '<option value="all">All Types</option>'+
+        types.map(function(t){return '<option value="'+t+'"'+(typeFilter===t?' selected':'')+'>'+(typeLabels[t]||t)+'</option>';}).join('')+
+      '</select></div>'+
+      '<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(350px,1fr))">'+
+      filtered.map(function(r) {
+        var tierColors = {low:'var(--green)','mid-low':'var(--teal)',mid:'var(--indigo)','mid-high':'var(--amber)',high:'var(--red)',luxury:'var(--red)'};
+        var tierColor = tierColors[r.price_tier] || 'var(--muted)';
+        return '<div class="metric clickable" onclick="go(\'retailer-detail\',\''+r.id+'\')" style="text-align:left;cursor:pointer;opacity:'+(r.status==='active'?'1':'0.5')+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+            '<div><div style="font-size:16px;font-weight:700">'+esc(r.name)+'</div>'+
+            (r.parent_company?'<div class="tiny" style="margin-top:2px">'+esc(r.parent_company)+'</div>':'')+
+            '</div>'+
+            '<div style="display:flex;gap:4px">'+
+              '<span class="pill '+(r.status==='active'?'pill-green':'pill-red')+'">'+esc(r.status)+'</span>'+
+              (typeLabels[r.type]?'<span class="pill pill-gray" style="font-size:10px">'+typeLabels[r.type]+'</span>':'')+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:12px;font-size:11px;color:var(--muted);margin-bottom:8px">'+
+            (r.headquarters?'<span>📍 '+esc(r.headquarters)+'</span>':'')+
+            (r.store_count?'<span>🏪 '+r.store_count+' stores</span>':'')+
+            (r.founded?'<span>📅 Est. '+esc(r.founded)+'</span>':'')+
+            '<span style="color:'+tierColor+';font-weight:600">'+esc((r.price_tier||'').replace(/-/g,' '))+'</span>'+
+          '</div>'+
+          '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+            (r.has_ecommerce?'<span class="pill pill-gray" style="font-size:9px">E-commerce</span>':'')+
+            (r.has_showroom?'<span class="pill pill-gray" style="font-size:9px">Showroom</span>':'')+
+            (r.has_installation?'<span class="pill pill-gray" style="font-size:9px">Install</span>':'')+
+            (r.has_haul_away?'<span class="pill pill-gray" style="font-size:9px">Haul-away</span>':'')+
+            (r.commercial_division?'<span class="pill pill-gray" style="font-size:9px">Commercial</span>':'')+
+          '</div>'+
+          (r.notes?'<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">'+esc(r.notes)+'</div>':'')+
+        '</div>';
+      }).join('')+'</div>';
+  };
+}
+var renderRetailersCA = function(C){return renderRetailerList(C,'CA','🇨🇦','Canadian Retailers')();};
+var renderRetailersUS = function(C){return renderRetailerList(C,'US','🇺🇸','US Retailers')();};
+
+async function renderRetailerDetail(C) {
+  var {data:r} = await sb.from('aiq_retailers').select('*').eq('id',S.detail).maybeSingle();
+  if(!r){C.innerHTML='<div class="empty">Retailer not found</div>';return;}
+  var flag = r.country==='CA'?'🇨🇦':'🇺🇸';
+  var backPage = r.country==='CA'?'retailers-ca':'retailers-us';
+  var tierColors = {low:'var(--green)','mid-low':'var(--teal)',mid:'var(--indigo)','mid-high':'var(--amber)',high:'var(--red)',luxury:'var(--red)'};
+  var typeLabels = {big_box:'Big Box Retailer',appliance_specialist:'Appliance Specialist',furniture_appliance:'Furniture & Appliance',electronics:'Electronics Retailer',warehouse:'Warehouse Club',online:'Online Retailer',distributor:'Distributor'};
+
+  // Get recent prices from this retailer
+  var {data:prices} = await sb.from('pim_retailer_prices').select('*').eq('retailer_name',r.name).order('checked_at',{ascending:false}).limit(20);
+
+  C.innerHTML = '<div class="pagehead"><div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+      '<button class="ghost" onclick="go(\''+backPage+'\')">← Back</button>'+
+      '<h1>'+flag+' '+esc(r.name)+'</h1>'+
+      '<span class="pill '+(r.status==='active'?'pill-green':'pill-red')+'">'+esc(r.status)+'</span>'+
+      '<span class="pill pill-indigo">'+(typeLabels[r.type]||r.type)+'</span>'+
+    '</div>'+
+    (r.parent_company?'<p class="sub">Part of '+esc(r.parent_company)+'</p>':'')+
+  '</div></div>'+
+
+  '<div class="kv" style="margin-bottom:20px">'+
+    '<div><small>Website</small>'+(r.website?'<a href="https://'+esc(r.website)+'" target="_blank" style="color:var(--indigo)">'+esc(r.website)+'</a>':'—')+'</div>'+
+    '<div><small>Headquarters</small>'+esc(r.headquarters||'—')+'</div>'+
+    '<div><small>Store Count</small>'+(r.store_count||'—')+'</div>'+
+    '<div><small>Founded</small>'+esc(r.founded||'—')+'</div>'+
+    '<div><small>Price Tier</small><span style="color:'+(tierColors[r.price_tier]||'inherit')+';font-weight:600">'+esc((r.price_tier||'—').replace(/-/g,' '))+'</span></div>'+
+    '<div><small>Specialty</small>'+esc(r.specialty||'—')+'</div>'+
+    '<div><small>Country</small>'+flag+' '+esc(r.country)+'</div>'+
+    '<div><small>Regions</small>'+((r.provinces_states||[]).join(', ')||'—')+'</div>'+
+  '</div>'+
+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">'+
+    (r.has_ecommerce?'<span class="pill pill-teal">🌐 E-commerce</span>':'')+
+    (r.has_showroom?'<span class="pill pill-teal">🏪 Showroom</span>':'')+
+    (r.has_installation?'<span class="pill pill-teal">🔧 Installation</span>':'')+
+    (r.has_haul_away?'<span class="pill pill-teal">🚛 Haul-away</span>':'')+
+    (r.commercial_division?'<span class="pill pill-teal">🏢 Commercial Division</span>':'')+
+    (r.membership_required?'<span class="pill pill-amber">🔒 Membership Required</span>':'')+
+  '</div>'+
+
+  (r.notes?'<div class="panel"><h2>About</h2><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(r.notes)+'</p></div>':'')+
+
+  ((r.brands_carried||[]).length?'<div class="panel"><h2>Brands Carried ('+r.brands_carried.length+')</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+r.brands_carried.map(function(b){return '<span class="pill pill-indigo" style="font-size:12px;padding:4px 12px">'+esc(b)+'</span>';}).join('')+'</div></div>':'')+
+
+  ((r.exclusive_brands||[]).length?'<div class="panel"><h2>Exclusive Brands</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+r.exclusive_brands.map(function(b){return '<span class="pill pill-amber" style="font-size:12px;padding:4px 12px">'+esc(b)+'</span>';}).join('')+'</div></div>':'')+
+
+  ((prices||[]).length?'<div class="panel"><h2>Recent Price Checks ('+prices.length+')</h2><div class="tablewrap"><table><thead><tr><th>Product</th><th>Price</th><th>Regular</th><th>Stock</th><th>Condition</th><th>Checked</th></tr></thead><tbody>'+prices.map(function(p){return '<tr><td><strong>'+esc(p.brand_name)+' '+esc(p.model)+'</strong></td><td style="font-weight:700;color:var(--green)">'+(p.price?fmt$(p.price):'—')+'</td><td class="tiny">'+(p.regular_price?fmt$(p.regular_price):'—')+'</td><td>'+(p.in_stock?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>')+'</td><td class="tiny">'+esc(p.condition||'new')+'</td><td class="tiny">'+new Date(p.checked_at).toLocaleDateString()+'</td></tr>';}).join('')+'</tbody></table></div></div>':'');
+}
 
 /* ── START ── */
 init();
