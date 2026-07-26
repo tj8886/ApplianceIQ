@@ -865,7 +865,39 @@ function openCompanyModal(co){
 }
 
 // ===== PRODUCTS / TASKS =====
-async function renderProducts(){const{data}=await sb.from('products').select('*').eq('organization_id',currentOrg.id).order('category');mainEl.innerHTML=`<div class="page-head"><h1>Products</h1><div class="sub num">${(data??[]).length} models</div></div><table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Stock</th></tr></thead><tbody>${(data??[]).map(p=>`<tr><td><b>${esc(p.brand)} ${esc(p.model)}</b><div class="sub">${esc(p.name)}</div></td><td>${esc(p.category??'—')}</td><td class="num">${money(p.msrp)}</td><td class="num">${p.margin_pct?p.margin_pct+'%':'—'}</td><td>${p.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Order</span>'}</td></tr>`).join('')}</tbody></table>`;}
+async function renderProducts(){
+  const{data}=await sb.from('products').select('*, aiq_products(model,brand_name,msrp,sale_price,market,is_discontinued,is_clearance,is_end_of_life,replacement_model)').eq('organization_id',currentOrg.id).order('category');
+  const rows=data??[];
+  mainEl.innerHTML=`<div class="page-head"><div><h1>Products</h1><div class="sub num">${rows.length} models — ${rows.filter(p=>p.aiq_product_id).length} linked to Product IQ PIM</div></div></div>
+  <div class="panel" style="background:#fef3c7;border:1px solid #d97706;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e">⚠ Cost, margin, and stock status here are this store's own business data. Model/spec/warranty details should come from Product IQ PIM once linked — unlinked rows use manually-entered data that can go stale.</div>
+  <table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Stock</th><th>PIM Link</th><th></th></tr></thead><tbody>${rows.map(p=>{
+    const linked=p.aiq_products;
+    const linkCell=linked
+      ?`<span class="chip g">✓ Linked</span>${linked.is_discontinued?'<div class="sub" style="color:#dc2626">Discontinued'+(linked.replacement_model?' → '+esc(linked.replacement_model):'')+'</div>':''}${linked.is_clearance?'<div class="sub" style="color:#d97706">Clearance</div>':''}${linked.sale_price?'<div class="sub">PIM sale price: '+money(linked.sale_price)+' ('+esc(linked.market)+')</div>':''}`
+      :`<span class="chip a">⚠ Not linked</span>`;
+    return`<tr><td><b>${esc(p.brand)} ${esc(p.model)}</b><div class="sub">${esc(p.name)}</div></td><td>${esc(p.category??'—')}</td><td class="num">${money(p.msrp)}</td><td class="num">${p.margin_pct?p.margin_pct+'%':'—'}</td><td>${p.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Order</span>'}</td><td>${linkCell}</td><td>${linked?`<button class="btn btn-ghost btn-sm" data-unlink="${p.id}">Unlink</button>`:`<button class="btn btn-ghost btn-sm" data-link="${p.id}" data-brand="${esc(p.brand)}" data-model="${esc(p.model)}">Link to PIM</button>`}</td></tr>`;
+  }).join('')}</tbody></table>`;
+  $$('[data-link]').forEach(b=>{b.onclick=()=>openPimLinkModal(b.dataset.link,b.dataset.brand,b.dataset.model);});
+  $$('[data-unlink]').forEach(b=>{b.onclick=async()=>{if(!confirm('Unlink this product from Product IQ PIM?'))return;await sb.from('products').update({aiq_product_id:null}).eq('id',b.dataset.unlink);renderProducts();};});
+}
+async function openPimLinkModal(productId,brand,model){
+  const{data:matches}=await sb.from('aiq_products').select('id,brand_name,model,category,msrp,market').ilike('brand_name',`%${brand}%`).limit(20);
+  openModal(`<h2>Link to Product IQ PIM</h2><p class="sub" style="margin-bottom:12px">Searching for "${esc(brand)}" — pick the matching model, or search again below.</p>
+    <input id="pim-link-search" placeholder="Search brand or model…" value="${esc(brand)} ${esc(model)}" style="margin-bottom:12px">
+    <div id="pim-link-results" style="max-height:320px;overflow-y:auto">${(matches??[]).map(m=>`<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="${m.id}"><b>${esc(m.brand_name)} ${esc(m.model)}</b><div class="sub">${esc(m.category??'')} · ${esc(m.market)} · ${money(m.msrp)}</div></div>`).join('')||'<div class="empty">No matches — try a different search term.</div>'}</div>
+    <div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
+  const doSearch=async()=>{
+    const q=$('#pim-link-search').value.trim();
+    const{data:res}=await sb.from('aiq_products').select('id,brand_name,model,category,msrp,market').or(`brand_name.ilike.%${q}%,model.ilike.%${q}%`).limit(20);
+    $('#pim-link-results').innerHTML=(res??[]).map(m=>`<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="${m.id}"><b>${esc(m.brand_name)} ${esc(m.model)}</b><div class="sub">${esc(m.category??'')} · ${esc(m.market)} · ${money(m.msrp)}</div></div>`).join('')||'<div class="empty">No matches — try a different search term.</div>';
+    attachPimResultHandlers(productId);
+  };
+  $('#pim-link-search').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}});
+  attachPimResultHandlers(productId);
+}
+function attachPimResultHandlers(productId){
+  $$('[data-pim-id]').forEach(row=>{row.onclick=async()=>{await sb.from('products').update({aiq_product_id:row.dataset.pimId}).eq('id',productId);closeModal();renderProducts();};});
+}
 function renderTasks(){sb.from('crm_tasks').select('*,crm_deals(title)').eq('organization_id',currentOrg.id).is('completed_at',null).order('due_at').then(({data})=>{mainEl.innerHTML=`<div class="page-head"><h1>Tasks</h1><div class="sub num">${(data??[]).length} open</div></div><table><thead><tr><th>Task</th><th>Deal</th><th>Due</th><th>Priority</th><th></th></tr></thead><tbody>${(data??[]).map(t=>`<tr><td><b>${esc(t.title)}</b></td><td>${esc(t.crm_deals?.title??'—')}</td><td class="num">${t.due_at?new Date(t.due_at).toLocaleDateString():'—'}</td><td><span class="chip ${t.priority==='urgent'?'a':'n'}">${esc(t.priority)}</span></td><td><button class="btn btn-ghost btn-sm" data-done="${t.id}">Done</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No open tasks.</td></tr>'}</tbody></table>`;$$('[data-done]').forEach(b=>{b.onclick=async()=>{await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done);render();};});});}
 
 // ===== RECORDINGS =====
@@ -939,11 +971,12 @@ window.copyInvite=async code=>{const link=`${location.origin}${location.pathname
 
 // ===== CONTACT DETAIL WITH TIMELINE =====
 async function openContactDetail(ct){
-  const[{data:acts},{data:deals},{data:tasks},{data:emails}]=await Promise.all([
+  const[{data:acts},{data:deals},{data:tasks},{data:emails},{data:quotes}]=await Promise.all([
     sb.from('activities').select('*').eq('organization_id',currentOrg.id).eq('entity_id',ct.id).order('created_at',{ascending:false}).limit(50),
     sb.from('crm_deals').select('id,title,stage,value_amount,created_at,closed_at').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}),
     sb.from('crm_tasks').select('id,title,due_at,completed_at,priority').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}).limit(20),
-    sb.from('crm_emails').select('id,subject,sent_at,status').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}).limit(20)
+    sb.from('crm_emails').select('id,subject,sent_at,status').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}).limit(20),
+    sb.from('speciq_packages').select('id,package_name,status,total_final,quote_number,share_url,created_at,speciq_projects(project_name,room_name)').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false})
   ]);
   const temp=ct.temperature||'warm';
   const dsc=ct.days_since_contact!=null?ct.days_since_contact:ct.last_communication_at?Math.floor((Date.now()-new Date(ct.last_communication_at).getTime())/864e5):null;
@@ -980,6 +1013,9 @@ async function openContactDetail(ct){
       </div>
       <div style="margin-top:14px"><h4 style="margin:0 0 6px;font-size:13px">Active Deals</h4>
         ${(deals??[]).filter(d=>!d.closed_at).map(d=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${esc(d.title)}</b><div class="sub">${esc(d.stage)} · ${money(d.value_amount)}</div></div>`).join('')||'<div class="sub">No active deals</div>'}
+      </div>
+      <div style="margin-top:14px"><h4 style="margin:0 0 6px;font-size:13px">Quotes &amp; Packages (Spec IQ)</h4>
+        ${(quotes??[]).length?quotes.map(q=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${esc(q.package_name||q.speciq_projects?.project_name||'Untitled')}</b><div class="sub">${esc(q.status||'')}${q.quote_number?' · '+esc(q.quote_number):''} · ${money(q.total_final)}</div>${q.share_url?`<a href="${esc(q.share_url)}" target="_blank" style="font-size:11px">View quote ↗</a>`:''}</div>`).join(''):'<div class="sub">No quotes yet — build one in Spec IQ and link this contact in step 1.</div>'}
       </div>
     </div>
     <div>

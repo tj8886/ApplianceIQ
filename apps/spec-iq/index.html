@@ -433,7 +433,14 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <button class="step-btn" onclick="setStep(4)">4. Validity</button>
         <button class="step-btn" onclick="setStep(5)">5. Review</button>
       </div>
-      <div id="step-1"><div class="card"><h3 style="margin-bottom:20px">Customer &amp; Project Details</h3><div class="grid2">
+      <div id="step-1"><div class="card"><h3 style="margin-bottom:20px">Customer &amp; Project Details</h3>
+        <div style="margin-bottom:16px;position:relative">
+          <label>Link to CRM Contact (optional)</label>
+          <input id="b-contact-search" placeholder="Search existing contacts by name or email…" autocomplete="off" oninput="searchCrmContacts(this.value)">
+          <div id="b-contact-results" style="position:absolute;z-index:10;background:#fff;border:1px solid var(--line,#ddd);border-radius:8px;width:100%;max-height:220px;overflow-y:auto;display:none"></div>
+          <div id="b-contact-linked" class="sub" style="margin-top:4px;color:var(--green,#16a34a)"></div>
+        </div>
+        <div class="grid2">
         <div><label>Customer Name</label><input id="b-cust-name" placeholder="John Smith" /></div>
         <div><label>Customer Email</label><input id="b-cust-email" type="email" placeholder="john@email.com" /></div>
         <div><label>Customer Phone</label><input id="b-cust-phone" placeholder="(555) 123-4567" /></div>
@@ -1001,6 +1008,34 @@ let projects=[];
 async function loadProjects(){try{const{data}=await sb.from('speciq_projects').select('*').order('created_at',{ascending:false});projects=data||[]}catch(e){projects=[]}const q=(el('project-search')?.value||'').toLowerCase();const f=projects.filter(p=>(p.project_name||'').toLowerCase().includes(q)||(p.customer_name||'').toLowerCase().includes(q));const list=el('projects-list');if(!list)return;if(!f.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>';return}list.innerHTML=f.map(p=>'<div class="card flex between" style="padding:16px 24px;margin-bottom:8px"><div><div style="font-weight:600">'+esc(p.project_name)+'</div><div style="font-size:13px;color:var(--steel);margin-top:2px">'+esc(p.customer_name)+(p.room_name?' · '+esc(p.room_name):'')+'</div></div><div class="flex" style="gap:12px"><span class="badge badge-'+(p.status==='active'?'g':'y')+'">'+p.status+'</span><button class="btn btn-s" style="padding:6px 14px;font-size:13px" onclick="navigate(\'builder\');el(\'b-proj-name\').value=\''+esc(p.project_name)+'\';el(\'b-cust-name\').value=\''+esc(p.customer_name)+'\'">Build Package</button></div></div>').join('')}
 window._loadProjects=loadProjects;window.renderProjects=loadProjects;
 
+// ---- CRM contact linking (wizard step 1) ----
+// Lets a rep search their existing CRM contacts while building a package, so
+// the resulting speciq_projects row links to that same contact (and its
+// deal, if any) instead of creating a disconnected, free-text customer
+// record. Selected via module-level state since this spans the wizard's
+// multi-step flow.
+let selectedCrmContactId=null;
+let selectedCrmDealId=null;
+window.searchCrmContacts=async(q)=>{
+  const box=el('b-contact-results');
+  if(!q||q.trim().length<2){box.style.display='none';box.innerHTML='';return}
+  const{data}=await sb.from('contacts').select('id,first_name,last_name,email,phone,mobile_phone').eq('organization_id',userOrgId).or(`first_name.ilike.%${q}%,last_name.ilike.%${q}%,email.ilike.%${q}%`).limit(10);
+  const rows=data??[];
+  if(!rows.length){box.innerHTML='<div style="padding:10px;color:var(--steel)">No matching contacts</div>';box.style.display='block';return}
+  box.innerHTML=rows.map(c=>`<div class="rowbtn" style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--line,#eee)" data-cid="${c.id}" data-fname="${(c.first_name||'').replace(/"/g,'&quot;')}" data-lname="${(c.last_name||'').replace(/"/g,'&quot;')}" data-email="${(c.email||'').replace(/"/g,'&quot;')}" data-phone="${(c.phone||c.mobile_phone||'').replace(/"/g,'&quot;')}"><b>${(c.first_name||'')} ${(c.last_name||'')}</b><div class="sub">${c.email||c.phone||c.mobile_phone||''}</div></div>`).join('');
+  box.style.display='block';
+  box.querySelectorAll('[data-cid]').forEach(row=>{row.onclick=async()=>{
+    selectedCrmContactId=row.dataset.cid;
+    el('b-cust-name').value=`${row.dataset.fname} ${row.dataset.lname}`.trim();
+    if(row.dataset.email)el('b-cust-email').value=row.dataset.email;
+    if(row.dataset.phone)el('b-cust-phone').value=row.dataset.phone;
+    box.style.display='none';el('b-contact-search').value=`${row.dataset.fname} ${row.dataset.lname}`.trim();
+    // Check for an open deal on this contact to link automatically
+    const{data:deals}=await sb.from('crm_deals').select('id,title').eq('organization_id',userOrgId).eq('contact_id',selectedCrmContactId).is('closed_at',null).order('created_at',{ascending:false}).limit(1);
+    selectedCrmDealId=(deals&&deals[0])?deals[0].id:null;
+    el('b-contact-linked').textContent=selectedCrmDealId?`✓ Linked to CRM contact + open deal "${deals[0].title}"`:'✓ Linked to CRM contact';
+  };});
+};
 window.createProject=async(e)=>{e.preventDefault();const{error}=await sb.from('speciq_projects').insert({project_name:el('pj-name').value,customer_name:el('pj-customer').value,customer_email:el('pj-email').value||null,property_address:el('pj-address').value||null,room_name:el('pj-room').value||null,builder_name:el('pj-builder').value||null,designer_name:el('pj-designer').value||null,expected_purchase_date:el('pj-date').value||null,created_by:currentUser.id,organization_id:userOrgId});if(error){alert('Error: '+error.message);return}el('new-project-form').classList.add('hidden');['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(function(id){el(id).value=''});loadProjects()};
 
 /* ==================== SAVE PACKAGE ==================== */
@@ -1034,7 +1069,7 @@ window.savePackage=async(status)=>{
     const approvalStatus=needsApproval?'pending':'not_required';
     const pkgStatus=needsApproval?'pending_approval':status;
 
-    const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:userOrgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id}).select('id').single();
+    const{data:proj,error:pe}=await sb.from('speciq_projects').insert({organization_id:userOrgId,project_name:projName,customer_name:custName,customer_email:el('b-cust-email')?.value||null,property_address:el('b-address').value||null,room_name:el('b-room').value||null,created_by:currentUser.id,contact_id:selectedCrmContactId,deal_id:selectedCrmDealId}).select('id').single();
     if(pe)throw new Error('Project: '+pe.message);
 
     const{data:pkg,error:ke}=await sb.from('speciq_packages').insert({
@@ -1043,6 +1078,7 @@ window.savePackage=async(status)=>{
       status:pkgStatus,share_token:token,total_msrp:total,
       include_pricing:el('b-pricing').checked,created_by:currentUser.id,
       salesperson_name:el('b-salesperson').value||null,
+      contact_id:selectedCrmContactId,deal_id:selectedCrmDealId,
       quote_issued_at:issueDate+'T12:00:00Z',
       quote_expires_at:expiresAt,
       validity_days:validityDays,
@@ -1096,6 +1132,9 @@ window.savePackage=async(status)=>{
     if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
 
     builderProducts=[];
+    selectedCrmContactId=null;selectedCrmDealId=null;
+    if(el('b-contact-search'))el('b-contact-search').value='';
+    if(el('b-contact-linked'))el('b-contact-linked').textContent='';
     await loadPackages();
     navigate('packages');
     loadDashboardStats();loadPendingCount();
