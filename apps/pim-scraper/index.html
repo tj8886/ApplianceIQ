@@ -568,6 +568,7 @@ function PIMScraper() {
   const abortRef = useRef(false);
   const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
   const [showKeyInput, setShowKeyInput] = useState(!ANTHROPIC_API_KEY);
+  const [priceMode, setPriceMode] = useState("pc-single");
   
   // Discovery state
   const [discoverBrand, setDiscoverBrand] = useState("");
@@ -1019,10 +1020,11 @@ function PIMScraper() {
   };
 
   const toggleAll = () => {
-    if (selectedModels.size === discovered.filter(p => !p.inPIM).length) {
+    const eligible = mode === "pricecheck" ? discovered : discovered.filter(p => !p.inPIM);
+    if (selectedModels.size === eligible.length) {
       setSelectedModels(new Set());
     } else {
-      setSelectedModels(new Set(discovered.filter(p => !p.inPIM).map(p => p.model)));
+      setSelectedModels(new Set(eligible.map(p => p.model)));
     }
   };
 
@@ -1161,65 +1163,185 @@ function PIMScraper() {
             <div style={s.card}>
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>💰 Price Check & Condition Update</div>
               <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
-                Updates ONLY pricing and condition flags — no specs, images, or docs. ~10x cheaper than full scrape. Great for weekly price monitoring.
+                Updates ONLY pricing and condition flags — no specs, images, or docs. ~10x cheaper than full scrape.
               </div>
 
-              <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                <button style={{ ...s.btn, ...s.btnSm }} onClick={async () => {
-                  if (!existingProducts.length) await loadExisting();
-                  const lines = existingProducts.map(p => p.brand_name + " " + p.model);
-                  setBulkText(lines.join("\n"));
-                  setProgress({ current: 0, total: lines.length, currentQuery: "" });
-                }}>Load All PIM Products ({existingProducts.length || "..."})</button>
-                <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
-                  if (!existingProducts.length) await loadExisting();
-                  const lines = existingProducts.filter(p => !p.msrp).map(p => p.brand_name + " " + p.model);
-                  setBulkText(lines.join("\n"));
-                }}>Load Missing Prices</button>
+              {/* Sub-mode tabs */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+                {[["pc-single","Single"],["pc-bulk","Bulk"],["pc-site","🌐 Site Check"]].map(([m,label]) => (
+                  <button key={m} style={{ ...s.tab, ...(priceMode === m ? s.tabActive : {}) }} onClick={() => setPriceMode(m)}>{label}</button>
+                ))}
               </div>
 
-              <textarea style={s.textarea} rows={6} placeholder={"One product per line:\nLG LRMVS3006S\nWhirlpool WRF555SDFZ\nSamsung RF23A9671SR"} value={bulkText} onChange={e => setBulkText(e.target.value)} />
+              {/* Single price check */}
+              {priceMode === "pc-single" && (
+                <div>
+                  <div style={s.inputRow}>
+                    <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S) or product page URL" value={query} onChange={e => setQuery(e.target.value)}
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); priceCheckProduct(query).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){doPriceSave(r).then(ok=>{if(!ok)setResults(p=>[...p,r]);})}else setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                    <button style={{ ...s.btn, background: "#e17055" }} disabled={loading} onClick={async () => {
+                      if(!query.trim())return; setLoading(true);
+                      setProgress({current:1,total:1,currentQuery:query});
+                      const r=await priceCheckProduct(query); r.query=query;
+                      if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){const ok=await doPriceSave(r);if(!ok)setResults(p=>[...p,r])}else setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
+                      setLoading(false);
+                    }}>{loading?"Checking…":"💰 Check Price"}</button>
+                  </div>
+                </div>
+              )}
 
-              <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
-                <button style={{ ...s.btn, background: "#e17055" }} disabled={loading} onClick={async () => {
-                  const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
-                  if (!lines.length) return;
-                  setLoading(true);
-                  abortRef.current = false;
-                  saveCountRef.current = { saved: 0, failed: 0 };
-                  for (let i = 0; i < lines.length; i++) {
-                    if (abortRef.current) break;
-                    setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
-                    try {
-                      const r = await priceCheckProduct(lines[i]);
-                      if (r.found) {
-                        // Extract brand+model from the query if not in response
-                        if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
-                        if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
-                        if (autoSave) {
-                          const ok = await doPriceSave(r);
-                          if (!ok) setResults(p => [...p, r]);
-                        } else {
-                          setResults(p => [...p, r]);
-                        }
-                      } else {
-                        setResults(p => [...p, { ...r, query: lines[i] }]);
+              {/* Bulk price check */}
+              {priceMode === "pc-bulk" && (
+                <div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                    <button style={{ ...s.btn, ...s.btnSm }} onClick={async () => {
+                      if (!existingProducts.length) await loadExisting();
+                      setBulkText(existingProducts.map(p => p.brand_name + " " + p.model).join("\n"));
+                    }}>Load All PIM Products ({existingProducts.length || "…"})</button>
+                    <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                      if (!existingProducts.length) await loadExisting();
+                      setBulkText(existingProducts.filter(p => !p.msrp).map(p => p.brand_name + " " + p.model).join("\n"));
+                    }}>Missing Prices Only</button>
+                  </div>
+                  <textarea style={s.textarea} rows={6} placeholder={"One per line — model numbers or URLs:\nLG LRMVS3006S\nhttps://www.lg.com/ca_en/refrigerators/LRMVS3006S/\nWhirlpool WRF555SDFZ"} value={bulkText} onChange={e => setBulkText(e.target.value)} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                    <button style={{ ...s.btn, background: "#e17055" }} disabled={loading} onClick={async () => {
+                      const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
+                      if (!lines.length) return;
+                      setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
+                      for (let i = 0; i < lines.length; i++) {
+                        if (abortRef.current) break;
+                        setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
+                        try {
+                          const r = await priceCheckProduct(lines[i]);
+                          if (r.found) {
+                            if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
+                            if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
+                            if (autoSave) { const ok = await doPriceSave(r); if (!ok) setResults(p => [...p, r]); }
+                            else setResults(p => [...p, r]);
+                          } else setResults(p => [...p, { ...r, query: lines[i] }]);
+                        } catch (e) { setErrors(p => [...p, "Price check " + lines[i] + ": " + e.message]); }
+                        if (i < lines.length - 1) await new Promise(r => setTimeout(r, 3000));
                       }
-                    } catch (e) {
-                      setErrors(p => [...p, "Price check " + lines[i] + ": " + e.message]);
-                    }
-                    if (i < lines.length - 1) await new Promise(r => setTimeout(r, 3000));
-                  }
-                  setLoading(false);
-                }}>
-                  {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "💰 Price Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
-                </button>
-                {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
-                {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
-              </div>
+                      setLoading(false);
+                    }}>
+                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "💰 Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                    </button>
+                    {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                    {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Site-level price check */}
+              {priceMode === "pc-site" && (
+                <div>
+                  <div style={{ ...s.label, marginBottom: 8 }}>Brand ({allBrands.length})</div>
+                  <input style={{ ...s.input, marginBottom: 8 }} placeholder="Search brands…" value={brandSearch} onChange={e => setBrandSearch(e.target.value)} />
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, maxHeight: brandSearch ? 200 : 80, overflow: "auto" }}>
+                    {allBrands.filter(b => !brandSearch || b.brand_name.toLowerCase().includes(brandSearch.toLowerCase())).map(b => (
+                      <button key={b.brand_name} onClick={() => { setDiscoverBrand(b.brand_name); setDiscoverCategory(""); setDiscoverUrl(""); setDiscoverPhase("idle"); setDiscovered([]); setBrandSearch(""); }}
+                        style={{ ...s.btn, ...s.btnSm, ...(discoverBrand === b.brand_name ? {} : { ...s.btnOutline }), padding: "5px 10px", fontSize: 11 }}>
+                        {b.brand_name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {discoverBrand && (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ ...s.label, marginBottom: 8 }}>Category</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button onClick={() => setDiscoverCategory("")}
+                          style={{ ...s.btn, ...s.btnSm, ...(!discoverCategory ? {} : { ...s.btnOutline }), padding: "5px 10px", fontSize: 11 }}>All</button>
+                        {APPLIANCE_CATEGORIES.map(c => (
+                          <button key={c} onClick={() => setDiscoverCategory(c)}
+                            style={{ ...s.btn, ...s.btnSm, ...(discoverCategory === c ? {} : { ...s.btnOutline }), padding: "5px 10px", fontSize: 11 }}>
+                            {c.replace(/-/g, " ")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ ...s.label, marginBottom: 8 }}>Or paste a product listing URL</div>
+                  <div style={s.inputRow}>
+                    <input style={s.input} placeholder="e.g. https://www.lg.com/ca_en/refrigerators/" value={discoverUrl} onChange={e => setDiscoverUrl(e.target.value)} />
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
+                    <button style={{ ...s.btn, background: "#e17055" }} onClick={handleDiscover} disabled={loading || discoverPhase === "discovering"}>
+                      {discoverPhase === "discovering" ? "Discovering… " + progress.current + "/" + progress.total : "🔍 Discover " + (discoverBrand || "") + " Products"}
+                    </button>
+                    {discoverPhase === "discovering" && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+                    {discoverPhase === "discovering" && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                  </div>
+
+                  {/* Discovery results for price checking */}
+                  {discovered.length > 0 && (
+                    <div style={{ ...s.card, margin: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 600 }}>{discovered.length} Products Found</div>
+                          <div style={{ fontSize: 13, color: palette.textDim }}>
+                            <span style={{ color: palette.accent }}>{selectedModels.size} selected for price check</span>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={toggleAll}>
+                            {selectedModels.size === discovered.length ? "Deselect All" : "Select All"}
+                          </button>
+                          <button style={{ ...s.btn, ...s.btnSm, background: "#e17055" }} disabled={loading || selectedModels.size === 0}
+                            onClick={async () => {
+                              const toCheck = discovered.filter(p => selectedModels.has(p.model));
+                              if (!toCheck.length) return;
+                              setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
+                              for (let i = 0; i < toCheck.length; i++) {
+                                if (abortRef.current) break;
+                                const p = toCheck[i];
+                                const q = p.url || (discoverBrand + " " + p.model);
+                                setProgress({ current: i + 1, total: toCheck.length, currentQuery: p.model + " — price check" });
+                                try {
+                                  const r = await priceCheckProduct(q);
+                                  if (r.found) {
+                                    if (!r.model) r.model = p.model;
+                                    if (!r.brand_name && discoverBrand) r.brand_name = discoverBrand;
+                                    if (autoSave) { const ok = await doPriceSave(r); if (!ok) setResults(prev => [...prev, r]); }
+                                    else setResults(prev => [...prev, r]);
+                                  } else setResults(prev => [...prev, { ...r, query: q }]);
+                                } catch (e) { setErrors(prev => [...prev, "Price " + p.model + ": " + e.message]); }
+                                if (i < toCheck.length - 1) await new Promise(r => setTimeout(r, 3000));
+                              }
+                              setLoading(false);
+                            }}>
+                            {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "💰 Price Check " + selectedModels.size + " Selected"}
+                          </button>
+                          {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                        </div>
+                      </div>
+                      {loading && progress.currentQuery && <div style={{ fontSize: 13, color: "#e17055", marginBottom: 12 }}>⏳ {progress.currentQuery}</div>}
+                      <div style={{ maxHeight: 400, overflow: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                          <thead><tr style={{ borderBottom: "1px solid " + palette.border }}>
+                            <th style={{ padding: "6px 8px", width: 30 }}></th>
+                            <th style={{ padding: "6px 8px", textAlign: "left", color: palette.textMuted }}>Model</th>
+                            <th style={{ padding: "6px 8px", textAlign: "left", color: palette.textMuted }}>Name</th>
+                          </tr></thead>
+                          <tbody>{discovered.map((p, i) => (
+                            <tr key={i} style={{ borderBottom: "1px solid " + palette.border + "20", cursor: "pointer" }} onClick={() => toggleModel(p.model)}>
+                              <td style={{ padding: "6px 8px" }}><input type="checkbox" checked={selectedModels.has(p.model)} readOnly style={{ cursor: "pointer", accentColor: "#e17055" }} /></td>
+                              <td style={{ padding: "6px 8px", fontFamily: "monospace", fontSize: 11, fontWeight: 600 }}>{p.model}</td>
+                              <td style={{ padding: "6px 8px", maxWidth: 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div style={{ marginTop: 12, fontSize: 12, color: palette.textMuted }}>
-                ⚡ ~0.3¢ per product vs ~3¢ for full scrape · 3 sec delay between checks · Updates pricing + condition flags only
+                ⚡ ~0.3¢ per product vs ~3¢ for full scrape · 3 sec delay · Updates pricing + condition flags only
               </div>
             </div>
           </div>
