@@ -1,0 +1,210 @@
+name: CI & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check CRM inline JS syntax
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'fs';
+          const html = readFileSync('apps/crm/index.html','utf8');
+          const m = html.match(/<script type=\"module\">([\s\S]*?)<\/script>/);
+          if(!m) { console.error('no module script found'); process.exit(1); }
+          const js = m[1].replace(/^import .*$/m, 'const createClient = () => ({});');
+          new Function(js);
+          console.log('CRM JS syntax OK');
+          "
+
+      - name: Check academy HTML is well-formed
+        run: |
+          # Guard against the corrupted-tag regression (<di<div) that shipped once
+          if grep -q '<di<' apps/academy/index.html; then
+            echo 'Corrupted tag found in academy HTML'; exit 1
+          fi
+          echo 'Academy HTML OK'
+
+      - name: Check Spec IQ inline JS syntax
+        run: |
+          node --input-type=module -e "
+          import { readFileSync } from 'fs';
+          const html = readFileSync('apps/spec-iq/index.html','utf8');
+          const m = html.match(/<script type=\"module\">([\s\S]*?)<\/script>/);
+          if(!m) { console.error('no module script found'); process.exit(1); }
+          const js = m[1].replace(/^import .*$/m, 'const createClient = () => ({});');
+          new Function(js);
+          console.log('Spec IQ JS syntax OK');
+          "
+
+      - name: Check migrations are timestamp-ordered
+        run: |
+          ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
+
+      - name: Check for duplicate migration versions
+        run: |
+          DUPES=$(ls supabase/migrations/*.sql | sed 's/.*\///' | sed 's/_.*//' | sort | uniq -d)
+          if [ -n "$DUPES" ]; then
+            echo "Duplicate migration versions found:"
+            echo "$DUPES"
+            exit 1
+          fi
+          echo 'No duplicate migration versions'
+
+      - name: Check for empty migration files
+        run: |
+          EMPTY=0
+          for f in supabase/migrations/*.sql; do
+            SIZE=$(wc -c < "$f")
+            if [ "$SIZE" -lt 10 ]; then
+              echo "Empty or near-empty migration: $f ($SIZE bytes)"
+              EMPTY=$((EMPTY + 1))
+            fi
+          done
+          if [ "$EMPTY" -gt 0 ]; then exit 1; fi
+          echo 'No empty migration files'
+
+      - name: Check for malformed migration filenames
+        run: |
+          BAD=0
+          for f in supabase/migrations/*.sql; do
+            NAME=$(basename "$f")
+            if ! echo "$NAME" | grep -qP '^\d{14}_\w+\.sql$'; then
+              echo "Malformed migration filename: $NAME (expected YYYYMMDDHHMMSS_name.sql)"
+              BAD=$((BAD + 1))
+            fi
+          done
+          if [ "$BAD" -gt 0 ]; then exit 1; fi
+          echo 'All migration filenames are well-formed'
+
+      - name: Check edge function entrypoints exist
+        run: |
+          MISSING=0
+          for fn in $(ls -d supabase/functions/*/ | grep -v _shared | grep -v _non_deployable); do
+            NAME=$(basename "$fn")
+            if [ ! -f "$fn/index.ts" ]; then
+              echo "Missing entrypoint: $fn/index.ts"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ "$MISSING" -gt 0 ]; then exit 1; fi
+          echo 'All deployable edge functions have entrypoints'
+
+      - name: Reject incomplete deployable edge functions
+        run: |
+          UNSAFE=0
+          for fn in $(ls -d supabase/functions/*/ | grep -v _shared | grep -v _non_deployable); do
+            NAME=$(basename "$fn")
+            FILE="$fn/index.ts"
+            if [ ! -f "$FILE" ]; then continue; fi
+            if grep -qiE 'placeholder|simplified|TODO.full.source|structural.reconstruction|source.pending|not.implemented|not.yet.restored|framework.only' "$FILE" 2>/dev/null; then
+              echo "BLOCKED: $NAME contains incomplete/placeholder markers"
+              UNSAFE=$((UNSAFE + 1))
+            fi
+            LINES=$(wc -l < "$FILE")
+            if [ "$LINES" -lt 8 ]; then
+              echo "BLOCKED: $NAME has only $LINES lines (below minimum threshold)"
+              UNSAFE=$((UNSAFE + 1))
+            fi
+          done
+          if [ "$UNSAFE" -gt 0 ]; then
+            echo "ERROR: $UNSAFE deployable function(s) contain incomplete or placeholder code"
+            echo "Move incomplete functions to supabase/functions/_non_deployable/"
+            exit 1
+          fi
+          echo 'All deployable edge functions are complete'
+
+  deploy-crm:
+    name: Deploy CRM to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/crm -> crmaiiq.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/crm --site 38f8f64f-c674-4e14-8639-37ebb40ac939
+
+  deploy-academy:
+    name: Deploy Academy to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Canonical Academy target. Do not change this to the abandoned
+      # trainingiq-academy site.
+      - name: Deploy apps/academy -> applianceiq-aiacademy.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/academy --site 4179d04b-ca18-4551-9b18-fe434b83ebc6
+
+  deploy-speciq:
+    name: Deploy Spec IQ to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/spec-iq -> spec-iq.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/spec-iq --site 7dd39e7d-8c68-4109-a803-f4d6e0aab6ff
+
+  deploy-intelligence-group:
+    name: Deploy Intelligence Group to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/intelligence-group -> applianceiq-intelligence-group.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/intelligence-group --site 9aba62a7-90db-4001-86f9-438f72adeea7
+
+  deploy-product-iq:
+    name: Deploy Product IQ to Netlify
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy apps/product-iq -> applianceiq-product-iq-pim.netlify.app
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/product-iq --site fc1492d8-8eb6-40f2-94f4-617d3055fed9
