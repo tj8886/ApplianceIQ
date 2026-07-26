@@ -1032,6 +1032,8 @@ function PIMScraper() {
   const saveCountRef = useRef({ saved: 0, failed: 0 });
 
   const doSave = async (data) => {
+    // Skip product save for intel/news data — those use their own save functions
+    if (data._intel || data._news || data._retailerCheck) return true;
     // Reuse handleSave logic but without UI index management
     try {
       const checkRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(data.model)}&brand_name=eq.${encodeURIComponent(data.brand_name)}&select=id,organization_id`);
