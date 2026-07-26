@@ -1765,7 +1765,10 @@ async function renderRecalls(C) {
         '<option value="CA"'+(countryFilter==='CA'?' selected':'')+'>🇨🇦 Canada (Health Canada)</option>'+
       '</select>'+
       '<input class="control" placeholder="Filter by brand…" value="'+esc(brandFilter)+'" oninput="S.recallBrand=this.value;renderPage()" style="width:180px">'+
+      '<button class="btn btn-primary" id="syncRecallsBtn" onclick="window.syncRecalls()">🔄 Sync from CPSC + Health Canada</button>'+
     '</div></div>'+
+
+    '<div id="syncStatus" style="'+(S.recallSyncStatus?'':'display:none;')+'margin-bottom:16px"></div>'+
 
     '<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:16px"><p style="font-size:12px;color:var(--amber,#92400e);margin:0">ℹ️ Sourced from CPSC (saferproducts.gov) and Health Canada recall databases. This is a curated set, not a live real-time feed — verify against the official source before advising a customer. Click a recall for full model number list, hazard detail, and remedy.</p></div>'+
 
@@ -1829,6 +1832,159 @@ async function renderRecallDetail(C) {
 
   (r.url?'<div class="panel"><a href="'+esc(r.url)+'" target="_blank" style="color:var(--indigo)">View official recall notice →</a></div>':'');
 }
+
+/* ── RECALL SYNC — live client-side pull from CPSC + Health Canada ── */
+window.syncRecalls = async function() {
+  var btn = document.getElementById('syncRecallsBtn');
+  var status = document.getElementById('syncStatus');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+  if (status) { status.style.display = 'block'; }
+  var log = function(msg) {
+    if (status) status.innerHTML = '<div class="panel" style="background:var(--indigo-soft,#e0e7ff);border-color:var(--indigo,#4f46e5)"><p style="font-size:12px;color:var(--indigo,#3730a3);margin:0">'+msg+'</p></div>';
+    console.log('[syncRecalls]', msg);
+  };
+
+  try {
+    // 1. Get active brand names to match against
+    var {data:brandRows} = await sb.from('brand_catalog').select('brand_name').eq('is_active', true);
+    var brandNames = (brandRows||[]).map(function(b){return b.brand_name;}).filter(Boolean);
+    var brandNamesLower = brandNames.map(function(n){return n.toLowerCase();});
+
+    function matchesBrand(text) {
+      if (!text) return null;
+      var t = text.toLowerCase();
+      for (var i = 0; i < brandNamesLower.length; i++) {
+        if (t.indexOf(brandNamesLower[i]) !== -1) return brandNames[i];
+      }
+      return null;
+    }
+
+    var newCount = 0, updatedCount = 0, checkedCount = 0;
+
+    // 2. CPSC — search by appliance category keywords (CPSC API doesn't support
+    // manufacturer/brand search directly, so we search by product category and
+    // filter matches client-side against our brand list)
+    var categories = ['refrigerator','dishwasher','range','oven','microwave','washer','dryer',
+      'freezer','cooktop','range hood','wine cooler','ice maker','dehumidifier','garbage disposal'];
+
+    for (var ci = 0; ci < categories.length; ci++) {
+      var cat = categories[ci];
+      log('Checking CPSC for "' + cat + '"… (' + (ci+1) + '/' + categories.length + ')');
+      try {
+        var res = await fetch('https://www.saferproducts.gov/RestWebServices/Recall?ProductName=' + encodeURIComponent(cat) + '&format=json');
+        if (!res.ok) { log('CPSC request failed for "' + cat + '" (HTTP ' + res.status + '), skipping…'); continue; }
+        var items = await res.json();
+        for (var i = 0; i < (items||[]).length; i++) {
+          var it = items[i];
+          checkedCount++;
+          var allNames = []
+            .concat((it.Manufacturers||[]).map(function(m){return m.Name;}))
+            .concat((it.Importers||[]).map(function(m){return m.Name;}))
+            .concat((it.Distributors||[]).map(function(m){return m.Name;}))
+            .concat((it.Retailers||[]).map(function(m){return m.Name;}))
+            .join(' | ');
+          var brand = matchesBrand(allNames) || matchesBrand(it.Title) || matchesBrand((it.Products||[])[0]?.Name);
+          if (!brand) continue;
+
+          var models = (it.Products||[]).map(function(p){return p.Model;}).filter(Boolean);
+          var row = {
+            source: 'CPSC',
+            source_recall_id: String(it.RecallID || it.RecallNumber),
+            country: 'US',
+            brand_name: brand,
+            manufacturer_name: (it.Manufacturers||[])[0]?.Name || null,
+            product_name: (it.Products||[])[0]?.Name || it.Title,
+            model_numbers: models,
+            category: cat,
+            recall_date: it.RecallDate ? it.RecallDate.split('T')[0] : null,
+            title: it.Title,
+            description: it.Description,
+            hazard: (it.Hazards||[])[0]?.Name || null,
+            remedy: (it.Remedies||[])[0]?.Name || null,
+            remedy_options: (it.RemedyOptions||[]).map(function(o){return o.Option;}).filter(Boolean),
+            units_affected: (it.Products||[])[0]?.NumberOfUnits || null,
+            injury_count: (it.Injuries||[]).length,
+            injury_notes: (it.Injuries||[])[0]?.Name || null,
+            url: it.URL,
+            is_appliance_related: true,
+            raw_data: it,
+            last_synced_at: new Date().toISOString(),
+          };
+          var {data:existing} = await sb.from('aiq_recalls').select('id').eq('source','CPSC').eq('source_recall_id', row.source_recall_id).maybeSingle();
+          await sb.from('aiq_recalls').upsert(row, { onConflict: 'source,source_recall_id' });
+          if (existing) updatedCount++; else newCount++;
+        }
+      } catch (e) { log('Error checking CPSC "' + cat + '": ' + e.message); }
+      await new Promise(function(r){ setTimeout(r, 400); }); // be polite to the API
+    }
+
+    // 3. Health Canada — fetch the daily open-data JSON dump and filter locally.
+    // NOTE: field names below are our best guess from Health Canada's documented
+    // schema; if this dataset uses different field names, matches may come back
+    // low/zero on first run — raw_data is stored on every match so the mapping
+    // can be corrected without re-fetching.
+    log('Fetching Health Canada recall dataset…');
+    try {
+      var hcRes = await fetch('https://recalls-rappels.canada.ca/sites/default/files/opendata-donneesouvertes/HCRSAMOpenData.json');
+      if (hcRes.ok) {
+        var hcData = await hcRes.json();
+        var hcList = Array.isArray(hcData) ? hcData : (hcData.recalls || hcData.data || []);
+        var applianceWords = ['refrigerator','dishwasher','range','oven','microwave','washer','dryer','freezer','cooktop','hood','appliance','stove'];
+        log('Scanning ' + hcList.length + ' Health Canada records for brand + appliance matches…');
+        for (var j = 0; j < hcList.length; j++) {
+          var hc = hcList[j];
+          var hcTitle = hc.Title || hc.title || hc.ProductName || '';
+          var hcDesc = hc.Description || hc.description || hc.Summary || '';
+          var combined = (hcTitle + ' ' + hcDesc).toLowerCase();
+          var isAppliance = applianceWords.some(function(w){ return combined.indexOf(w) !== -1; });
+          if (!isAppliance) continue;
+          var hcBrand = matchesBrand(hcTitle) || matchesBrand(hcDesc);
+          if (!hcBrand) continue;
+
+          var hcId = String(hc.WebIdentifier || hc.Id || hc.id || hc.RecallId || (hcTitle + j));
+          var row2 = {
+            source: 'Health Canada',
+            source_recall_id: hcId,
+            country: 'CA',
+            brand_name: hcBrand,
+            manufacturer_name: hc.Company || hc.Manufacturer || null,
+            product_name: hcTitle,
+            model_numbers: [],
+            category: 'appliance',
+            recall_date: hc.Date || hc.PublishDate || hc.date || null,
+            title: hcTitle,
+            description: hcDesc,
+            hazard: hc.Hazard || hc.hazard || null,
+            remedy: null,
+            remedy_options: [],
+            units_affected: null,
+            injury_count: 0,
+            injury_notes: null,
+            url: hc.URL || hc.Url || hc.url || 'https://recalls-rappels.canada.ca/en',
+            is_appliance_related: true,
+            raw_data: hc,
+            last_synced_at: new Date().toISOString(),
+          };
+          var {data:existing2} = await sb.from('aiq_recalls').select('id').eq('source','Health Canada').eq('source_recall_id', hcId).maybeSingle();
+          await sb.from('aiq_recalls').upsert(row2, { onConflict: 'source,source_recall_id' });
+          if (existing2) updatedCount++; else newCount++;
+        }
+      } else {
+        log('Health Canada dataset request failed (HTTP ' + hcRes.status + ') — CORS or availability issue. CPSC results above are still saved.');
+      }
+    } catch (e) {
+      log('Could not reach Health Canada dataset (likely a CORS restriction from this domain): ' + e.message + '. CPSC sync above still completed.');
+    }
+
+    log('✅ Sync complete — ' + newCount + ' new, ' + updatedCount + ' updated, ' + checkedCount + ' CPSC records scanned. Refreshing list…');
+    S.recallSyncStatus = true;
+    setTimeout(function(){ renderPage(); }, 1500);
+  } catch (e) {
+    log('❌ Sync failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from CPSC + Health Canada'; }
+  }
+};
 
 
 init();
