@@ -167,13 +167,14 @@ main{padding:16px}
 </head>
 <body>
 <div id="app"><div class="loading" style="padding:40px;text-align:center">Loading Product IQ…</div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-const {createClient}=supabase;
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
 const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
 
 /* ── STATE ── */
-const S={user:null,role:{isAdmin:false,isManufacturer:false,isRetailer:false,vendors:[],brandNames:[],loaded:false},view:'landing',page:'dashboard',detail:null,detailTab:'overview',editMode:false,filters:{search:'',brand:'',manufacturer:'',category:'',status:''},pg:0,assetFilter:'all',modal:null};
+const S={user:null,role:{isAdmin:false,isManufacturer:false,isRetailer:false,vendors:[],brandNames:[],loaded:false},view:'landing',page:'dashboard',detail:null,detailTab:'overview',editMode:false,filters:{search:'',brand:'',manufacturer:'',category:'',status:''},pg:0,assetFilter:'all',modal:null,brandDetail:null,brandSearch:''};
 const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt$=v=>v?'$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}):'—';
 const fmtDate=v=>v?new Date(v).toLocaleDateString():'—';
@@ -183,7 +184,7 @@ const MKT_ICONS={sell_sheet_print:'🖨️',social_media_kit:'📱',co_op_ad_tem
 
 /* ── ECOSYSTEM APPS ── */
 const APPS=[
-  ['CRM','🤝','https://crmaiiq.netlify.app'],
+  ['CRM','🤝','https://applianceiq-crm.netlify.app'],
   ['Spec IQ','📋','https://appliance-spec-iq.netlify.app'],
   ['AI Academy','🎓','https://applianceiq-aiacademy.netlify.app'],
   ['IQ Field','🔧','https://applianceiq-iq-field.netlify.app'],
@@ -297,14 +298,23 @@ async function acceptInvite(code,email){
   await loadRole();S.view='app';S.page='dashboard';render();
 }
 async function acceptInviteExisting(code,email){
-  const pw=prompt('Enter your existing password for '+email);
-  if(!pw)return;
-  const {error:le}=await sb.auth.signInWithPassword({email,password:pw});
-  if(le)return showInvite(code,le.message);
-  const {error:re}=await sb.rpc('piq_redeem_invite',{p_code:code});
-  if(re)return showInvite(code,re.message);
-  const {data:{user}}=await sb.auth.getUser();
-  S.user=user;history.replaceState({},'',location.pathname);
+  S.modal={title:'Sign In to Accept Invite',body:'<div class="form-row"><label>Password for '+esc(email)+'</label><input id="inv-pw" type="password" placeholder="••••••••"/></div><div id="inv-err" class="error" style="display:none"></div>',
+    actions:'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="inv-go">Sign In & Accept</button>'};
+  render();
+  const goBtn=document.getElementById('inv-go');
+  const pwIn=document.getElementById('inv-pw');
+  if(pwIn)pwIn.focus();
+  if(goBtn)goBtn.onclick=async()=>{
+    const pw=document.getElementById('inv-pw')?.value;
+    if(!pw){const e=document.getElementById('inv-err');if(e){e.textContent='Password required';e.style.display='block';}return;}
+    const {error:le}=await sb.auth.signInWithPassword({email,password:pw});
+    if(le)return showInvite(code,le.message);
+    const {error:re}=await sb.rpc('piq_redeem_invite',{p_code:code});
+    if(re)return showInvite(code,re.message);
+    const {data:{user}}=await sb.auth.getUser();
+    S.user=user;history.replaceState({},'',location.pathname);
+    closeModal();await loadRole();S.view='app';S.page='dashboard';render();
+  };
   await loadRole();S.view='app';S.page='dashboard';render();
 }
 
@@ -352,8 +362,8 @@ function showLogin(){
   document.getElementById('app').innerHTML=`
 <div class="login-overlay"><div class="login-box">
   <div class="mark">PIQ</div><h1>Product IQ</h1><p class="sub">Sign in with your ApplianceIQ account</p>
-  <div class="form-row"><label>Email</label><input id="login-email" type="email" value="demo@applianceiq.com"/></div>
-  <div class="form-row"><label>Password</label><input id="login-pass" type="password" value="DemoIQ2026!"/></div>
+  <div class="form-row"><label>Email</label><input id="login-email" type="email" placeholder="you@company.com"/></div>
+  <div class="form-row"><label>Password</label><input id="login-pass" type="password" placeholder="••••••••"/></div>
   <div id="login-error"></div>
   <button class="btn btn-primary" onclick="doLogin()" style="margin-top:8px">Sign In</button>
   <button class="btn btn-secondary" onclick="showLanding()" style="margin-top:8px">← Back</button>
@@ -1048,9 +1058,9 @@ async function saveImage(){
   const row={product_id:document.getElementById('m-prod').value,image_type:document.getElementById('m-type').value,file_url:document.getElementById('m-url').value,
     angle:document.getElementById('m-angle').value||null,finish_shown:document.getElementById('m-finish').value||null,alt_text:document.getElementById('m-alt').value||null,
     source:'manufacturer',uploaded_by:S.user.id};
-  if(!row.file_url)return alert('Image URL is required');
+  if(!row.file_url)return showToast('Image URL is required');
   const {error}=await sb.from('pim_product_images').insert(row);
-  if(error)return alert(error.message);
+  if(error)return showToast(error.message);
   document.querySelector('.modal-bg')?.remove();renderPage();
 }
 
@@ -1073,9 +1083,9 @@ async function saveVideo(){
     duration_seconds:document.getElementById('m-dur').value?parseInt(document.getElementById('m-dur').value):null,
     resolution:document.getElementById('m-res').value||null,thumbnail_url:document.getElementById('m-thumb').value||null,
     source:'manufacturer',uploaded_by:S.user.id};
-  if(!row.title)return alert('Title is required');
+  if(!row.title)return showToast('Title is required');
   const {error}=await sb.from('pim_product_videos').insert(row);
-  if(error)return alert(error.message);
+  if(error)return showToast(error.message);
   document.querySelector('.modal-bg')?.remove();renderPage();
 }
 
@@ -1098,9 +1108,9 @@ async function saveDoc(){
     file_url:document.getElementById('m-url').value,file_name:document.getElementById('m-fname').value||null,
     language:document.getElementById('m-lang').value,locale:document.getElementById('m-locale').value||null,version:document.getElementById('m-ver').value||null,
     source:'manufacturer',uploaded_by:S.user.id};
-  if(!row.file_url||!row.title)return alert('Title and File URL are required');
+  if(!row.file_url||!row.title)return showToast('Title and File URL are required');
   const {error}=await sb.from('pim_product_documents').insert(row);
-  if(error)return alert(error.message);
+  if(error)return showToast(error.message);
   document.querySelector('.modal-bg')?.remove();renderPage();
 }
 
@@ -1125,9 +1135,9 @@ async function saveMarketing(){
     usage_rights:document.getElementById('m-rights').value||null,
     effective_date:document.getElementById('m-eff').value||null,expiry_date:document.getElementById('m-exp').value||null,
     source:'manufacturer',uploaded_by:S.user.id};
-  if(!row.file_url||!row.title)return alert('Title and File URL are required');
+  if(!row.file_url||!row.title)return showToast('Title and File URL are required');
   const {error}=await sb.from('pim_marketing_assets').insert(row);
-  if(error)return alert(error.message);
+  if(error)return showToast(error.message);
   document.querySelector('.modal-bg')?.remove();renderPage();
 }
 
@@ -1193,30 +1203,71 @@ async function saveProductEdit(id){
     short_description:g('e-desc'),long_description:g('e-ldesc'),
     updated_by:S.user.id,updated_at:new Date().toISOString()};
   const {error}=await sb.from('aiq_products').update(update).eq('id',id);
-  if(error)return alert('Save failed: '+error.message);
+  if(error)return showToast('Save failed: '+error.message);
   S.editMode=false;renderPage();
 }
 
 /* ══════════════════ BRANDS ══════════════════ */
 async function renderBrands(C){
   const {data:brands,error}=await sb.from('brand_catalog').select('*').order('brand_name');
-  if(error)return C.innerHTML=`<div class="error">${esc(error.message)}</div>`;
-  const tiers={};(brands||[]).forEach(b=>{tiers[b.brand_tier]=(tiers[b.brand_tier]||0)+1});
-  C.innerHTML=`
-  <div class="pagehead"><div><h1>Brand Directory</h1><p class="sub">${(brands||[]).length} brands in the North American appliance market.</p></div></div>
-  <div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-bottom:16px">
-    ${Object.entries(tiers).sort().map(([t,c])=>`<div class="metric"><div class="label">${t.replace(/_/g,' ')}</div><div class="value">${c}</div></div>`).join('')}
-  </div>
-  <div class="tablewrap"><table>
-    <thead><tr><th>Brand</th><th>Parent Company</th><th>Tier</th><th>Country</th><th>Status</th></tr></thead>
-    <tbody>${(brands||[]).map(b=>`<tr>
-      <td><span class="model-name">${esc(b.brand_name)}</span></td>
-      <td class="tiny">${esc(b.parent_company||'—')}</td>
-      <td><span class="pill ${b.brand_tier==='ultra_luxury'?'pill-amber':b.brand_tier==='luxury'?'pill-indigo':b.brand_tier==='mid'?'pill-cyan':'pill-gray'}">${esc(b.brand_tier).replace(/_/g,' ')}</span></td>
-      <td class="tiny">${esc(b.country||'—')}</td>
-      <td>${b.is_active?'<span class="pill pill-green">Active</span>':'<span class="pill pill-gray">Inactive</span>'}</td>
-    </tr>`).join('')}</tbody>
-  </table></div>`;
+  if(error)return C.innerHTML='<div class="error">'+esc(error.message)+'</div>';
+
+  // If a detail brand is selected, show detail view
+  if(S.brandDetail){
+    const b=S.brandDetail;
+    const statusColor=b.contact_status&&b.contact_status.includes('verified')?'pill-green':'pill-amber';
+    C.innerHTML=
+    '<div class="pagehead"><div>'+
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+        '<button class="ghost" onclick="S.brandDetail=null;go(\'brands\')">← Brands</button>'+
+        '<h1>'+esc(b.brand_name)+'</h1>'+
+        '<span class="pill '+(b.is_active?'pill-green':'pill-gray')+'">'+(b.is_active?'Active':'Inactive')+'</span>'+
+        '<span class="pill '+(b.brand_tier==='ultra_luxury'?'pill-amber':b.brand_tier==='luxury'?'pill-indigo':b.brand_tier==='mid'?'pill-cyan':'pill-gray')+'">'+esc((b.brand_tier||'').replace(/_/g,' '))+'</span>'+
+      '</div>'+
+      (b.parent_company?'<p class="sub">Part of '+esc(b.parent_company)+'</p>':'')+
+    '</div></div>'+
+
+    '<div class="kv" style="margin-bottom:20px">'+
+      '<div><small>Country</small>'+esc(b.country||'—')+'</div>'+
+      '<div><small>Parent Company</small>'+esc(b.parent_company||'—')+'</div>'+
+      '<div><small>Brand Tier</small>'+esc((b.brand_tier||'—').replace(/_/g,' '))+'</div>'+
+      '<div><small>Global Website</small>'+(b.website?'<a href="https://'+esc(b.website)+'" target="_blank" style="color:var(--indigo)">'+esc(b.website)+'</a>':'—')+'</div>'+
+      '<div><small>🇨🇦 Canada Website</small>'+(b.canada_website?'<a href="https://'+esc(b.canada_website)+'" target="_blank" style="color:var(--indigo)">'+esc(b.canada_website)+'</a>':'—')+'</div>'+
+      '<div><small>🇺🇸 U.S. Website</small>'+(b.us_website?'<a href="https://'+esc(b.us_website)+'" target="_blank" style="color:var(--indigo)">'+esc(b.us_website)+'</a>':'—')+'</div>'+
+      '<div><small>🇨🇦 Canada Email</small>'+(b.canada_email?'<a href="mailto:'+esc(b.canada_email)+'" style="color:var(--indigo)">'+esc(b.canada_email)+'</a>':'—')+'</div>'+
+      '<div><small>🇨🇦 Canada Phone</small>'+(b.canada_phone?'<a href="tel:'+esc(b.canada_phone)+'" style="color:var(--indigo)">'+esc(b.canada_phone)+'</a>':'—')+'</div>'+
+      '<div><small>Contact Status</small><span class="pill '+statusColor+'">'+esc(b.contact_status||'—')+'</span></div>'+
+    '</div>';
+    return;
+  }
+
+  const tiers={};(brands||[]).forEach(function(b){tiers[b.brand_tier]=(tiers[b.brand_tier]||0)+1});
+  const verified=(brands||[]).filter(function(b){return b.contact_status&&b.contact_status.includes('verified')}).length;
+  const withCaSite=(brands||[]).filter(function(b){return b.canada_website}).length;
+  const withEmail=(brands||[]).filter(function(b){return b.canada_email}).length;
+  C.innerHTML=
+  '<div class="pagehead"><div><h1>Brand Directory</h1><p class="sub">'+(brands||[]).length+' brands in the North American appliance market.</p></div></div>'+
+  '<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-bottom:16px">'+
+    Object.entries(tiers).sort().map(function(e){return '<div class="metric"><div class="label">'+e[0].replace(/_/g,' ')+'</div><div class="value">'+e[1]+'</div></div>'}).join('')+
+    '<div class="metric"><div class="label">Verified Contacts</div><div class="value" style="color:var(--green)">'+verified+'</div></div>'+
+    '<div class="metric"><div class="label">🇨🇦 CA Sites</div><div class="value">'+withCaSite+'</div></div>'+
+    '<div class="metric"><div class="label">🇨🇦 CA Emails</div><div class="value">'+withEmail+'</div></div>'+
+  '</div>'+
+  '<div class="toolbar"><input class="control search-input" placeholder="Search brands…" oninput="S.brandSearch=this.value;go(\'brands\')" value="'+esc(S.brandSearch||'')+'"/></div>'+
+  '<div class="tablewrap"><table>'+
+    '<thead><tr><th>Brand</th><th>Parent Company</th><th>Tier</th><th>Global</th><th>🇨🇦 Canada</th><th>🇨🇦 Contact</th><th>Status</th></tr></thead>'+
+    '<tbody>'+(brands||[]).filter(function(b){var q=(S.brandSearch||'').toLowerCase();return !q||b.brand_name.toLowerCase().includes(q)||(b.parent_company||'').toLowerCase().includes(q)}).map(function(b){
+      var statusCls=b.contact_status&&b.contact_status.includes('verified')?'pill-green':'pill-amber';
+      return '<tr class="clickable" onclick="S.brandDetail='+JSON.stringify(b).replace(/"/g,'&quot;')+';go(\'brands\')">'+
+      '<td><span class="model-name">'+esc(b.brand_name)+'</span></td>'+
+      '<td class="tiny">'+esc(b.parent_company||'—')+'</td>'+
+      '<td><span class="pill '+(b.brand_tier==='ultra_luxury'?'pill-amber':b.brand_tier==='luxury'?'pill-indigo':b.brand_tier==='mid'?'pill-cyan':'pill-gray')+'">'+esc(b.brand_tier||'').replace(/_/g,' ')+'</span></td>'+
+      '<td class="tiny">'+(b.website?'<span style="color:var(--indigo)">'+esc(b.website)+'</span>':'—')+'</td>'+
+      '<td class="tiny">'+(b.canada_website?'<span style="color:var(--green)">'+esc(b.canada_website)+'</span>':'—')+'</td>'+
+      '<td class="tiny">'+(b.canada_email||b.canada_phone?esc(b.canada_email||b.canada_phone):'—')+'</td>'+
+      '<td><span class="pill '+statusCls+'" style="font-size:10px">'+esc(b.contact_status&&b.contact_status.includes('verified')?'✓ Verified':'Pending')+'</span></td>'+
+    '</tr>'}).join('')+'</tbody>'+
+  '</table></div>';
 }
 
 /* ══════════════════ ADD PRODUCT ══════════════════ */
@@ -1240,14 +1291,14 @@ function renderAddProduct(C){
 }
 async function createProduct(){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
-  if(!g('n-brand')||!g('n-mfr')||!g('n-model'))return alert('Brand, Manufacturer, and Model are required.');
+  if(!g('n-brand')||!g('n-mfr')||!g('n-model'))return showToast('Brand, Manufacturer, and Model are required.');
   const row={organization_id:'00000000-0000-0000-0000-000000000001',brand_name:g('n-brand'),manufacturer_name:g('n-mfr'),model:g('n-model'),
     category:g('n-cat'),series:g('n-series')||null,product_line:g('n-line')||null,msrp:g('n-msrp')?parseFloat(g('n-msrp')):null,
     product_family:g('n-family')||null,short_description:g('n-desc')||null,upc:g('n-upc')||null,finish:g('n-finish')||null,
     status:'draft',approval_status:'draft',public_visible:false,source_type:'manual',source_review_status:'pending',
     country_availability:['CA','US'],version_number:1,created_by:S.user.id,updated_by:S.user.id};
   const {data,error}=await sb.from('aiq_products').insert(row).select('id').maybeSingle();
-  if(error)return alert('Create failed: '+error.message);
+  if(error)return showToast('Create failed: '+error.message);
   go('product-detail',data.id);
 }
 
@@ -1318,13 +1369,13 @@ const EXPORTS={
   certifications:{label:'Certifications & Energy',icon:'⚡',table:'pim_product_certifications',cols:'cert_type,cert_body,cert_number,energy_star_rating,annual_energy_kwh,annual_energy_cost,water_usage_gallons,noise_level_dba,energy_guide_url'},
   dimensions:{label:'Dimensions & Cutouts',icon:'📐',table:'pim_product_dimensions',cols:'width_inches,height_inches,depth_inches,depth_with_door_inches,cutout_width,cutout_height,cutout_depth,shipping_weight_lbs,door_swing_direction,cad_file_url,revit_file_url'},
   warranty:{label:'Warranty Coverage',icon:'🛡️',table:'pim_warranty_details',cols:'coverage_name,warranty_type,coverage_years,parts_covered,labor_covered,in_home_service,transferable,registration_url'},
-  brands:{label:'Brand Directory',icon:'◆',table:'brand_catalog',cols:'brand_name,parent_company,brand_tier,country,is_active'}
+  brands:{label:'Brand Directory',icon:'◆',table:'brand_catalog',cols:'brand_name,parent_company,brand_tier,country,is_active,website,canada_website,us_website,canada_email,canada_phone,contact_status'}
 };
 async function runExport(key,fmt){
   const e=EXPORTS[key];if(!e)return;
   const {data,error}=await sb.from(e.table).select(e.cols);
-  if(error)return alert('Export failed: '+error.message);
-  if(!data||!data.length)return alert('No data available to export for '+e.label+'.');
+  if(error)return showToast('Export failed: '+error.message);
+  if(!data||!data.length)return showToast('No data available to export for '+e.label+'.');
   const stamp=new Date().toISOString().slice(0,10);
   if(fmt==='json')download(`productiq-${key}-${stamp}.json`,JSON.stringify(data,null,2),'application/json');
   else download(`productiq-${key}-${stamp}.csv`,toCSV(data));
@@ -1457,13 +1508,13 @@ async function createInvite(){
 }
 function copyInvite(code){
   const url=inviteURL(code);
-  if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('Invite link copied:\n'+url),()=>prompt('Copy this link:',url));
-  else prompt('Copy this link:',url);
+  if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>showToast('Invite link copied!'),()=>showToast('Copy this link: '+url));
+  else showToast('Copy this link: '+url);
 }
 async function revokeInvite(id){
   if(!confirm('Revoke this invite? The link will stop working.'))return;
   const {error}=await sb.rpc('piq_revoke_invite',{p_id:id});
-  if(error)return alert(error.message);
+  if(error)return showToast(error.message);
   renderPage();
 }
 
@@ -2243,6 +2294,15 @@ window.syncRecalls = async function() {
   }
 };
 
+
+function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25);max-width:90vw;text-align:center';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
+function closeModal(){S.modal=null;render();}
+
+// Expose all inline-onclick functions to window (module scope)
+[doLogin,logout,showLogin,showLanding,go,renderPage,closeModal,copyInvite,createInvite,revokeInvite,
+ createProduct,saveProductEdit,runExport,saveImage,saveDoc,saveVideo,saveMarketing,deleteAsset,
+ showAddImageModal,showAddDocModal,showAddVideoModal,showAddMarketingModal,showAddCertModal,showAddRebateModal,
+ acceptInvite,acceptInviteExisting,syncRecalls,showToast].forEach(fn=>{if(typeof fn==='function')window[fn.name]=fn;});
 
 init();
 </script>
