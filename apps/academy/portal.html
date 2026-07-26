@@ -6,7 +6,7 @@
 <title>ApplianceIQ Academy — Portal</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f1f3d'/><text x='50' y='68' text-anchor='middle' font-family='Arial' font-weight='800' font-size='42' fill='white'>IQ</text></svg>" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#0f1f3d;--navy-2:#16294a;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;--sand:#e9e0d0;--sand-text:#9c7c46;--ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#ffffff;--white:#FFFFFF;--sidebar-w:300px;--black:#0f1f3d;--gold:#2f7d72;--gold-light:#276b61;--charcoal:#ffffff;--offwhite:#f4f6f8}
@@ -582,13 +582,11 @@ body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,Ari
   </div>
 </div>
 
-<script>
-// ⚠️ APPLIANCEIQ SUPABASE — create a NEW Supabase project for ApplianceIQ Academy
-// (do not reuse the Elev8 project — keep user bases separate).
-// Paste your new project URL and publishable key below, then run seed_applianceiq_v1.sql
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const sb = createClient(SB_URL, SB_KEY);
 
 let currentUser = null;
 let volumes = [];
@@ -3135,8 +3133,8 @@ async function loadRoleplayPersonas() {
 }
 
 function showRoleplayPicker() {
-  if (!currentOrg) { alert('Please log in first'); return; }
-  if (!roleplayPersonas.length) { alert('No coaching personas configured for your organization.'); return; }
+  if (!currentOrg) { showToast('Please log in first'); return; }
+  if (!roleplayPersonas.length) { showToast('No coaching personas configured for your organization.'); return; }
   const modal = document.createElement('div');
   modal.id = 'rpPickerModal';
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -3195,7 +3193,7 @@ async function startRoleplay(scenario) {
     body: JSON.stringify({ action: 'start', scenario_type: scenario, organization_id: currentOrg.id, persona_name: coachName })
   });
   const data = await res.json();
-  if (!data.ok) { alert('Failed to start: ' + (data.error ?? 'Unknown')); return; }
+  if (!data.ok) { showToast('Failed to start: ' + (data.error ?? 'Unknown')); return; }
   currentRoleplaySession = data.session_id;
 
   const scenarioLabels = { cold_call: 'Cold Call', follow_up: 'Follow Up', objection_handling: 'Objections', product_demo: 'Product Demo' };
@@ -3294,6 +3292,17 @@ async function endRoleplay() {
   chat.innerHTML += summaryHtml;
   chat.scrollTop = chat.scrollHeight;
 }
+
+function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy,#0f1f3d);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
+
+// Expose to window for inline onclick handlers
+[signIn,signUp,signOut,showDashboard,showView,switchTab,toggleSidebar,toggleNotifications,markAllNotifRead,readNotif,
+ loadChapter,setChapterMode,toggleComplete,startTrack,startQuiz,submitQuiz,answerQuiz,
+ renderResources,renderVendors,openVendor,renderBrandAcademy,openBrandDetail,toggleBrandLevel,
+ startRoleplay,sendRoleplayMessage,endRoleplay,showRoleplayPicker,
+ openTrainer,closeTrainer,sendTrainer,trainerAsk,aiqSpeechToggle,aiqSpeechStop,
+ selectBrandQuizOpt,submitBrandQuiz,setBrandAssignment,closeCertificate,printCertificate,saveScorecard,showToast
+].forEach(fn=>{if(typeof fn==='function')window[fn.name]=fn;});
 
 </script>
 </body>

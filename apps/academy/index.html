@@ -6,7 +6,7 @@
 <title>ApplianceIQ Academy | The Appliance Sales Operating System</title>
 <meta name="description" content="16 volumes. 6 training tracks. The most comprehensive appliance sales training on the market. Retail floor mastery plus the trade channel — builders, designers, and property managers."/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#0f1f3d;--navy-2:#16294a;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;--sand:#e9e0d0;--sand-text:#9c7c46;--ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#ffffff;--black:#0f1f3d;--gold:#2f7d72;--gold-light:#276b61;--gold-dim:#e6f0ed;--charcoal:#ffffff;--offwhite:#f4f6f8;--white:#ffffff;--border:#e3e8ee;--border-gold:rgba(47,125,114,0.25)}
@@ -891,7 +891,8 @@ footer{background:var(--card);border-top:1px solid var(--line);padding:56px 5%}
   </div>
 </div>
 
-<script>
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 // MODAL SYSTEM
 const modals = {
   academy: {
@@ -985,17 +986,35 @@ function openModal(type){
 
 function closeModal(){document.getElementById('modal').classList.remove('active')}
 
-function submitModal(btn,type){
+async function submitModal(btn,type){
   btn.disabled=true; btn.textContent='Sending...';
-  setTimeout(()=>{
-    document.getElementById('modal-content').innerHTML=`
-      <div class="modal-success">
-        <div class="modal-success-icon">✓</div>
-        <h4>Request received.</h4>
-        <p>We will be in touch within one business day with next steps and access details.</p>
-      </div>`;
-    setTimeout(closeModal,3000);
-  },1200);
+  const form=btn.closest('.modal-form');
+  const inputs=form.querySelectorAll('input,select,textarea');
+  const lead={lead_type:type};
+  inputs.forEach(inp=>{
+    const val=inp.value?.trim();if(!val)return;
+    const ph=(inp.placeholder||'').toLowerCase();const name=inp.name||'';
+    if(ph.includes('name')||name==='name')lead.name=val;
+    else if(ph.includes('email')||name==='email'||inp.type==='email')lead.email=val;
+    else if(ph.includes('firm')||name==='firm')lead.firm=val;
+    else if(inp.tagName==='SELECT'){
+      const label=(inp.previousElementSibling?.textContent||inp.options[0]?.textContent||'').toLowerCase();
+      if(label.includes('track'))lead.track=val;
+      else if(label.includes('billing')||label.includes('plan'))lead.plan=val;
+      else if(label.includes('seat'))lead.seats=val;
+      else if(label.includes('interest'))lead.interest=val;
+      else if(label.includes('program')||label.includes('cohort program'))lead.program=val;
+      else if(label.includes('participant'))lead.cohort_size=val;
+      else if(label.includes('timing')||label.includes('start'))lead.timing=val;
+      else if(label.includes('volume'))lead.volume=val;
+    }
+  });
+  const required=form.querySelectorAll('[required]');
+  for(const r of required){if(!r.value?.trim()){btn.disabled=false;btn.textContent=modals[type]?.cta||'Submit';return;}}
+  try{await sb.from('academy_leads').insert(lead);}catch(e){console.warn('Lead save:',e);}
+  document.getElementById('modal-content').innerHTML=
+    '<div class="modal-success"><div class="modal-success-icon">✓</div><h4>Request received.</h4><p>We will be in touch within one business day with next steps and access details.</p></div>';
+  setTimeout(closeModal,3000);
 }
 
 function toggleFaq(btn){
@@ -1018,7 +1037,7 @@ document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
 // ======= SUPABASE + ROLEPLAY =======
 const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const { createClient } = window.supabase;
+
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentOrg = null, currentRoleplaySession = null, roleplayPersonas = [], selectedRoleplayCoach = null;
@@ -1043,7 +1062,7 @@ async function setupAcademyAuth(){
 function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
 function showRoleplayPicker(){
-  if(!currentOrg) return alert('Please log in first');
+  if(!currentOrg){ toggleCCLogin?.() || openModal?.('academy'); return; }
   const modal = document.createElement('div');
   modal.id = 'rpPickerModal';
   modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center';
@@ -1096,7 +1115,7 @@ function showRoleplayPicker(){
 }
 
 async function startRoleplay(scenario){
-  if(!currentOrg) return alert('Please log in first');
+  if(!currentOrg){ toggleCCLogin?.() || openModal?.('academy'); return; }
   const {data:{session}} = await sb.auth.getSession();
   const coachName = selectedRoleplayCoach?.persona_name ?? 'TJ';
 
@@ -1107,7 +1126,7 @@ async function startRoleplay(scenario){
     body: JSON.stringify({action: 'start', scenario_type: scenario, organization_id: currentOrg.id, persona_name: coachName})
   });
   const data = await res.json();
-  if(!data.ok){ alert('Failed to start: ' + (data.error ?? 'Unknown')); return; }
+  if(!data.ok){ showToast('Failed to start: ' + (data.error ?? 'Unknown')); return; }
   currentRoleplaySession = data.session_id;
 
   const scenarioLabels = {cold_call:'Cold Call',follow_up:'Follow Up',objection_handling:'Objections',product_demo:'Product Demo'};
@@ -1207,6 +1226,11 @@ async function endRoleplay(){
   chat.innerHTML += summaryHtml;
   chat.scrollTop = chat.scrollHeight;
 }
+
+function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
+
+window.openModal=openModal;window.closeModal=closeModal;window.submitModal=submitModal;window.toggleFaq=toggleFaq;
+window.showRoleplayPicker=showRoleplayPicker;window.sendRoleplayMessage=sendRoleplayMessage;window.endRoleplay=endRoleplay;window.showToast=showToast;
 
 setupAcademyAuth();
 

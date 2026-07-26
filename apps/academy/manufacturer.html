@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ApplianceIQ Academy — Manufacturer Portal</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <style>
 :root{
   --navy:#0f1f3d;--navy-2:#16294a;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;
@@ -192,11 +192,11 @@ td{padding:10px;border-bottom:1px solid var(--line);color:var(--ink)}
   </div>
 </div>
 
-<script>
-// ⚠️ APPLIANCEIQ SUPABASE — use the SAME project as the learner portal
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const sb = createClient(SB_URL, SB_KEY);
 const STORAGE_BUCKET = 'vendor-assets';
 
 let ME = null, MYROLE = null, MYVENDORS = [], ACTIVE_VENDOR = null, CATS = null, ADMIN_VIEW = false;
@@ -667,7 +667,7 @@ async function approveTrainingCard() {
     last_reviewed_at: new Date().toISOString(),
     status: 'published'
   }).eq('id', TRAINING_CARD.id);
-  if (error) { alert('Approval failed: ' + error.message); return; }
+  if (error) { showToast('Approval failed: ' + error.message); return; }
   TRAINING_CARD.manufacturer_approved = true;
   TRAINING_CARD.status = 'published';
   renderTrainingEditor();
@@ -681,12 +681,17 @@ async function createTrainingCard() {
     status: 'draft',
     version: 1
   }).select().single();
-  if (error) { alert('Create failed: ' + error.message); return; }
+  if (error) { showToast('Create failed: ' + error.message); return; }
   TRAINING_CARD = data;
   renderTrainingEditor();
 }
 
 function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f1f3d;color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
+[signIn,signOut,register,switchTab,setVendor,setPortalView,setAdminView,openUpload,closeUpload,saveAsset,delAsset,
+ sendInvite,umSetSrc,toggleAud,createTrainingCard,saveTrainingCard,approveTrainingCard,approveVendor,
+ addTalkingPoint,addObjection,showToast].forEach(fn=>{if(typeof fn==='function')window[fn.name]=fn;});
 
 // ---------- START ----------
 boot();

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ApplianceIQ Academy — Trade Portal</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <style>
 :root{
   --navy:#0f1f3d;--navy-2:#16294a;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;
@@ -133,11 +133,11 @@ a{color:var(--teal);text-decoration:none}
   <div class="wrap" id="app-body"><div class="loading"><div class="spin"></div>Loading…</div></div>
 </div>
 
-<script>
-// ⚠️ Same Supabase project/keys as the learner + manufacturer portals
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const sb = supabase.createClient(SB_URL, SB_KEY);
+const sb = createClient(SB_URL, SB_KEY);
 
 let ME=null, MYAUD='builder', CATS=null, VENDORS=[], ASSETS=[], FILTER='All', SEARCH='';
 let REG_ROLE='builder';
@@ -278,6 +278,8 @@ function renderList(){
   // open first vendor by default
   const first=document.querySelector('.v-section'); if(first) first.classList.add('open');
 }
+
+[signIn,signOut,register,switchTab,setFilter,pickRole].forEach(fn=>{if(typeof fn==='function')window[fn.name]=fn;});
 
 boot();
 </script>
