@@ -382,7 +382,7 @@ function navItems(){
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
   n.push(['_sep'],['_label','INTELLIGENCE'],
-    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
+    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['energy-rebates','💡','Energy Rebates'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
   return n;
 }
@@ -427,7 +427,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail,'energy-rebates':renderEnergyRebates,'energy-rebate-detail':renderEnergyRebateDetail};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -1831,6 +1831,98 @@ async function renderRecallDetail(C) {
   (r.injury_notes?'<div class="panel"><h2>Injury / Incident Detail</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(r.injury_notes)+'</p></div>':'')+
 
   (r.url?'<div class="panel"><a href="'+esc(r.url)+'" target="_blank" style="color:var(--indigo)">View official recall notice →</a></div>':'');
+}
+
+/* ── RECALL SYNC — live client-side pull from CPSC + Health Canada ── */
+/* ── ENERGY REBATE PROGRAMS PAGE (utility/government — distinct from product-level Rebates & Promos) ── */
+async function renderEnergyRebates(C) {
+  var countryFilter = S.ergCountry || 'all';
+  var q = sb.from('aiq_rebate_programs').select('*').order('country').order('level').order('program_name');
+  if (countryFilter !== 'all') q = q.eq('country', countryFilter);
+  var {data:rows} = await q;
+  var programs = rows || [];
+
+  var statusFilter = S.ergStatus || 'all';
+  var filtered = statusFilter === 'all' ? programs : programs.filter(function(p){return p.status === statusFilter;});
+
+  var statusLabels = { active:'✅ Active', seasonal:'🗓️ Seasonal', exhausted:'⛔ Exhausted', pending:'⏳ Pending', closed:'❌ Closed' };
+  var statusPill = { active:'pill-green', seasonal:'pill-indigo', exhausted:'pill-red', pending:'pill-yellow', closed:'pill-gray' };
+  var levelIcons = { federal:'🏛️', provincial:'🍁', state:'⭐', utility:'⚡' };
+
+  var activeCount = programs.filter(function(p){return p.status==='active'||p.status==='seasonal';}).length;
+
+  C.innerHTML = '<div class="pagehead"><div><h1>💡 Energy Rebate Programs</h1><p class="sub">'+programs.length+' tracked programs · '+activeCount+' currently active/seasonal</p></div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<select class="control" onchange="S.ergCountry=this.value;renderPage()">'+
+        '<option value="all"'+(countryFilter==='all'?' selected':'')+'>All Countries</option>'+
+        '<option value="CA"'+(countryFilter==='CA'?' selected':'')+'>🇨🇦 Canada</option>'+
+        '<option value="US"'+(countryFilter==='US'?' selected':'')+'>🇺🇸 USA</option>'+
+      '</select>'+
+      '<select class="control" onchange="S.ergStatus=this.value;renderPage()">'+
+        '<option value="all"'+(statusFilter==='all'?' selected':'')+'>All Statuses</option>'+
+        '<option value="active"'+(statusFilter==='active'?' selected':'')+'>✅ Active</option>'+
+        '<option value="seasonal"'+(statusFilter==='seasonal'?' selected':'')+'>🗓️ Seasonal</option>'+
+        '<option value="pending"'+(statusFilter==='pending'?' selected':'')+'>⏳ Pending</option>'+
+        '<option value="exhausted"'+(statusFilter==='exhausted'?' selected':'')+'>⛔ Exhausted</option>'+
+        '<option value="closed"'+(statusFilter==='closed'?' selected':'')+'>❌ Closed</option>'+
+      '</select>'+
+    '</div></div>'+
+
+    '<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:16px"><p style="font-size:12px;color:var(--amber,#92400e);margin:0">⚠️ Rebate programs change constantly — seasonal windows open/close, state HEEHRA rollouts shift monthly, budgets get exhausted mid-cycle. Every program below shows a "last verified" date. Always confirm current status with the administering body before quoting a rebate amount to a customer.</p></div>'+
+
+    '<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(370px,1fr))">'+
+    filtered.map(function(p) {
+      var flag = p.country==='CA' ? '🇨🇦' : '🇺🇸';
+      var amountStr = p.rebate_amount_max ? (p.currency==='CAD'?'CA$':'US$') + (p.rebate_amount_min && p.rebate_amount_min !== p.rebate_amount_max ? p.rebate_amount_min+'–' : '') + p.rebate_amount_max : 'Varies';
+      return '<div class="metric clickable" onclick="go(\'energy-rebate-detail\',\''+p.id+'\')" style="text-align:left;cursor:pointer">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+          '<div><div style="font-size:14px;font-weight:700">'+flag+' '+(levelIcons[p.level]||'')+' '+esc(p.program_name)+'</div>'+
+          '<div class="tiny" style="margin-top:2px">'+esc(p.region)+' · '+esc(p.administering_body||'')+'</div></div>'+
+          '<span class="pill '+(statusPill[p.status]||'pill-gray')+'">'+(statusLabels[p.status]||p.status)+'</span>'+
+        '</div>'+
+        '<div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:6px">'+amountStr+(p.is_income_qualified?' <span class="tiny" style="font-weight:400;color:var(--muted)">(income-qualified)</span>':'')+'</div>'+
+        ((p.appliance_categories||[]).length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+p.appliance_categories.map(function(c){return '<span class="pill pill-gray" style="font-size:9px">'+esc(c.replace(/_/g,' '))+'</span>';}).join('')+'</div>':'')+
+        '<div class="tiny" style="color:var(--muted)">Last verified: '+(p.last_verified_date?new Date(p.last_verified_date).toLocaleDateString():'—')+'</div>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    (!filtered.length?'<div class="empty">No programs match this filter.</div>':'');
+}
+
+async function renderEnergyRebateDetail(C) {
+  var {data:p} = await sb.from('aiq_rebate_programs').select('*').eq('id',S.detail).maybeSingle();
+  if(!p){C.innerHTML='<div class="empty">Program not found</div>';return;}
+  var flag = p.country==='CA' ? '🇨🇦' : '🇺🇸';
+  var statusLabels = { active:'✅ Active', seasonal:'🗓️ Seasonal', exhausted:'⛔ Exhausted', pending:'⏳ Pending', closed:'❌ Closed' };
+
+  C.innerHTML = '<div class="pagehead"><div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+      '<button class="ghost" onclick="go(\'energy-rebates\')">← Back</button>'+
+      '<h1>'+flag+' '+esc(p.program_name)+'</h1>'+
+      '<span class="pill">'+(statusLabels[p.status]||p.status)+'</span>'+
+    '</div>'+
+  '</div></div>'+
+
+  '<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:20px"><p style="font-size:12px;color:var(--amber,#92400e);margin:0">⚠️ Last verified '+(p.last_verified_date?new Date(p.last_verified_date).toLocaleDateString():'unknown')+'. Confirm current status at the source before quoting to a customer — these programs change frequently.</p></div>'+
+
+  '<div class="kv" style="margin-bottom:20px">'+
+    '<div><small>Level</small>'+esc(p.level)+'</div>'+
+    '<div><small>Region</small>'+esc(p.region)+'</div>'+
+    '<div><small>Administering Body</small>'+esc(p.administering_body||'—')+'</div>'+
+    '<div><small>Rebate Range</small>'+(p.rebate_amount_max?(p.currency==='CAD'?'CA$':'US$')+(p.rebate_amount_min||0)+' – '+(p.currency==='CAD'?'CA$':'US$')+p.rebate_amount_max:'Varies')+'</div>'+
+    '<div><small>Income-Qualified?</small>'+(p.is_income_qualified?'Yes':'No')+'</div>'+
+    '<div><small>Valid Period</small>'+(p.valid_from?new Date(p.valid_from).toLocaleDateString():'—')+' to '+(p.valid_to?new Date(p.valid_to).toLocaleDateString():'ongoing')+'</div>'+
+  '</div>'+
+
+  ((p.appliance_categories||[]).length?'<div class="panel"><h2>Appliance Categories</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+p.appliance_categories.map(function(c){return '<span class="pill pill-indigo">'+esc(c.replace(/_/g,' '))+'</span>';}).join('')+'</div></div>':'')+
+
+  ((p.eligible_retailers||[]).length?'<div class="panel"><h2>Named Eligible Retailers</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+p.eligible_retailers.map(function(rt){return '<span class="pill pill-green">'+esc(rt)+'</span>';}).join('')+'</div></div>':'')+
+
+  (p.income_qualification_notes?'<div class="panel"><h2>Income Qualification</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(p.income_qualification_notes)+'</p></div>':'')+
+
+  (p.notes?'<div class="panel"><h2>Notes</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(p.notes)+'</p></div>':'')+
+
+  (p.application_url?'<div class="panel"><a href="'+esc(p.application_url)+'" target="_blank" style="color:var(--indigo)">View program page →</a></div>':'');
 }
 
 /* ── RECALL SYNC — live client-side pull from CPSC + Health Canada ── */
