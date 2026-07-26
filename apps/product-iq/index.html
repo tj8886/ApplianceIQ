@@ -382,7 +382,7 @@ function navItems(){
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
   n.push(['_sep'],['_label','INTELLIGENCE'],
-    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['energy-rebates','💡','Energy Rebates'],['warranty-policies','🛡️','Warranties'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
+    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['energy-rebates','💡','Energy Rebates'],['warranty-policies','🛡️','Warranties'],['vendor-contacts','📞','Vendor Contacts'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
   return n;
 }
@@ -427,7 +427,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail,'energy-rebates':renderEnergyRebates,'energy-rebate-detail':renderEnergyRebateDetail,'warranty-policies':renderWarrantyPolicies,'warranty-policy-detail':renderWarrantyPolicyDetail};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail,'energy-rebates':renderEnergyRebates,'energy-rebate-detail':renderEnergyRebateDetail,'warranty-policies':renderWarrantyPolicies,'warranty-policy-detail':renderWarrantyPolicyDetail,'vendor-contacts':renderVendorContacts};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -2012,6 +2012,53 @@ async function renderWarrantyPolicyDetail(C) {
   (p.notes?'<div class="panel" style="margin-top:12px"><h2>Notes</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">'+esc(p.notes)+'</p></div>':'')+
 
   (p.source_url?'<div class="panel" style="margin-top:12px"><a href="'+esc(p.source_url)+'" target="_blank" style="color:var(--indigo)">View official warranty document →</a></div>':'');
+}
+
+/* ── VENDOR CONTACTS — designed for a rep to scan during a live customer call. No click-through required; everything is visible on the card. ── */
+async function renderVendorContacts(C) {
+  var {data:rows} = await sb.from('aiq_vendor_contacts').select('*').order('brand_name').order('country');
+  var contacts = rows || [];
+
+  var brandFilter = (S.vcBrand || '').toLowerCase();
+  var filtered = brandFilter ? contacts.filter(function(c){return (c.brand_name||'').toLowerCase().includes(brandFilter);}) : contacts;
+
+  var confBadge = { official:'<span class="pill pill-green" style="font-size:9px">✓ Official source</span>', aggregated:'<span class="pill pill-yellow" style="font-size:9px">⚠ Cross-referenced</span>', needs_verification:'<span class="pill pill-red" style="font-size:9px">⚠ Verify before use</span>' };
+
+  C.innerHTML = '<div class="pagehead"><div><h1>📞 Vendor Contacts</h1><p class="sub">'+contacts.length+' brand contact records — for guiding a customer to the right vendor line</p></div>'+
+    '<input class="control" placeholder="Type a brand name… (e.g. Whirlpool)" value="'+esc(S.vcBrand||'')+'" oninput="S.vcBrand=this.value;renderPage()" style="width:280px;font-size:14px" autofocus></div>'+
+
+    '<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:16px"><p style="font-size:12px;color:var(--amber,#92400e);margin:0">⚠️ Phone numbers and departments can change. "✓ Official source" means confirmed directly on the brand\'s own site; "⚠ Cross-referenced" means sourced from a third-party directory — worth a quick double-check for a high-stakes call. Read any Notes on a card before relaying a number to a customer.</p></div>'+
+
+    (filtered.length?filtered.map(function(c) {
+      var flag = c.country==='CA'?'🇨🇦':c.country==='US'?'🇺🇸':'🇺🇸🇨🇦';
+      return '<div class="panel" style="margin-bottom:14px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            '<h2 style="margin:0">'+flag+' '+esc(c.brand_name)+'</h2>'+
+            (confBadge[c.confidence_level]||'')+
+          '</div>'+
+          '<span class="tiny" style="color:var(--muted)">Verified: '+(c.last_verified_date?new Date(c.last_verified_date).toLocaleDateString():'—')+'</span>'+
+        '</div>'+
+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:10px">'+
+          (c.customer_service_phone?'<div style="background:var(--bg,#f8f9fb);border-radius:10px;padding:12px 14px"><div class="tiny" style="color:var(--muted);margin-bottom:4px">'+esc(c.customer_service_phone_label||'Customer Service')+'</div><a href="tel:'+esc(c.customer_service_phone.replace(/[^0-9+]/g,''))+'" style="font-size:20px;font-weight:700;color:var(--indigo);text-decoration:none">'+esc(c.customer_service_phone)+'</a>'+(c.customer_service_hours?'<div class="tiny" style="margin-top:4px">'+esc(c.customer_service_hours)+'</div>':'')+'</div>':'')+
+          (c.service_repair_phone&&c.service_repair_phone!==c.customer_service_phone?'<div style="background:var(--bg,#f8f9fb);border-radius:10px;padding:12px 14px"><div class="tiny" style="color:var(--muted);margin-bottom:4px">🔧 Service / Repair Scheduling</div><a href="tel:'+esc(c.service_repair_phone.replace(/[^0-9+]/g,''))+'" style="font-size:18px;font-weight:700;color:var(--indigo);text-decoration:none">'+esc(c.service_repair_phone)+'</a></div>':'')+
+          (c.warranty_phone&&c.warranty_phone!==c.customer_service_phone?'<div style="background:var(--bg,#f8f9fb);border-radius:10px;padding:12px 14px"><div class="tiny" style="color:var(--muted);margin-bottom:4px">🛡️ Warranty Claims</div><a href="tel:'+esc(c.warranty_phone.replace(/[^0-9+]/g,''))+'" style="font-size:18px;font-weight:700;color:var(--indigo);text-decoration:none">'+esc(c.warranty_phone)+'</a></div>':'')+
+          (c.trade_distributor_phone?'<div style="background:var(--bg,#f8f9fb);border-radius:10px;padding:12px 14px"><div class="tiny" style="color:var(--muted);margin-bottom:4px">🤝 Trade / Distributor / Installer Line</div><a href="tel:'+esc(c.trade_distributor_phone.replace(/[^0-9+]/g,''))+'" style="font-size:18px;font-weight:700;color:var(--indigo);text-decoration:none">'+esc(c.trade_distributor_phone)+'</a></div>':'')+
+          (c.parts_phone?'<div style="background:var(--bg,#f8f9fb);border-radius:10px;padding:12px 14px"><div class="tiny" style="color:var(--muted);margin-bottom:4px">⚙️ Parts</div><a href="tel:'+esc(c.parts_phone.replace(/[^0-9+]/g,''))+'" style="font-size:18px;font-weight:700;color:var(--indigo);text-decoration:none">'+esc(c.parts_phone)+'</a></div>':'')+
+        '</div>'+
+
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px">'+
+          (c.support_email?'<a href="mailto:'+esc(c.support_email)+'" style="color:var(--indigo)">✉️ '+esc(c.support_email)+'</a>':'')+
+          (c.support_website_url?'<a href="'+esc(c.support_website_url)+'" target="_blank" style="color:var(--indigo)">🌐 Support Site</a>':'')+
+          (c.registration_url?'<a href="'+esc(c.registration_url)+'" target="_blank" style="color:var(--indigo)">📝 Register Product</a>':'')+
+          (c.parts_url?'<a href="'+esc(c.parts_url)+'" target="_blank" style="color:var(--indigo)">⚙️ Order Parts</a>':'')+
+          (c.live_chat_url?'<a href="'+esc(c.live_chat_url)+'" target="_blank" style="color:var(--indigo)">💬 Live Chat</a>':'')+
+        '</div>'+
+
+        (c.notes?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line,#eee);font-size:12px;color:var(--muted);line-height:1.6">'+esc(c.notes)+'</div>':'')+
+      '</div>';
+    }).join(''):'<div class="empty">No vendor contact on file for that brand yet. Consider checking the brand\'s official support page directly.</div>');
 }
 
 /* ── RECALL SYNC — live client-side pull from CPSC + Health Canada ── */
