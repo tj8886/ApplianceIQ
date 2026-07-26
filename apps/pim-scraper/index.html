@@ -82,7 +82,7 @@ const CATEGORIES = [
   "wine_refrigeration","beverage_centers","ice_makers","outdoor","small_appliances"
 ];
 
-const SCRAPE_PROMPT = `You are an appliance product data extraction assistant. Search the web for the given appliance product. Go to the MANUFACTURER'S OWN WEBSITE (e.g. lg.com, whirlpool.com, samsung.com) AND major Canadian retailers (bestbuy.ca, homedepot.ca, lowes.ca) to get complete data.
+const SCRAPE_PROMPT = `You are an appliance product data extraction assistant working for the CANADIAN market. Search the web for the given appliance product. Go to the MANUFACTURER'S OWN WEBSITE (e.g. lg.com, whirlpool.com, samsung.com) AND major Canadian retailers (bestbuy.ca, homedepot.ca, rona.ca — NOT lowes.ca, which no longer exists in Canada as of Feb 2024, fully converted to RONA+) to get complete data.
 
 IMPORTANT INSTRUCTIONS:
 - Visit the manufacturer's product page directly. Look at the page source and gallery.
@@ -215,7 +215,7 @@ const APPLIANCE_CATEGORIES = [
   "warming-drawers", "trash-compactors", "disposers",
 ];
 
-const PRICE_CHECK_PROMPT = `You are an appliance price checker. Search for the current pricing and availability status of the given appliance product. Check the manufacturer's Canadian website AND major Canadian retailers (bestbuy.ca, homedepot.ca, lowes.ca, ajmadison.com).
+const PRICE_CHECK_PROMPT = `You are an appliance price checker for the CANADIAN market. Search for the current pricing and availability status of the given appliance product. Check the manufacturer's Canadian website AND major Canadian retailers (bestbuy.ca, homedepot.ca, rona.ca, ajmadison.com — NOT lowes.ca, which no longer exists in Canada as of Feb 2024, fully converted to RONA+).
 
 Return ONLY valid JSON, no markdown, no backticks:
 
@@ -255,23 +255,53 @@ ONLY return pricing and condition data. Do NOT look up specs, features, images, 
 
 const RETAILER_PRICE_PROMPT = `You are a Canadian appliance retail price checker. For the given product, search EACH of these Canadian retailers and find their current price, stock status, and any sale/clearance/open box flags.
 
-Retailers to check:
+National chains:
 - Best Buy Canada (bestbuy.ca)
 - Home Depot Canada (homedepot.ca)
-- RONA (rona.ca)
+- RONA (rona.ca) — NOTE: Lowe's Canada no longer exists (fully converted to RONA+ as of Feb 2024); never search lowes.ca
 - Canadian Appliance Source (canadianappliance.ca)
-- Goemans Appliances (goemans.com)
-- Midland Appliance (midlandappliance.com)
-- Trail Appliances (trailappliances.com)
-- Dufresne (dufresne.ca)
-- Appliance Canada (appliancecanada.com)
-- Futures Appliances (?"futuresappliances.ca")
-- TA Appliance (?"taappliance.com")
-- Visions Electronics (visions.ca)
-- Tasco Distributors (?"tasco.net")
-- AJ Madison (ajmadison.com)
 - Leon's (leons.ca)
 - The Brick (thebrick.com)
+- Costco Canada (costco.ca)
+- AJ Madison (ajmadison.com)
+
+Ontario independents:
+- Tasco Appliances (tascoappliance.ca)
+- Goemans Appliances (goemans.com)
+- Appliance Canada (appliancecanada.com)
+- Caplan's Appliances (caplans.ca)
+- Universal Appliances (universalappliance.com)
+- TA Appliance (taappliance.com)
+- F.W. Black Ltd (fwblack.com) — Kingston
+- Future Appliances (futureappliances.ca) — Richmond Hill; NOT "Futures Appliances"
+
+Quebec independents:
+- Corbeil Électroménagers (corbeilelectro.com)
+- Brault & Martineau (bmcanada.com)
+
+BC independents:
+- Trail Appliances (trailappliances.com)
+- Midland Appliance (midlandappliance.com) — Vancouver/Richmond/Langley/Abbotsford — NOT the same company as Midland Appliance World in Winnipeg
+- Coast Appliances (coastappliances.ca) — CAUTION: filed for CCAA creditor protection Apr 2026, verify still operating before relying on
+- Lansdowne Appliance Gallery (lansdowneappliance.com) — Victoria
+- Premium Appliances (premiumappliances.ca)
+
+Alberta independents:
+- Jerome's Appliance Gallery (jeromesappliancegalleryinc.ca) — Calgary
+- Avenue Appliance (avenueappliance.ca) — Edmonton
+
+Manitoba/Saskatchewan:
+- Midland Appliance World (midlandappliance.ca) — Winnipeg — NOT the same company as BC's Midland Appliance
+- Dufresne (dufresne.ca)
+
+Atlantic Canada:
+- Kent Building Supplies (kent.ca)
+- Merrithew's Appliances — Fredericton
+- Alpha's Appliance Solutions — Moncton
+
+Visions Electronics (visions.ca)
+
+Retailers that no longer exist — never search or report on these: Lastman's Bad Boy (bankrupt, closed Jan 2024), Lowe's Canada (defunct Feb 2024, converted to RONA+).
 
 Return ONLY valid JSON, no markdown, no backticks:
 
@@ -1063,6 +1093,8 @@ function PIMScraper() {
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const [priceMode, setPriceMode] = useState("pc-single");
+  const [market, setMarket] = useState("CA"); // CA active now; US coming next phase
+  const [showMarketPicker, setShowMarketPicker] = useState(false);
   const [retailerMode, setRetailerMode] = useState("rt-single");
   const [retailerCountry, setRetailerCountry] = useState("CA");
   const [intelMode, setIntelMode] = useState("company");
@@ -1754,7 +1786,36 @@ function PIMScraper() {
       <style>{`@keyframes spin { to { transform: rotate(360deg) } } ::placeholder { color: ${palette.textMuted} } input:focus, textarea:focus { border-color: ${palette.accent} }`}</style>
 
       <div style={s.header}>
-        <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
+          <div style={{ position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", background: palette.greenSoft, border: `1px solid ${palette.green}40`, borderRadius: 8, cursor: "pointer" }}
+              onClick={() => setShowMarketPicker(!showMarketPicker)}>
+              <span style={{ fontSize: 13 }}>🇨🇦</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: palette.green }}>Canada</span>
+              <span style={{ fontSize: 9, color: palette.textMuted }}>▾</span>
+            </div>
+            {showMarketPicker && (
+              <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: palette.card, border: `1px solid ${palette.border}`, borderRadius: 10, padding: 8, zIndex: 100, minWidth: 220, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, background: palette.greenSoft }}>
+                  <span style={{ fontSize: 14 }}>🇨🇦</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: palette.text }}>Canada</div>
+                    <div style={{ fontSize: 10, color: palette.textMuted }}>Active — all prompts scoped to CA retailers/pricing</div>
+                  </div>
+                  <span style={{ marginLeft: "auto", color: palette.green }}>✓</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, opacity: 0.5 }}>
+                  <span style={{ fontSize: 14 }}>🇺🇸</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: palette.textDim }}>USA</div>
+                    <div style={{ fontSize: 10, color: palette.textMuted }}>Coming next phase</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 4 }}>
             {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"], ["intel", "🔎 Intelligence"], ["existing", "Enrich Existing"]].map(([m, label]) => (
