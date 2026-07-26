@@ -1844,9 +1844,10 @@ function PIMScraper() {
         const subcat = subcats[i];
         setProgress({ current: i + 1, total: subcats.length, currentQuery: `${brand} ${subcat || "all products"}` });
         
+        const marketWord = market === "US" ? "US" : "Canadian";
         const searchQuery = subcat
-          ? `Find ALL ${brand} ${subcat} currently available on the ${brand} Canadian website. List every model number.`
-          : `Find ALL ${brand} ${category || "appliance"} products on the ${brand} Canadian website. List every model number. Search each subcategory.`;
+          ? `Find ALL ${brand} ${subcat} currently available on the ${brand} ${marketWord} website. List every model number.`
+          : `Find ALL ${brand} ${category || "appliance"} products on the ${brand} ${marketWord} website. List every model number. Search each subcategory.`;
         
         const result = await callAI(getDiscoverPrompt(market), searchQuery, 3, activeModel);
         if (result.found && result.products) {
