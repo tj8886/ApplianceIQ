@@ -198,6 +198,56 @@ Return ONLY valid JSON, no markdown, no backticks:
 
 ONLY return pricing and condition data. Do NOT look up specs, features, images, or documents. Keep it minimal.`;
 
+const RETAILER_PRICE_PROMPT = `You are a Canadian appliance retail price checker. For the given product, search EACH of these Canadian retailers and find their current price, stock status, and any sale/clearance/open box flags.
+
+Retailers to check:
+- Best Buy Canada (bestbuy.ca)
+- Home Depot Canada (homedepot.ca)
+- Lowes Canada (lowes.ca)
+- Canadian Appliance Source (canadianappliance.ca)
+- Trail Appliances (trailappliances.com)
+- Coast Appliances (coastappliances.com)
+- Tasco Distributors (?"tasco.net")
+- AJ Madison (ajmadison.com)
+- Leon's (leons.ca)
+- The Brick (thebrick.com)
+
+Return ONLY valid JSON, no markdown, no backticks:
+
+{
+  "found": true,
+  "brand_name": "",
+  "model": "",
+  "retailers": [
+    {
+      "retailer": "Best Buy Canada",
+      "url": "https://www.bestbuy.ca/...",
+      "price": null,
+      "regular_price": null,
+      "on_sale": false,
+      "sale_label": "",
+      "in_stock": true,
+      "stock_note": "",
+      "condition": "new",
+      "is_open_box": false,
+      "is_clearance": false,
+      "is_refurbished": false,
+      "is_floor_model": false,
+      "shipping_available": true,
+      "free_delivery": false,
+      "shipping_cost": null
+    }
+  ]
+}
+
+IMPORTANT: Only include retailers that actually carry this product. If a retailer does not list the product, do NOT include them. Check each retailer's Canadian site specifically. Return the actual product page URL for each.`;
+
+async function retailerPriceCheck(query) {
+  const result = await callClaude(RETAILER_PRICE_PROMPT, "Find retail prices across all major Canadian retailers for: " + query, 2);
+  if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; return result; }
+  return { found: false, query, error: result.error || "Retailer price check failed", _retailerCheck: true };
+}
+
 function supaFetch(path, opts = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...opts,
@@ -550,6 +600,53 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
           </div>
         </div>
       )}
+
+      {/* Retailer Price Results */}
+      {data.retailers && data.retailers.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ ...s.label, marginBottom: 8 }}>Retailer Prices ({data.retailers.length} found)</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead><tr style={{ borderBottom: "1px solid " + palette.border }}>
+              <th style={{ padding: "8px", textAlign: "left", color: palette.textMuted }}>Retailer</th>
+              <th style={{ padding: "8px", textAlign: "right", color: palette.textMuted }}>Price</th>
+              <th style={{ padding: "8px", textAlign: "right", color: palette.textMuted }}>Regular</th>
+              <th style={{ padding: "8px", textAlign: "center", color: palette.textMuted }}>Stock</th>
+              <th style={{ padding: "8px", textAlign: "center", color: palette.textMuted }}>Condition</th>
+              <th style={{ padding: "8px", textAlign: "center", color: palette.textMuted }}>Delivery</th>
+            </tr></thead>
+            <tbody>{[...data.retailers].sort((a,b) => (a.price||99999) - (b.price||99999)).map((r, i) => {
+              const isLowest = i === 0 && r.price;
+              return (
+              <tr key={i} style={{ borderBottom: "1px solid " + palette.border + "20", background: isLowest ? palette.greenSoft : "transparent" }}>
+                <td style={{ padding: "8px" }}>
+                  <div style={{ fontWeight: 600 }}>{r.retailer}{isLowest ? " 🏆" : ""}</div>
+                  {r.url && <a href={r.url} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: palette.blue }}>View ↗</a>}
+                </td>
+                <td style={{ padding: "8px", textAlign: "right", fontWeight: 700, fontSize: 14, color: r.on_sale ? palette.red : palette.green }}>
+                  {r.price ? "$" + parseFloat(r.price).toLocaleString() : "—"}
+                  {r.on_sale && r.sale_label ? <div style={{ fontSize: 10, color: palette.red }}>{r.sale_label}</div> : ""}
+                </td>
+                <td style={{ padding: "8px", textAlign: "right", color: palette.textMuted, textDecoration: r.on_sale ? "line-through" : "none" }}>
+                  {r.regular_price ? "$" + parseFloat(r.regular_price).toLocaleString() : "—"}
+                </td>
+                <td style={{ padding: "8px", textAlign: "center" }}>
+                  {r.in_stock === true ? <span style={{ color: palette.green }}>✓ In Stock</span> : r.in_stock === false ? <span style={{ color: palette.red }}>✗ Out</span> : "—"}
+                  {r.stock_note ? <div style={{ fontSize: 10, color: palette.textMuted }}>{r.stock_note}</div> : ""}
+                </td>
+                <td style={{ padding: "8px", textAlign: "center" }}>
+                  {r.is_open_box ? <span class="pill" style={{ background: palette.yellowSoft, color: palette.yellow, fontSize: 10 }}>Open Box</span> :
+                   r.is_clearance ? <span class="pill" style={{ background: palette.yellowSoft, color: palette.yellow, fontSize: 10 }}>Clearance</span> :
+                   r.is_floor_model ? <span class="pill" style={{ background: palette.yellowSoft, color: palette.yellow, fontSize: 10 }}>Floor</span> :
+                   <span style={{ color: palette.textMuted, fontSize: 11 }}>New</span>}
+                </td>
+                <td style={{ padding: "8px", textAlign: "center", fontSize: 11 }}>
+                  {r.free_delivery ? <span style={{ color: palette.green }}>Free</span> : r.shipping_cost ? "$" + r.shipping_cost : "—"}
+                </td>
+              </tr>);
+            })}</tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -569,6 +666,7 @@ function PIMScraper() {
   const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
   const [showKeyInput, setShowKeyInput] = useState(!ANTHROPIC_API_KEY);
   const [priceMode, setPriceMode] = useState("pc-single");
+  const [retailerMode, setRetailerMode] = useState("rt-single");
   
   // Discovery state
   const [discoverBrand, setDiscoverBrand] = useState("");
@@ -836,6 +934,76 @@ function PIMScraper() {
     }
   };
 
+  // Retailer price save — saves each retailer's price as a row
+  const doRetailerSave = async (data) => {
+    try {
+      const model = data.model;
+      const brand = data.brand_name;
+      if (!model || !brand || !data.retailers || !data.retailers.length) return false;
+      
+      // Try to find product_id
+      let productId = null;
+      try {
+        const checkRes = await supaFetch("aiq_products?model=eq." + encodeURIComponent(model) + "&brand_name=eq." + encodeURIComponent(brand) + "&select=id");
+        const existing = await checkRes.json();
+        if (existing && existing.length) productId = existing[0].id;
+      } catch(e) {}
+
+      // Also update aiq_products with lowest price
+      let lowestPrice = null;
+      let lowestSource = "";
+      for (const r of data.retailers) {
+        if (r.price && (!lowestPrice || r.price < lowestPrice)) {
+          lowestPrice = r.price;
+          lowestSource = r.retailer;
+        }
+      }
+
+      for (const r of data.retailers) {
+        await supaFetch("pim_retailer_prices", { method: "POST", body: JSON.stringify({
+          product_id: productId,
+          brand_name: brand,
+          model: model,
+          retailer_name: r.retailer,
+          retailer_url: r.url ? r.url.split("/").slice(0,3).join("/") : null,
+          product_url: r.url || null,
+          price: r.price ? parseFloat(r.price) : null,
+          regular_price: r.regular_price ? parseFloat(r.regular_price) : null,
+          on_sale: r.on_sale || false,
+          sale_label: r.sale_label || null,
+          in_stock: r.in_stock,
+          stock_note: r.stock_note || null,
+          condition: r.condition || "new",
+          is_open_box: r.is_open_box || false,
+          is_clearance: r.is_clearance || false,
+          is_refurbished: r.is_refurbished || false,
+          is_floor_model: r.is_floor_model || false,
+          shipping_available: r.shipping_available,
+          free_delivery: r.free_delivery || false,
+          shipping_cost: r.shipping_cost ? parseFloat(r.shipping_cost) : null,
+        }), headers: { Prefer: "return=minimal" } }).catch(() => {});
+      }
+
+      // Update aiq_products with lowest price if we have a product_id
+      if (productId && lowestPrice) {
+        await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify({
+          lowest_price: lowestPrice,
+          lowest_price_source: lowestSource,
+          price_checked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }) }).catch(() => {});
+      }
+
+      setSaved(p => [...p, { model, action: data.retailers.length + " retailers checked", id: productId }]);
+      saveCountRef.current.saved++;
+      return true;
+    } catch (e) {
+      setErrors(p => [...p, "Retailer save " + (data.model || "") + ": " + e.message]);
+      saveCountRef.current.failed++;
+      return false;
+    }
+  };
+
   const runScrape = async (q) => {
     try {
       const r = await scrapeProduct(q);
@@ -1038,7 +1206,7 @@ function PIMScraper() {
         <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 4 }}>
-            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["existing", "Enrich Existing"]].map(([m, label]) => (
+            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"], ["existing", "Enrich Existing"]].map(([m, label]) => (
               <button key={m} style={{ ...s.tab, ...(mode === m ? s.tabActive : {}) }} onClick={() => { setMode(m); if (m === "existing") loadExisting(); }}>{label}</button>
             ))}
           </div>
@@ -1342,6 +1510,120 @@ function PIMScraper() {
 
               <div style={{ marginTop: 12, fontSize: 12, color: palette.textMuted }}>
                 ⚡ ~0.3¢ per product vs ~3¢ for full scrape · 3 sec delay · Updates pricing + condition flags only
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Retailer Prices mode */}
+        {mode === "retailer" && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={s.card}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>🏪 Retailer Price Comparison</div>
+              <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
+                Checks Best Buy, Home Depot, Lowes, Canadian Appliance Source, Trail, Coast, Leon's, The Brick & more for current prices, stock, and deals on each product.
+              </div>
+
+              {/* Sub-mode tabs */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+                {[["rt-single","Single"],["rt-bulk","Bulk"],["rt-pim","From PIM"]].map(([m,label]) => (
+                  <button key={m} style={{ ...s.tab, ...(retailerMode === m ? s.tabActive : {}) }} onClick={() => setRetailerMode(m)}>{label}</button>
+                ))}
+              </div>
+
+              {/* Single retailer check */}
+              {retailerMode === "rt-single" && (
+                <div style={s.inputRow}>
+                  <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S)" value={query} onChange={e => setQuery(e.target.value)}
+                    onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                  <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
+                    if(!query.trim())return; setLoading(true);
+                    setProgress({current:1,total:1,currentQuery:query});
+                    const r=await retailerPriceCheck(query); r.query=query;
+                    if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)await doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
+                    setLoading(false);
+                  }}>{loading?"Checking…":"🏪 Check Retailers"}</button>
+                </div>
+              )}
+
+              {/* Bulk retailer check */}
+              {retailerMode === "rt-bulk" && (
+                <div>
+                  <textarea style={s.textarea} rows={6} placeholder={"One per line:\nLG LRMVS3006S\nWhirlpool WRF555SDFZ\nSamsung RF23A9671SR"} value={bulkText} onChange={e => setBulkText(e.target.value)} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                    <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
+                      const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
+                      if (!lines.length) return;
+                      setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
+                      for (let i = 0; i < lines.length; i++) {
+                        if (abortRef.current) break;
+                        setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
+                        try {
+                          const r = await retailerPriceCheck(lines[i]);
+                          if (r.found) {
+                            if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
+                            if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
+                            if (autoSave) await doRetailerSave(r);
+                            setResults(p => [...p, r]);
+                          } else setResults(p => [...p, { ...r, query: lines[i] }]);
+                        } catch (e) { setErrors(p => [...p, "Retailer " + lines[i] + ": " + e.message]); }
+                        if (i < lines.length - 1) await new Promise(r => setTimeout(r, 5000));
+                      }
+                      setLoading(false);
+                    }}>
+                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "🏪 Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                    </button>
+                    {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                    {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Load from PIM */}
+              {retailerMode === "rt-pim" && (
+                <div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                    <button style={{ ...s.btn, ...s.btnSm }} onClick={async () => {
+                      if (!existingProducts.length) await loadExisting();
+                      setBulkText(existingProducts.map(p => p.brand_name + " " + p.model).join("\n"));
+                    }}>Load All PIM Products ({existingProducts.length || "…"})</button>
+                    <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                      if (!existingProducts.length) await loadExisting();
+                      setBulkText(existingProducts.filter(p => !p.lowest_price).map(p => p.brand_name + " " + p.model).join("\n"));
+                    }}>Missing Retailer Prices Only</button>
+                  </div>
+                  <textarea style={s.textarea} rows={6} value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder="Load products from PIM using the buttons above" />
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                    <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
+                      const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
+                      if (!lines.length) return;
+                      setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
+                      for (let i = 0; i < lines.length; i++) {
+                        if (abortRef.current) break;
+                        setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
+                        try {
+                          const r = await retailerPriceCheck(lines[i]);
+                          if (r.found) {
+                            if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
+                            if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
+                            if (autoSave) await doRetailerSave(r);
+                            setResults(p => [...p, r]);
+                          } else setResults(p => [...p, { ...r, query: lines[i] }]);
+                        } catch (e) { setErrors(p => [...p, "Retailer " + lines[i] + ": " + e.message]); }
+                        if (i < lines.length - 1) await new Promise(r => setTimeout(r, 5000));
+                      }
+                      setLoading(false);
+                    }}>
+                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "🏪 Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                    </button>
+                    {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                    {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 12, fontSize: 12, color: palette.textMuted }}>
+                🏪 Checks 10 Canadian retailers per product · ~1-2¢ per product · 5 sec delay · Saves to pim_retailer_prices + updates lowest_price in PIM
               </div>
             </div>
           </div>
