@@ -755,6 +755,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 <div id="pkg-detail-modal" class="hidden"></div>
 <!-- Approval modal -->
 <div id="approval-modal" class="hidden"></div>
+<div id="generic-modal" class="hidden"></div>
 
 <!-- SVG icon sprite -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
@@ -806,6 +807,7 @@ function navigate(view){['dashboard','projects','packages','builder','approvals'
 function toggleNewProject(){el('new-project-form').classList.toggle('hidden')}
 function toggleAddProduct(){el('add-product-form').classList.toggle('hidden')}
 function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden')}
+function closeGenericModal(){el('generic-modal').classList.add('hidden');el('generic-modal').innerHTML='';document.body.style.overflow=''}
 
 /* ==================== BUILDER ==================== */
 function setStep(n){currentStep=n;[1,2,3,4,5].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)renderServicesStep();if(n===4)initValidityStep();if(n===5)renderSummary()}
@@ -1684,12 +1686,30 @@ window.sendInvite=async function(){
   el('inv-email').value='';el('inv-name').value='';el('inv-role').selectedIndex=0;
   loadTeam();
 };
-window.changeRole=async function(memberId,userId){
-  const newRole=prompt('Enter new role (sales_rep, sales_manager, store_manager, admin):');
-  if(!newRole)return;
-  const{error}=await sb.from('organization_members').update({role:newRole}).eq('id',memberId);
-  if(error){alert('Error: '+error.message);return}
-  loadTeam();
+window.changeRole=function(memberId,userId){
+  const mem=teamMembers.find(m=>m.id===memberId);
+  const currentRole=mem?.role||'member';
+  const name=mem?.profiles?.full_name||mem?.profiles?.email||'this member';
+  let h='<div class="modal-overlay" onclick="if(event.target===this)closeGenericModal()">';
+  h+='<div class="modal-panel" style="max-width:420px;padding:32px">';
+  h+='<h2 style="font-size:20px;margin-bottom:6px">Change Role</h2>';
+  h+='<p style="font-size:14px;color:var(--steel);margin-bottom:20px">Update role for <b>'+esc(name)+'</b></p>';
+  h+='<div style="margin-bottom:20px"><label>Role</label><select id="cr-role" style="font-size:15px">';
+  ['sales_rep','sales_manager','store_manager','admin','owner'].forEach(function(r){h+='<option value="'+r+'"'+(r===currentRole?' selected':'')+'>'+r.replace(/_/g,' ')+'</option>';});
+  h+='</select></div>';
+  h+='<div style="display:flex;gap:8px;justify-content:flex-end">';
+  h+='<button class="btn btn-s" onclick="closeGenericModal()">Cancel</button>';
+  h+='<button class="btn btn-p" id="cr-save">Save</button>';
+  h+='</div></div></div>';
+  el('generic-modal').innerHTML=h;
+  el('generic-modal').classList.remove('hidden');
+  document.body.style.overflow='hidden';
+  el('cr-save').onclick=async function(){
+    const newRole=el('cr-role').value;
+    const{error}=await sb.from('organization_members').update({role:newRole}).eq('id',memberId);
+    if(error){alert('Error: '+error.message);return}
+    closeGenericModal();loadTeam();
+  };
 };
 
 /* ==================== AUTH INIT ==================== */
