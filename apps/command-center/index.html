@@ -7,7 +7,7 @@
 <title>ApplianceIQ Command Center — Unified Analytics Dashboard</title>
 <meta name="description" content="One dashboard for your entire operation. Revenue, floor performance, training, coaching — every metric from every ApplianceIQ system in one place."/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#0f1f3d;--navy-2:#16294e;--teal:#2f7d72;--teal-dark:#276b61;--teal-tint:#e6f0ed;--ink:#1f2b3d;--steel:#64748b;--line:#e3e8ee;--bg:#f4f6f8;--card:#fff;--verified:#1a9e56;--danger:#c02d1e;--amber:#e8590c;--accent:#6366f1}
@@ -308,7 +308,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
 </div></section>
 
 <footer class="cfooter">
-  <p>© 2026 ApplianceIQ · <a href="#cc-features">Features</a> · <a href="#cc-pricing">Pricing</a> · <a href="#" onclick="event.preventDefault();toggleCCLogin()">Log In</a> · <a href="https://appliceiq-crm.netlify.app">CRM</a> · <a href="https://applianceiq-iq-up-system.netlify.app">Up System</a></p>
+  <p>© 2026 ApplianceIQ · <a href="#cc-features">Features</a> · <a href="#cc-pricing">Pricing</a> · <a href="#" onclick="event.preventDefault();toggleCCLogin()">Log In</a> · <a href="https://applianceiq-crm.netlify.app">CRM</a> · <a href="https://applianceiq-iq-up-system.netlify.app">Up System</a></p>
   <p style="margin-top:8px;font-size:11px;opacity:0.6">Unified analytics for appliance retail. Part of the ApplianceIQ platform.</p>
 </footer>
 </div>
@@ -352,10 +352,11 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
   </div>
 </div>
 
-<script>
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://fumwwhyozeouoqscolke.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-const {createClient}=window.supabase;
+
 const sb=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -388,6 +389,7 @@ function toggleCCLogin(mode){
   if(o.classList.contains('show')){o.classList.remove('show');}
   else{o.classList.add('show');$('#ccEmail').focus();if(mode==='signup')ccNote('Enter email and password, then tap Create an account.',true);}
 }
+window.setLevel=setLevel;window.goUp=goUp;window.toggleCCLogin=toggleCCLogin;
 function ccNote(msg,ok){const e=$('#ccNotice');e.textContent=msg;e.className='clogin-notice '+(ok?'ok':'err');}
 
 $('#ccSigninBtn').onclick=async()=>{
