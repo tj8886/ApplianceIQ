@@ -246,10 +246,17 @@ Return ONLY valid JSON, no markdown, no backticks:
   ]
 }
 
-IMPORTANT: Only include retailers that actually carry this product. If a retailer does not list the product, do NOT include them. Check each retailer's Canadian site specifically. Return the actual product page URL for each.`;
+IMPORTANT: Only include retailers that actually carry this product. If a retailer does not list the product, do NOT include them. Check each retailer's Canadian site specifically. Return the actual product page URL for each.
+
+CRITICAL RULES:
+- Only return a URL if you actually found the product page. Do NOT guess or construct URLs.
+- If a retailer shows the product as DISCONTINUED, set condition to "discontinued" and look for "Replaced by" or "Successor" model info.
+- If no price is shown (even if product is listed), set price to null.
+- Look carefully for badges like "Discontinued", "Clearance", "Open Box", "Floor Model", "Last One", "While Supplies Last", "No Longer Available".
+- If a retailer page says "Replaced by [model]", include that in stock_note.`;
 
 async function retailerPriceCheck(query) {
-  const result = await callClaude(RETAILER_PRICE_PROMPT, "Find retail prices across all major Canadian retailers for: " + query, 2);
+  const result = await callClaude(RETAILER_PRICE_PROMPT, "Find retail prices across all major Canadian retailers for: " + query, 2, "claude-sonnet-4-6");
   if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; return result; }
   return { found: false, query, error: result.error || "Retailer price check failed", _retailerCheck: true };
 }
@@ -282,7 +289,7 @@ function extractJSON(text) {
   return null;
 }
 
-async function callClaude(systemPrompt, userMsg, retries = 3) {
+async function callClaude(systemPrompt, userMsg, retries = 3, modelOverride = null) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const headers = { "Content-Type": "application/json" };
@@ -295,7 +302,7 @@ async function callClaude(systemPrompt, userMsg, retries = 3) {
         method: "POST",
         headers,
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: modelOverride || "claude-haiku-4-5-20251001",
           max_tokens: 8000,
           system: systemPrompt,
           messages: [{ role: "user", content: userMsg }],
@@ -955,13 +962,20 @@ function PIMScraper() {
         if (existing && existing.length) productId = existing[0].id;
       } catch(e) {}
 
-      // Also update aiq_products with lowest price
+      // Also update aiq_products with lowest price and condition
       let lowestPrice = null;
       let lowestSource = "";
+      let anyDiscontinued = false;
+      let replacementModel = null;
       for (const r of data.retailers) {
         if (r.price && (!lowestPrice || r.price < lowestPrice)) {
           lowestPrice = r.price;
           lowestSource = r.retailer;
+        }
+        if (r.condition === "discontinued") anyDiscontinued = true;
+        if (r.stock_note && r.stock_note.toLowerCase().includes("replaced by")) {
+          const match = r.stock_note.match(/replaced by\s+(\S+)/i);
+          if (match) replacementModel = match[1];
         }
       }
 
@@ -991,13 +1005,15 @@ function PIMScraper() {
       }
 
       // Update aiq_products with lowest price if we have a product_id
-      if (productId && lowestPrice) {
-        await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify({
-          lowest_price: lowestPrice,
-          lowest_price_source: lowestSource,
+      if (productId && (lowestPrice || anyDiscontinued)) {
+        const updates = {
           price_checked_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        }) }).catch(() => {});
+        };
+        if (lowestPrice) { updates.lowest_price = lowestPrice; updates.lowest_price_source = lowestSource; }
+        if (anyDiscontinued) { updates.is_discontinued = true; updates.status = "discontinued"; }
+        if (replacementModel) { updates.replacement_model = replacementModel; }
+        await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify(updates) }).catch(() => {});
       }
 
       setSaved(p => [...p, { model, action: data.retailers.length + " retailers checked", id: productId }]);
