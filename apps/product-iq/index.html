@@ -2048,10 +2048,15 @@ async function renderVendorContacts(C) {
           (c.parts_phone?'<div style="background:var(--bg,#f8f9fb);border-radius:10px;padding:12px 14px"><div class="tiny" style="color:var(--muted);margin-bottom:4px">⚙️ Parts</div><a href="tel:'+esc(c.parts_phone.replace(/[^0-9+]/g,''))+'" style="font-size:18px;font-weight:700;color:var(--indigo);text-decoration:none">'+esc(c.parts_phone)+'</a></div>':'')+
         '</div>'+
 
+        ((c.service_portal_url||c.owner_account_portal_url)?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'+
+          (c.service_portal_url?'<a href="'+esc(c.service_portal_url)+'" target="_blank" style="background:var(--indigo);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">🖥️ Book Service Online →</a>':'')+
+          (c.owner_account_portal_url?'<a href="'+esc(c.owner_account_portal_url)+'" target="_blank" style="background:var(--bg,#f0f1f5);color:var(--indigo);padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--indigo)">👤 Owner Account / Warranty Lookup →</a>':'')+
+        '</div>':'')+
+
         '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px">'+
           (c.support_email?'<a href="mailto:'+esc(c.support_email)+'" style="color:var(--indigo)">✉️ '+esc(c.support_email)+'</a>':'')+
           (c.support_website_url?'<a href="'+esc(c.support_website_url)+'" target="_blank" style="color:var(--indigo)">🌐 Support Site</a>':'')+
-          (c.registration_url?'<a href="'+esc(c.registration_url)+'" target="_blank" style="color:var(--indigo)">📝 Register Product</a>':'')+
+          (c.registration_url&&c.registration_url!==c.owner_account_portal_url?'<a href="'+esc(c.registration_url)+'" target="_blank" style="color:var(--indigo)">📝 Register Product</a>':'')+
           (c.parts_url?'<a href="'+esc(c.parts_url)+'" target="_blank" style="color:var(--indigo)">⚙️ Order Parts</a>':'')+
           (c.live_chat_url?'<a href="'+esc(c.live_chat_url)+'" target="_blank" style="color:var(--indigo)">💬 Live Chat</a>':'')+
         '</div>'+
