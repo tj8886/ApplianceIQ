@@ -786,27 +786,38 @@ async function renderProductDetail(C){
 
   const priceRows=(priceHistory||[]).map(function(ph){return '<tr><td class="tiny">'+new Date(ph.checked_at).toLocaleDateString()+'</td><td>'+fmt$(ph.msrp)+'</td><td style="color:var(--red)">'+fmt$(ph.sale_price)+'</td><td style="color:var(--green)">'+fmt$(ph.lowest_price)+'</td><td class="tiny">'+esc(ph.lowest_price_source||'')+'</td></tr>';}).join('');
 
-  // Group retailer prices by most recent check per retailer
   const latestRetailer = {};
+  const rpCountries = new Set((retailerPrices||[]).map(function(rp){return rp.country||'CA';}));
   (retailerPrices||[]).forEach(function(rp) {
-    if (!latestRetailer[rp.retailer_name] || new Date(rp.checked_at) > new Date(latestRetailer[rp.retailer_name].checked_at)) {
-      latestRetailer[rp.retailer_name] = rp;
+    var key = rp.retailer_name + '|' + (rp.country||'CA');
+    if (!latestRetailer[key] || new Date(rp.checked_at) > new Date(latestRetailer[key].checked_at)) {
+      latestRetailer[key] = rp;
     }
   });
   const retailerList = Object.values(latestRetailer).sort(function(a,b) { return (a.price||99999) - (b.price||99999); });
-  const retailerHtml = retailerList.length ? '<div class="panel"><h2>Retailer Price Comparison (' + retailerList.length + ' retailers)</h2><div class="tablewrap"><table><thead><tr><th>Retailer</th><th>Price</th><th>Regular</th><th>Stock</th><th>Condition</th><th>Delivery</th><th>Checked</th></tr></thead><tbody>' + retailerList.map(function(r, i) {
-    var isLowest = i === 0 && r.price;
-    return '<tr style="' + (isLowest ? 'background:var(--greenbg)' : '') + '">' +
-      '<td><strong>' + esc(r.retailer_name) + (isLowest ? ' 🏆' : '') + '</strong>' + (r.product_url ? '<br/><a href="' + esc(r.product_url) + '" target="_blank" style="font-size:11px;color:var(--indigo)">View ↗</a>' : '') + '</td>' +
-      '<td style="font-weight:700;font-size:15px;color:' + (r.on_sale ? 'var(--red)' : 'var(--green)') + '">' + (r.price ? fmt$(r.price) : '—') + (r.on_sale && r.sale_label ? '<br/><span style="font-size:10px;color:var(--red)">' + esc(r.sale_label) + '</span>' : '') + '</td>' +
-      '<td style="' + (r.on_sale ? 'text-decoration:line-through;color:var(--muted)' : '') + '">' + (r.regular_price ? fmt$(r.regular_price) : '—') + '</td>' +
-      '<td>' + (r.in_stock === true ? '<span style="color:var(--green)">✓ In Stock</span>' : r.in_stock === false ? '<span style="color:var(--red)">✗ Out</span>' : '—') + (r.stock_note ? '<br/><span class="tiny">' + esc(r.stock_note) + '</span>' : '') + '</td>' +
-      '<td>' + (r.is_open_box ? '<span class="pill pill-amber">Open Box</span>' : r.is_clearance ? '<span class="pill pill-amber">Clearance</span>' : r.is_floor_model ? '<span class="pill pill-amber">Floor</span>' : r.condition === 'discontinued' ? '<span class="pill pill-red">Disco</span>' : '<span class="pill pill-green">New</span>') + '</td>' +
-      '<td>' + (r.free_delivery ? '<span style="color:var(--green)">Free</span>' : r.shipping_cost ? fmt$(r.shipping_cost) : '—') + '</td>' +
-      '<td class="tiny">' + new Date(r.checked_at).toLocaleDateString() + '</td></tr>';
-  }).join('') + '</tbody></table></div></div>' +
-  ((retailerPrices||[]).length > retailerList.length ? '<div class="panel" style="margin-top:16px"><h2>Price History by Retailer</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>Retailer</th><th>Price</th><th>Regular</th><th>Condition</th></tr></thead><tbody>' + (retailerPrices||[]).map(function(rp) { return '<tr><td class="tiny">' + new Date(rp.checked_at).toLocaleDateString() + '</td><td>' + esc(rp.retailer_name) + '</td><td style="font-weight:600;color:var(--green)">' + (rp.price ? fmt$(rp.price) : '—') + '</td><td class="tiny">' + (rp.regular_price ? fmt$(rp.regular_price) : '—') + '</td><td class="tiny">' + esc(rp.condition || 'new') + '</td></tr>'; }).join('') + '</tbody></table></div></div>' : '')
-  : '<div class="empty">No retailer prices yet. Use the PIM Scraper\'s 🏪 Retailer Prices tab to check prices across 16 Canadian retailers.</div>';
+  
+  var retailerHtml = '';
+  if (retailerList.length) {
+    ['CA','US'].forEach(function(ctry) {
+      var ctryRetailers = retailerList.filter(function(r){return (r.country||'CA')===ctry;});
+      if (!ctryRetailers.length) return;
+      var flag = ctry === 'CA' ? '🇨🇦' : '🇺🇸';
+      var curr = ctry === 'CA' ? 'CAD' : 'USD';
+      retailerHtml += '<div class="panel" style="margin-bottom:16px"><h2>' + flag + ' ' + ctry + ' Retailer Prices (' + ctryRetailers.length + ') — ' + curr + '</h2><div class="tablewrap"><table><thead><tr><th>Retailer</th><th>Price</th><th>Regular</th><th>Stock</th><th>Condition</th><th>Delivery</th><th>Checked</th></tr></thead><tbody>' + ctryRetailers.map(function(r, i) {
+        var isLowest = i === 0 && r.price;
+        return '<tr style="' + (isLowest ? 'background:var(--greenbg)' : '') + '">' +
+          '<td><strong>' + esc(r.retailer_name) + (isLowest ? ' 🏆' : '') + '</strong>' + (r.product_url ? '<br/><a href="' + esc(r.product_url) + '" target="_blank" style="font-size:11px;color:var(--indigo)">View ↗</a>' : '') + '</td>' +
+          '<td style="font-weight:700;font-size:15px;color:' + (r.on_sale ? 'var(--red)' : 'var(--green)') + '">' + (r.price ? fmt$(r.price) : '—') + (r.on_sale && r.sale_label ? '<br/><span style="font-size:10px;color:var(--red)">' + esc(r.sale_label) + '</span>' : '') + '</td>' +
+          '<td style="' + (r.on_sale ? 'text-decoration:line-through;color:var(--muted)' : '') + '">' + (r.regular_price ? fmt$(r.regular_price) : '—') + '</td>' +
+          '<td>' + (r.in_stock === true ? '<span style="color:var(--green)">✓ In Stock</span>' : r.in_stock === false ? '<span style="color:var(--red)">✗ Out</span>' : '—') + (r.stock_note ? '<br/><span class="tiny">' + esc(r.stock_note) + '</span>' : '') + '</td>' +
+          '<td>' + (r.is_open_box ? '<span class="pill pill-amber">Open Box</span>' : r.is_clearance ? '<span class="pill pill-amber">Clearance</span>' : r.is_floor_model ? '<span class="pill pill-amber">Floor</span>' : r.condition === 'discontinued' ? '<span class="pill pill-red">Disco</span>' : '<span class="pill pill-green">New</span>') + '</td>' +
+          '<td>' + (r.free_delivery ? '<span style="color:var(--green)">Free</span>' : r.shipping_cost ? fmt$(r.shipping_cost) : '—') + '</td>' +
+          '<td class="tiny">' + new Date(r.checked_at).toLocaleDateString() + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
+    });
+  } else {
+    retailerHtml = '<div class="empty">No retailer prices yet. Use the PIM Scraper\'s 🏪 Retailer Prices tab to check prices across Canadian and US retailers.</div>';
+  }
 
   const tabContent={
     overview:condHtml+condNote+`<div class="kv">

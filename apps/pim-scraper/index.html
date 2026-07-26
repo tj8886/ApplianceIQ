@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PIM Scraper — Appliance IQ</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>🔍</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>* { margin: 0; padding: 0; box-sizing: border-box; } body { background: #0f1117; color: #e4e6ed; font-family: 'Inter', -apple-system, sans-serif; } #root { min-height: 100vh; } ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #181a22; } ::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }</style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIM Scraper — Appliance IQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>* { margin: 0; padding: 0; box-sizing: border-box; } body { background: #0f1117; color: #e4e6ed; font-family: 'Inter', -apple-system, sans-serif; } #root { min-height: 100vh; } ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #181a22; } ::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 3px; }</style>
 </head>
 <body>
 <div id="root"></div>
@@ -255,10 +253,66 @@ CRITICAL RULES:
 - Look carefully for badges like "Discontinued", "Clearance", "Open Box", "Floor Model", "Last One", "While Supplies Last", "No Longer Available".
 - If a retailer page says "Replaced by [model]", include that in stock_note.`;
 
-async function retailerPriceCheck(query) {
-  const result = await callClaude(RETAILER_PRICE_PROMPT, "Find retail prices across all major Canadian retailers for: " + query, 2, "claude-sonnet-4-6");
-  if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; return result; }
-  return { found: false, query, error: result.error || "Retailer price check failed", _retailerCheck: true };
+const RETAILER_PRICE_PROMPT_US = `You are a US appliance retail price checker. For the given product, search EACH of these US retailers and find their current price, stock status, and any sale/clearance/open box flags.
+
+Retailers to check:
+- Home Depot (homedepot.com)
+- Lowe's (lowes.com)
+- Best Buy (bestbuy.com)
+- AJ Madison (ajmadison.com)
+- Abt Electronics (abt.com)
+- Yale Appliance (yaleappliance.com)
+- JB Hunt / AppliancesConnection (appliancesconnection.com)
+- P.C. Richard & Son (pcrichard.com)
+- Howard's Appliances (?"howards.com")
+- Spencer's TV & Appliance (?"?"spencerstv.com")
+- Nebraska Furniture Mart (nfm.com)
+- US Appliance (?"usappliance.com")
+- Wayfair (wayfair.com)
+
+Return ONLY valid JSON, no markdown, no backticks:
+
+{
+  "found": true,
+  "brand_name": "",
+  "model": "",
+  "retailers": [
+    {
+      "retailer": "Home Depot",
+      "url": "https://www.homedepot.com/...",
+      "price": null,
+      "regular_price": null,
+      "on_sale": false,
+      "sale_label": "",
+      "in_stock": true,
+      "stock_note": "",
+      "condition": "new",
+      "is_open_box": false,
+      "is_clearance": false,
+      "is_refurbished": false,
+      "is_floor_model": false,
+      "shipping_available": true,
+      "free_delivery": false,
+      "shipping_cost": null
+    }
+  ]
+}
+
+IMPORTANT: Only include retailers that actually carry this product. If a retailer does not list the product, do NOT include them.
+
+CRITICAL RULES:
+- Only return a URL if you actually found the product page. Do NOT guess or construct URLs.
+- If a retailer shows the product as DISCONTINUED, set condition to "discontinued" and look for replacement model info.
+- If no price is shown, set price to null.
+- Look for badges like "Discontinued", "Clearance", "Open Box", "Floor Model".
+- Prices should be in USD.`;
+
+async function retailerPriceCheck(query, country) {
+  const prompt = country === "US" ? RETAILER_PRICE_PROMPT_US : RETAILER_PRICE_PROMPT;
+  const suffix = country === "US" ? " — check US retailers, prices in USD" : " — check Canadian retailers, prices in CAD";
+  const result = await callClaude(prompt, "Find retail prices for: " + query + suffix, 2, "claude-sonnet-4-6");
+  if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; result._country = country || "CA"; return result; }
+  return { found: false, query, error: result.error || "Retailer price check failed", _retailerCheck: true, _country: country || "CA" };
 }
 
 function supaFetch(path, opts = {}) {
@@ -680,6 +734,7 @@ function PIMScraper() {
   const [showKeyInput, setShowKeyInput] = useState(!ANTHROPIC_API_KEY);
   const [priceMode, setPriceMode] = useState("pc-single");
   const [retailerMode, setRetailerMode] = useState("rt-single");
+  const [retailerCountry, setRetailerCountry] = useState("CA");
   
   // Discovery state
   const [discoverBrand, setDiscoverBrand] = useState("");
@@ -952,6 +1007,7 @@ function PIMScraper() {
     try {
       const model = data.model;
       const brand = data.brand_name;
+      const country = data._country || retailerCountry || "CA";
       if (!model || !brand || !data.retailers || !data.retailers.length) return false;
       
       // Try to find product_id
@@ -1001,6 +1057,8 @@ function PIMScraper() {
           shipping_available: r.shipping_available,
           free_delivery: r.free_delivery || false,
           shipping_cost: r.shipping_cost ? parseFloat(r.shipping_cost) : null,
+          price_currency: country === "US" ? "USD" : "CAD",
+          country: country,
         }), headers: { Prefer: "return=minimal" } }).catch(() => {});
       }
 
@@ -1546,22 +1604,28 @@ function PIMScraper() {
                 Checks Best Buy, Home Depot, RONA, Canadian Appliance Source, Goemans, Midland, Trail, Dufresne, Appliance Canada, Futures, TA Appliance, Visions, Leon's, The Brick & more.
               </div>
 
-              {/* Sub-mode tabs */}
-              <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-                {[["rt-single","Single"],["rt-bulk","Bulk"],["rt-pim","From PIM"]].map(([m,label]) => (
-                  <button key={m} style={{ ...s.tab, ...(retailerMode === m ? s.tabActive : {}) }} onClick={() => setRetailerMode(m)}>{label}</button>
-                ))}
+              {/* Sub-mode tabs + country toggle */}
+              <div style={{ display: "flex", gap: 16, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {[["rt-single","Single"],["rt-bulk","Bulk"],["rt-pim","From PIM"]].map(([m,label]) => (
+                    <button key={m} style={{ ...s.tab, ...(retailerMode === m ? s.tabActive : {}) }} onClick={() => setRetailerMode(m)}>{label}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 4, background: palette.card, borderRadius: 8, padding: 2, border: "1px solid " + palette.border }}>
+                  <button onClick={() => setRetailerCountry("CA")} style={{ ...s.btn, ...s.btnSm, padding: "6px 14px", fontSize: 12, background: retailerCountry === "CA" ? palette.accent : "transparent", color: retailerCountry === "CA" ? "#fff" : palette.textDim, border: "none" }}>🇨🇦 Canada</button>
+                  <button onClick={() => setRetailerCountry("US")} style={{ ...s.btn, ...s.btnSm, padding: "6px 14px", fontSize: 12, background: retailerCountry === "US" ? palette.accent : "transparent", color: retailerCountry === "US" ? "#fff" : palette.textDim, border: "none" }}>🇺🇸 USA</button>
+                </div>
               </div>
 
               {/* Single retailer check */}
               {retailerMode === "rt-single" && (
                 <div style={s.inputRow}>
                   <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S)" value={query} onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                    onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query, retailerCountry).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
                   <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
                     if(!query.trim())return; setLoading(true);
                     setProgress({current:1,total:1,currentQuery:query});
-                    const r=await retailerPriceCheck(query); r.query=query;
+                    const r=await retailerPriceCheck(query, retailerCountry); r.query=query;
                     if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)await doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
                     setLoading(false);
                   }}>{loading?"Checking…":"🏪 Check Retailers"}</button>
@@ -1581,7 +1645,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await retailerPriceCheck(lines[i]);
+                          const r = await retailerPriceCheck(lines[i], retailerCountry);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -1624,7 +1688,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await retailerPriceCheck(lines[i]);
+                          const r = await retailerPriceCheck(lines[i], retailerCountry);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -1820,8 +1884,5 @@ function PIMScraper() {
     </div>
   );
 }
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(PIMScraper));
-</script>
-</body>
-</html>
+const root = ReactDOM.createRoot(document.getElementById("root")); root.render(React.createElement(PIMScraper));
+</script></body></html>
