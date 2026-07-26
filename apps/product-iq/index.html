@@ -740,7 +740,7 @@ async function renderCertifications(C){
 /* ══════════════════ PRODUCT DETAIL ══════════════════ */
 async function renderProductDetail(C){
   if(!S.detail)return go('catalog');
-  const [{data:p,error},{data:dims},{data:versions},{data:accessories},{data:images},{data:videos},{data:docs},{data:features},{data:certs},{data:warranty},{data:rebates},{data:priceHistory}]=await Promise.all([
+  const [{data:p,error},{data:dims},{data:versions},{data:accessories},{data:images},{data:videos},{data:docs},{data:features},{data:certs},{data:warranty},{data:rebates},{data:priceHistory},{data:retailerPrices}]=await Promise.all([
     sb.from('aiq_products').select('*').eq('id',S.detail).maybeSingle(),
     sb.from('pim_product_dimensions').select('*').eq('product_id',S.detail).maybeSingle(),
     sb.from('aiq_product_versions').select('*').eq('product_id',S.detail).order('version_number',{ascending:false}),
@@ -752,14 +752,15 @@ async function renderProductDetail(C){
     sb.from('pim_product_certifications').select('*').eq('product_id',S.detail),
     sb.from('pim_warranty_details').select('*').eq('product_id',S.detail).order('display_order'),
     sb.from('pim_product_rebates').select('*').eq('product_id',S.detail),
-    sb.from('pim_price_history').select('*').eq('product_id',S.detail).order('checked_at',{ascending:false}).limit(20)
+    sb.from('pim_price_history').select('*').eq('product_id',S.detail).order('checked_at',{ascending:false}).limit(20),
+    sb.from('pim_retailer_prices').select('*').eq('product_id',S.detail).order('checked_at',{ascending:false})
   ]);
   if(error||!p)return C.innerHTML=`<div class="error">Product not found.</div>`;
   if(S.editMode)return renderProductEdit(C,p);
 
   const heroImg=(images||[]).find(i=>i.is_primary)||images?.[0];
-  const allTabs=['overview','pricing','specs','images','videos','documents','marketing','dimensions','features','accessories','certifications','warranty','rebates','history'];
-  const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length,rebates:(rebates||[]).length,history:(versions||[]).length,pricing:(priceHistory||[]).length};
+  const allTabs=['overview','pricing','retailers','specs','images','videos','documents','marketing','dimensions','features','accessories','certifications','warranty','rebates','history'];
+  const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length,rebates:(rebates||[]).length,history:(versions||[]).length,pricing:(priceHistory||[]).length,retailers:(retailerPrices||[]).length};
   const tab=S.detailTab||'overview';
 
   // Pre-compute complex values
@@ -784,6 +785,28 @@ async function renderProductDetail(C){
   const specsHtml=specsKeys.length?'<div class="panel"><h2>Detailed Specifications</h2><div class="kv">'+specsKeys.map(function(k){return '<div><small>'+k.replace(/_/g,' ')+'</small>'+esc(String(specsObj[k]))+'</div>';}).join('')+'</div></div>':'<div class="empty">No detailed specifications yet.</div>';
 
   const priceRows=(priceHistory||[]).map(function(ph){return '<tr><td class="tiny">'+new Date(ph.checked_at).toLocaleDateString()+'</td><td>'+fmt$(ph.msrp)+'</td><td style="color:var(--red)">'+fmt$(ph.sale_price)+'</td><td style="color:var(--green)">'+fmt$(ph.lowest_price)+'</td><td class="tiny">'+esc(ph.lowest_price_source||'')+'</td></tr>';}).join('');
+
+  // Group retailer prices by most recent check per retailer
+  const latestRetailer = {};
+  (retailerPrices||[]).forEach(function(rp) {
+    if (!latestRetailer[rp.retailer_name] || new Date(rp.checked_at) > new Date(latestRetailer[rp.retailer_name].checked_at)) {
+      latestRetailer[rp.retailer_name] = rp;
+    }
+  });
+  const retailerList = Object.values(latestRetailer).sort(function(a,b) { return (a.price||99999) - (b.price||99999); });
+  const retailerHtml = retailerList.length ? '<div class="panel"><h2>Retailer Price Comparison (' + retailerList.length + ' retailers)</h2><div class="tablewrap"><table><thead><tr><th>Retailer</th><th>Price</th><th>Regular</th><th>Stock</th><th>Condition</th><th>Delivery</th><th>Checked</th></tr></thead><tbody>' + retailerList.map(function(r, i) {
+    var isLowest = i === 0 && r.price;
+    return '<tr style="' + (isLowest ? 'background:var(--greenbg)' : '') + '">' +
+      '<td><strong>' + esc(r.retailer_name) + (isLowest ? ' 🏆' : '') + '</strong>' + (r.product_url ? '<br/><a href="' + esc(r.product_url) + '" target="_blank" style="font-size:11px;color:var(--indigo)">View ↗</a>' : '') + '</td>' +
+      '<td style="font-weight:700;font-size:15px;color:' + (r.on_sale ? 'var(--red)' : 'var(--green)') + '">' + (r.price ? fmt$(r.price) : '—') + (r.on_sale && r.sale_label ? '<br/><span style="font-size:10px;color:var(--red)">' + esc(r.sale_label) + '</span>' : '') + '</td>' +
+      '<td style="' + (r.on_sale ? 'text-decoration:line-through;color:var(--muted)' : '') + '">' + (r.regular_price ? fmt$(r.regular_price) : '—') + '</td>' +
+      '<td>' + (r.in_stock === true ? '<span style="color:var(--green)">✓ In Stock</span>' : r.in_stock === false ? '<span style="color:var(--red)">✗ Out</span>' : '—') + (r.stock_note ? '<br/><span class="tiny">' + esc(r.stock_note) + '</span>' : '') + '</td>' +
+      '<td>' + (r.is_open_box ? '<span class="pill pill-amber">Open Box</span>' : r.is_clearance ? '<span class="pill pill-amber">Clearance</span>' : r.is_floor_model ? '<span class="pill pill-amber">Floor</span>' : r.condition === 'discontinued' ? '<span class="pill pill-red">Disco</span>' : '<span class="pill pill-green">New</span>') + '</td>' +
+      '<td>' + (r.free_delivery ? '<span style="color:var(--green)">Free</span>' : r.shipping_cost ? fmt$(r.shipping_cost) : '—') + '</td>' +
+      '<td class="tiny">' + new Date(r.checked_at).toLocaleDateString() + '</td></tr>';
+  }).join('') + '</tbody></table></div></div>' +
+  ((retailerPrices||[]).length > retailerList.length ? '<div class="panel" style="margin-top:16px"><h2>Price History by Retailer</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>Retailer</th><th>Price</th><th>Regular</th><th>Condition</th></tr></thead><tbody>' + (retailerPrices||[]).map(function(rp) { return '<tr><td class="tiny">' + new Date(rp.checked_at).toLocaleDateString() + '</td><td>' + esc(rp.retailer_name) + '</td><td style="font-weight:600;color:var(--green)">' + (rp.price ? fmt$(rp.price) : '—') + '</td><td class="tiny">' + (rp.regular_price ? fmt$(rp.regular_price) : '—') + '</td><td class="tiny">' + esc(rp.condition || 'new') + '</td></tr>'; }).join('') + '</tbody></table></div></div>' : '')
+  : '<div class="empty">No retailer prices yet. Use the PIM Scraper\'s 🏪 Retailer Prices tab to check prices across 16 Canadian retailers.</div>';
 
   const tabContent={
     overview:condHtml+condNote+`<div class="kv">
@@ -812,7 +835,7 @@ async function renderProductDetail(C){
     ${p.price_checked_at?'<div style="font-size:12px;color:var(--muted);margin-bottom:16px">Last checked: '+new Date(p.price_checked_at).toLocaleString()+'</div>':''}
     ${priceRows?'<div class="panel"><h2>Price History</h2><div class="tablewrap"><table><thead><tr><th>Date</th><th>MSRP</th><th>Sale</th><th>Lowest</th><th>Source</th></tr></thead><tbody>'+priceRows+'</tbody></table></div></div>':'<div class="empty">No price history yet.</div>'}`,
 
-    specs:specsHtml,images:(images||[]).length?`<div class="asset-grid">${(images||[]).map(img=>`<div class="asset-card">
+    specs:specsHtml,retailers:retailerHtml,images:(images||[]).length?`<div class="asset-grid">${(images||[]).map(img=>`<div class="asset-card">
       <div class="preview">${img.file_url?`<img src="${esc(img.file_url)}" onerror="this.parentNode.innerHTML='📸'"/>`:'📸'}${img.is_primary?'<span class="pill pill-green" style="position:absolute;top:6px;right:6px">Primary</span>':''}</div>
       <div class="info"><h4>${(img.image_type||'').replace(/_/g,' ')}</h4><span class="tiny">${esc(img.finish_shown||'')} ${esc(img.angle||'')} ${img.width_px?img.width_px+'×'+img.height_px:''}</span></div>
       <div class="actions"><a href="${esc(img.file_url)}" target="_blank" class="btn btn-secondary btn-sm">View ↗</a>
