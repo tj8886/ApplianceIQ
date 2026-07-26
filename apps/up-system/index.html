@@ -414,9 +414,12 @@ async function boot(){
   }
   }catch(e){console.warn('Invite check:',e);}
 
-  // Get orgs
-  const{data:memberships}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('user_id',currentUser.id).eq('status','active');
-  orgs=(memberships??[]).map(m=>({...m.organizations,_role:m.role})).filter(Boolean);
+  // Get orgs — query role separately to avoid join issues
+  const{data:memberships}=await sb.from('organization_members').select('organization_id,role').eq('user_id',currentUser.id).eq('status','active');
+  const memberRoles={};(memberships||[]).forEach(m=>{memberRoles[m.organization_id]=m.role;});
+  const orgIds=(memberships||[]).map(m=>m.organization_id);
+  const{data:orgData}=orgIds.length?await sb.from('organizations').select('id,name,slug').in('id',orgIds):{data:[]};
+  orgs=(orgData||[]).map(o=>({...o,_role:memberRoles[o.id]||'member'}));
 
   if(!orgs.length){
     // No org — show onboarding
