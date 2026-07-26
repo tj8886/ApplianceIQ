@@ -43,22 +43,35 @@ try {
 } catch(e) {}
 
 const MODELS = [
-  { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5", short: "H4.5", cost: "~0.3¢", color: "#00b894", desc: "Fast & cheap — bulk scraping", provider: "anthropic" },
-  { id: "claude-sonnet-4-6", label: "Sonnet 4.6", short: "S4.6", cost: "~1.5¢", color: "#6c5ce7", desc: "Balanced — good for most tasks", provider: "anthropic" },
-  { id: "claude-opus-4-6", label: "Opus 4.6", short: "O4.6", cost: "~7.5¢", color: "#e17055", desc: "Most capable — complex research", provider: "anthropic" },
-  { id: "gpt-4o-mini", label: "GPT-4o Mini", short: "4oM", cost: "~0.2¢", color: "#10a37f", desc: "OpenAI fast & cheap", provider: "openai" },
-  { id: "gpt-4o", label: "GPT-4o", short: "4o", cost: "~1.5¢", color: "#1a7f64", desc: "OpenAI balanced", provider: "openai" },
-  { id: "o3-mini", label: "o3-mini", short: "o3m", cost: "~0.6¢", color: "#0d6e4f", desc: "OpenAI reasoning — mini", provider: "openai" },
+  { id: "claude-haiku-4-5-20251001", label: "Claude Haiku", short: "Haiku", cost: "~0.3¢", color: "#00b894", desc: "Specs + images, web search included", provider: "anthropic" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet", short: "Sonnet", cost: "~1.5¢", color: "#6c5ce7", desc: "Deep research, web search critical", provider: "anthropic" },
+  { id: "claude-opus-4-6", label: "Claude Opus", short: "Opus", cost: "~7.5¢", color: "#e17055", desc: "Most capable — rare/complex products", provider: "anthropic" },
+  { id: "gpt-4.1-nano", label: "GPT-4.1 Nano", short: "Nano", cost: "~0.05¢", color: "#74aa9c", desc: "Cheapest — pure volume price checks", provider: "openai" },
+  { id: "gpt-4.1-mini", label: "GPT-4.1 Mini", short: "4.1m", cost: "~0.1¢", color: "#10a37f", desc: "Fast + accurate for numbers", provider: "openai" },
+  { id: "gpt-4o-mini", label: "GPT-4o Mini", short: "4oM", cost: "~0.2¢", color: "#0fa37f", desc: "Model discovery, finding model #s", provider: "openai" },
+  { id: "gpt-4o", label: "GPT-4o", short: "4o", cost: "~1.5¢", color: "#1a7f64", desc: "Balanced OpenAI alternative", provider: "openai" },
+  { id: "gpt-5", label: "GPT-5", short: "GPT5", cost: "~5¢", color: "#0d5e3f", desc: "High accuracy — retailer conditions", provider: "openai" },
 ];
 
+// Defaults per mode+submode — key format: "mode" or "mode.submode"
 const MODE_DEFAULT_MODELS = {
-  single: "claude-haiku-4-5-20251001",
-  bulk: "claude-haiku-4-5-20251001",
-  discover: "claude-haiku-4-5-20251001",
-  existing: "claude-haiku-4-5-20251001",
-  pricecheck: "claude-haiku-4-5-20251001",
-  retailer: "claude-sonnet-4-6",
-  intel: "claude-sonnet-4-6",
+  "single":            "claude-haiku-4-5-20251001",
+  "bulk":              "claude-haiku-4-5-20251001",
+  "existing":          "claude-haiku-4-5-20251001",
+  "discover":          "gpt-4o-mini",
+  "discover.scraping": "claude-haiku-4-5-20251001",
+  "pricecheck.pc-single": "gpt-4.1-mini",
+  "pricecheck.pc-bulk":   "gpt-4.1-nano",
+  "pricecheck.pc-site":   "gpt-4.1-nano",
+  "pricecheck":           "gpt-4.1-mini",
+  "retailer.rt-single":   "gpt-5",
+  "retailer.rt-bulk":     "gpt-5",
+  "retailer.rt-pim":      "gpt-5",
+  "retailer":             "gpt-5",
+  "intel.company":        "claude-sonnet-4-6",
+  "intel.news":           "claude-sonnet-4-6",
+  "intel.bulk-intel":     "gpt-5",
+  "intel":                "claude-sonnet-4-6",
 };
 
 let SAVED_MODEL = "";
@@ -1049,15 +1062,6 @@ function PIMScraper() {
   const [selectedModel, setSelectedModel] = useState(SAVED_MODEL || "");
   const [showModelPicker, setShowModelPicker] = useState(false);
 
-  // Get the effective model for the current mode
-  const getModel = useCallback(() => {
-    if (selectedModel) return selectedModel;
-    return MODE_DEFAULT_MODELS[mode] || "claude-haiku-4-5-20251001";
-  }, [selectedModel, mode]);
-
-  const activeModel = getModel();
-  const activeModelInfo = MODELS.find(m => m.id === activeModel) || MODELS[0];
-
   const [priceMode, setPriceMode] = useState("pc-single");
   const [retailerMode, setRetailerMode] = useState("rt-single");
   const [retailerCountry, setRetailerCountry] = useState("CA");
@@ -1191,6 +1195,24 @@ function PIMScraper() {
   const [selectedModels, setSelectedModels] = useState(new Set());
   const [allBrands, setAllBrands] = useState([]);
   const [brandSearch, setBrandSearch] = useState("");
+
+  // Get the effective model for the current mode + submode
+  const getSubmode = () => {
+    if (mode === "pricecheck") return priceMode;
+    if (mode === "retailer") return retailerMode;
+    if (mode === "intel") return intelMode;
+    if (mode === "discover" && discoverPhase === "scraping") return "scraping";
+    return "";
+  };
+
+  const getModel = useCallback(() => {
+    if (selectedModel) return selectedModel;
+    const sub = getSubmode();
+    return MODE_DEFAULT_MODELS[mode + "." + sub] || MODE_DEFAULT_MODELS[mode] || "claude-haiku-4-5-20251001";
+  }, [selectedModel, mode, priceMode, retailerMode, intelMode, discoverPhase]);
+
+  const activeModel = getModel();
+  const activeModelInfo = MODELS.find(m => m.id === activeModel) || MODELS[0];
 
   // Load brands from DB on mount
   const loadBrands = useCallback(async () => {
@@ -1800,13 +1822,14 @@ function PIMScraper() {
                 </div>
 
                 <div style={{ borderTop: "1px solid " + palette.border, marginTop: 6, paddingTop: 6, padding: "6px 10px" }}>
-                  <div style={{ fontSize: 10, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Best model by feature</div>
-                  <div style={{ fontSize: 11, lineHeight: 1.8, color: palette.textDim }}>
-                    <div><span style={{ color: "#00b894", fontWeight: 600 }}>Haiku</span> — Single scrape, Bulk scrape, Price check, Discover</div>
-                    <div><span style={{ color: "#6c5ce7", fontWeight: 600 }}>Sonnet</span> — Retailer prices, Company intel, News</div>
-                    <div><span style={{ color: "#e17055", fontWeight: 600 }}>Opus</span> — Deep research, complex/rare products</div>
-                    <div><span style={{ color: "#10a37f", fontWeight: 600 }}>GPT-4o Mini</span> — Fast alternative to Haiku</div>
-                    <div><span style={{ color: "#1a7f64", fontWeight: 600 }}>GPT-4o</span> — Alternative to Sonnet</div>
+                  <div style={{ fontSize: 10, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Auto defaults by tab</div>
+                  <div style={{ fontSize: 10, lineHeight: 1.9, color: palette.textDim }}>
+                    <div><span style={{ color: "#00b894", fontWeight: 600 }}>Haiku</span> — Single scrape · Bulk scrape · Enrich · Site scrape (full)</div>
+                    <div><span style={{ color: "#0fa37f", fontWeight: 600 }}>4o Mini</span> — Site scrape discovery (just model #s)</div>
+                    <div><span style={{ color: "#10a37f", fontWeight: 600 }}>4.1 Mini</span> — Price check single</div>
+                    <div><span style={{ color: "#74aa9c", fontWeight: 600 }}>4.1 Nano</span> — Price check bulk · Price check site</div>
+                    <div><span style={{ color: "#0d5e3f", fontWeight: 600 }}>GPT-5</span> — Retailer prices (CA/US) · Intel bulk research</div>
+                    <div><span style={{ color: "#6c5ce7", fontWeight: 600 }}>Sonnet</span> — Company intel · News</div>
                   </div>
                 </div>
               </div>
