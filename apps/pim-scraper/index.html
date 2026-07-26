@@ -307,12 +307,91 @@ CRITICAL RULES:
 - Look for badges like "Discontinued", "Clearance", "Open Box", "Floor Model".
 - Prices should be in USD.`;
 
+const COMPANY_INTEL_PROMPT = `You are an appliance industry research assistant. Research the given company thoroughly and return comprehensive intelligence.
+
+Return ONLY valid JSON, no markdown, no backticks:
+
+{
+  "found": true,
+  "name": "",
+  "type": "manufacturer or retailer or distributor",
+  "parent_company": "",
+  "headquarters": "",
+  "country": "",
+  "founded": "",
+  "website": "",
+  "brands": ["brand1", "brand2"],
+  "leadership": [
+    {"name": "", "title": "CEO", "since": ""}
+  ],
+  "description": "2-3 sentence company overview",
+  "history": "Key history: founding, mergers, acquisitions, milestones",
+  "manufacturing_locations": [
+    {"city": "", "country": "", "what": "refrigerators"}
+  ],
+  "distribution_notes": "",
+  "market_segment": "luxury, mass market, commercial, etc",
+  "employee_count": "",
+  "annual_revenue": "",
+  "stock_ticker": "",
+  "recent_news": [
+    {"headline": "", "summary": "", "category": "product_launch or executive or expansion or acquisition or recall or financial or partnership or closure", "source": "", "source_url": "", "date": ""}
+  ],
+  "stores": [
+    {"name": "", "address": "", "city": "", "province_state": "", "country": "", "status": "active or closed", "opened": "", "closed": ""}
+  ]
+}
+
+For MANUFACTURERS: focus on brands owned, leadership, history, manufacturing, product launches, market position.
+For RETAILERS: focus on store locations, brands carried, expansion/closures, ownership, service areas.
+Get as much detail as possible. Include ALL recent news you can find.`;
+
+const NEWS_SCRAPE_PROMPT = `You are an appliance industry news researcher. Find the latest news, announcements, and developments about the given company or topic in the appliance industry.
+
+Return ONLY valid JSON, no markdown, no backticks:
+
+{
+  "found": true,
+  "query": "",
+  "news": [
+    {
+      "headline": "",
+      "summary": "2-3 sentence summary",
+      "category": "product_launch or executive or expansion or acquisition or recall or financial or partnership or closure or regulation or trade_show or technology or sustainability",
+      "company": "",
+      "source_name": "",
+      "source_url": "",
+      "date": ""
+    }
+  ]
+}
+
+Find as many relevant recent articles as possible. Check industry sources like:
+- Appliance retailer trade publications
+- Business news (Globe and Mail, Financial Post, Reuters)
+- Industry news (TWICE, HFN, Dealerscope)
+- Company press releases
+- Trade show coverage (KBIS, IBS, CES)
+Focus on the last 6 months but include major older stories if significant.`;
+
 async function retailerPriceCheck(query, country) {
   const prompt = country === "US" ? RETAILER_PRICE_PROMPT_US : RETAILER_PRICE_PROMPT;
   const suffix = country === "US" ? " — check US retailers, prices in USD" : " — check Canadian retailers, prices in CAD";
   const result = await callClaude(prompt, "Find retail prices for: " + query + suffix, 2, "claude-sonnet-4-6");
   if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; result._country = country || "CA"; return result; }
   return { found: false, query, error: result.error || "Retailer price check failed", _retailerCheck: true, _country: country || "CA" };
+}
+
+async function companyIntelScrape(query) {
+  const result = await callClaude(COMPANY_INTEL_PROMPT, "Research this appliance industry company thoroughly: " + query, 2, "claude-sonnet-4-6");
+  if (result.found || result.name) { result.found = true; result._intel = true; return result; }
+  return { found: false, query, error: result.error || "Company intel scrape failed", _intel: true };
+}
+
+async function newsScrape(query) {
+  const result = await callClaude(NEWS_SCRAPE_PROMPT, "Find the latest appliance industry news about: " + query, 2, "claude-sonnet-4-6");
+  if (result.found || result.news) { result.found = true; result._news = true; return result; }
+  return { found: false, query, error: result.error || "News scrape failed", _news: true };
 }
 
 function supaFetch(path, opts = {}) {
@@ -714,6 +793,65 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
           </table>
         </div>
       )}
+
+      {/* Company Intel Results */}
+      {data._intel && data.found && (
+        <div style={{ marginTop: 16 }}>
+          <div style={s.grid}>
+            {data.type && <Field label="Type" value={data.type} />}
+            {data.parent_company && <Field label="Parent Company" value={data.parent_company} />}
+            {data.headquarters && <Field label="HQ" value={data.headquarters} />}
+            {data.founded && <Field label="Founded" value={data.founded} />}
+            {data.employee_count && <Field label="Employees" value={data.employee_count} />}
+            {data.annual_revenue && <Field label="Revenue" value={data.annual_revenue} />}
+            {data.market_segment && <Field label="Market" value={data.market_segment} />}
+          </div>
+          {data.description && <div style={{ marginTop: 12, fontSize: 13, color: palette.textDim, lineHeight: 1.7 }}>{data.description}</div>}
+          {data.history && <div style={{ marginTop: 12 }}><div style={s.label}>History</div><div style={{ fontSize: 13, color: palette.textDim, lineHeight: 1.7 }}>{data.history}</div></div>}
+          {data.brands && data.brands.length > 0 && (
+            <div style={{ marginTop: 12 }}><div style={s.label}>Brands ({data.brands.length})</div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>{data.brands.map((b,i) => <span key={i} style={{ ...s.badge, background: palette.accentSoft, color: palette.accentText }}>{b}</span>)}</div></div>
+          )}
+          {data.leadership && data.leadership.length > 0 && (
+            <div style={{ marginTop: 12 }}><div style={s.label}>Leadership</div>
+              {data.leadership.map((l,i) => <div key={i} style={{ fontSize: 13, marginBottom: 4 }}><strong>{l.name}</strong> — {l.title}{l.since ? " (since " + l.since + ")" : ""}</div>)}</div>
+          )}
+          {data.recent_news && data.recent_news.length > 0 && (
+            <div style={{ marginTop: 12 }}><div style={s.label}>Recent News ({data.recent_news.length})</div>
+              {data.recent_news.map((n,i) => <div key={i} style={{ padding: "8px 0", borderBottom: "1px solid " + palette.border + "30" }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{n.headline}</div>
+                {n.summary && <div style={{ fontSize: 12, color: palette.textDim, marginTop: 2 }}>{n.summary}</div>}
+                <div style={{ fontSize: 11, color: palette.textMuted, marginTop: 2 }}>{n.category && <Badge>{n.category.replace(/_/g," ")}</Badge>} {n.source} · {n.date}</div>
+              </div>)}</div>
+          )}
+          {data.stores && data.stores.length > 0 && (
+            <div style={{ marginTop: 12 }}><div style={s.label}>Locations ({data.stores.length})</div>
+              <div style={{ maxHeight: 200, overflow: "auto", marginTop: 4 }}>
+                {data.stores.map((loc,i) => <div key={i} style={{ fontSize: 12, padding: "4px 0", borderBottom: "1px solid " + palette.border + "20" }}>
+                  <strong>{loc.name || loc.city}</strong> — {loc.city}, {loc.province_state}
+                  {loc.status === "closed" && <span style={{ color: palette.red, marginLeft: 8 }}>Closed</span>}
+                </div>)}</div></div>
+          )}
+        </div>
+      )}
+
+      {/* News Results */}
+      {data._news && data.news && data.news.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={s.label}>News Articles ({data.news.length})</div>
+          {data.news.map((n,i) => <div key={i} style={{ padding: "10px 0", borderBottom: "1px solid " + palette.border + "30" }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{n.headline}</div>
+            {n.summary && <div style={{ fontSize: 13, color: palette.textDim, marginTop: 4, lineHeight: 1.6 }}>{n.summary}</div>}
+            <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center", fontSize: 11, color: palette.textMuted, flexWrap: "wrap" }}>
+              {n.category && <Badge>{n.category.replace(/_/g," ")}</Badge>}
+              {n.company && <span>{n.company}</span>}
+              {n.source_name && <span>{n.source_name}</span>}
+              {n.date && <span>{n.date}</span>}
+              {n.source_url && <a href={n.source_url} target="_blank" rel="noreferrer" style={{ color: palette.blue }}>Read ↗</a>}
+            </div>
+          </div>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -735,6 +873,126 @@ function PIMScraper() {
   const [priceMode, setPriceMode] = useState("pc-single");
   const [retailerMode, setRetailerMode] = useState("rt-single");
   const [retailerCountry, setRetailerCountry] = useState("CA");
+  const [intelMode, setIntelMode] = useState("company");
+
+  // Save company intel to Supabase
+  const doIntelSave = async (data) => {
+    try {
+      // Check if company already exists
+      const checkRes = await supaFetch("intel_companies?name=eq." + encodeURIComponent(data.name) + "&select=id");
+      const existing = await checkRes.json();
+      
+      const companyData = {
+        name: data.name,
+        type: data.type || "manufacturer",
+        parent_company: data.parent_company || null,
+        headquarters: data.headquarters || null,
+        country: data.country || null,
+        founded: data.founded || null,
+        website: data.website || null,
+        brands: data.brands || [],
+        leadership: data.leadership || [],
+        description: data.description || null,
+        history: data.history || null,
+        manufacturing_locations: data.manufacturing_locations || [],
+        distribution_notes: data.distribution_notes || null,
+        market_segment: data.market_segment || null,
+        employee_count: data.employee_count || null,
+        annual_revenue: data.annual_revenue || null,
+        stock_ticker: data.stock_ticker || null,
+        source_url: data.website || null,
+        scraped_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      let companyId;
+      if (existing && existing.length) {
+        companyId = existing[0].id;
+        await supaFetch("intel_companies?id=eq." + companyId, { method: "PATCH", body: JSON.stringify(companyData) });
+        setSaved(p => [...p, { model: data.name, action: "intel updated" }]);
+      } else {
+        const res = await supaFetch("intel_companies", { method: "POST", body: JSON.stringify(companyData) });
+        const created = await res.json();
+        companyId = created[0]?.id;
+        setSaved(p => [...p, { model: data.name, action: "intel created" }]);
+      }
+
+      // Save news
+      if (companyId && data.recent_news) {
+        for (const n of data.recent_news) {
+          await supaFetch("intel_news", { method: "POST", body: JSON.stringify({
+            company_id: companyId,
+            company_name: data.name,
+            headline: n.headline,
+            summary: n.summary || null,
+            category: n.category || null,
+            source_name: n.source || null,
+            source_url: n.source_url || null,
+            published_date: n.date || null,
+          }), headers: { Prefer: "return=minimal" } }).catch(() => {});
+        }
+      }
+
+      // Save store locations
+      if (companyId && data.stores) {
+        for (const loc of data.stores) {
+          await supaFetch("intel_locations", { method: "POST", body: JSON.stringify({
+            company_id: companyId,
+            company_name: data.name,
+            location_type: "store",
+            name: loc.name || null,
+            address: loc.address || null,
+            city: loc.city || null,
+            province_state: loc.province_state || null,
+            country: loc.country || null,
+            status: loc.status || "active",
+            opened_date: loc.opened || null,
+            closed_date: loc.closed || null,
+            source_url: data.website || null,
+          }), headers: { Prefer: "return=minimal" } }).catch(() => {});
+        }
+      }
+
+      saveCountRef.current.saved++;
+      return true;
+    } catch (e) {
+      setErrors(p => [...p, "Intel save " + (data.name || "") + ": " + e.message]);
+      saveCountRef.current.failed++;
+      return false;
+    }
+  };
+
+  // Save news items
+  const doNewsSave = async (data) => {
+    try {
+      if (!data.news || !data.news.length) return false;
+      for (const n of data.news) {
+        // Try to link to company
+        let companyId = null;
+        if (n.company) {
+          const checkRes = await supaFetch("intel_companies?name=ilike.*" + encodeURIComponent(n.company) + "*&select=id&limit=1");
+          const co = await checkRes.json();
+          if (co && co.length) companyId = co[0].id;
+        }
+        await supaFetch("intel_news", { method: "POST", body: JSON.stringify({
+          company_id: companyId,
+          company_name: n.company || data.query || "",
+          headline: n.headline,
+          summary: n.summary || null,
+          category: n.category || null,
+          source_name: n.source_name || null,
+          source_url: n.source_url || null,
+          published_date: n.date || null,
+        }), headers: { Prefer: "return=minimal" } }).catch(() => {});
+      }
+      setSaved(p => [...p, { model: data.query || "News", action: data.news.length + " articles saved" }]);
+      saveCountRef.current.saved++;
+      return true;
+    } catch (e) {
+      setErrors(p => [...p, "News save: " + e.message]);
+      return false;
+    }
+  };
   
   // Discovery state
   const [discoverBrand, setDiscoverBrand] = useState("");
@@ -1286,7 +1544,7 @@ function PIMScraper() {
         <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 4 }}>
-            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"], ["existing", "Enrich Existing"]].map(([m, label]) => (
+            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"], ["intel", "🔎 Intelligence"], ["existing", "Enrich Existing"]].map(([m, label]) => (
               <button key={m} style={{ ...s.tab, ...(mode === m ? s.tabActive : {}) }} onClick={() => { setMode(m); if (m === "existing") loadExisting(); }}>{label}</button>
             ))}
           </div>
@@ -1710,6 +1968,116 @@ function PIMScraper() {
 
               <div style={{ marginTop: 12, fontSize: 12, color: palette.textMuted }}>
                 🏪 Checks 16 Canadian retailers per product · ~1-2¢ per product · 5 sec delay · Saves to pim_retailer_prices + updates lowest_price in PIM
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Intelligence mode */}
+        {mode === "intel" && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={s.card}>
+              <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>🔎 Appliance Industry Intelligence</div>
+              <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
+                Research manufacturers, retailers, and industry news. Builds the most comprehensive appliance knowledge base in North America.
+              </div>
+
+              <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+                {[["company","🏢 Company Profile"],["news","📰 Industry News"],["bulk-intel","📋 Bulk Research"]].map(([m,label]) => (
+                  <button key={m} style={{ ...s.tab, ...(intelMode === m ? s.tabActive : {}) }} onClick={() => setIntelMode(m)}>{label}</button>
+                ))}
+              </div>
+
+              {/* Company Profile */}
+              {intelMode === "company" && (
+                <div>
+                  <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 12 }}>Enter a manufacturer, retailer, or distributor name to get full company intelligence.</div>
+                  <div style={s.inputRow}>
+                    <input style={s.input} placeholder="e.g. Whirlpool Corporation, Goemans Appliances, BSH Home Appliances" value={query} onChange={e => setQuery(e.target.value)}
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); companyIntelScrape(query).then(r=>{if(r.found){if(autoSave)doIntelSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                    <button style={{ ...s.btn, background: "#0984e3" }} disabled={loading} onClick={async () => {
+                      if(!query.trim())return; setLoading(true);
+                      setProgress({current:1,total:1,currentQuery:query});
+                      const r = await companyIntelScrape(query);
+                      if(r.found){if(autoSave)await doIntelSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);
+                      setLoading(false);
+                    }}>{loading?"Researching…":"🔎 Research"}</button>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+                    <div style={{ ...s.label, width: "100%", marginBottom: 4 }}>Quick picks</div>
+                    {["Whirlpool Corporation","LG Electronics","Samsung","BSH Home Appliances","Electrolux","GE Appliances","Sub-Zero Wolf","Miele","Fisher & Paykel","Goemans Appliances","Trail Appliances","Midland Appliance","Canadian Appliance Source","Dufresne","Appliance Canada","The Brick","Leon's"].map(c => (
+                      <button key={c} onClick={() => setQuery(c)} style={{ ...s.btn, ...s.btnSm, ...s.btnOutline, padding: "4px 10px", fontSize: 11 }}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Industry News */}
+              {intelMode === "news" && (
+                <div>
+                  <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 12 }}>Search for the latest appliance industry news by company, topic, or trend.</div>
+                  <div style={s.inputRow}>
+                    <input style={s.input} placeholder="e.g. LG new refrigerator launch, Whirlpool layoffs, KBIS 2026" value={query} onChange={e => setQuery(e.target.value)}
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); newsScrape(query).then(r=>{if(r.found){r.query=query;if(autoSave)doNewsSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                    <button style={{ ...s.btn, background: "#0984e3" }} disabled={loading} onClick={async () => {
+                      if(!query.trim())return; setLoading(true);
+                      setProgress({current:1,total:1,currentQuery:query});
+                      const r = await newsScrape(query); r.query = query;
+                      if(r.found){if(autoSave)await doNewsSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);
+                      setLoading(false);
+                    }}>{loading?"Searching…":"📰 Find News"}</button>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+                    <div style={{ ...s.label, width: "100%", marginBottom: 4 }}>Trending topics</div>
+                    {["appliance industry 2026","new product launches","store closures Canada","smart home appliances","energy efficiency regulations","appliance tariffs","KBIS 2026","appliance supply chain","luxury appliance market","appliance recalls 2026"].map(t => (
+                      <button key={t} onClick={() => setQuery(t)} style={{ ...s.btn, ...s.btnSm, ...s.btnOutline, padding: "4px 10px", fontSize: 11 }}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bulk Research */}
+              {intelMode === "bulk-intel" && (
+                <div>
+                  <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 12 }}>Paste a list of companies to research. One per line.</div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <button style={{ ...s.btn, ...s.btnSm }} onClick={async () => {
+                      if (!allBrands.length) await loadBrands();
+                      const unique = [...new Set(allBrands.map(b => b.parent_company || b.brand_name))];
+                      setBulkText(unique.join("\n"));
+                    }}>Load All Parent Companies</button>
+                    <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => {
+                      setBulkText(allBrands.map(b => b.brand_name).join("\n"));
+                    }}>Load All Brands</button>
+                  </div>
+                  <textarea style={s.textarea} rows={6} placeholder={"One company per line:\nWhirlpool Corporation\nLG Electronics\nGoemans Appliances"} value={bulkText} onChange={e => setBulkText(e.target.value)} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                    <button style={{ ...s.btn, background: "#0984e3" }} disabled={loading} onClick={async () => {
+                      const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
+                      if (!lines.length) return;
+                      setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
+                      for (let i = 0; i < lines.length; i++) {
+                        if (abortRef.current) break;
+                        setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
+                        try {
+                          const r = await companyIntelScrape(lines[i]);
+                          if (r.found) { if(autoSave) await doIntelSave(r); setResults(p => [...p, r]); }
+                          else setResults(p => [...p, { ...r, query: lines[i] }]);
+                        } catch (e) { setErrors(p => [...p, "Intel " + lines[i] + ": " + e.message]); }
+                        if (i < lines.length - 1) await new Promise(r => setTimeout(r, 6000));
+                      }
+                      setLoading(false);
+                    }}>
+                      {loading ? "Researching " + progress.current + "/" + progress.total + "…" : "🔎 Research " + bulkText.split("\n").filter(Boolean).length + " Companies"}
+                    </button>
+                    {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                    {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 12, fontSize: 12, color: palette.textMuted }}>
+                🔎 Uses Sonnet for accuracy · Saves to intel_companies, intel_news, intel_locations · Powers AI coaching team training data
               </div>
             </div>
           </div>
