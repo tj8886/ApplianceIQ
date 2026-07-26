@@ -382,7 +382,7 @@ function navItems(){
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
   n.push(['_sep'],['_label','INTELLIGENCE'],
-    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors','🚚','Distributors'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
+    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
   return n;
 }
@@ -427,7 +427,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,distributors:renderDistributors,'distributor-detail':renderDistributorDetail};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -1708,17 +1708,19 @@ function renderDistributorList(C, country, flag, label) {
       (!filtered.length?'<div class="empty">No distributors yet for this market.</div>':'');
   };
 }
-var renderDistributors = function(C){return renderDistributorList(C,'CA','🇨🇦','Distributors & Buying Groups')();};
+var renderDistributorsCA = function(C){return renderDistributorList(C,'CA','🇨🇦','Canadian Distributors & Buying Groups')();};
+var renderDistributorsUS = function(C){return renderDistributorList(C,'US','🇺🇸','US Distributors & Buying Groups')();};
 
 async function renderDistributorDetail(C) {
   var {data:d} = await sb.from('aiq_distributors').select('*').eq('id',S.detail).maybeSingle();
   if(!d){C.innerHTML='<div class="empty">Distributor not found</div>';return;}
   var flag = d.country==='CA'?'🇨🇦':'🇺🇸';
+  var backPage = d.country==='CA'?'distributors-ca':'distributors-us';
   var typeLabels = {manufacturer_direct:'Manufacturer Direct',importer_distributor:'Importer/Distributor',parts_distributor:'Parts Distributor',buying_group:'Buying Group'};
 
   C.innerHTML = '<div class="pagehead"><div>'+
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
-      '<button class="ghost" onclick="go(\'distributors\')">← Back</button>'+
+      '<button class="ghost" onclick="go(\''+backPage+'\')">← Back</button>'+
       '<h1>'+flag+' '+esc(d.name)+(d.is_buying_group?' 🤝':'')+'</h1>'+
       '<span class="pill '+(d.status==='active'?'pill-green':'pill-red')+'">'+esc(d.status)+'</span>'+
       '<span class="pill pill-indigo">'+(typeLabels[d.distributor_type]||d.distributor_type)+'</span>'+
@@ -1741,7 +1743,94 @@ async function renderDistributorDetail(C) {
   (d.notes?'<div class="panel"><h2>About</h2><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(d.notes)+'</p></div>':'');
 }
 
-/* ── START ── */
+/* ── RECALLS PAGE ── */
+async function renderRecalls(C) {
+  var countryFilter = S.recallCountry || 'all';
+  var q = sb.from('aiq_recalls').select('*').order('recall_date', { ascending: false });
+  if (countryFilter !== 'all') q = q.eq('country', countryFilter);
+  var {data:rows} = await q;
+  var recalls = rows || [];
+
+  var brandFilter = S.recallBrand || '';
+  var filtered = brandFilter ? recalls.filter(function(r){return (r.brand_name||'').toLowerCase().includes(brandFilter.toLowerCase());}) : recalls;
+
+  var totalInjuries = recalls.reduce(function(a,r){return a + (r.injury_count||0);}, 0);
+  var sourceLabel = { 'CPSC': '🇺🇸 CPSC', 'Health Canada': '🇨🇦 Health Canada' };
+
+  C.innerHTML = '<div class="pagehead"><div><h1>⚠️ Recalls</h1><p class="sub">'+recalls.length+' tracked recalls · '+totalInjuries+' reported injuries across all recalls</p></div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<select class="control" onchange="S.recallCountry=this.value;renderPage()">'+
+        '<option value="all"'+(countryFilter==='all'?' selected':'')+'>All Countries</option>'+
+        '<option value="US"'+(countryFilter==='US'?' selected':'')+'>🇺🇸 US (CPSC)</option>'+
+        '<option value="CA"'+(countryFilter==='CA'?' selected':'')+'>🇨🇦 Canada (Health Canada)</option>'+
+      '</select>'+
+      '<input class="control" placeholder="Filter by brand…" value="'+esc(brandFilter)+'" oninput="S.recallBrand=this.value;renderPage()" style="width:180px">'+
+    '</div></div>'+
+
+    '<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:16px"><p style="font-size:12px;color:var(--amber,#92400e);margin:0">ℹ️ Sourced from CPSC (saferproducts.gov) and Health Canada recall databases. This is a curated set, not a live real-time feed — verify against the official source before advising a customer. Click a recall for full model number list, hazard detail, and remedy.</p></div>'+
+
+    '<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(360px,1fr))">'+
+    filtered.map(function(r) {
+      var flag = r.country==='CA' ? '🇨🇦' : (r.country==='US' ? '🇺🇸' : '🌎');
+      var severity = r.injury_count > 0 ? 'pill-red' : 'pill-yellow';
+      return '<div class="metric clickable" onclick="go(\'recall-detail\',\''+r.id+'\')" style="text-align:left;cursor:pointer">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+          '<div><div style="font-size:15px;font-weight:700">'+flag+' '+esc(r.brand_name)+'</div>'+
+          '<div class="tiny" style="margin-top:2px">'+esc(r.product_name||'')+'</div></div>'+
+          '<span class="pill '+severity+'">'+(r.injury_count > 0 ? r.injury_count+' injuries' : 'No injuries')+'</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.4">'+esc((r.hazard||'').slice(0,140))+((r.hazard||'').length>140?'…':'')+'</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;font-size:11px;color:var(--muted)">'+
+          '<span>'+(sourceLabel[r.source]||r.source)+'</span>'+
+          '<span>·</span>'+
+          '<span>'+(r.recall_date?new Date(r.recall_date).toLocaleDateString():'—')+'</span>'+
+          '<span>·</span>'+
+          '<span>'+esc(r.units_affected||'—')+' units</span>'+
+        '</div>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    (!filtered.length?'<div class="empty">No recalls match this filter.</div>':'');
+}
+
+async function renderRecallDetail(C) {
+  var {data:r} = await sb.from('aiq_recalls').select('*').eq('id',S.detail).maybeSingle();
+  if(!r){C.innerHTML='<div class="empty">Recall not found</div>';return;}
+  var flag = r.country==='CA' ? '🇨🇦' : (r.country==='US' ? '🇺🇸' : '🌎');
+
+  C.innerHTML = '<div class="pagehead"><div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+      '<button class="ghost" onclick="go(\'recalls\')">← Back</button>'+
+      '<h1>'+flag+' '+esc(r.brand_name)+' — '+esc(r.product_name||'')+'</h1>'+
+    '</div>'+
+  '</div></div>'+
+
+  '<div class="panel" style="background:var(--red-soft,#fee2e2);border-color:var(--red,#dc2626);margin-bottom:20px">'+
+    '<h2 style="color:var(--red,#991b1b);margin-top:0">⚠️ '+esc(r.title||'Recall Notice')+'</h2>'+
+    '<p style="font-size:13px;line-height:1.7;color:#7f1d1d">'+esc(r.hazard||'')+'</p>'+
+  '</div>'+
+
+  '<div class="kv" style="margin-bottom:20px">'+
+    '<div><small>Source</small>'+esc(r.source)+'</div>'+
+    '<div><small>Recall Date</small>'+(r.recall_date?new Date(r.recall_date).toLocaleDateString():'—')+'</div>'+
+    '<div><small>Units Affected</small>'+esc(r.units_affected||'—')+'</div>'+
+    '<div><small>Injuries Reported</small>'+(r.injury_count||0)+'</div>'+
+    '<div><small>Category</small>'+esc(r.category||'—')+'</div>'+
+    '<div><small>Manufacturer</small>'+esc(r.manufacturer_name||'—')+'</div>'+
+  '</div>'+
+
+  (r.description?'<div class="panel"><h2>Description</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(r.description)+'</p></div>':'')+
+
+  ((r.model_numbers||[]).length?'<div class="panel"><h2>Affected Model Numbers ('+r.model_numbers.length+')</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+r.model_numbers.map(function(m){return '<span class="pill pill-gray" style="font-size:11px;font-family:monospace">'+esc(m)+'</span>';}).join('')+'</div></div>':'')+
+
+  (r.remedy?'<div class="panel"><h2>Remedy</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(r.remedy)+'</p>'+((r.remedy_options||[]).length?'<div style="display:flex;gap:6px;margin-top:8px">'+r.remedy_options.map(function(o){return '<span class="pill pill-green">'+esc(o)+'</span>';}).join('')+'</div>':'')+'</div>':'')+
+
+  (r.injury_notes?'<div class="panel"><h2>Injury / Incident Detail</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(r.injury_notes)+'</p></div>':'')+
+
+  (r.url?'<div class="panel"><a href="'+esc(r.url)+'" target="_blank" style="color:var(--indigo)">View official recall notice →</a></div>':'');
+}
+
+
 init();
 </script>
 </body>
