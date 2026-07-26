@@ -1866,18 +1866,20 @@ function PIMScraper() {
     }
 
     if (deduped.length > 0) {
-      // Check which ones already exist in PIM
-      if (!existingProducts.length) {
-        try {
-          const res = await supaFetch("aiq_products?select=model,brand_name&limit=1000");
-          const ep = await res.json();
-          setExistingProducts(ep || []);
-        } catch {}
-      }
-      const existingModels = new Set(existingProducts.map(p => p.model?.toUpperCase()));
+      // Check which ones already exist in PIM for THIS market specifically.
+      // Always fetch fresh and market-scoped here — don't reuse the shared
+      // existingProducts state, since that may have been populated by the
+      // Enrich Existing tab across all markets and would give false "in PIM"
+      // matches against the other market's products.
+      let inPimSet = new Set();
+      try {
+        const res = await supaFetch(`aiq_products?select=model,brand_name&market=eq.${market}&limit=1000`);
+        const ep = await res.json();
+        inPimSet = new Set((ep || []).map(p => p.model?.toUpperCase()));
+      } catch {}
       const products = deduped.map(p => ({
         ...p,
-        inPIM: existingModels.has(p.model?.toUpperCase()),
+        inPIM: inPimSet.has(p.model?.toUpperCase()),
       }));
       setDiscovered(products);
       setSelectedModels(new Set(products.filter(p => !p.inPIM).map(p => p.model)));
