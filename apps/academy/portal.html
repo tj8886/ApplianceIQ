@@ -1733,10 +1733,38 @@ async function toggleComplete(chapterId, slug) {
   btn.className = 'btn-complete' + (isNowComplete ? ' done' : '');
   btn.textContent = isNowComplete ? '✓ Completed' : 'Mark as Complete';
   btn.disabled = false;
+  syncTrainingCompletionToCommandCenter();
   const item = document.querySelector(`.ch-item[data-slug="${slug}"]`);
   if (item) { item.classList.toggle('completed', isNowComplete); item.querySelector('.ch-check').textContent = isNowComplete ? '✓' : ''; }
   updateProgressPill();
   renderTracksGrid();
+}
+
+// ===== CROSS-APP SYNC — Command Center metrics =====
+// Best-effort: sync failures never block the training workflow, they just
+// log a warning. Mirrors the pattern used by IQ Up System's
+// syncFloorMetricsToCommandCenter — writes into the same shared
+// metric_snapshots table Command Center already reads from. Command Center
+// already had a 'training_completion' metric defined and waiting; this is
+// what feeds it — previously nothing did.
+async function syncTrainingCompletionToCommandCenter() {
+  try {
+    const { data: member } = await sb.from('organization_members').select('organization_id').eq('user_id', currentUser.id).eq('status', 'active').maybeSingle();
+    if (!member) return;
+    const { count: totalChapters } = await sb.from('academy_chapters').select('*', { count: 'exact', head: true });
+    if (!totalChapters) return;
+    const pct = Math.round((completedIds.size / totalChapters) * 100);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const { data: existing } = await sb.from('metric_snapshots').select('id')
+      .eq('organization_id', member.organization_id).eq('user_id', currentUser.id)
+      .is('location_id', null).eq('period_type', 'daily').eq('period_key', todayStr)
+      .eq('metric_key', 'training_completion').maybeSingle();
+    if (existing) {
+      await sb.from('metric_snapshots').update({ actual_value: pct, computed_at: new Date().toISOString() }).eq('id', existing.id);
+    } else {
+      await sb.from('metric_snapshots').insert({ organization_id: member.organization_id, user_id: currentUser.id, location_id: null, period_type: 'daily', period_key: todayStr, metric_key: 'training_completion', actual_value: pct, computed_at: new Date().toISOString() });
+    }
+  } catch (e) { console.warn('Command Center training_completion sync failed:', e); }
 }
 
 function showDashboard() {
@@ -1972,7 +2000,32 @@ async function saveScorecard() {
   const { error } = await sb.from('academy_daily_metrics').upsert(rec);
   status.textContent = error ? 'Save failed — try again' : 'Saved ✓';
   status.style.color = error ? '#c0392b' : 'var(--teal,#2f7d72)';
-  if (!error) setTimeout(renderScorecard, 800);
+  if (!error) { syncScorecardToCommandCenter(rec); setTimeout(renderScorecard, 800); }
+}
+// Same best-effort pattern as syncTrainingCompletionToCommandCenter — this
+// rep-entered scorecard feeds the 'units_sold' and 'revenue' metrics, which
+// were also defined in Command Center but had nothing writing to them.
+async function syncScorecardToCommandCenter(rec) {
+  try {
+    const { data: member } = await sb.from('organization_members').select('organization_id').eq('user_id', currentUser.id).eq('status', 'active').maybeSingle();
+    if (!member) return;
+    const todayStr = rec.metric_date;
+    const toWrite = [
+      { metric_key: 'units_sold', actual_value: rec.sales || 0 },
+    ];
+    if (rec.ticket_total != null) toWrite.push({ metric_key: 'revenue', actual_value: rec.ticket_total });
+    for (const m of toWrite) {
+      const { data: existing } = await sb.from('metric_snapshots').select('id')
+        .eq('organization_id', member.organization_id).eq('user_id', currentUser.id)
+        .is('location_id', null).eq('period_type', 'daily').eq('period_key', todayStr)
+        .eq('metric_key', m.metric_key).maybeSingle();
+      if (existing) {
+        await sb.from('metric_snapshots').update({ actual_value: m.actual_value, computed_at: new Date().toISOString() }).eq('id', existing.id);
+      } else {
+        await sb.from('metric_snapshots').insert({ organization_id: member.organization_id, user_id: currentUser.id, location_id: null, period_type: 'daily', period_key: todayStr, metric_key: m.metric_key, actual_value: m.actual_value, computed_at: new Date().toISOString() });
+      }
+    }
+  } catch (e) { console.warn('Command Center scorecard sync failed:', e); }
 }
 async function fetchCoachMetrics() {
   try {
