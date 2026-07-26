@@ -382,7 +382,7 @@ function navItems(){
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
   n.push(['_sep'],['_label','INTELLIGENCE'],
-    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['energy-rebates','💡','Energy Rebates'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
+    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors-ca','🚚','Distributors CA'],['distributors-us','🚛','Distributors US'],['recalls','⚠️','Recalls'],['energy-rebates','💡','Energy Rebates'],['warranty-policies','🛡️','Warranties'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
   return n;
 }
@@ -427,7 +427,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail,'energy-rebates':renderEnergyRebates,'energy-rebate-detail':renderEnergyRebateDetail};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,'distributors-ca':renderDistributorsCA,'distributors-us':renderDistributorsUS,'distributor-detail':renderDistributorDetail,recalls:renderRecalls,'recall-detail':renderRecallDetail,'energy-rebates':renderEnergyRebates,'energy-rebate-detail':renderEnergyRebateDetail,'warranty-policies':renderWarrantyPolicies,'warranty-policy-detail':renderWarrantyPolicyDetail};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -760,9 +760,18 @@ async function renderProductDetail(C){
   if(error||!p)return C.innerHTML=`<div class="error">Product not found.</div>`;
   if(S.editMode)return renderProductEdit(C,p);
 
+  // Brand-level warranty policy fallback (used when no per-product pim_warranty_details rows exist)
+  var warrantyPolicyMatches=[];
+  try{
+    var wpRes=await sb.from('aiq_warranty_policies').select('*').eq('brand_name',p.brand_name).in('category',[p.category,'all']);
+    warrantyPolicyMatches=wpRes.data||[];
+  }catch(e){}
+  // Prefer an exact category match over the brand's 'all' fallback
+  var warrantyPolicy=warrantyPolicyMatches.find(function(w){return w.category===p.category;})||warrantyPolicyMatches.find(function(w){return w.category==='all';})||null;
+
   const heroImg=(images||[]).find(i=>i.is_primary)||images?.[0];
   const allTabs=['overview','pricing','retailers','specs','images','videos','documents','marketing','dimensions','features','accessories','certifications','warranty','rebates','history'];
-  const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length,rebates:(rebates||[]).length,history:(versions||[]).length,pricing:(priceHistory||[]).length,retailers:(retailerPrices||[]).length};
+  const tabCounts={images:(images||[]).length,videos:(videos||[]).length,documents:(docs||[]).length,features:(features||[]).length,accessories:(accessories||[]).length,certifications:(certs||[]).length,warranty:(warranty||[]).length||(warrantyPolicy?1:0),rebates:(rebates||[]).length,history:(versions||[]).length,pricing:(priceHistory||[]).length,retailers:(retailerPrices||[]).length};
   const tab=S.detailTab||'overview';
 
   // Pre-compute complex values
@@ -930,7 +939,20 @@ async function renderProductDetail(C){
     </table></div>
     ${(warranty||[]).some(w=>w.registration_url)?`<div style="margin-top:8px">${(warranty||[]).filter(w=>w.registration_url).map(w=>`<a href="${esc(w.registration_url)}" target="_blank" class="btn btn-secondary btn-sm">🛡️ Register Warranty</a>`).join(' ')}</div>`:''}
     ${(warranty||[]).some(w=>w.extended_available)?`<div class="panel" style="margin-top:12px"><h2>Extended Warranty Options</h2>${(warranty||[]).filter(w=>w.extended_available).map(w=>`<div style="padding:8px 0;border-bottom:1px solid #f0f2f5;font-size:13px">${esc(w.extended_provider||'Available')} — ${w.extended_years?w.extended_years+' years':''}${w.extended_cost?' · '+fmt$(w.extended_cost):''}</div>`).join('')}</div>`:''}`
-    :'<div class="empty">No warranty details yet. Add standard, limited, and extended warranty coverage information.</div>',
+    :(warrantyPolicy?`<div class="panel" style="background:var(--indigo-soft,#e0e7ff);border-color:var(--indigo,#4f46e5);margin-bottom:16px"><p style="font-size:12px;color:var(--indigo,#3730a3);margin:0">ℹ️ No product-specific warranty entered — showing ${esc(p.brand_name)}'s standard brand policy for this category. Last verified ${warrantyPolicy.last_verified_date?new Date(warrantyPolicy.last_verified_date).toLocaleDateString():'—'}.</p></div>
+    <div class="kv" style="margin-bottom:16px">
+      <div><small>Full Coverage</small>${warrantyPolicy.full_coverage_years} year${warrantyPolicy.full_coverage_years==1?'':'s'} parts &amp; labor</div>
+      <div><small>Country</small>${esc(warrantyPolicy.country)}</div>
+      <div><small>Registration Required?</small>${warrantyPolicy.registration_required?'Yes'+(warrantyPolicy.registration_window_days?' (within '+warrantyPolicy.registration_window_days+' days)':''):'No'}</div>
+    </div>
+    ${warrantyPolicy.full_coverage_notes?`<p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:16px">${esc(warrantyPolicy.full_coverage_notes)}</p>`:''}
+    ${(function(){try{var comps=typeof warrantyPolicy.component_warranties==='string'?JSON.parse(warrantyPolicy.component_warranties||'[]'):(warrantyPolicy.component_warranties||[]);if(!comps.length)return'';return '<div class="panel"><h2>Extended Component Coverage</h2><div class="tablewrap"><table><thead><tr><th>Component</th><th>Years</th><th>Type</th><th>Notes</th></tr></thead><tbody>'+comps.map(function(c){return '<tr><td>'+esc(c.component||'')+'</td><td>'+(c.years||'—')+'</td><td><span class="pill pill-indigo">'+esc((c.coverage_type||'').replace(/_/g,' '))+'</span></td><td class="tiny">'+esc(c.notes||'')+'</td></tr>';}).join('')+'</tbody></table></div></div>';}catch(e){return'';}}())}
+    ${warrantyPolicy.certified_install_bonus_notes?`<div class="panel" style="margin-top:12px"><h2>🎯 Sales Point — Certified Install Bonus</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">${esc(warrantyPolicy.certified_install_bonus_notes)}</p></div>`:''}
+    ${warrantyPolicy.key_exclusions?`<div class="panel" style="margin-top:12px"><h2>Key Exclusions</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">${esc(warrantyPolicy.key_exclusions)}</p></div>`:''}
+    ${warrantyPolicy.commercial_use_notes?`<div class="panel" style="margin-top:12px"><h2>Commercial Use</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">${esc(warrantyPolicy.commercial_use_notes)}</p></div>`:''}
+    ${warrantyPolicy.notes?`<div class="panel" style="margin-top:12px"><h2>Notes</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">${esc(warrantyPolicy.notes)}</p></div>`:''}
+    ${warrantyPolicy.source_url?`<div style="margin-top:12px"><a href="${esc(warrantyPolicy.source_url)}" target="_blank" class="btn btn-secondary btn-sm">📄 View Official Warranty Document</a></div>`:''}`
+    :'<div class="empty">No warranty details yet, and no brand-level policy on file for '+esc(p.brand_name)+' / '+esc(p.category)+'. Add standard, limited, and extended warranty coverage information.</div>'),
 
     rebates:(rebates||[]).length?`<div class="tablewrap"><table>
       <thead><tr><th>Rebate</th><th>Amount</th><th>Valid</th><th>Status</th><th></th></tr></thead>
@@ -1923,6 +1945,73 @@ async function renderEnergyRebateDetail(C) {
   (p.notes?'<div class="panel"><h2>Notes</h2><p style="font-size:13px;line-height:1.7;color:var(--muted)">'+esc(p.notes)+'</p></div>':'')+
 
   (p.application_url?'<div class="panel"><a href="'+esc(p.application_url)+'" target="_blank" style="color:var(--indigo)">View program page →</a></div>':'');
+}
+
+/* ── WARRANTY POLICIES PAGE (brand-level standard terms) ── */
+async function renderWarrantyPolicies(C) {
+  var {data:rows} = await sb.from('aiq_warranty_policies').select('*').order('brand_name').order('category');
+  var policies = rows || [];
+
+  var brandFilter = S.wpBrand || '';
+  var filtered = brandFilter ? policies.filter(function(p){return (p.brand_name||'').toLowerCase().includes(brandFilter.toLowerCase());}) : policies;
+
+  C.innerHTML = '<div class="pagehead"><div><h1>🛡️ Warranty Policies</h1><p class="sub">'+policies.length+' brand/category policies on file</p></div>'+
+    '<input class="control" placeholder="Filter by brand…" value="'+esc(brandFilter)+'" oninput="S.wpBrand=this.value;renderPage()" style="width:220px"></div>'+
+
+    '<div class="panel" style="background:var(--indigo-soft,#e0e7ff);border-color:var(--indigo,#4f46e5);margin-bottom:16px"><p style="font-size:12px;color:var(--indigo,#3730a3);margin:0">ℹ️ These are brand-level standard warranty terms, used as a fallback on product pages when no product-specific override exists in that product\'s Warranty tab. Coverage can vary by exact model — always verify against the official document for high-value sales.</p></div>'+
+
+    '<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">'+
+    filtered.map(function(p) {
+      var flagWord = p.country==='US'?'🇺🇸 US only':p.country==='CA'?'🇨🇦 CA only':'🇺🇸🇨🇦 US+CA';
+      return '<div class="metric clickable" onclick="go(\'warranty-policy-detail\',\''+p.id+'\')" style="text-align:left;cursor:pointer">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+          '<div><div style="font-size:15px;font-weight:700">'+esc(p.brand_name)+'</div>'+
+          '<div class="tiny" style="margin-top:2px">'+esc(p.category)+'</div></div>'+
+          '<span class="pill pill-gray" style="font-size:9px">'+flagWord+'</span>'+
+        '</div>'+
+        '<div style="font-size:20px;font-weight:700;color:var(--green);margin-bottom:6px">'+p.full_coverage_years+' yr full</div>'+
+        (p.certified_install_bonus_notes?'<div class="tiny" style="color:var(--indigo);margin-bottom:6px">🎯 Certified-install bonus available</div>':'')+
+        '<div class="tiny" style="color:var(--muted)">Verified: '+(p.last_verified_date?new Date(p.last_verified_date).toLocaleDateString():'—')+'</div>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    (!filtered.length?'<div class="empty">No warranty policies match this filter.</div>':'');
+}
+
+async function renderWarrantyPolicyDetail(C) {
+  var {data:p} = await sb.from('aiq_warranty_policies').select('*').eq('id',S.detail).maybeSingle();
+  if(!p){C.innerHTML='<div class="empty">Policy not found</div>';return;}
+  var comps=[]; try{comps=typeof p.component_warranties==='string'?JSON.parse(p.component_warranties||'[]'):(p.component_warranties||[]);}catch(e){}
+
+  C.innerHTML = '<div class="pagehead"><div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+      '<button class="ghost" onclick="go(\'warranty-policies\')">← Back</button>'+
+      '<h1>🛡️ '+esc(p.brand_name)+' — '+esc(p.category)+'</h1>'+
+    '</div>'+
+  '</div></div>'+
+
+  '<div class="kv" style="margin-bottom:20px">'+
+    '<div><small>Full Coverage</small>'+p.full_coverage_years+' year'+(p.full_coverage_years==1?'':'s')+' parts &amp; labor</div>'+
+    '<div><small>Country</small>'+esc(p.country)+'</div>'+
+    '<div><small>Registration Required?</small>'+(p.registration_required?'Yes'+(p.registration_window_days?' (within '+p.registration_window_days+' days)':''):'No')+'</div>'+
+    '<div><small>Last Verified</small>'+(p.last_verified_date?new Date(p.last_verified_date).toLocaleDateString():'—')+'</div>'+
+  '</div>'+
+
+  (p.full_coverage_notes?'<p style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:16px">'+esc(p.full_coverage_notes)+'</p>':'')+
+
+  (comps.length?'<div class="panel"><h2>Extended Component Coverage</h2><div class="tablewrap"><table><thead><tr><th>Component</th><th>Years</th><th>Type</th><th>Notes</th></tr></thead><tbody>'+comps.map(function(c){return '<tr><td>'+esc(c.component||'')+'</td><td>'+(c.years||'—')+'</td><td><span class="pill pill-indigo">'+esc((c.coverage_type||'').replace(/_/g,' '))+'</span></td><td class="tiny">'+esc(c.notes||'')+'</td></tr>';}).join('')+'</tbody></table></div></div>':'')+
+
+  (p.certified_install_bonus_notes?'<div class="panel" style="margin-top:12px"><h2>🎯 Sales Point — Certified Install Bonus</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">'+esc(p.certified_install_bonus_notes)+'</p></div>':'')+
+
+  (p.extended_warranty_notes?'<div class="panel" style="margin-top:12px"><h2>Extended Warranty Options</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">'+esc(p.extended_warranty_notes)+'</p></div>':'')+
+
+  (p.key_exclusions?'<div class="panel" style="margin-top:12px"><h2>Key Exclusions</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">'+esc(p.key_exclusions)+'</p></div>':'')+
+
+  (p.commercial_use_notes?'<div class="panel" style="margin-top:12px"><h2>Commercial Use</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">'+esc(p.commercial_use_notes)+'</p></div>':'')+
+
+  (p.notes?'<div class="panel" style="margin-top:12px"><h2>Notes</h2><p style="font-size:13px;color:var(--muted);line-height:1.7">'+esc(p.notes)+'</p></div>':'')+
+
+  (p.source_url?'<div class="panel" style="margin-top:12px"><a href="'+esc(p.source_url)+'" target="_blank" style="color:var(--indigo)">View official warranty document →</a></div>':'');
 }
 
 /* ── RECALL SYNC — live client-side pull from CPSC + Health Canada ── */
