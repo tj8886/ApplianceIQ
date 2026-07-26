@@ -382,7 +382,7 @@ function navItems(){
   if(canEdit())n.push(['data-quality','◎','Data Quality']);
   n.push(['activity','↻','Activity Log']);
   n.push(['_sep'],['_label','INTELLIGENCE'],
-    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
+    ['companies','🏢','Companies'],['retailers-ca','🇨🇦','Retailers CA'],['retailers-us','🇺🇸','Retailers US'],['distributors','🚚','Distributors'],['industry-news','📰','Industry News'],['locations','📍','Locations']);
   if(S.role.isAdmin)n.push(['_sep'],['_label','ADMIN'],['team','👥','Team & Access']);
   return n;
 }
@@ -427,7 +427,7 @@ async function logout(){await sb.auth.signOut();S.user=null;S.role={isAdmin:fals
 async function renderPage(){
   const C=document.getElementById('content');if(!C)return;
   try{
-    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail};
+    const r={dashboard:renderDashboard,catalog:renderCatalog,brands:renderBrands,'product-detail':renderProductDetail,'add-product':renderAddProduct,images:renderImages,videos:renderVideos,documents:renderDocuments,marketing:renderMarketing,rebates:renderRebates,certifications:renderCertifications,'data-quality':renderDataQuality,activity:renderActivity,export:renderExport,team:renderTeam,companies:renderCompanies,'industry-news':renderIndustryNews,locations:renderLocations,'company-detail':renderCompanyDetail,'retailers-ca':renderRetailersCA,'retailers-us':renderRetailersUS,'retailer-detail':renderRetailerDetail,distributors:renderDistributors,'distributor-detail':renderDistributorDetail};
     if(r[S.page])await r[S.page](C);
     else C.innerHTML=`<div class="empty">Page "${esc(S.page)}" is under construction.</div>`;
   }catch(err){C.innerHTML=`<div class="error">${esc(err.message)}</div>`}
@@ -1667,6 +1667,78 @@ async function renderRetailerDetail(C) {
   ((r.exclusive_brands||[]).length?'<div class="panel"><h2>Exclusive Brands</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+r.exclusive_brands.map(function(b){return '<span class="pill pill-amber" style="font-size:12px;padding:4px 12px">'+esc(b)+'</span>';}).join('')+'</div></div>':'')+
 
   ((prices||[]).length?'<div class="panel"><h2>Recent Price Checks ('+prices.length+')</h2><div class="tablewrap"><table><thead><tr><th>Product</th><th>Price</th><th>Regular</th><th>Stock</th><th>Condition</th><th>Checked</th></tr></thead><tbody>'+prices.map(function(p){return '<tr><td><strong>'+esc(p.brand_name)+' '+esc(p.model)+'</strong></td><td style="font-weight:700;color:var(--green)">'+(p.price?fmt$(p.price):'—')+'</td><td class="tiny">'+(p.regular_price?fmt$(p.regular_price):'—')+'</td><td>'+(p.in_stock?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>')+'</td><td class="tiny">'+esc(p.condition||'new')+'</td><td class="tiny">'+new Date(p.checked_at).toLocaleDateString()+'</td></tr>';}).join('')+'</tbody></table></div></div>':'');
+}
+
+/* ── DISTRIBUTOR PAGES ── */
+function renderDistributorList(C, country, flag, label) {
+  return async function() {
+    var {data:rows} = await sb.from('aiq_distributors').select('*').eq('country',country).order('is_buying_group').order('name');
+    var all = rows || [];
+    var direct = all.filter(function(d){return !d.is_buying_group;});
+    var groups = all.filter(function(d){return d.is_buying_group;});
+    var typeFilter = S.assetFilter || 'all';
+    var types = [...new Set(all.map(function(d){return d.distributor_type;}).filter(Boolean))].sort();
+    var filtered = typeFilter === 'all' ? all : all.filter(function(d){return d.distributor_type===typeFilter;});
+
+    var typeLabels = {manufacturer_direct:'🏭 Manufacturer Direct',importer_distributor:'📦 Importer/Distributor',parts_distributor:'🔧 Parts Distributor',buying_group:'🤝 Buying Group'};
+
+    C.innerHTML = '<div class="pagehead"><div><h1>'+flag+' '+label+'</h1><p class="sub">'+direct.length+' distributors, '+groups.length+' buying groups</p></div>'+
+      '<select class="control" onchange="S.assetFilter=this.value;renderPage()">'+
+        '<option value="all">All Types</option>'+
+        types.map(function(t){return '<option value="'+t+'"'+(typeFilter===t?' selected':'')+'>'+(typeLabels[t]||t)+'</option>';}).join('')+
+      '</select></div>'+
+      (groups.length && typeFilter==='all' ? '<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:16px"><p style="font-size:12px;color:var(--amber,#92400e);margin:0">⚠ Buying groups (🤝) aggregate independent dealers for purchasing power — they do not sell direct to consumers and have no public price list. See Retailers pages for member storefronts.</p></div>' : '')+
+      '<div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(350px,1fr))">'+
+      filtered.map(function(d) {
+        return '<div class="metric clickable" onclick="go(\'distributor-detail\',\''+d.id+'\')" style="text-align:left;cursor:pointer;opacity:'+(d.status==='active'?'1':'0.5')+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+            '<div><div style="font-size:16px;font-weight:700">'+esc(d.name)+(d.is_buying_group?' 🤝':'')+'</div>'+
+            (d.headquarters?'<div class="tiny" style="margin-top:2px">📍 '+esc(d.headquarters)+'</div>':'')+
+            '</div>'+
+            '<div style="display:flex;gap:4px">'+
+              '<span class="pill '+(d.status==='active'?'pill-green':'pill-red')+'">'+esc(d.status)+'</span>'+
+            '</div>'+
+          '</div>'+
+          '<div style="margin-bottom:8px"><span class="pill pill-indigo" style="font-size:10px">'+(typeLabels[d.distributor_type]||d.distributor_type)+'</span></div>'+
+          ((d.brands_carried||[]).length?'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">'+d.brands_carried.slice(0,6).map(function(b){return '<span class="pill pill-gray" style="font-size:9px">'+esc(b)+'</span>';}).join('')+(d.brands_carried.length>6?'<span class="pill pill-gray" style="font-size:9px">+'+(d.brands_carried.length-6)+' more</span>':'')+'</div>':'')+
+          (d.member_outlet_count?'<div class="tiny" style="margin-bottom:4px">🏪 '+esc(d.member_outlet_count)+' member outlets</div>':'')+
+          (d.notes?'<div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">'+esc(d.notes.slice(0,180))+(d.notes.length>180?'…':'')+'</div>':'')+
+        '</div>';
+      }).join('')+'</div>'+
+      (!filtered.length?'<div class="empty">No distributors yet for this market.</div>':'');
+  };
+}
+var renderDistributors = function(C){return renderDistributorList(C,'CA','🇨🇦','Distributors & Buying Groups')();};
+
+async function renderDistributorDetail(C) {
+  var {data:d} = await sb.from('aiq_distributors').select('*').eq('id',S.detail).maybeSingle();
+  if(!d){C.innerHTML='<div class="empty">Distributor not found</div>';return;}
+  var flag = d.country==='CA'?'🇨🇦':'🇺🇸';
+  var typeLabels = {manufacturer_direct:'Manufacturer Direct',importer_distributor:'Importer/Distributor',parts_distributor:'Parts Distributor',buying_group:'Buying Group'};
+
+  C.innerHTML = '<div class="pagehead"><div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">'+
+      '<button class="ghost" onclick="go(\'distributors\')">← Back</button>'+
+      '<h1>'+flag+' '+esc(d.name)+(d.is_buying_group?' 🤝':'')+'</h1>'+
+      '<span class="pill '+(d.status==='active'?'pill-green':'pill-red')+'">'+esc(d.status)+'</span>'+
+      '<span class="pill pill-indigo">'+(typeLabels[d.distributor_type]||d.distributor_type)+'</span>'+
+    '</div>'+
+  '</div></div>'+
+
+  (d.is_buying_group?'<div class="panel" style="background:var(--amber-soft,#fef3c7);border-color:var(--amber,#d97706);margin-bottom:20px"><p style="font-size:13px;color:var(--amber,#92400e);margin:0">⚠ This is a wholesale/purchasing co-op for independent retailers — it has no storefront and no public consumer pricing. Do not scrape or cite it as a price source.</p></div>':'')+
+
+  '<div class="kv" style="margin-bottom:20px">'+
+    '<div><small>Website</small>'+(d.website?'<a href="https://'+esc(d.website)+'" target="_blank" style="color:var(--indigo)">'+esc(d.website)+'</a>':'—')+'</div>'+
+    '<div><small>Headquarters</small>'+esc(d.headquarters||'—')+'</div>'+
+    '<div><small>Founded</small>'+esc(d.founded||'—')+'</div>'+
+    '<div><small>Country</small>'+flag+' '+esc(d.country)+'</div>'+
+    '<div><small>Coverage</small>'+esc(d.coverage_notes||(d.provinces_states||[]).join(', ')||'—')+'</div>'+
+    (d.member_outlet_count?'<div><small>Member Outlets</small>'+esc(d.member_outlet_count)+'</div>':'')+
+  '</div>'+
+
+  ((d.brands_carried||[]).length?'<div class="panel"><h2>Brands Distributed ('+d.brands_carried.length+')</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+d.brands_carried.map(function(b){return '<span class="pill pill-indigo" style="font-size:12px;padding:4px 12px">'+esc(b)+'</span>';}).join('')+'</div></div>':'')+
+
+  (d.notes?'<div class="panel"><h2>About</h2><p style="color:var(--muted);font-size:13px;line-height:1.7">'+esc(d.notes)+'</p></div>':'');
 }
 
 /* ── START ── */
