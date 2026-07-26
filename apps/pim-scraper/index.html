@@ -82,13 +82,50 @@ const CATEGORIES = [
   "wine_refrigeration","beverage_centers","ice_makers","outdoor","small_appliances"
 ];
 
-const SCRAPE_PROMPT = `You are an appliance product data extraction assistant working for the CANADIAN market. Search the web for the given appliance product. Go to the MANUFACTURER'S OWN WEBSITE (e.g. lg.com, whirlpool.com, samsung.com) AND major Canadian retailers (bestbuy.ca, homedepot.ca, rona.ca — NOT lowes.ca, which no longer exists in Canada as of Feb 2024, fully converted to RONA+) to get complete data.
+const BRAND_DOMAIN_MAP = `
+MANUFACTURER SITE MAP — many manufacturers run SEPARATE localized sites or subsections for Canada vs the US, with DIFFERENT model numbers, prices, and specs for what looks like "the same" product. Always use the site matching the active market. Never substitute the other country's page even if it loads faster or has more results.
 
+  LG:            ca: lg.com/ca_en   |  us: lg.com/us
+  Samsung:       ca: samsung.com/ca |  us: samsung.com/us
+  Whirlpool:     ca: whirlpool.ca   |  us: whirlpool.com
+  Maytag:        ca: maytag.ca      |  us: maytag.com
+  KitchenAid:    ca: kitchenaid.ca  |  us: kitchenaid.com
+  Jenn-Air:      ca: jennair.ca     |  us: jennair.com
+  GE Appliances: ca: geappliances.ca |  us: geappliances.com
+  Café/Monogram: ca: cafeappliances.ca / monogram.ca | us: cafeappliances.com / monogram.com
+  Bosch:         ca: bosch-home.ca  |  us: bosch-home.com
+  Thermador:     ca: thermador.ca   |  us: thermador.com
+  Gaggenau:      ca: gaggenau.com/ca |  us: gaggenau.com/us
+  Electrolux:    ca: electrolux.ca  |  us: electroluxappliances.com
+  Frigidaire:    ca: frigidaire.ca  |  us: frigidaire.com
+  Miele:         ca: miele.ca       |  us: mieleusa.com
+  Fisher & Paykel: ca: fisherpaykel.com/ca | us: fisherpaykel.com/us
+  Sub-Zero/Wolf: ca: subzero-wolf.com (single global site, but check for a CA/US region selector)
+  Viking:        single global site (vikingrange.com) — check regional pricing/dealer locator
+  Bertazzoni:    ca: bertazzoni.com/ca | us: bertazzoni.com/us
+  Danby:         ca: danby.com (Canadian company — this IS the home market; for US, check danby.com/us if present)
+
+If a brand isn't listed above, search "[brand] Canada official site" or "[brand] USA official site" as appropriate rather than defaulting to the .com root, which is very often the US site.
+
+CRITICAL — MODEL NUMBER TRAP: Canadian and US model numbers for what is otherwise the same physical unit frequently differ by only ONE OR TWO CHARACTERS (e.g. a trailing region letter, or a digit swap) — e.g. WRF555SDFZ (US) vs WRF555SDFW (CA). Do not assume a model found on the wrong-market site is close enough to use. Confirm you are reading the model number as listed on the CORRECT market's own site, not translating or guessing from the other market's number.
+`;
+
+function getScrapePrompt(market) {
+  const isUS = market === "US";
+  const marketLabel = isUS ? "US" : "CANADIAN";
+  const retailerHint = isUS
+    ? "major US retailers (bestbuy.com, homedepot.com, lowes.com, ajmadison.com, abt.com)"
+    : "major Canadian retailers (bestbuy.ca, homedepot.ca, rona.ca — NOT lowes.ca, which no longer exists in Canada as of Feb 2024, fully converted to RONA+)";
+  const priceSearchHint = isUS ? "[brand] [model] price" : "[brand] [model] price canada";
+  const currency = isUS ? "USD" : "CAD";
+  const sampleSources = isUS ? `["lg.com", "bestbuy.com", "homedepot.com"]` : `["lg.com", "bestbuy.ca", "homedepot.ca"]`;
+  return `You are an appliance product data extraction assistant working for the ${marketLabel} market. Search the web for the given appliance product. Go to the MANUFACTURER'S OWN WEBSITE (e.g. lg.com, whirlpool.com, samsung.com) AND ${retailerHint} to get complete data.
+${BRAND_DOMAIN_MAP}
 IMPORTANT INSTRUCTIONS:
 - Visit the manufacturer's product page directly. Look at the page source and gallery.
 - Extract EVERY product image URL you can find — hero shots, angle views, interior shots, detail close-ups, lifestyle images, dimension diagrams. Most appliance pages have 5-10+ images. Get them ALL. Use full absolute URLs (https://...).
 - Extract ALL available color/finish options with their model numbers.
-- PRICING: Get THREE prices: 1) MSRP (manufacturer suggested retail), 2) current sale/promo price if on sale, 3) lowest price you can find on any major retailer. Search "[brand] [model] price canada" to find retailer pricing.
+- PRICING: Get THREE prices: 1) MSRP (manufacturer suggested retail), 2) current sale/promo price if on sale, 3) lowest price you can find on any major retailer. Search "${priceSearchHint}" to find retailer pricing.
 - PRODUCT CONDITION: Check if the product is flagged as any of these: discontinued, clearance, end-of-life, last chance, open box, refurbished, B-stock, scratch & dent, floor model, closeout, limited stock, while supplies last, no longer available. Look for banners, badges, or labels on the product page.
 
 Return ONLY valid JSON, no markdown, no backticks, no preamble:
@@ -110,10 +147,10 @@ Return ONLY valid JSON, no markdown, no backticks, no preamble:
     "sale_price": null,
     "lowest_price": null,
     "lowest_price_source": "",
-    "price_currency": "CAD",
+    "price_currency": "${currency}",
     "on_sale": false,
     "sale_ends": null,
-    "price_checked_sources": ["lg.com", "bestbuy.ca", "homedepot.ca"]
+    "price_checked_sources": ${sampleSources}
   },
   "condition": {
     "status": "active",
@@ -186,11 +223,14 @@ Return ONLY valid JSON, no markdown, no backticks, no preamble:
 }
 
 Return ALL images, ALL color variants. Check "condition.status" carefully: "active", "discontinued", "clearance", "end_of_life", "open_box", "refurbished". Set the flags array too (e.g. ["clearance", "limited_stock"]).`;
+}
 
-const DISCOVER_PROMPT = `You are an appliance product discovery assistant. Find product model numbers from a manufacturer's website.
+function getDiscoverPrompt(market) {
+  const marketLabel = market === "US" ? "US" : "CANADIAN";
+  return `You are an appliance product discovery assistant. Find product model numbers from a manufacturer's website.
 
-Search the manufacturer's CANADIAN website thoroughly. Check category pages, "view all" pages, product listing pages, and filters.
-
+Search the manufacturer's ${marketLabel} website thoroughly — see the site map below for the correct domain per brand. Check category pages, "view all" pages, product listing pages, and filters.
+${BRAND_DOMAIN_MAP}
 IMPORTANT: Keep each product entry SHORT. Only return model number, product name, and URL. Do NOT include specs or descriptions.
 
 Return ONLY valid JSON, no markdown, no backticks:
@@ -207,6 +247,7 @@ Return ONLY valid JSON, no markdown, no backticks:
 }
 
 List EVERY model you find. Keep entries minimal — model, name, url only.`;
+}
 
 const APPLIANCE_CATEGORIES = [
   "refrigerators", "dishwashers", "ranges", "wall-ovens", "cooktops",
@@ -215,8 +256,16 @@ const APPLIANCE_CATEGORIES = [
   "warming-drawers", "trash-compactors", "disposers",
 ];
 
-const PRICE_CHECK_PROMPT = `You are an appliance price checker for the CANADIAN market. Search for the current pricing and availability status of the given appliance product. Check the manufacturer's Canadian website AND major Canadian retailers (bestbuy.ca, homedepot.ca, rona.ca, ajmadison.com — NOT lowes.ca, which no longer exists in Canada as of Feb 2024, fully converted to RONA+).
-
+function getPriceCheckPrompt(market) {
+  const isUS = market === "US";
+  const marketLabel = isUS ? "US" : "CANADIAN";
+  const retailerHint = isUS
+    ? "the manufacturer's US website AND major US retailers (bestbuy.com, homedepot.com, lowes.com, ajmadison.com)"
+    : "the manufacturer's Canadian website AND major Canadian retailers (bestbuy.ca, homedepot.ca, rona.ca, ajmadison.com — NOT lowes.ca, which no longer exists in Canada as of Feb 2024, fully converted to RONA+)";
+  const currency = isUS ? "USD" : "CAD";
+  const sampleSources = isUS ? `["lg.com", "bestbuy.com", "homedepot.com"]` : `["lg.com", "bestbuy.ca", "homedepot.ca"]`;
+  return `You are an appliance price checker for the ${marketLabel} market. Search for the current pricing and availability status of the given appliance product. Check ${retailerHint}.
+${BRAND_DOMAIN_MAP}
 Return ONLY valid JSON, no markdown, no backticks:
 
 {
@@ -229,10 +278,10 @@ Return ONLY valid JSON, no markdown, no backticks:
     "sale_price": null,
     "lowest_price": null,
     "lowest_price_source": "",
-    "price_currency": "CAD",
+    "price_currency": "${currency}",
     "on_sale": false,
     "sale_ends": null,
-    "price_checked_sources": ["lg.com", "bestbuy.ca", "homedepot.ca"]
+    "price_checked_sources": ${sampleSources}
   },
   "condition": {
     "status": "active",
@@ -252,6 +301,7 @@ Return ONLY valid JSON, no markdown, no backticks:
 }
 
 ONLY return pricing and condition data. Do NOT look up specs, features, images, or documents. Keep it minimal.`;
+}
 
 const RETAILER_PRICE_PROMPT = `You are a Canadian appliance retail price checker. For the given product, search EACH of these Canadian retailers and find their current price, stock status, and any sale/clearance/open box flags.
 
@@ -342,20 +392,52 @@ CRITICAL RULES:
 
 const RETAILER_PRICE_PROMPT_US = `You are a US appliance retail price checker. For the given product, search EACH of these US retailers and find their current price, stock status, and any sale/clearance/open box flags.
 
-Retailers to check:
+National chains:
 - Home Depot (homedepot.com)
 - Lowe's (lowes.com)
 - Best Buy (bestbuy.com)
+- Costco (costco.com)
 - AJ Madison (ajmadison.com)
 - Abt Electronics (abt.com)
-- Yale Appliance (yaleappliance.com)
-- JB Hunt / AppliancesConnection (appliancesconnection.com)
+- AppliancesConnection (appliancesconnection.com)
 - P.C. Richard & Son (pcrichard.com)
-- Howard's Appliances (?"howards.com")
-- Spencer's TV & Appliance (?"?"spencerstv.com")
 - Nebraska Furniture Mart (nfm.com)
-- US Appliance (?"usappliance.com")
+- US Appliance (usappliance.com)
 - Wayfair (wayfair.com)
+- Ferguson (ferguson.com)
+
+Northeast/Mid-Atlantic independents:
+- Yale Appliance (yaleappliance.com) — Boston
+- Bray & Scarff (brayandscarff.com) — DC/MD/VA
+- Mrs. G Appliances (mrsgs.com) — NJ/PA
+- Designer Appliances (designerappliances.com) — NJ/NY/PA
+- Art Handler's Appliance (handlersappliance.com) — NJ
+- Gerhard's Appliances (gerhardsappliance.com) — PA
+- Town Appliance (townappliance.com) — NJ/NY
+
+Midwest independents:
+- Grand Appliance and TV (grandappliance.com) — IL/WI/IA/IN
+
+South/Southeast independents:
+- FBS Appliance (fbsappliance.com) — TX
+- Elite Appliance (eliteappliance.com) — TX
+- Appliance Outlet Texas (applianceoutlettexas.com) — TX
+- Fuse Specialty Appliances (fusespecialtyappliances.com) — South FL
+- Bob Bailey's Appliance (bobbaileys.com) — Atlanta GA
+- Spencer's TV & Appliance (spencerstv.com) — AZ
+
+West Coast independents:
+- Friedmans Appliance (friedmansappliance.com) — SF Bay Area CA
+- University Electric (universityelectric.com) — Santa Clara CA
+- AA Kitchen Appliance (aakitchenappliance.com) — SF/San Mateo CA
+- Albert Lee Appliance (albertlee.biz) — Seattle/Puget Sound WA
+
+Mountain West independents:
+- Specialty Appliance (buyfromsa.com) — CO
+- Mountain High Appliance (mountainhighappliance.com) — Denver CO
+- Appliance Factory & Mattress Kingdom (appliancefactory.com) — CO/WY/IN/OH/KY
+
+Retailers that no longer exist — never search or report on these: Howard's Appliances (79-year SoCal chain, filed Chapter 11 and closed ALL stores Dec 6, 2025), Pirch (luxury SoCal showroom chain, permanently closed Apr 19, 2024, Chapter 7 bankruptcy).
 
 Return ONLY valid JSON, no markdown, no backticks:
 
@@ -494,6 +576,47 @@ function supaFetch(path, opts = {}) {
   });
 }
 
+function levenshteinDistance(a, b) {
+  a = (a || "").toUpperCase(); b = (b || "").toUpperCase();
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+}
+
+// Checks whether a near-identical model already exists for this brand in the OPPOSITE market.
+// This is the core CA/US "clean separation" safeguard — near-identical model numbers across
+// markets are common and must never be silently merged or mistaken for the same product.
+async function checkCrossMarketMatch(brandName, model, currentMarket) {
+  const otherMarket = currentMarket === "US" ? "CA" : "US";
+  try {
+    const res = await supaFetch(`aiq_products?brand_name=eq.${encodeURIComponent(brandName)}&market=eq.${otherMarket}&select=id,model,market,msrp,price_currency,source_reference&limit=200`);
+    const candidates = await res.json();
+    if (!candidates || !candidates.length) return null;
+    let best = null;
+    for (const c of candidates) {
+      if (!c.model) continue;
+      if (c.model.toUpperCase() === model.toUpperCase()) {
+        return { match: c, distance: 0, otherMarket, severity: "identical" };
+      }
+      const dist = levenshteinDistance(model, c.model);
+      if (dist <= 2 && (!best || dist < best.distance)) {
+        best = { match: c, distance: dist, otherMarket, severity: dist === 1 ? "near-identical" : "similar" };
+      }
+    }
+    return best;
+  } catch (e) { return null; }
+}
+
 function extractJSON(text) {
   // Try direct parse first
   try { return JSON.parse(text.trim()); } catch {}
@@ -626,8 +749,8 @@ function callAI(systemPrompt, userMsg, retries = 3, model = "claude-haiku-4-5-20
   return callClaude(systemPrompt, userMsg, retries, model);
 }
 
-async function scrapeProduct(query, model) {
-  let result = await callAI(SCRAPE_PROMPT, "Find all product specifications for: " + query, 3, model);
+async function scrapeProduct(query, model, market) {
+  let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query, 3, model);
   if (result.found) return result;
   const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
   result = await callAI(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price", 3, model);
@@ -635,8 +758,8 @@ async function scrapeProduct(query, model) {
   return { found: false, query, error: result.error || "Product not found after multiple attempts" };
 }
 
-async function priceCheckProduct(query, model) {
-  const result = await callAI(PRICE_CHECK_PROMPT, "Check current pricing and availability for: " + query, 2, model);
+async function priceCheckProduct(query, model, market) {
+  const result = await callAI(getPriceCheckPrompt(market), "Check current pricing and availability for: " + query, 2, model);
   if (result.found || result.pricing) { result.found = true; result._priceOnly = true; return result; }
   return { found: false, query, error: result.error || "Price check failed", _priceOnly: true };
 }
@@ -700,6 +823,7 @@ function Field({ label, value, editable, onChange }) {
 function ResultCard({ result, onSave, onDiscard, saving }) {
   const [editing, setEditing] = useState(false);
   const [data, setData] = useState(result);
+  const [ackCrossMarket, setAckCrossMarket] = useState(false);
   const upd = (k, v) => setData((d) => ({ ...d, [k]: v }));
 
   if (!data.found) {
@@ -714,11 +838,15 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
     );
   }
 
+  const cmw = data._crossMarketWarning;
+  const marketFlag = data._market === "US" ? "🇺🇸" : "🇨🇦";
+  const needsAck = !!cmw && !ackCrossMarket;
+
   return (
-    <div style={s.card}>
+    <div style={{ ...s.card, ...(cmw ? { borderColor: palette.yellow, borderWidth: 2 } : {}) }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{data.brand_name} {data.model}</div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>{marketFlag} {data.brand_name} {data.model}</div>
           <div style={{ fontSize: 13, color: palette.textDim }}>{data.short_description}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -739,11 +867,34 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
           )}
           <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => setEditing(!editing)}>{editing ? "Done" : "Edit"}</button>
           <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline, ...s.btnRed, border: "none", color: "#fff" }} onClick={onDiscard}>Skip</button>
-          <button style={{ ...s.btn, ...s.btnSm, ...s.btnGreen }} onClick={() => onSave(data)} disabled={saving}>
-            {saving ? "Saving…" : "Save to PIM"}
+          <button style={{ ...s.btn, ...s.btnSm, ...(needsAck ? { background: palette.border, cursor: "not-allowed" } : s.btnGreen) }} onClick={() => onSave(data)} disabled={saving || needsAck}>
+            {saving ? "Saving…" : needsAck ? "Review required ↓" : "Save to PIM"}
           </button>
         </div>
       </div>
+
+      {cmw && (
+        <div style={{ padding: "12px 16px", background: palette.yellowSoft, border: `1px solid ${palette.yellow}60`, borderRadius: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: palette.yellow, fontSize: 13, marginBottom: 4 }}>
+                {cmw.severity === "identical" ? "Identical model number" : cmw.severity === "near-identical" ? "Near-identical model number" : "Similar model number"} found in {cmw.otherMarket === "US" ? "🇺🇸 US" : "🇨🇦 Canada"} catalog
+              </div>
+              <div style={{ fontSize: 12, color: palette.textDim, lineHeight: 1.6 }}>
+                <strong>{data.model}</strong> ({marketFlag} {data._market}) vs. existing <strong>{cmw.match.model}</strong> ({cmw.otherMarket === "US" ? "🇺🇸" : "🇨🇦"} {cmw.otherMarket})
+                {cmw.distance > 0 ? ` — differs by ${cmw.distance} character${cmw.distance > 1 ? "s" : ""}` : " — exact same model number"}.
+                {cmw.match.msrp ? ` Existing record: $${cmw.match.msrp} ${cmw.match.price_currency || ""}.` : ""}
+                {" "}This is common when a manufacturer sells the same physical unit under slightly different model numbers per country — verify this is genuinely a separate {data._market}-market product before saving, not a duplicate of the {cmw.otherMarket} one.
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: palette.text, cursor: "pointer" }}>
+                <input type="checkbox" checked={ackCrossMarket} onChange={(e) => setAckCrossMarket(e.target.checked)} />
+                I've verified this is a distinct {data._market} product — save it
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
         {data.source_url && <span style={{ fontSize: 12, color: palette.blue }}>Source: <a href={data.source_url} target="_blank" rel="noreferrer" style={{ color: palette.blue }}>{data.source_url}</a></span>}
@@ -1093,10 +1244,11 @@ function PIMScraper() {
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const [priceMode, setPriceMode] = useState("pc-single");
-  const [market, setMarket] = useState("CA"); // CA active now; US coming next phase
+  const [market, setMarket] = useState("CA"); // CA or US — both fully active
   const [showMarketPicker, setShowMarketPicker] = useState(false);
   const [retailerMode, setRetailerMode] = useState("rt-single");
   const [retailerCountry, setRetailerCountry] = useState("CA");
+  React.useEffect(() => { setRetailerCountry(market); }, [market]);
   const [intelMode, setIntelMode] = useState("company");
 
   // Save company intel to Supabase
@@ -1278,13 +1430,14 @@ function PIMScraper() {
     if (data._intel || data._news || data._retailerCheck) return true;
     // Reuse handleSave logic but without UI index management
     try {
-      const checkRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(data.model)}&brand_name=eq.${encodeURIComponent(data.brand_name)}&select=id,organization_id`);
+      const checkRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(data.model)}&brand_name=eq.${encodeURIComponent(data.brand_name)}&market=eq.${market}&select=id,organization_id`);
       const existing = await checkRes.json();
       const pricing = data.pricing || {};
       const cond = data.condition || {};
       const specs = data.specs || {};
 
       const productData = {
+        market: market,
         manufacturer_name: data.manufacturer_name || data.brand_name || "Unknown",
         brand_name: data.brand_name || data.manufacturer_name || "Unknown", model: data.model,
         category: data.category || "refrigeration",
@@ -1296,7 +1449,7 @@ function PIMScraper() {
         sale_price: pricing.sale_price ? parseFloat(pricing.sale_price) : null,
         lowest_price: pricing.lowest_price ? parseFloat(pricing.lowest_price) : null,
         lowest_price_source: pricing.lowest_price_source || null,
-        price_currency: pricing.price_currency || "CAD",
+        price_currency: pricing.price_currency || (market === "US" ? "USD" : "CAD"),
         price_checked_at: new Date().toISOString(),
         upc: data.upc || null, ean: data.ean || null,
         finish: data.finish || null, color: data.color || null, color_family: data.color_family || null,
@@ -1588,9 +1741,13 @@ function PIMScraper() {
 
   const runScrape = async (q) => {
     try {
-      const r = await scrapeProduct(q, activeModel);
+      const r = await scrapeProduct(q, activeModel, market);
       r.query = q;
       r._model = activeModel;
+      r._market = market;
+      if (r.found && r.brand_name && r.model) {
+        r._crossMarketWarning = await checkCrossMarketMatch(r.brand_name, r.model, market);
+      }
       return r;
     } catch (e) { return { found: false, query: q, error: e.message }; }
   };
@@ -1599,7 +1756,7 @@ function PIMScraper() {
     const r = await runScrape(q);
     if (r.found) {
       setResults(p => [...p, r]); // Always show the result
-      if (autoSave) {
+      if (autoSave && !r._crossMarketWarning) {
         const ok = await doSave(r);
         if (ok) {
           // Remove from results since it saved successfully
@@ -1607,6 +1764,8 @@ function PIMScraper() {
         }
         // If save failed, it stays in results so user can retry manually
       }
+      // If a cross-market warning exists, it always stays in results for manual review —
+      // even with autoSave on — so CA/US never merge silently.
     } else {
       setResults(p => [...p, r]);
     }
@@ -1675,7 +1834,7 @@ function PIMScraper() {
     if (url) {
       // Single URL discovery
       setProgress({ current: 1, total: 1, currentQuery: "Scanning page…" });
-      const result = await callAI(DISCOVER_PROMPT, `Find all product model numbers listed on: ${url}`, 3, activeModel);
+      const result = await callAI(getDiscoverPrompt(market), `Find all product model numbers listed on: ${url}`, 3, activeModel);
       if (result.found && result.products) allProducts = result.products;
     } else {
       // Break into subcategory chunks to avoid overload
@@ -1689,7 +1848,7 @@ function PIMScraper() {
           ? `Find ALL ${brand} ${subcat} currently available on the ${brand} Canadian website. List every model number.`
           : `Find ALL ${brand} ${category || "appliance"} products on the ${brand} Canadian website. List every model number. Search each subcategory.`;
         
-        const result = await callAI(DISCOVER_PROMPT, searchQuery, 3, activeModel);
+        const result = await callAI(getDiscoverPrompt(market), searchQuery, 3, activeModel);
         if (result.found && result.products) {
           allProducts = [...allProducts, ...result.products];
         }
@@ -1747,7 +1906,11 @@ function PIMScraper() {
       if (r.found) {
         if (!r.model) r.model = p.model;
         if (!r.brand_name && discoverBrand) r.brand_name = discoverBrand;
-        if (autoSave) {
+        // Re-run the cross-market check if brand/model were only just backfilled above
+        if (r._crossMarketWarning === undefined && r.brand_name && r.model) {
+          r._crossMarketWarning = await checkCrossMarketMatch(r.brand_name, r.model, market);
+        }
+        if (autoSave && !r._crossMarketWarning) {
           await doSave(r);
         } else {
           setResults(prev => [...prev, r]);
@@ -1789,28 +1952,31 @@ function PIMScraper() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
           <div style={{ position: "relative" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", background: palette.greenSoft, border: `1px solid ${palette.green}40`, borderRadius: 8, cursor: "pointer" }}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", background: market === "CA" ? palette.greenSoft : "#1a2a4a", border: `1px solid ${market === "CA" ? palette.green : palette.blue}40`, borderRadius: 8, cursor: "pointer" }}
               onClick={() => setShowMarketPicker(!showMarketPicker)}>
-              <span style={{ fontSize: 13 }}>🇨🇦</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: palette.green }}>Canada</span>
+              <span style={{ fontSize: 13 }}>{market === "CA" ? "🇨🇦" : "🇺🇸"}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: market === "CA" ? palette.green : palette.blue }}>{market === "CA" ? "Canada" : "USA"}</span>
               <span style={{ fontSize: 9, color: palette.textMuted }}>▾</span>
             </div>
             {showMarketPicker && (
-              <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: palette.card, border: `1px solid ${palette.border}`, borderRadius: 10, padding: 8, zIndex: 100, minWidth: 220, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, background: palette.greenSoft }}>
+              <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 4, background: palette.card, border: `1px solid ${palette.border}`, borderRadius: 10, padding: 8, zIndex: 100, minWidth: 240, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+                <div onClick={() => { setMarket("CA"); setShowMarketPicker(false); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, cursor: "pointer", background: market === "CA" ? palette.greenSoft : "transparent" }}>
                   <span style={{ fontSize: 14 }}>🇨🇦</span>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: palette.text }}>Canada</div>
-                    <div style={{ fontSize: 10, color: palette.textMuted }}>Active — all prompts scoped to CA retailers/pricing</div>
+                    <div style={{ fontSize: 10, color: palette.textMuted }}>All prompts scoped to CA retailers/pricing</div>
                   </div>
-                  <span style={{ marginLeft: "auto", color: palette.green }}>✓</span>
+                  {market === "CA" && <span style={{ marginLeft: "auto", color: palette.green }}>✓</span>}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, opacity: 0.5 }}>
+                <div onClick={() => { setMarket("US"); setShowMarketPicker(false); }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 6, cursor: "pointer", background: market === "US" ? palette.blue + "20" : "transparent" }}>
                   <span style={{ fontSize: 14 }}>🇺🇸</span>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: palette.textDim }}>USA</div>
-                    <div style={{ fontSize: 10, color: palette.textMuted }}>Coming next phase</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: palette.text }}>USA</div>
+                    <div style={{ fontSize: 10, color: palette.textMuted }}>All prompts scoped to US retailers/pricing</div>
                   </div>
+                  {market === "US" && <span style={{ marginLeft: "auto", color: palette.blue }}>✓</span>}
                 </div>
               </div>
             )}
@@ -2010,10 +2176,14 @@ function PIMScraper() {
               <button style={{ ...s.btn, ...s.btnGreen, marginLeft: "auto" }}
                 onClick={async () => {
                   const found = results.filter(r => r.found);
-                  for (const r of found) { await doSave(r); }
-                  setResults(prev => prev.filter(r => !r.found));
+                  const flagged = found.filter(r => r._crossMarketWarning);
+                  const clean = found.filter(r => !r._crossMarketWarning);
+                  for (const r of clean) { await doSave(r); }
+                  setResults(prev => prev.filter(r => !r.found || r._crossMarketWarning));
+                  if (flagged.length) setErrors(p => [...p, flagged.length + " item(s) held back — cross-market model match needs manual review before saving"]);
                 }}>
-                Save All {results.filter(r => r.found).length} to PIM
+                Save All {results.filter(r => r.found && !r._crossMarketWarning).length} to PIM
+                {results.filter(r => r._crossMarketWarning).length > 0 ? " (" + results.filter(r => r._crossMarketWarning).length + " held for review)" : ""}
               </button>
             )}
             {results.length > 0 && (
@@ -2106,11 +2276,11 @@ function PIMScraper() {
                 <div>
                   <div style={s.inputRow}>
                     <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S) or product page URL" value={query} onChange={e => setQuery(e.target.value)}
-                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); priceCheckProduct(query, activeModel).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){doPriceSave(r).then(ok=>{if(!ok)setResults(p=>[...p,r]);})}else setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                      onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); priceCheckProduct(query, activeModel, market).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){doPriceSave(r).then(ok=>{if(!ok)setResults(p=>[...p,r]);})}else setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
                     <button style={{ ...s.btn, background: "#e17055" }} disabled={loading} onClick={async () => {
                       if(!query.trim())return; setLoading(true);
                       setProgress({current:1,total:1,currentQuery:query});
-                      const r=await priceCheckProduct(query, activeModel); r.query=query;
+                      const r=await priceCheckProduct(query, activeModel, market); r.query=query;
                       if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave){const ok=await doPriceSave(r);if(!ok)setResults(p=>[...p,r])}else setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
                       setLoading(false);
                     }}>{loading?"Checking…":"💰 Check Price"}</button>
@@ -2141,7 +2311,7 @@ function PIMScraper() {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await priceCheckProduct(lines[i], activeModel);
+                          const r = await priceCheckProduct(lines[i], activeModel, market);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -2229,7 +2399,7 @@ function PIMScraper() {
                                 const q = p.url || (discoverBrand + " " + p.model);
                                 setProgress({ current: i + 1, total: toCheck.length, currentQuery: p.model + " — price check" });
                                 try {
-                                  const r = await priceCheckProduct(q, activeModel);
+                                  const r = await priceCheckProduct(q, activeModel, market);
                                   if (r.found) {
                                     if (!r.model) r.model = p.model;
                                     if (!r.brand_name && discoverBrand) r.brand_name = discoverBrand;
