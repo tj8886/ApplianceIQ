@@ -666,14 +666,86 @@ window.filterCatAssets=function(sub){
 // ============ CAD SOURCES / BRANDS / QUALITY / ACTIVITY ============
 async function renderCadSources(mc){
   await loadAssets();
-  const sources=cadSourcesCache;
-  const available=sources.filter(s=>s.availability_status==='available').length;
-  mc.innerHTML='<div class="page-header"><div><h1>📐 CAD/BIM Source Directory</h1><div class="subtitle">'+sources.length+' brands tracked</div></div></div>'+
-  '<div class="card-grid"><div class="card stat-card"><div class="value" style="color:var(--green)">'+available+'</div><div class="label">Available</div></div><div class="card stat-card"><div class="value" style="color:var(--amber)">'+sources.filter(s=>s.availability_status==='partial').length+'</div><div class="label">Partial</div></div><div class="card stat-card"><div class="value" style="color:var(--text2)">'+sources.filter(s=>s.availability_status==='research_pending').length+'</div><div class="label">Pending</div></div><div class="card stat-card"><div class="value">'+designAssetsCache.length+'</div><div class="label">Files</div></div></div>'+
-  '<div class="card table-wrap"><table><thead><tr><th>Brand</th><th>Status</th><th>Formats</th><th>Login</th><th>Official CAD</th><th>BIMobject</th><th>Notes</th></tr></thead><tbody>'+
-  sources.map(s=>'<tr><td><strong>'+s.brand_name+'</strong></td><td><span class="badge badge-'+(s.availability_status==='available'?'green':s.availability_status==='partial'?'amber':'gray')+'">'+s.availability_status.replace('_',' ')+'</span></td><td>'+(s.formats||[]).map(f=>'<span class="badge badge-blue" style="font-size:10px">'+f.toUpperCase()+'</span>').join(' ')+'</td><td>'+(s.registration_required?'<span class="badge badge-amber">Yes</span>':'No')+'</td><td>'+(s.official_cad_url?'<a href="'+s.official_cad_url+'" target="_blank" class="btn btn-sm btn-secondary">Visit ↗</a>':'—')+'</td><td>'+(s.bimobject_url?'<a href="'+s.bimobject_url+'" target="_blank" class="btn btn-sm btn-secondary">BIMobject ↗</a>':'—')+'</td><td style="font-size:12px;color:var(--text2)">'+(s.notes||'—')+'</td></tr>').join('')+
+  const sources=cadSourcesCache.sort((a,b)=>{
+    const order={available:0,partial:1,research_pending:2};
+    return (order[a.availability_status]||2)-(order[b.availability_status]||2)||a.brand_name.localeCompare(b.brand_name);
+  });
+  const available=sources.filter(s=>s.availability_status==='available');
+  const partial=sources.filter(s=>s.availability_status==='partial');
+  const pending=sources.filter(s=>s.availability_status==='research_pending');
+  // Format counts
+  const fmtCounts={};sources.forEach(s=>(s.formats||[]).forEach(f=>{fmtCounts[f]=(fmtCounts[f]||0)+1}));
+  const allFormats=Object.entries(fmtCounts).sort((a,b)=>b[1]-a[1]);
+  // Products with CAD files attached
+  const prodsWithCAD=new Set(designAssetsCache.map(d=>d.product_id)).size;
+  const fmtGuide={dwg:'AutoCAD — most universal 2D/3D format for architects',dxf:'AutoCAD interchange — opens in any CAD program',revit:'Autodesk Revit — BIM families for kitchen/bath designers',sketchup:'SketchUp — 3D modeling for designers and remodelers',step:'STEP (ISO 10303) — precision 3D for engineering',ifc:'IFC — open BIM standard for interoperability',obj:'OBJ — lightweight 3D geometry for rendering',gltf:'glTF — web-optimized 3D for AR/VR previews',stl:'STL — 3D printing and prototyping',pdf:'PDF — dimensional drawings, spec sheets, rough-in templates'};
+
+  window._cadSources=sources;
+
+  mc.innerHTML=
+  '<div class="page-header"><div><h1>📐 CAD/BIM Source Directory</h1><div class="subtitle">Where to find CAD, Revit, SketchUp & BIM files for every appliance brand</div></div></div>'+
+
+  // Stats
+  '<div class="card-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">'+
+    '<div class="card stat-card"><div class="value">'+sources.length+'</div><div class="label">Brands Tracked</div></div>'+
+    '<div class="card stat-card"><div class="value" style="color:var(--green)">'+available.length+'</div><div class="label">CAD Available</div></div>'+
+    '<div class="card stat-card"><div class="value" style="color:var(--amber)">'+partial.length+'</div><div class="label">Partial / PDFs Only</div></div>'+
+    '<div class="card stat-card"><div class="value">'+designAssetsCache.length+'</div><div class="label">Files in Library</div></div>'+
+    '<div class="card stat-card"><div class="value">'+prodsWithCAD+'</div><div class="label">Products w/ CAD</div></div>'+
+  '</div>'+
+
+  // Format guide
+  '<div class="card" style="margin-bottom:20px"><h3 style="font-size:14px;font-weight:700;margin-bottom:12px">🗂️ Format Guide — What Designers Need</h3>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">'+
+      allFormats.map(([fmt,cnt])=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)"><span class="badge badge-blue" style="min-width:50px;justify-content:center">'+fmt.toUpperCase()+'</span><div><div style="font-size:12px;font-weight:600">'+cnt+' brands</div><div style="font-size:11px;color:var(--text2)">'+(fmtGuide[fmt]||fmt)+'</div></div></div>').join('')+
+    '</div></div>'+
+
+  // Search + filter
+  '<div class="search-bar"><input id="cadSearch" placeholder="Search brands…" oninput="filterCadSources()"><select id="cadStatus" onchange="filterCadSources()"><option value="">All Status</option><option value="available">✅ Available</option><option value="partial">⚠️ Partial</option><option value="research_pending">⏳ Pending</option></select><select id="cadFormat" onchange="filterCadSources()"><option value="">All Formats</option>'+allFormats.map(([f])=>'<option value="'+f+'">'+f.toUpperCase()+'</option>').join('')+'</select></div>'+
+
+  // Available brands section
+  '<div style="margin-bottom:8px;font-size:14px;font-weight:700;color:var(--green)">✅ CAD Available ('+available.length+')</div>'+
+  '<div class="card table-wrap" style="margin-bottom:20px"><table id="cadTable"><thead><tr><th>Brand</th><th>Status</th><th>Formats</th><th>Login</th><th>Official CAD Portal</th><th>BIMobject</th><th>Notes</th></tr></thead><tbody id="cadBody">'+
+  renderCadRows(sources)+
   '</tbody></table></div>';
 }
+
+function renderCadRows(sources){
+  let prevStatus='';
+  return sources.map(s=>{
+    let divider='';
+    if(s.availability_status!==prevStatus&&prevStatus!==''){
+      const label=s.availability_status==='partial'?'⚠️ Partial — Spec PDFs or Limited CAD ('+sources.filter(x=>x.availability_status==='partial').length+')':
+        '⏳ Research Pending ('+sources.filter(x=>x.availability_status==='research_pending').length+')';
+      divider='<tr><td colspan="7" style="padding:16px 12px 8px;font-size:13px;font-weight:700;color:'+(s.availability_status==='partial'?'var(--amber)':'var(--text2)')+';border-bottom:2px solid var(--border);background:var(--bg)">'+label+'</td></tr>';
+    }
+    prevStatus=s.availability_status;
+    const fmtBadges=(s.formats||[]).map(f=>'<span class="badge badge-'+(f==='revit'||f==='sketchup'?'purple':f==='dwg'||f==='dxf'?'indigo':f==='pdf'?'gray':'blue')+'" style="font-size:10px">'+f.toUpperCase()+'</span>').join(' ');
+    const statusBadge='<span class="badge badge-'+(s.availability_status==='available'?'green':s.availability_status==='partial'?'amber':'gray')+'">'+s.availability_status.replace('_',' ')+'</span>';
+    return divider+'<tr>'+
+      '<td><strong>'+s.brand_name+'</strong></td>'+
+      '<td>'+statusBadge+'</td>'+
+      '<td>'+fmtBadges+'</td>'+
+      '<td>'+(s.registration_required?'<span class="badge badge-amber">🔒 Yes</span>':'<span style="font-size:12px;color:var(--text2)">Open</span>')+'</td>'+
+      '<td>'+(s.official_cad_url?'<a href="'+s.official_cad_url+'" target="_blank" class="btn btn-sm btn-primary">Download ↗</a>':'<span style="font-size:12px;color:var(--text3)">Not found</span>')+'</td>'+
+      '<td>'+(s.bimobject_url?'<a href="'+s.bimobject_url+'" target="_blank" class="btn btn-sm btn-secondary">BIMobject ↗</a>':'—')+'</td>'+
+      '<td style="font-size:12px;color:var(--text2);max-width:200px">'+(s.notes||'No CAD program identified yet')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+window.filterCadSources=function(){
+  const q=(document.getElementById('cadSearch').value||'').toLowerCase();
+  const status=document.getElementById('cadStatus').value;
+  const fmt=document.getElementById('cadFormat').value;
+  let filtered=(window._cadSources||[]).filter(s=>{
+    if(status&&s.availability_status!==status)return false;
+    if(fmt&&!(s.formats||[]).includes(fmt))return false;
+    if(q&&!s.brand_name.toLowerCase().includes(q)&&!(s.notes||'').toLowerCase().includes(q))return false;
+    return true;
+  });
+  document.getElementById('cadBody').innerHTML=renderCadRows(filtered);
+};
 
 function renderBrands(){
   const bp={};productsCache.forEach(p=>{bp[p.brand_name]=(bp[p.brand_name]||0)+1});
