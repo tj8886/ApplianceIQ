@@ -282,7 +282,7 @@ try{
 async function loadCoreData(){
   const[p,b,at]=await Promise.all([
     sb.from('aiq_products').select('id,model,brand_name,manufacturer_name,category,series,product_line,status,msrp,approval_status,brand_id,short_description,finish,color,energy_star,ada_compliant,width_inches,height_inches,depth_inches,specs_json,available_colors,capacity_cu_ft,voltage,installation_type,upc,created_at,updated_at,public_visible').order('brand_name'),
-    sb.from('brand_catalog').select('id,brand_name,brand_tier,parent_company,country_of_origin,is_active').eq('is_active',true).order('brand_name'),
+    sb.from('brand_catalog').select('id,brand_name,brand_tier,parent_company,country,website,canada_website,us_website,canada_email,canada_phone,contact_status,logo_url,is_active,product_count').eq('is_active',true).order('brand_name'),
     sb.from('pim_asset_types').select('*').order('sort_order')
   ]);
   productsCache=p.data||[];brandsCache=b.data||[];assetTypesCache=at.data||[];
@@ -290,15 +290,16 @@ async function loadCoreData(){
 window.loadCoreData=loadCoreData;
 
 async function loadAssets(){
-  const[d,i,v,m,da,cs]=await Promise.all([
+  const[d,i,v,m,da,cs,vc]=await Promise.all([
     sb.from('pim_product_documents').select('*').order('created_at',{ascending:false}),
     sb.from('pim_product_images').select('*').order('display_order'),
     sb.from('pim_product_videos').select('*').order('created_at',{ascending:false}),
     sb.from('pim_marketing_assets').select('*').order('created_at',{ascending:false}),
     sb.from('product_design_assets').select('*').order('created_at',{ascending:false}),
-    sb.from('cad_bim_sources').select('*').order('brand_name')
+    sb.from('cad_bim_sources').select('*').order('brand_name'),
+    sb.from('aiq_vendor_contacts').select('*').order('brand_name')
   ]);
-  docsCache=d.data||[];imagesCache=i.data||[];videosCache=v.data||[];marketingCache=m.data||[];designAssetsCache=da.data||[];cadSourcesCache=cs.data||[];
+  docsCache=d.data||[];imagesCache=i.data||[];videosCache=v.data||[];marketingCache=m.data||[];designAssetsCache=da.data||[];cadSourcesCache=cs.data||[];window._vendorContacts=vc.data||[];
 }
 
 // ============ PAGE ROUTER ============
@@ -315,7 +316,7 @@ window.renderPage=async function(page,data){
     case'documents':await renderAssetPage(mc,'document');break;
     case'marketing':await renderAssetPage(mc,'marketing');break;
     case'cadBim':await renderAssetPage(mc,'cad_bim');break;
-    case'brands':mc.innerHTML=renderBrands();break;
+    case'brands':await loadAssets();mc.innerHTML=renderBrands();break;
     case'cadSources':await renderCadSources(mc);break;
     case'quality':mc.innerHTML=renderQuality();break;
     case'activity':await renderActivity(mc);break;
@@ -676,11 +677,111 @@ async function renderCadSources(mc){
 
 function renderBrands(){
   const bp={};productsCache.forEach(p=>{bp[p.brand_name]=(bp[p.brand_name]||0)+1});
-  return '<div class="page-header"><div><h1>🏷️ Brand Directory</h1><div class="subtitle">'+brandsCache.length+' active brands</div></div></div>'+
-  '<div class="card table-wrap"><table><thead><tr><th>Brand</th><th>Tier</th><th>Parent</th><th>Country</th><th>Products</th></tr></thead><tbody>'+
-  brandsCache.map(b=>'<tr><td><strong>'+b.brand_name+'</strong></td><td><span class="badge badge-indigo">'+(b.brand_tier||'—')+'</span></td><td>'+(b.parent_company||'—')+'</td><td>'+(b.country_of_origin||'—')+'</td><td>'+(bp[b.brand_name]||0)+'</td></tr>').join('')+
+  const vc=window._vendorContacts||[];
+  const tiers={luxury:0,premium:0,mainstream:0,value:0,other:0};
+  brandsCache.forEach(b=>{const t=(b.brand_tier||'other').toLowerCase();if(tiers[t]!==undefined)tiers[t]++;else tiers.other++});
+  const withContact=brandsCache.filter(b=>b.canada_phone||b.canada_email).length;
+
+  return '<div class="page-header"><div><h1>🏷️ Brand Directory</h1><div class="subtitle">'+brandsCache.length+' active brands · '+withContact+' with contact info</div></div></div>'+
+  '<div class="card-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:20px">'+
+    '<div class="card stat-card"><div class="value">'+brandsCache.length+'</div><div class="label">Total Brands</div></div>'+
+    '<div class="card stat-card"><div class="value" style="color:var(--purple)">'+tiers.luxury+'</div><div class="label">Luxury</div></div>'+
+    '<div class="card stat-card"><div class="value" style="color:var(--indigo)">'+tiers.premium+'</div><div class="label">Premium</div></div>'+
+    '<div class="card stat-card"><div class="value" style="color:var(--teal)">'+tiers.mainstream+'</div><div class="label">Mainstream</div></div>'+
+    '<div class="card stat-card"><div class="value" style="color:var(--text2)">'+(tiers.value+tiers.other)+'</div><div class="label">Value / Other</div></div>'+
+  '</div>'+
+  '<div class="search-bar"><input id="brandSearch" placeholder="Search brands…" oninput="filterBrands()"><select id="brandTier" onchange="filterBrands()"><option value="">All Tiers</option><option>luxury</option><option>premium</option><option>mainstream</option><option>value</option></select></div>'+
+  '<div class="card table-wrap"><table><thead><tr><th>Brand</th><th>Tier</th><th>Parent</th><th>Country</th><th>Products</th><th>Website</th><th>Phone</th><th>Email</th><th>Contact</th></tr></thead><tbody id="brandBody">'+
+  renderBrandRows(brandsCache,bp,vc)+
   '</tbody></table></div>';
 }
+
+function renderBrandRows(brands,bp,vc){
+  return brands.map(b=>{
+    const contact=vc.find(v=>v.brand_name===b.brand_name);
+    const phone=b.canada_phone||(contact?contact.customer_service_phone:null);
+    const email=b.canada_email||(contact?contact.support_email:null);
+    const site=b.canada_website||b.us_website||b.website;
+    const tierBadge=b.brand_tier?'<span class="badge badge-'+(b.brand_tier==='luxury'?'purple':b.brand_tier==='premium'?'indigo':b.brand_tier==='mainstream'?'teal':'gray')+'">'+b.brand_tier+'</span>':'<span class="badge badge-gray">—</span>';
+    const contactBadge=b.contact_status?'<span class="badge badge-'+(b.contact_status==='verified'?'green':b.contact_status==='partial'?'amber':'gray')+'">'+b.contact_status+'</span>':'';
+    return '<tr onclick="showBrandDetail(\''+b.brand_name.replace(/'/g,"\\'")+'\')" style="cursor:pointer">'+
+      '<td><strong>'+b.brand_name+'</strong></td>'+
+      '<td>'+tierBadge+'</td>'+
+      '<td style="font-size:12px;color:var(--text2)">'+(b.parent_company||'—')+'</td>'+
+      '<td style="font-size:12px">'+(b.country||'—')+'</td>'+
+      '<td>'+(bp[b.brand_name]||0)+'</td>'+
+      '<td>'+(site?'<a href="'+site+'" target="_blank" style="font-size:12px">Visit ↗</a>':'—')+'</td>'+
+      '<td style="font-size:12px">'+(phone||'—')+'</td>'+
+      '<td style="font-size:12px">'+(email?'<a href="mailto:'+email+'">'+email+'</a>':'—')+'</td>'+
+      '<td>'+contactBadge+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+window.filterBrands=function(){
+  const q=(document.getElementById('brandSearch').value||'').toLowerCase();
+  const tier=document.getElementById('brandTier').value;
+  const bp={};productsCache.forEach(p=>{bp[p.brand_name]=(bp[p.brand_name]||0)+1});
+  const vc=window._vendorContacts||[];
+  const filtered=brandsCache.filter(b=>{
+    if(tier&&(b.brand_tier||'')!==tier)return false;
+    if(q&&!(b.brand_name+' '+(b.parent_company||'')+' '+(b.country||'')).toLowerCase().includes(q))return false;
+    return true;
+  });
+  document.getElementById('brandBody').innerHTML=renderBrandRows(filtered,bp,vc);
+};
+
+window.showBrandDetail=async function(brandName){
+  const b=brandsCache.find(bb=>bb.brand_name===brandName);
+  if(!b)return;
+  if(!window._vendorContacts){await loadAssets()}
+  const vc=(window._vendorContacts||[]).filter(v=>v.brand_name===brandName);
+  const prods=productsCache.filter(p=>p.brand_name===brandName);
+  const site=b.canada_website||b.us_website||b.website;
+
+  let contactHtml='';
+  if(vc.length){
+    contactHtml=vc.map(v=>'<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--indigo);margin-bottom:6px">📞 '+v.country+' Contact</div>'+
+      (v.customer_service_phone?infoRow('Customer Service',v.customer_service_phone+(v.customer_service_hours?' ('+v.customer_service_hours+')':'')):'')+
+      (v.service_repair_phone?infoRow('Service/Repair',v.service_repair_phone):'')+
+      (v.warranty_phone?infoRow('Warranty',v.warranty_phone):'')+
+      (v.parts_phone?infoRow('Parts',v.parts_phone):'')+
+      (v.trade_distributor_phone?infoRow('Trade/Distributor',v.trade_distributor_phone):'')+
+      (v.support_email?infoRow('Support Email','<a href="mailto:'+v.support_email+'">'+v.support_email+'</a>'):'')+
+      (v.support_website_url?infoRow('Support Site','<a href="'+v.support_website_url+'" target="_blank">Visit ↗</a>'):'')+
+      (v.service_portal_url?infoRow('Service Portal','<a href="'+v.service_portal_url+'" target="_blank">Visit ↗</a>'):'')+
+      (v.parts_url?infoRow('Parts Store','<a href="'+v.parts_url+'" target="_blank">Visit ↗</a>'):'')+
+      (v.registration_url?infoRow('Product Registration','<a href="'+v.registration_url+'" target="_blank">Register ↗</a>'):'')+
+      (v.live_chat_url?infoRow('Live Chat','<a href="'+v.live_chat_url+'" target="_blank">Chat ↗</a>'):'')+
+      (v.owner_account_portal_url?infoRow('Owner Portal','<a href="'+v.owner_account_portal_url+'" target="_blank">Visit ↗</a>'):'')+
+    '</div>').join('');
+  } else if(b.canada_phone||b.canada_email){
+    contactHtml='<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">'+
+      '<div style="font-size:12px;font-weight:600;color:var(--indigo);margin-bottom:6px">📞 Contact</div>'+
+      (b.canada_phone?infoRow('Phone',b.canada_phone):'')+
+      (b.canada_email?infoRow('Email','<a href="mailto:'+b.canada_email+'">'+b.canada_email+'</a>'):'')+
+    '</div>';
+  }
+
+  document.getElementById('modalRoot').innerHTML=
+  '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'+
+    '<h2>'+(b.brand_tier?'<span class="badge badge-'+(b.brand_tier==='luxury'?'purple':b.brand_tier==='premium'?'indigo':'teal')+'" style="margin-right:8px">'+b.brand_tier+'</span>':'')+b.brand_name+'</h2>'+
+    '<div class="card" style="box-shadow:none;border:1px solid var(--border)">'+
+      infoRow('Parent Company',b.parent_company)+
+      infoRow('Country',b.country)+
+      infoRow('Products in PIM',prods.length)+
+      (site?infoRow('Website','<a href="'+site+'" target="_blank">'+site.replace('https://','').replace('http://','').split('/')[0]+' ↗</a>'):'')+
+      (b.us_website&&b.us_website!==site?infoRow('US Site','<a href="'+b.us_website+'" target="_blank">'+b.us_website.replace('https://','').replace('http://','').split('/')[0]+' ↗</a>'):'')+
+      (b.canada_website&&b.canada_website!==site?infoRow('CA Site','<a href="'+b.canada_website+'" target="_blank">'+b.canada_website.replace('https://','').replace('http://','').split('/')[0]+' ↗</a>'):'')+
+      contactHtml+
+    '</div>'+
+    (prods.length?'<div style="margin-top:16px"><div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">Products ('+prods.length+')</div>'+
+      prods.slice(0,10).map(p=>'<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer" onclick="closeModal();go(\'product\',\''+p.id+'\')"><strong>'+p.model+'</strong> <span style="color:var(--text2)">'+p.category+'</span>'+(p.msrp?' · '+fmtPrice(p.msrp):'')+'</div>').join('')+
+      (prods.length>10?'<div style="font-size:11px;color:var(--text2);margin-top:4px">+'+(prods.length-10)+' more</div>':'')+'</div>':'')+
+    '<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'+
+  '</div></div>';
+};
 
 function renderQuality(){
   const scored=productsCache.map(p=>{
