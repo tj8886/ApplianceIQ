@@ -225,7 +225,24 @@ function go(page,data){
   renderPage(page,data);
 }
 function showLogin(){document.getElementById('loginModal').classList.remove('hidden')}
+function hideLogin(){document.getElementById('loginModal').classList.add('hidden')}
 function toast(msg,ms){const t=document.getElementById('toastRoot');t.innerHTML='<div class="toast">'+msg+'</div>';setTimeout(()=>t.innerHTML='',ms||3000)}
+async function doLogin(){
+  try{
+    if(!sb){toast('❌ Loading, please wait…');return}
+    var email=document.getElementById('loginEmail').value;
+    var pass=document.getElementById('loginPass').value;
+    var res=await sb.auth.signInWithPassword({email:email,password:pass});
+    if(res.error){toast('❌ '+res.error.message);return}
+    currentUser=res.data.user;
+    document.getElementById('landingPage').classList.add('hidden');
+    hideLogin();
+    document.getElementById('appShell').classList.remove('hidden');
+    await loadCoreData();
+    go('dashboard');
+  }catch(e){toast('❌ '+e.message);console.error(e)}
+}
+async function doLogout(){if(sb)await sb.auth.signOut();location.reload()}
 function closeModal(){document.getElementById('modalRoot').innerHTML=''}
 function verBadge(status,mfr){
   if(mfr)return '<span class="v-badge v-mfr">✦ Manufacturer</span>';
@@ -250,26 +267,18 @@ function infoRow(label,value){
 </script>
 <script type="module">
 import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-sb=createClient(SB_URL,SB_KEY);
-const{data:{session}}=await sb.auth.getSession();
-if(session){currentUser=session.user;showApp()}
-
-window.doLogin=async function(){
-  const email=document.getElementById('loginEmail').value;
-  const pass=document.getElementById('loginPass').value;
-  const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
-  if(error){toast('❌ '+error.message);return}
-  currentUser=data.user;showApp();
-};
-window.doLogout=async function(){await sb.auth.signOut();location.reload()};
-
-async function showApp(){
-  document.getElementById('landingPage').classList.add('hidden');
-  document.getElementById('loginModal').classList.add('hidden');
-  document.getElementById('appShell').classList.remove('hidden');
-  await loadCoreData();
-  go('dashboard');
-}
+try{
+  sb=createClient(SB_URL,SB_KEY);
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){
+    currentUser=session.user;
+    document.getElementById('landingPage').classList.add('hidden');
+    document.getElementById('loginModal').classList.add('hidden');
+    document.getElementById('appShell').classList.remove('hidden');
+    await loadCoreData();
+    go('dashboard');
+  }
+}catch(e){console.error('Init error:',e)}
 
 async function loadCoreData(){
   const[p,b,at]=await Promise.all([
