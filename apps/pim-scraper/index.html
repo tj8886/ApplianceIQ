@@ -563,6 +563,147 @@ async function newsScrape(query, model) {
   return { found: false, query, error: result.error || "News scrape failed", _news: true };
 }
 
+// ── Media Discovery ──
+const MEDIA_DISCOVERY_PROMPT = `You are an appliance product media discovery assistant. For the given product, search the MANUFACTURER'S OWN WEBSITE for official media assets.
+
+Search for:
+1. DOCUMENTS (direct PDF links only):
+   - Owner's manual / Use & care guide (doc_type: "owners_manual")
+   - Installation guide (doc_type: "installation_guide")
+   - Specification sheet (doc_type: "spec_sheet")
+   - Energy guide / EnerGuide (doc_type: "energy_guide")
+   - Quick start guide (doc_type: "quick_start")
+   - Warranty document (doc_type: "warranty")
+   - Dimension guide / cutout drawing (doc_type: "spec_sheet")
+   - Sell sheet (doc_type: "sell_sheet")
+
+2. IMAGES (direct image URLs, highest resolution available):
+   - Hero/main product image (image_type: "hero")
+   - Additional angles: front, side, interior, detail shots
+   - Dimension drawing images (image_type: "dimensions")
+   - Lifestyle images (image_type: "lifestyle")
+   Note the background type: "white", "transparent", or "lifestyle"
+
+3. VIDEOS:
+   - Official YouTube videos from the manufacturer's channel
+   - Embedded product page videos
+   - Installation or how-to videos
+   Note the YouTube/Vimeo video ID, title, and platform
+
+CRITICAL RULES:
+- Only include items from the OFFICIAL MANUFACTURER website or verified manufacturer YouTube/Vimeo channels.
+- Every URL must be a REAL URL you actually found — never invent or fabricate URLs.
+- For documents, return the direct .pdf download URL, not a page that links to the PDF.
+- For images, return the highest-resolution direct image URL (not thumbnails).
+- For videos, include the YouTube video ID if applicable.
+- Do NOT include retailer-hosted content or user-generated content.
+
+Return ONLY valid JSON:
+{
+  "found": true,
+  "source_url": "the main product page URL you found",
+  "media": [
+    {
+      "category": "document" | "image" | "video",
+      "type": "owners_manual" | "installation_guide" | "spec_sheet" | "energy_guide" | "quick_start" | "warranty" | "sell_sheet" | "hero" | "front" | "detail" | "interior" | "dimensions" | "lifestyle" | "angle" | "product_overview" | "installation_video" | "how_to_video" | "feature_demo",
+      "title": "descriptive title",
+      "url": "direct URL to asset",
+      "embed_url": "YouTube embed URL if video",
+      "video_id": "YouTube or Vimeo ID if video",
+      "platform": "youtube" | "vimeo" | "manufacturer_cdn" | null,
+      "file_name": "filename.pdf if detectable",
+      "mime_type": "application/pdf" | "image/jpeg" | "image/png" | "image/webp",
+      "background": "white" | "transparent" | "lifestyle" (for images only),
+      "source_domain": "manufacturer domain"
+    }
+  ]
+}
+
+If no media found, return: { "found": false, "error": "reason" }
+Find as many official media items as possible.`;
+
+async function mediaDiscover(brand, model, aiModel) {
+  const result = await callAI(MEDIA_DISCOVERY_PROMPT, `Find all official manufacturer media for: ${brand} ${model}. Search the manufacturer website for product images, PDF documents (manuals, spec sheets, energy guides), and official videos.`, 3, aiModel || "claude-sonnet-4-6");
+  if (result.found || result.media) { result.found = true; result._media = true; return result; }
+  return { found: false, error: result.error || "Media discovery failed", _media: true };
+}
+
+async function doMediaSave(mediaItems, productId, brandName, model, sourceUrl) {
+  const results = { docs: 0, images: 0, videos: 0, dupes: 0, errors: 0 };
+  if (!productId || !mediaItems || !mediaItems.length) return results;
+
+  for (const item of mediaItems) {
+    if (!item.url) continue;
+    try {
+      if (item.category === "document") {
+        // Check dupe by product_id + file_url
+        const existing = await supaFetch(`pim_product_documents?product_id=eq.${productId}&file_url=eq.${encodeURIComponent(item.url)}&select=id`).then(r => r.json()).catch(() => []);
+        if (existing.length > 0) { results.dupes++; continue; }
+        const docType = item.type || "spec_sheet";
+        await supaFetch("pim_product_documents", { method: "POST", body: JSON.stringify({
+          product_id: productId, doc_type: docType,
+          title: item.title || `${brandName} ${model} ${docType.replace(/_/g, " ")}`,
+          file_url: item.url, file_name: item.file_name || item.url.split("/").pop() || `${docType}.pdf`,
+          mime_type: item.mime_type || (item.url.endsWith(".pdf") ? "application/pdf" : "text/html"),
+          language: "en", locale: "en-CA", is_current: true, source: "media_discovery",
+          approved: false, verification_status: "unverified", manufacturer_verified: false,
+          keywords: [brandName, model, "official", "manufacturer"].filter(Boolean),
+          audience_tiers: ["public"], embargoed: false,
+        }), headers: { Prefer: "return=minimal" } });
+        results.docs++;
+
+      } else if (item.category === "image") {
+        const existing = await supaFetch(`pim_product_images?product_id=eq.${productId}&file_url=eq.${encodeURIComponent(item.url)}&select=id`).then(r => r.json()).catch(() => []);
+        if (existing.length > 0) { results.dupes++; continue; }
+        const imgType = item.type || "hero";
+        await supaFetch("pim_product_images", { method: "POST", body: JSON.stringify({
+          product_id: productId, image_type: imgType,
+          file_url: item.url, cdn_url: item.url,
+          alt_text: item.title || `${brandName} ${model} ${imgType}`,
+          background: item.background || "white",
+          is_primary: false, display_order: 0, source: "media_discovery",
+          approved: false, verification_status: "unverified", manufacturer_verified: false,
+          keywords: [brandName, model, "official"].filter(Boolean),
+          audience_tiers: ["public"], embargoed: false,
+        }), headers: { Prefer: "return=minimal" } });
+        results.images++;
+
+      } else if (item.category === "video") {
+        // Check dupe by video_id or url
+        let existing = [];
+        if (item.video_id) {
+          existing = await supaFetch(`pim_product_videos?product_id=eq.${productId}&external_video_id=eq.${encodeURIComponent(item.video_id)}&select=id`).then(r => r.json()).catch(() => []);
+        }
+        if (!existing.length) {
+          existing = await supaFetch(`pim_product_videos?product_id=eq.${productId}&video_url=eq.${encodeURIComponent(item.url)}&select=id`).then(r => r.json()).catch(() => []);
+        }
+        if (existing.length > 0) { results.dupes++; continue; }
+        const vidType = item.type || "product_overview";
+        const embedUrl = item.embed_url || (item.video_id && item.platform === "youtube" ? `https://www.youtube.com/embed/${item.video_id}` : null);
+        await supaFetch("pim_product_videos", { method: "POST", body: JSON.stringify({
+          product_id: productId, video_type: vidType,
+          title: item.title || `${brandName} ${model} Video`,
+          description: `Official video discovered from manufacturer source for ${brandName} ${model}.`,
+          video_url: item.url, embed_url: embedUrl,
+          thumbnail_url: item.video_id ? `https://img.youtube.com/vi/${item.video_id}/hqdefault.jpg` : null,
+          platform: item.platform || "manufacturer_cdn",
+          external_video_id: item.video_id || null,
+          language: "en", country: "CA",
+          source: "media_discovery", source_reference: sourceUrl || item.url,
+          approved: false, verification_status: "discovered", manufacturer_verified: false,
+          is_current: true, keywords: [brandName, model, "official", "manufacturer"].filter(Boolean),
+          audience_tiers: ["all"], embargoed: false,
+        }), headers: { Prefer: "return=minimal" } });
+        results.videos++;
+      }
+    } catch (e) {
+      console.error("Media save error:", e);
+      results.errors++;
+    }
+  }
+  return results;
+}
+
 function supaFetch(path, opts = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...opts,
@@ -1427,7 +1568,7 @@ function PIMScraper() {
 
   const doSave = async (data) => {
     // Skip product save for intel/news data — those use their own save functions
-    if (data._intel || data._news || data._retailerCheck) return true;
+    if (data._intel || data._news || data._retailerCheck || data._media) return true;
     // Reuse handleSave logic but without UI index management
     try {
       const checkRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(data.model)}&brand_name=eq.${encodeURIComponent(data.brand_name)}&market=eq.${market}&select=id,organization_id`);
@@ -1987,7 +2128,7 @@ function PIMScraper() {
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 4 }}>
-            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"], ["intel", "🔎 Intelligence"], ["existing", "Enrich Existing"]].map(([m, label]) => (
+            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["pricecheck", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"], ["intel", "🔎 Intelligence"], ["media", "📸 Media"], ["existing", "Enrich Existing"]].map(([m, label]) => (
               <button key={m} style={{ ...s.tab, ...(mode === m ? s.tabActive : {}) }} onClick={() => { setMode(m); if (m === "existing") loadExisting(); }}>{label}</button>
             ))}
           </div>
@@ -2219,6 +2360,134 @@ function PIMScraper() {
               {loading && <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
               {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
             </div>
+          </div>
+        )}
+
+        {mode === "media" && (
+          <div style={{ ...s.card, marginBottom: 24 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>📸 Media Discovery</div>
+            <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
+              Discover official documents, images, and videos from manufacturer websites for products already in PIM.
+            </div>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: palette.textMuted, marginBottom: 4 }}>Brand + Model (or paste list, one per line)</div>
+                <textarea
+                  style={{ ...s.input, minHeight: 80, resize: "vertical" }}
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder={"LG LRMVS3006S\nBosch B36CT80SNS\nSamsung RF23A9771SR"}
+                  disabled={loading}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button style={{ ...s.btn, ...s.btnAccent }} disabled={loading || !query.trim()} onClick={async () => {
+                  const lines = query.split("\n").map(l => l.trim()).filter(Boolean);
+                  if (!lines.length) return;
+                  setLoading(true);
+                  setResults([]);
+                  setProgress({ current: 0, total: lines.length, currentQuery: "" });
+                  const activeModel = getModel();
+
+                  for (let i = 0; i < lines.length; i++) {
+                    if (abortRef.current) { abortRef.current = false; break; }
+                    const line = lines[i];
+                    setProgress({ current: i + 1, total: lines.length, currentQuery: line });
+
+                    // Parse brand + model from the line
+                    const parts = line.split(/\s+/);
+                    let brandGuess = parts[0];
+                    let modelGuess = parts.slice(1).join(" ");
+                    if (!modelGuess) { modelGuess = brandGuess; brandGuess = ""; }
+
+                    // Try to find the product in aiq_products
+                    let productId = null;
+                    let brandName = brandGuess;
+                    let modelName = modelGuess;
+                    try {
+                      const lookupRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(modelGuess)}&select=id,brand_name,model`);
+                      const matches = await lookupRes.json();
+                      if (matches && matches.length > 0) {
+                        productId = matches[0].id;
+                        brandName = matches[0].brand_name;
+                        modelName = matches[0].model;
+                      } else if (brandGuess) {
+                        // Try with brand filter
+                        const lookupRes2 = await supaFetch(`aiq_products?brand_name=ilike.${encodeURIComponent(brandGuess + "*")}&model=eq.${encodeURIComponent(modelGuess)}&select=id,brand_name,model`);
+                        const matches2 = await lookupRes2.json();
+                        if (matches2 && matches2.length > 0) {
+                          productId = matches2[0].id;
+                          brandName = matches2[0].brand_name;
+                          modelName = matches2[0].model;
+                        }
+                      }
+                    } catch (e) { console.warn("Product lookup error:", e); }
+
+                    // Discover media
+                    const result = await mediaDiscover(brandName || brandGuess, modelName || modelGuess, activeModel);
+                    result.query = line;
+                    result._brandName = brandName;
+                    result._model = modelName;
+                    result._productId = productId;
+
+                    if (result.found && result.media && result.media.length > 0) {
+                      if (productId && autoSave) {
+                        const saveResult = await doMediaSave(result.media, productId, brandName, modelName, result.source_url);
+                        result._saveResult = saveResult;
+                        setSaved(p => [...p, { model: modelName, action: `media: ${saveResult.docs}d ${saveResult.images}i ${saveResult.videos}v (${saveResult.dupes} dupes)` }]);
+                      } else if (!productId) {
+                        result._noProduct = true;
+                      }
+                    }
+
+                    setResults(p => [...p, result]);
+                  }
+                  setLoading(false);
+                }}>
+                  {loading ? "Discovering..." : "🔍 Discover Media"}
+                </button>
+                {loading && <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+              </div>
+            </div>
+            {loading && <div style={{ fontSize: 13, color: palette.textDim }}>{progress.current}/{progress.total}: {progress.currentQuery}</div>}
+
+            {/* Media results */}
+            {results.filter(r => r._media).map((r, i) => (
+              <div key={i} style={{ ...s.card, marginTop: 12, padding: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{r._brandName || ""} {r._model || r.query}</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {r.found ? <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.greenSoft, color: palette.green, fontWeight: 600 }}>{r.media?.length || 0} found</span>
+                             : <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.redSoft, color: palette.red, fontWeight: 600 }}>Not found</span>}
+                    {r._noProduct && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.yellowSoft, color: palette.yellow, fontWeight: 600 }}>Not in PIM</span>}
+                    {r._saveResult && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.greenSoft, color: palette.green, fontWeight: 600 }}>
+                      Saved: {r._saveResult.docs}📄 {r._saveResult.images}🖼️ {r._saveResult.videos}🎬 {r._saveResult.dupes > 0 ? `(${r._saveResult.dupes} dupes)` : ""}
+                    </span>}
+                  </div>
+                </div>
+                {r.source_url && <div style={{ fontSize: 11, color: palette.accentText, marginBottom: 8, wordBreak: "break-all" }}>Source: {r.source_url}</div>}
+                {r.error && <div style={{ fontSize: 12, color: palette.red }}>{r.error}</div>}
+                {r.media && r.media.length > 0 && (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {r.media.map((m, j) => (
+                      <div key={j} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: palette.bg, borderRadius: 6, fontSize: 12 }}>
+                        <span>{m.category === "document" ? "📄" : m.category === "image" ? "🖼️" : m.category === "video" ? "🎬" : "📎"}</span>
+                        <span style={{ fontWeight: 600, minWidth: 110 }}>{m.type || m.category}</span>
+                        <span style={{ flex: 1, color: palette.textDim }}>{m.title || ""}</span>
+                        <a href={m.url} target="_blank" rel="noopener" style={{ color: palette.accentText, fontSize: 11, textDecoration: "none" }}>↗ View</a>
+                        {!autoSave && r._productId && !r._saveResult && (
+                          <button style={{ ...s.btn, fontSize: 11, padding: "2px 8px" }} onClick={async () => {
+                            const sr = await doMediaSave([m], r._productId, r._brandName, r._model, r.source_url);
+                            setResults(p => p.map((x, idx) => idx === i ? { ...x, _saveResult: sr } : x));
+                            setSaved(p => [...p, { model: r._model, action: `media: ${sr.docs}d ${sr.images}i ${sr.videos}v` }]);
+                          }}>Save</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
