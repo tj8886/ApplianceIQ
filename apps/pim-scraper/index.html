@@ -1451,6 +1451,8 @@ function PIMScraper() {
   const [dbRetailers, setDbRetailers] = useState([]);
   const [selectedRetailers, setSelectedRetailers] = useState(new Set());
   const [retailersLoaded, setRetailersLoaded] = useState(false);
+  const [mediaMode, setMediaMode] = useState("md-single");
+  const [mediaGapInfo, setMediaGapInfo] = useState(null);
   React.useEffect(() => { setRetailerCountry(market); }, [market]);
   const [intelMode, setIntelMode] = useState("company");
 
@@ -1623,6 +1625,68 @@ function PIMScraper() {
     } catch (e) { setErrors((p) => [...p, e.message]); }
     setLoading(false);
   }, []);
+
+  // ── Media Discovery runner (shared by single/bulk and from-PIM) ──
+  const runMediaDiscovery = async (lines) => {
+    if (!lines.length) return;
+    setLoading(true);
+    setResults([]);
+    setProgress({ current: 0, total: lines.length, currentQuery: "" });
+    abortRef.current = false;
+    const activeModel = getModel();
+
+    for (let i = 0; i < lines.length; i++) {
+      if (abortRef.current) { abortRef.current = false; break; }
+      const line = lines[i];
+      setProgress({ current: i + 1, total: lines.length, currentQuery: line });
+
+      const parts = line.split(/\s+/);
+      let brandGuess = parts[0];
+      let modelGuess = parts.slice(1).join(" ");
+      if (!modelGuess) { modelGuess = brandGuess; brandGuess = ""; }
+
+      let productId = null;
+      let brandName = brandGuess;
+      let modelName = modelGuess;
+      try {
+        const lookupRes = await supaFetch("aiq_products?model=eq." + encodeURIComponent(modelGuess) + "&select=id,brand_name,model");
+        const matches = await lookupRes.json();
+        if (matches && matches.length > 0) {
+          productId = matches[0].id;
+          brandName = matches[0].brand_name;
+          modelName = matches[0].model;
+        } else if (brandGuess) {
+          const lookupRes2 = await supaFetch("aiq_products?brand_name=ilike." + encodeURIComponent(brandGuess + "*") + "&model=eq." + encodeURIComponent(modelGuess) + "&select=id,brand_name,model");
+          const matches2 = await lookupRes2.json();
+          if (matches2 && matches2.length > 0) {
+            productId = matches2[0].id;
+            brandName = matches2[0].brand_name;
+            modelName = matches2[0].model;
+          }
+        }
+      } catch (e) { console.warn("Product lookup error:", e); }
+
+      const result = await mediaDiscover(brandName || brandGuess, modelName || modelGuess, activeModel);
+      result.query = line;
+      result._brandName = brandName;
+      result._model = modelName;
+      result._productId = productId;
+
+      if (result.found && result.media && result.media.length > 0) {
+        if (productId && autoSave) {
+          const saveResult = await doMediaSave(result.media, productId, brandName, modelName, result.source_url);
+          result._saveResult = saveResult;
+          setSaved(p => [...p, { model: modelName, action: "media: " + saveResult.docs + "d " + saveResult.images + "i " + saveResult.videos + "v (" + saveResult.dupes + " dupes)" }]);
+        } else if (!productId) {
+          result._noProduct = true;
+        }
+      }
+
+      setResults(p => [...p, result]);
+      if (i < lines.length - 1) await new Promise(r => setTimeout(r, 3000));
+    }
+    setLoading(false);
+  };
 
   const [autoSave, setAutoSave] = useState(true);
   const [saveQueue, setSaveQueue] = useState([]); // tracks auto-saved items
@@ -2431,87 +2495,126 @@ function PIMScraper() {
             <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
               Discover official documents, images, and videos from manufacturer websites for products already in PIM.
             </div>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: palette.textMuted, marginBottom: 4 }}>Brand + Model (or paste list, one per line)</div>
-                <textarea
-                  style={{ ...s.input, minHeight: 80, resize: "vertical" }}
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder={"LG LRMVS3006S\nBosch B36CT80SNS\nSamsung RF23A9771SR"}
-                  disabled={loading}
-                />
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button style={{ ...s.btn, ...s.btnAccent }} disabled={loading || !query.trim()} onClick={async () => {
-                  const lines = query.split("\n").map(l => l.trim()).filter(Boolean);
-                  if (!lines.length) return;
-                  setLoading(true);
-                  setResults([]);
-                  setProgress({ current: 0, total: lines.length, currentQuery: "" });
-                  const activeModel = getModel();
 
-                  for (let i = 0; i < lines.length; i++) {
-                    if (abortRef.current) { abortRef.current = false; break; }
-                    const line = lines[i];
-                    setProgress({ current: i + 1, total: lines.length, currentQuery: line });
-
-                    // Parse brand + model from the line
-                    const parts = line.split(/\s+/);
-                    let brandGuess = parts[0];
-                    let modelGuess = parts.slice(1).join(" ");
-                    if (!modelGuess) { modelGuess = brandGuess; brandGuess = ""; }
-
-                    // Try to find the product in aiq_products
-                    let productId = null;
-                    let brandName = brandGuess;
-                    let modelName = modelGuess;
-                    try {
-                      const lookupRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(modelGuess)}&select=id,brand_name,model`);
-                      const matches = await lookupRes.json();
-                      if (matches && matches.length > 0) {
-                        productId = matches[0].id;
-                        brandName = matches[0].brand_name;
-                        modelName = matches[0].model;
-                      } else if (brandGuess) {
-                        // Try with brand filter
-                        const lookupRes2 = await supaFetch(`aiq_products?brand_name=ilike.${encodeURIComponent(brandGuess + "*")}&model=eq.${encodeURIComponent(modelGuess)}&select=id,brand_name,model`);
-                        const matches2 = await lookupRes2.json();
-                        if (matches2 && matches2.length > 0) {
-                          productId = matches2[0].id;
-                          brandName = matches2[0].brand_name;
-                          modelName = matches2[0].model;
-                        }
-                      }
-                    } catch (e) { console.warn("Product lookup error:", e); }
-
-                    // Discover media
-                    const result = await mediaDiscover(brandName || brandGuess, modelName || modelGuess, activeModel);
-                    result.query = line;
-                    result._brandName = brandName;
-                    result._model = modelName;
-                    result._productId = productId;
-
-                    if (result.found && result.media && result.media.length > 0) {
-                      if (productId && autoSave) {
-                        const saveResult = await doMediaSave(result.media, productId, brandName, modelName, result.source_url);
-                        result._saveResult = saveResult;
-                        setSaved(p => [...p, { model: modelName, action: `media: ${saveResult.docs}d ${saveResult.images}i ${saveResult.videos}v (${saveResult.dupes} dupes)` }]);
-                      } else if (!productId) {
-                        result._noProduct = true;
-                      }
-                    }
-
-                    setResults(p => [...p, result]);
-                  }
-                  setLoading(false);
-                }}>
-                  {loading ? "Discovering..." : "🔍 Discover Media"}
-                </button>
-                {loading && <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
-              </div>
+            {/* Sub-mode tabs */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+              {[["md-single","Single / Bulk"],["md-pim","From PIM"]].map(([m,label]) => (
+                <button key={m} style={{ ...s.tab, ...(mediaMode === m ? s.tabActive : {}) }} onClick={() => setMediaMode(m)}>{label}</button>
+              ))}
             </div>
-            {loading && <div style={{ fontSize: 13, color: palette.textDim }}>{progress.current}/{progress.total}: {progress.currentQuery}</div>}
+
+            {/* Single / Bulk media discovery */}
+            {mediaMode === "md-single" && (
+              <div>
+                <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: palette.textMuted, marginBottom: 4 }}>Brand + Model (or paste list, one per line)</div>
+                    <textarea
+                      style={{ ...s.input, minHeight: 80, resize: "vertical" }}
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      placeholder={"LG LRMVS3006S\nBosch B36CT80SNS\nSamsung RF23A9771SR"}
+                      disabled={loading}
+                    />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button style={{ ...s.btn, ...s.btnAccent }} disabled={loading || !query.trim()} onClick={() => runMediaDiscovery(query.split("\n").map(l => l.trim()).filter(Boolean))}>
+                      {loading ? "Discovering..." : "🔍 Discover Media"}
+                    </button>
+                    {loading && <button style={{ ...s.btn, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* From PIM — load products missing media */}
+            {mediaMode === "md-pim" && (
+              <div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <button style={{ ...s.btn, ...s.btnSm }} onClick={async () => {
+                    if (!existingProducts.length) await loadExisting();
+                    // Count media per product
+                    setProgress({ current: 0, total: 0, currentQuery: "Loading media counts..." });
+                    try {
+                      const docsRes = await supaFetch("pim_product_documents?select=product_id");
+                      const docsData = await docsRes.json();
+                      const docIds = new Set((docsData || []).map(d => d.product_id).filter(Boolean));
+
+                      const imgsRes = await supaFetch("pim_product_images?select=product_id");
+                      const imgsData = await imgsRes.json();
+                      const imgIds = new Set((imgsData || []).map(d => d.product_id).filter(Boolean));
+
+                      const vidsRes = await supaFetch("pim_product_videos?select=product_id");
+                      const vidsData = await vidsRes.json();
+                      const vidIds = new Set((vidsData || []).map(d => d.product_id).filter(Boolean));
+
+                      const missing = existingProducts.filter(p => !docIds.has(p.id) || !imgIds.has(p.id) || !vidIds.has(p.id));
+                      const missingInfo = missing.map(p => {
+                        const gaps = [];
+                        if (!docIds.has(p.id)) gaps.push("docs");
+                        if (!imgIds.has(p.id)) gaps.push("imgs");
+                        if (!vidIds.has(p.id)) gaps.push("vids");
+                        return p.brand_name + " " + p.model + "  ← missing: " + gaps.join(", ");
+                      });
+                      setBulkText(missingInfo.join("\n"));
+                      setMediaGapInfo({ total: existingProducts.length, missing: missing.length, hasDocs: docIds.size, hasImgs: imgIds.size, hasVids: vidIds.size });
+                    } catch (e) { console.error(e); setBulkText(existingProducts.map(p => p.brand_name + " " + p.model).join("\n")); }
+                    setProgress({ current: 0, total: 0, currentQuery: "" });
+                  }}>📋 Load Missing Media ({existingProducts.length ? "…" + existingProducts.length + " products" : "…"})</button>
+                  <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                    if (!existingProducts.length) await loadExisting();
+                    setBulkText(existingProducts.map(p => p.brand_name + " " + p.model).join("\n"));
+                    setMediaGapInfo(null);
+                  }}>Load All Products</button>
+                  <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                    if (!existingProducts.length) await loadExisting();
+                    const docsRes = await supaFetch("pim_product_documents?select=product_id");
+                    const docIds = new Set(((await docsRes.json()) || []).map(d => d.product_id).filter(Boolean));
+                    const missing = existingProducts.filter(p => !docIds.has(p.id));
+                    setBulkText(missing.map(p => p.brand_name + " " + p.model).join("\n"));
+                    setMediaGapInfo(null);
+                  }}>📄 Missing Docs Only</button>
+                  <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                    if (!existingProducts.length) await loadExisting();
+                    const imgsRes = await supaFetch("pim_product_images?select=product_id");
+                    const imgIds = new Set(((await imgsRes.json()) || []).map(d => d.product_id).filter(Boolean));
+                    const missing = existingProducts.filter(p => !imgIds.has(p.id));
+                    setBulkText(missing.map(p => p.brand_name + " " + p.model).join("\n"));
+                    setMediaGapInfo(null);
+                  }}>🖼️ Missing Images Only</button>
+                  <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={async () => {
+                    if (!existingProducts.length) await loadExisting();
+                    const vidsRes = await supaFetch("pim_product_videos?select=product_id");
+                    const vidIds = new Set(((await vidsRes.json()) || []).map(d => d.product_id).filter(Boolean));
+                    const missing = existingProducts.filter(p => !vidIds.has(p.id));
+                    setBulkText(missing.map(p => p.brand_name + " " + p.model).join("\n"));
+                    setMediaGapInfo(null);
+                  }}>🎬 Missing Videos Only</button>
+                </div>
+                {mediaGapInfo && (
+                  <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 12, flexWrap: "wrap" }}>
+                    <span style={{ color: palette.textDim }}>{mediaGapInfo.total} products in PIM</span>
+                    <span style={{ color: palette.yellow, fontWeight: 600 }}>{mediaGapInfo.missing} missing media</span>
+                    <span style={{ color: palette.green }}>{mediaGapInfo.hasDocs} have docs</span>
+                    <span style={{ color: palette.green }}>{mediaGapInfo.hasImgs} have images</span>
+                    <span style={{ color: palette.green }}>{mediaGapInfo.hasVids} have videos</span>
+                  </div>
+                )}
+                <textarea style={s.textarea} rows={8} value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder="Load products from PIM using the buttons above" />
+                <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
+                  <button style={{ ...s.btn, ...s.btnAccent }} disabled={loading || !bulkText.trim()} onClick={() => {
+                    const lines = bulkText.split("\n").map(l => l.split("←")[0].trim()).filter(Boolean);
+                    runMediaDiscovery(lines);
+                  }}>
+                    {loading ? "Discovering " + progress.current + "/" + progress.total + "…" : "🔍 Discover Media for " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                  </button>
+                  {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
+                  {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
+                </div>
+              </div>
+            )}
+
+            {loading && <div style={{ fontSize: 13, color: palette.textDim, marginTop: 8 }}>{progress.current}/{progress.total}: {progress.currentQuery}</div>}
 
             {/* Media results */}
             {results.filter(r => r._media).map((r, i) => (
@@ -2523,7 +2626,7 @@ function PIMScraper() {
                              : <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.redSoft, color: palette.red, fontWeight: 600 }}>Not found</span>}
                     {r._noProduct && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.yellowSoft, color: palette.yellow, fontWeight: 600 }}>Not in PIM</span>}
                     {r._saveResult && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: palette.greenSoft, color: palette.green, fontWeight: 600 }}>
-                      Saved: {r._saveResult.docs}📄 {r._saveResult.images}🖼️ {r._saveResult.videos}🎬 {r._saveResult.dupes > 0 ? `(${r._saveResult.dupes} dupes)` : ""}
+                      Saved: {r._saveResult.docs}📄 {r._saveResult.images}🖼️ {r._saveResult.videos}🎬 {r._saveResult.dupes > 0 ? " (" + r._saveResult.dupes + " dupes)" : ""}
                     </span>}
                   </div>
                 </div>
@@ -2541,7 +2644,7 @@ function PIMScraper() {
                           <button style={{ ...s.btn, fontSize: 11, padding: "2px 8px" }} onClick={async () => {
                             const sr = await doMediaSave([m], r._productId, r._brandName, r._model, r.source_url);
                             setResults(p => p.map((x, idx) => idx === i ? { ...x, _saveResult: sr } : x));
-                            setSaved(p => [...p, { model: r._model, action: `media: ${sr.docs}d ${sr.images}i ${sr.videos}v` }]);
+                            setSaved(p => [...p, { model: r._model, action: "media: " + sr.docs + "d " + sr.images + "i " + sr.videos + "v" }]);
                           }}>Save</button>
                         )}
                       </div>
