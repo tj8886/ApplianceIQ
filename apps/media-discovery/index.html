@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ApplianceIQ Media Discovery Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e17;--surface:#111827;--surface2:#1a2235;--surface3:#243049;
+  --border:#1e293b;--border2:#334155;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --accent:#3b82f6;--accent2:#2563eb;--accent-glow:rgba(59,130,246,0.15);
+  --green:#10b981;--green-bg:rgba(16,185,129,0.12);
+  --red:#ef4444;--red-bg:rgba(239,68,68,0.12);
+  --amber:#f59e0b;--amber-bg:rgba(245,158,11,0.12);
+  --purple:#8b5cf6;--purple-bg:rgba(139,92,246,0.12);
+  --cyan:#06b6d4;--cyan-bg:rgba(6,182,212,0.12);
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 4px 24px rgba(0,0,0,0.3);
+  --font:'Inter',system-ui,sans-serif;
+}
+html{font-size:14px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* Layout */
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50}
+.sidebar-brand{padding:20px;border-bottom:1px solid var(--border)}
+.sidebar-brand h1{font-size:1rem;font-weight:700;color:var(--accent);letter-spacing:-0.02em}
+.sidebar-brand span{font-size:0.75rem;color:var(--text3);display:block;margin-top:2px}
+.sidebar-nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius);cursor:pointer;color:var(--text2);font-size:0.875rem;font-weight:500;transition:all 0.15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-glow);color:var(--accent);border:1px solid rgba(59,130,246,0.2)}
+.nav-icon{width:18px;text-align:center;font-size:1rem}
+.sidebar-footer{padding:12px;border-top:1px solid var(--border)}
+.api-status{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:var(--radius);font-size:0.75rem;cursor:pointer;background:var(--surface2)}
+.api-dot{width:8px;height:8px;border-radius:50%}
+.api-dot.ok{background:var(--green)}
+.api-dot.no{background:var(--red)}
+
+.main{margin-left:240px;flex:1;min-height:100vh}
+.topbar{height:56px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface)}
+.topbar-title{font-size:1.1rem;font-weight:600}
+.topbar-actions{display:flex;gap:8px}
+
+.content{padding:24px}
+.page{display:none}
+.page.active{display:block}
+
+/* Cards */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.stat-label{font-size:0.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;font-weight:600}
+.stat-value{font-size:1.75rem;font-weight:700;margin-top:4px}
+.stat-sub{font-size:0.75rem;color:var(--text3);margin-top:4px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h2{font-size:0.95rem;font-weight:600}
+.card-body{padding:20px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius);font-size:0.8125rem;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text);transition:all 0.15s;font-family:var(--font)}
+.btn:hover{background:var(--surface3);border-color:var(--text3)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-sm{padding:5px 10px;font-size:0.75rem}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-danger{background:var(--red);border-color:var(--red);color:#fff}
+
+/* Form */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:0.8125rem;font-weight:600;color:var(--text2);margin-bottom:6px}
+.form-control{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-size:0.875rem;font-family:var(--font);outline:none;transition:border-color 0.15s}
+.form-control:focus{border-color:var(--accent)}
+select.form-control{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+textarea.form-control{resize:vertical;min-height:80px}
+
+/* Table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.8125rem}
+th{color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;font-size:0.7rem;background:var(--surface2)}
+tr:hover td{background:rgba(59,130,246,0.04)}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:99px;font-size:0.7rem;font-weight:600;letter-spacing:0.02em}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.badge-purple{background:var(--purple-bg);color:var(--purple)}
+.badge-cyan{background:var(--cyan-bg);color:var(--cyan)}
+.badge-blue{background:var(--accent-glow);color:var(--accent)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 18px;font-size:0.8125rem;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font)}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* Discovery specific */
+.discovery-form{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.discovery-form .full-width{grid-column:1/-1}
+.discovery-types{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.discovery-type{padding:12px;border:1px solid var(--border2);border-radius:var(--radius);cursor:pointer;text-align:center;transition:all 0.15s;background:var(--surface2)}
+.discovery-type:hover{border-color:var(--text3)}
+.discovery-type.selected{border-color:var(--accent);background:var(--accent-glow)}
+.discovery-type .dt-icon{font-size:1.5rem;margin-bottom:4px}
+.discovery-type .dt-label{font-size:0.75rem;font-weight:600}
+
+/* Progress/Log */
+.log-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:400px;overflow-y:auto;font-family:'Courier New',monospace;font-size:0.75rem;line-height:1.8}
+.log-line{color:var(--text2)}
+.log-line.info{color:var(--cyan)}
+.log-line.success{color:var(--green)}
+.log-line.error{color:var(--red)}
+.log-line.warn{color:var(--amber)}
+
+/* Candidate cards */
+.candidate-card{border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;background:var(--surface);transition:border-color 0.15s}
+.candidate-card:hover{border-color:var(--border2)}
+.candidate-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.candidate-title{font-weight:600;font-size:0.9rem}
+.candidate-meta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.candidate-meta span{font-size:0.75rem;color:var(--text3)}
+.candidate-url{font-size:0.75rem;color:var(--accent);word-break:break-all;display:block;margin-bottom:10px}
+.candidate-actions{display:flex;gap:8px;justify-content:flex-end}
+
+/* Filters */
+.filters{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-group{display:flex;align-items:center;gap:6px}
+.filter-group label{font-size:0.75rem;color:var(--text3);font-weight:600;white-space:nowrap}
+.filter-group select{padding:6px 28px 6px 10px;font-size:0.75rem}
+
+/* Loading */
+.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:999;display:none}
+.loading-overlay.show{display:flex}
+.loading-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;text-align:center;max-width:400px}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;display:none}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);width:90%;max-width:520px;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow)}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{font-size:0.95rem;font-weight:600}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.2rem;padding:4px}
+.modal-body{padding:20px}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+
+/* Empty state */
+.empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:12px;opacity:0.4}
+.empty-state p{font-size:0.875rem;margin-bottom:16px}
+
+/* Toast */
+.toast-container{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:12px 16px;border-radius:var(--radius);font-size:0.8125rem;font-weight:500;animation:slideIn 0.3s;box-shadow:var(--shadow);max-width:360px}
+.toast-success{background:#065f46;color:#a7f3d0;border:1px solid #10b981}
+.toast-error{background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444}
+.toast-info{background:#1e3a5f;color:#93c5fd;border:1px solid #3b82f6}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+@media(max-width:768px){
+  .sidebar{width:60px}
+  .sidebar-brand span,.nav-label{display:none}
+  .sidebar-brand h1{font-size:0.7rem}
+  .main{margin-left:60px}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .discovery-form{grid-template-columns:1fr}
+  .discovery-types{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <h1>Media Discovery</h1>
+      <span>ApplianceIQ Engine</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="go('dashboard')">
+        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-item" onclick="go('discover')">
+        <span class="nav-icon">🔍</span><span class="nav-label">Discover</span>
+      </button>
+      <button class="nav-item" onclick="go('candidates')">
+        <span class="nav-icon">📋</span><span class="nav-label">Candidates</span>
+      </button>
+      <button class="nav-item" onclick="go('sources')">
+        <span class="nav-icon">🏭</span><span class="nav-label">Sources</span>
+      </button>
+      <button class="nav-item" onclick="go('runs')">
+        <span class="nav-icon">📜</span><span class="nav-label">Run History</span>
+      </button>
+      <button class="nav-item" onclick="go('settings')">
+        <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="api-status" onclick="go('settings')">
+        <span class="api-dot" id="apiDot"></span>
+        <span id="apiLabel" style="color:var(--text3)">API Key</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Dashboard</div>
+      <div class="topbar-actions" id="pageActions"></div>
+    </div>
+    <div class="content">
+
+      <!-- Dashboard Page -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="dashStats"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="card">
+            <div class="card-header"><h2>Recent Candidates</h2></div>
+            <div class="card-body" id="dashRecent"><div class="empty-state"><p>No candidates yet</p></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h2>Recent Runs</h2></div>
+            <div class="card-body" id="dashRuns"><div class="empty-state"><p>No runs yet</p></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Discover Page -->
+      <div class="page" id="page-discover">
+        <div class="card" id="discoverFormCard">
+          <div class="card-header"><h2>Run Media Discovery</h2></div>
+          <div class="card-body">
+            <div class="discovery-form">
+              <div class="form-group">
+                <label>Brand</label>
+                <select class="form-control" id="discBrand" onchange="loadModelsForBrand()">
+                  <option value="">Select brand...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Model (optional — leave blank for brand sweep)</label>
+                <select class="form-control" id="discModel">
+                  <option value="">All models for brand</option>
+                </select>
+              </div>
+              <div class="form-group full-width">
+                <label>Discovery Types</label>
+                <div class="discovery-types">
+                  <div class="discovery-type selected" onclick="toggleDiscType(this)" data-type="documents">
+                    <div class="dt-icon">📄</div>
+                    <div class="dt-label">Documents</div>
+                  </div>
+                  <div class="discovery-type selected" onclick="toggleDiscType(this)" data-type="images">
+                    <div class="dt-icon">🖼️</div>
+                    <div class="dt-label">Images</div>
+                  </div>
+                  <div class="discovery-type selected" onclick="toggleDiscType(this)" data-type="videos">
+                    <div class="dt-icon">🎬</div>
+                    <div class="dt-label">Videos</div>
+                  </div>
+                  <div class="discovery-type selected" onclick="toggleDiscType(this)" data-type="specs">
+                    <div class="dt-icon">📐</div>
+                    <div class="dt-label">Specs</div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group full-width" style="display:flex;gap:12px;justify-content:flex-end">
+                <button class="btn btn-primary" id="btnRunDiscovery" onclick="runDiscovery()">🔍 Run Discovery</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="discoverLogCard" style="margin-top:16px;display:none">
+          <div class="card-header"><h2>Discovery Log</h2><span id="discStatus" class="badge badge-blue">Running</span></div>
+          <div class="card-body">
+            <div class="log-panel" id="discLog"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Candidates Page -->
+      <div class="page" id="page-candidates">
+        <div class="filters">
+          <div class="filter-group">
+            <label>Status</label>
+            <select class="form-control" id="filterStatus" onchange="loadCandidates()">
+              <option value="">All</option>
+              <option value="discovered" selected>Discovered</option>
+              <option value="matched">Matched</option>
+              <option value="needs_review">Needs Review</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="submitted">Submitted</option>
+              <option value="duplicate">Duplicate</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Category</label>
+            <select class="form-control" id="filterCategory" onchange="loadCandidates()">
+              <option value="">All</option>
+              <option value="document">Documents</option>
+              <option value="image">Images</option>
+              <option value="video">Videos</option>
+              <option value="specification">Specs</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Brand</label>
+            <select class="form-control" id="filterBrand" onchange="loadCandidates()">
+              <option value="">All</option>
+            </select>
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-sm" onclick="loadCandidates()">↻ Refresh</button>
+        </div>
+        <div id="candidatesList"></div>
+      </div>
+
+      <!-- Sources Page -->
+      <div class="page" id="page-sources">
+        <div class="card">
+          <div class="card-header">
+            <h2>Manufacturer Source Registry</h2>
+            <button class="btn btn-sm btn-primary" onclick="showAddSource()">+ Add Source</button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Brand</th><th>Domain</th><th>Type</th><th>Parser</th><th>Active</th><th>Priority</th><th>Last Run</th><th>Reliability</th><th></th></tr></thead>
+                <tbody id="sourcesTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Runs Page -->
+      <div class="page" id="page-runs">
+        <div class="card">
+          <div class="card-header"><h2>Discovery Run History</h2></div>
+          <div class="card-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Run</th><th>Brand</th><th>Model</th><th>Type</th><th>Status</th><th>Candidates</th><th>Dupes</th><th>Errors</th><th>Duration</th><th>Date</th></tr></thead>
+                <tbody id="runsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Page -->
+      <div class="page" id="page-settings">
+        <div class="card" style="max-width:560px">
+          <div class="card-header"><h2>API Configuration</h2></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label>Anthropic API Key</label>
+              <input type="password" class="form-control" id="apiKeyInput" placeholder="sk-ant-...">
+              <div style="font-size:0.75rem;color:var(--text3);margin-top:6px">Your key is stored only in this browser session. It is never saved to the database.</div>
+            </div>
+            <div class="form-group">
+              <label>Supabase Connection</label>
+              <div style="font-size:0.8125rem;color:var(--green)">✓ Connected to fumwwhyozeouoqscolke</div>
+            </div>
+            <button class="btn btn-primary" onclick="saveApiKey()">Save API Key</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Candidate Review Modal -->
+<div class="modal-bg" id="reviewModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="reviewTitle">Review Candidate</h3>
+      <button class="modal-close" onclick="closeReview()">✕</button>
+    </div>
+    <div class="modal-body" id="reviewBody"></div>
+    <div class="modal-footer" id="reviewFooter"></div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner" style="width:32px;height:32px;margin:0 auto 16px"></div>
+    <div id="loadingText" style="font-size:0.875rem;color:var(--text2)">Processing...</div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ── Global nav ──
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('active');
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = ['dashboard','discover','candidates','sources','runs','settings'];
+  const idx = pages.indexOf(page);
+  if (idx >= 0 && navItems[idx]) navItems[idx].classList.add('active');
+  const titles = {dashboard:'Dashboard',discover:'Discover Media',candidates:'Candidate Queue',sources:'Source Registry',runs:'Run History',settings:'Settings'};
+  document.getElementById('pageTitle').textContent = titles[page] || page;
+
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'candidates') loadCandidates();
+  if (page === 'sources') loadSources();
+  if (page === 'runs') loadRuns();
+  if (page === 'discover') loadBrandSelector();
+  if (page === 'settings') {
+    const k = sessionStorage.getItem('aiq_anthropic_key') || '';
+    document.getElementById('apiKeyInput').value = k;
+  }
+}
+
+// ── Toast ──
+function toast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + (type || 'info');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+// ── API Key ──
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if (!k) { toast('Please enter an API key', 'error'); return; }
+  sessionStorage.setItem('aiq_anthropic_key', k);
+  updateApiDot();
+  toast('API key saved for this session', 'success');
+}
+function getApiKey() { return sessionStorage.getItem('aiq_anthropic_key') || ''; }
+function updateApiDot() {
+  const dot = document.getElementById('apiDot');
+  const label = document.getElementById('apiLabel');
+  if (getApiKey()) { dot.className = 'api-dot ok'; label.textContent = 'API Ready'; label.style.color = 'var(--green)'; }
+  else { dot.className = 'api-dot no'; label.textContent = 'No API Key'; label.style.color = 'var(--text3)'; }
+}
+</script>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const PROXY_URL = SUPABASE_URL + '/functions/v1/media-discovery-proxy';
+
+// ── Expose functions to global scope ──
+window.sb = sb;
+window.PROXY_URL = PROXY_URL;
+
+// ── Auth ──
+async function initAuth() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    const { error } = await sb.auth.signInWithPassword({ email: 'demo@applianceiq.com', password: 'DemoIQ2026!' });
+    if (error) console.error('Auth error:', error.message);
+  }
+}
+
+// ── Brand/Model data ──
+let allProducts = [];
+let allBrands = [];
+
+async function loadProducts() {
+  const { data } = await sb.from('aiq_products').select('id,brand_name,model,category,series,product_family,brand_id').order('brand_name').order('model');
+  allProducts = data || [];
+  allBrands = [...new Set(allProducts.map(p => p.brand_name))].sort();
+}
+
+window.loadBrandSelector = async function() {
+  if (!allProducts.length) await loadProducts();
+  const sel = document.getElementById('discBrand');
+  const filterBrand = document.getElementById('filterBrand');
+  if (sel.options.length <= 1) {
+    allBrands.forEach(b => { sel.add(new Option(b, b)); });
+  }
+  if (filterBrand.options.length <= 1) {
+    allBrands.forEach(b => { filterBrand.add(new Option(b, b)); });
+  }
+};
+
+window.loadModelsForBrand = function() {
+  const brand = document.getElementById('discBrand').value;
+  const sel = document.getElementById('discModel');
+  sel.innerHTML = '<option value="">All models for brand</option>';
+  if (!brand) return;
+  const models = allProducts.filter(p => p.brand_name === brand);
+  models.forEach(p => { sel.add(new Option(p.model + ' (' + p.category + ')', p.id)); });
+};
+
+// ── Dashboard ──
+window.loadDashboard = async function() {
+  const [candRes, runRes, prodRes] = await Promise.all([
+    sb.from('media_discovery_candidates').select('id,status,asset_category,brand_name,created_at', { count: 'exact' }),
+    sb.from('media_discovery_runs').select('id,status,candidates_created,created_at', { count: 'exact' }),
+    sb.from('aiq_products').select('id', { count: 'exact', head: true })
+  ]);
+  const cands = candRes.data || [];
+  const runs = runRes.data || [];
+  const prodCount = prodRes.count || 0;
+  const discovered = cands.filter(c => c.status === 'discovered').length;
+  const approved = cands.filter(c => c.status === 'approved' || c.status === 'submitted').length;
+  const needsReview = cands.filter(c => c.status === 'needs_review' || c.status === 'discovered').length;
+  const docs = cands.filter(c => c.asset_category === 'document').length;
+  const imgs = cands.filter(c => c.asset_category === 'image').length;
+  const vids = cands.filter(c => c.asset_category === 'video').length;
+
+  document.getElementById('dashStats').innerHTML =
+    statCard('Total Candidates', cands.length, 'All discovered media') +
+    statCard('Needs Review', needsReview, 'Awaiting approval', 'var(--amber)') +
+    statCard('Approved', approved, 'Ready for PIM', 'var(--green)') +
+    statCard('Documents', docs, 'Manuals, specs, guides') +
+    statCard('Images', imgs, 'Product images') +
+    statCard('Videos', vids, 'Official videos') +
+    statCard('Discovery Runs', runs.length, 'Total executions') +
+    statCard('Products', prodCount, 'In aiq_products', 'var(--cyan)');
+
+  // Recent candidates
+  const recent = cands.slice(-5).reverse();
+  if (recent.length) {
+    document.getElementById('dashRecent').innerHTML = recent.map(c =>
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.8rem">' +
+        '<span>' + esc(c.brand_name) + '</span>' +
+        '<span>' + statusBadge(c.status) + '</span>' +
+      '</div>'
+    ).join('');
+  }
+  // Recent runs
+  const recentRuns = runs.slice(-5).reverse();
+  if (recentRuns.length) {
+    document.getElementById('dashRuns').innerHTML = recentRuns.map(r =>
+      '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.8rem">' +
+        '<span>' + statusBadge(r.status) + ' ' + r.candidates_created + ' candidates</span>' +
+        '<span style="color:var(--text3)">' + timeAgo(r.created_at) + '</span>' +
+      '</div>'
+    ).join('');
+  }
+};
+
+function statCard(label, value, sub, color) {
+  return '<div class="stat-card"><div class="stat-label">' + label + '</div>' +
+    '<div class="stat-value" style="color:' + (color || 'var(--text)') + '">' + value + '</div>' +
+    '<div class="stat-sub">' + sub + '</div></div>';
+}
+
+// ── Discovery ──
+window.toggleDiscType = function(el) { el.classList.toggle('selected'); };
+
+window.runDiscovery = async function() {
+  const apiKey = getApiKey();
+  if (!apiKey) { toast('Set your Anthropic API key in Settings first', 'error'); go('settings'); return; }
+
+  const brand = document.getElementById('discBrand').value;
+  if (!brand) { toast('Select a brand', 'error'); return; }
+
+  const modelSelect = document.getElementById('discModel');
+  const productId = modelSelect.value || null;
+  const modelName = productId ? modelSelect.options[modelSelect.selectedIndex].text.split(' (')[0] : null;
+
+  const selectedTypes = [...document.querySelectorAll('.discovery-type.selected')].map(e => e.dataset.type);
+  if (!selectedTypes.length) { toast('Select at least one discovery type', 'error'); return; }
+
+  // Get products to discover for
+  let products = [];
+  if (productId) {
+    const p = allProducts.find(x => x.id === productId);
+    if (p) products = [p];
+  } else {
+    products = allProducts.filter(p => p.brand_name === brand).slice(0, 10); // cap at 10 for brand sweep
+  }
+
+  if (!products.length) { toast('No products found for ' + brand, 'error'); return; }
+
+  // Show log panel
+  const logCard = document.getElementById('discoverLogCard');
+  logCard.style.display = 'block';
+  const logEl = document.getElementById('discLog');
+  logEl.innerHTML = '';
+  document.getElementById('discStatus').className = 'badge badge-blue';
+  document.getElementById('discStatus').textContent = 'Running';
+  document.getElementById('btnRunDiscovery').disabled = true;
+
+  function log(msg, type) {
+    const line = document.createElement('div');
+    line.className = 'log-line ' + (type || '');
+    line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Create run record
+  const { data: run, error: runErr } = await sb.from('media_discovery_runs').insert({
+    run_type: productId ? 'single_product' : 'brand_sweep',
+    brand_name: brand,
+    model: modelName,
+    product_id: productId,
+    status: 'running',
+    started_at: new Date().toISOString(),
+    run_config: { discovery_types: selectedTypes, product_count: products.length }
+  }).select().single();
+
+  if (runErr) { log('Failed to create run: ' + runErr.message, 'error'); return; }
+  log('Run ' + run.id.slice(0,8) + ' started for ' + brand + (modelName ? ' ' + modelName : ' (brand sweep, ' + products.length + ' products)'), 'info');
+
+  let totalCandidates = 0;
+  let totalDupes = 0;
+  let totalErrors = 0;
+
+  for (const product of products) {
+    log('Discovering media for ' + product.brand_name + ' ' + product.model + '...', 'info');
+
+    try {
+      const prompt = buildDiscoveryPrompt(product, selectedTypes);
+      const response = await callClaude(apiKey, prompt);
+
+      if (!response || response.error) {
+        log('API error: ' + (response?.error?.message || 'Unknown'), 'error');
+        totalErrors++;
+        continue;
+      }
+
+      // Parse the response for structured media data
+      const mediaItems = parseDiscoveryResponse(response, product);
+      log('Found ' + mediaItems.length + ' media items for ' + product.model, 'success');
+
+      // Check for duplicates and insert candidates
+      for (const item of mediaItems) {
+        // Check duplicate by URL
+        const { data: existing } = await sb.from('media_discovery_candidates')
+          .select('id')
+          .eq('url', item.url)
+          .eq('matched_product_id', product.id)
+          .maybeSingle();
+
+        if (existing) {
+          totalDupes++;
+          log('  Duplicate: ' + item.title, 'warn');
+          continue;
+        }
+
+        // Also check existing PIM tables for this URL
+        let existsInPim = false;
+        if (item.asset_category === 'video') {
+          const { data: pv } = await sb.from('pim_product_videos')
+            .select('id').eq('product_id', product.id)
+            .or('video_url.eq.' + item.url + ',embed_url.eq.' + item.url)
+            .maybeSingle();
+          if (pv) existsInPim = true;
+        } else if (item.asset_category === 'document') {
+          const { data: pd } = await sb.from('pim_product_documents')
+            .select('id').eq('product_id', product.id).eq('file_url', item.url)
+            .maybeSingle();
+          if (pd) existsInPim = true;
+        } else if (item.asset_category === 'image') {
+          const { data: pi } = await sb.from('pim_product_images')
+            .select('id').eq('product_id', product.id).eq('file_url', item.url)
+            .maybeSingle();
+          if (pi) existsInPim = true;
+        }
+
+        if (existsInPim) {
+          totalDupes++;
+          log('  Already in PIM: ' + item.title, 'warn');
+          continue;
+        }
+
+        const { error: insErr } = await sb.from('media_discovery_candidates').insert({
+          run_id: run.id,
+          brand_name: product.brand_name,
+          model_raw: product.model,
+          model_normalized: product.model.toUpperCase().replace(/[\s-]/g, ''),
+          matched_product_id: product.id,
+          match_type: 'exact_model',
+          match_confidence: 0.95,
+          match_reasons: ['Discovered from product-specific search'],
+          asset_category: item.asset_category,
+          asset_type: item.asset_type || null,
+          title: item.title,
+          description: item.description || null,
+          url: item.url,
+          embed_url: item.embed_url || null,
+          thumbnail_url: item.thumbnail_url || null,
+          file_name: item.file_name || null,
+          mime_type: item.mime_type || null,
+          language: item.language || 'en',
+          country: item.country || 'CA',
+          platform: item.platform || null,
+          external_video_id: item.external_video_id || null,
+          duration_seconds: item.duration_seconds || null,
+          has_captions: item.has_captions || null,
+          image_role: item.image_role || null,
+          source_url: item.source_url || item.url,
+          source_domain: item.source_domain || null,
+          source_type: 'manufacturer',
+          source_confidence: item.source_confidence || 0.7,
+          is_official_source: item.is_official || false,
+          status: 'discovered',
+          requires_review: true,
+          raw_metadata: item.raw || {}
+        });
+
+        if (insErr) {
+          log('  Insert error: ' + insErr.message, 'error');
+          totalErrors++;
+        } else {
+          totalCandidates++;
+          log('  ✓ ' + item.asset_category + ': ' + item.title, 'success');
+        }
+      }
+    } catch (err) {
+      log('Error for ' + product.model + ': ' + err.message, 'error');
+      totalErrors++;
+    }
+
+    // Small delay between products to be respectful
+    if (products.length > 1) await sleep(500);
+  }
+
+  // Update run record
+  const completed_at = new Date().toISOString();
+  const duration_ms = new Date(completed_at) - new Date(run.started_at);
+  await sb.from('media_discovery_runs').update({
+    status: totalErrors > 0 && totalCandidates === 0 ? 'failed' : 'completed',
+    candidates_created: totalCandidates,
+    duplicates_found: totalDupes,
+    errors_count: totalErrors,
+    completed_at,
+    duration_ms,
+    pages_fetched: products.length
+  }).eq('id', run.id);
+
+  log('─── Run Complete ───', 'info');
+  log('Candidates: ' + totalCandidates + ' | Duplicates: ' + totalDupes + ' | Errors: ' + totalErrors + ' | Duration: ' + (duration_ms / 1000).toFixed(1) + 's', 'info');
+
+  document.getElementById('discStatus').className = 'badge ' + (totalErrors > 0 && totalCandidates === 0 ? 'badge-red' : 'badge-green');
+  document.getElementById('discStatus').textContent = totalErrors > 0 && totalCandidates === 0 ? 'Failed' : 'Complete';
+  document.getElementById('btnRunDiscovery').disabled = false;
+  toast('Discovery complete: ' + totalCandidates + ' candidates found', 'success');
+};
+
+function buildDiscoveryPrompt(product, types) {
+  const typesStr = types.join(', ');
+  return `Search for official manufacturer media for this appliance product and return structured JSON.
+
+Brand: ${product.brand_name}
+Model: ${product.model}
+Category: ${product.category || 'appliance'}
+${product.series ? 'Series: ' + product.series : ''}
+
+Search for the OFFICIAL ${product.brand_name} product page for model ${product.model} (Canadian site preferred, US site acceptable). Also search the manufacturer support/documentation page for this model.
+
+Find the following types of media: ${typesStr}
+
+${types.includes('documents') ? `For DOCUMENTS, find direct PDF links for:
+- Owner's manual / Use & care guide
+- Installation guide
+- Specification sheet / spec sheet
+- Energy guide / EnerGuide label
+- Quick start guide
+- Warranty information
+- Dimension guide / cutout dimensions` : ''}
+
+${types.includes('images') ? `For IMAGES, find:
+- Official product hero image (highest resolution available)
+- Additional product angle images
+- Interior/feature detail images
+- Dimension drawing images
+Note the image URL, dimensions if visible, and whether it's on a transparent/white background` : ''}
+
+${types.includes('videos') ? `For VIDEOS, find:
+- Official YouTube videos from the manufacturer's channel
+- Embedded product videos on the product page
+- Installation videos
+- Feature demonstration videos
+Note the video URL, YouTube/Vimeo ID, title, and approximate duration` : ''}
+
+${types.includes('specs') ? `For SPECIFICATIONS, find:
+- Key specs like capacity, dimensions, voltage, energy rating
+- Product identifiers: UPC, SKU, model variations` : ''}
+
+IMPORTANT: Only include items from official manufacturer sources. Do NOT include retailer-hosted content, user-generated content, or unofficial sources.
+
+Respond with ONLY a JSON array (no markdown, no backticks, no preamble). Each item should have this structure:
+{
+  "asset_category": "document"|"image"|"video"|"specification",
+  "asset_type": "owners_manual"|"installation_guide"|"spec_sheet"|"energy_guide"|"quick_start"|"warranty_card"|"hero_image"|"lifestyle_image"|"detail_image"|"dim_drawing_image"|"product_overview"|"installation_video"|"how_to_video"|"feature_demo",
+  "title": "descriptive title",
+  "description": "brief description",
+  "url": "direct URL to the asset",
+  "embed_url": "embed URL for videos if applicable",
+  "thumbnail_url": "thumbnail if available",
+  "file_name": "filename if detectable",
+  "mime_type": "application/pdf or image/jpeg etc",
+  "source_url": "the page where this was found",
+  "source_domain": "manufacturer domain",
+  "platform": "youtube|vimeo|manufacturer_cdn",
+  "external_video_id": "YouTube/Vimeo ID if applicable",
+  "is_official": true,
+  "source_confidence": 0.9,
+  "language": "en",
+  "country": "CA"
+}
+
+Return an empty array [] if nothing is found. Do not invent or fabricate URLs.`;
+}
+
+async function callClaude(apiKey, prompt) {
+  const resp = await fetch(window.PROXY_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-anthropic-api-key': apiKey
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  return resp.json();
+}
+
+function parseDiscoveryResponse(response, product) {
+  const items = [];
+  if (!response.content) return items;
+
+  // Collect all text blocks
+  let fullText = '';
+  for (const block of response.content) {
+    if (block.type === 'text' && block.text) {
+      fullText += block.text + '\n';
+    }
+  }
+
+  // Try to extract JSON array from the text
+  try {
+    // Remove markdown fences if present
+    let cleaned = fullText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+    // Find the JSON array
+    const startIdx = cleaned.indexOf('[');
+    const endIdx = cleaned.lastIndexOf(']');
+    if (startIdx >= 0 && endIdx > startIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (item.url && item.asset_category) {
+            items.push({
+              ...item,
+              source_domain: item.source_domain || extractDomain(item.url),
+              raw: item
+            });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('JSON parse failed, attempting line-by-line extraction:', e);
+    // Try to find individual JSON objects in the text
+    const jsonPattern = /\{[^{}]*"asset_category"[^{}]*\}/g;
+    let match;
+    while ((match = jsonPattern.exec(fullText)) !== null) {
+      try {
+        const item = JSON.parse(match[0]);
+        if (item.url && item.asset_category) {
+          items.push({ ...item, source_domain: item.source_domain || extractDomain(item.url), raw: item });
+        }
+      } catch {}
+    }
+  }
+  return items;
+}
+
+function extractDomain(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
+// ── Candidates ──
+window.loadCandidates = async function() {
+  let query = sb.from('media_discovery_candidates')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  const status = document.getElementById('filterStatus').value;
+  const category = document.getElementById('filterCategory').value;
+  const brand = document.getElementById('filterBrand').value;
+
+  if (status) query = query.eq('status', status);
+  if (category) query = query.eq('asset_category', category);
+  if (brand) query = query.eq('brand_name', brand);
+
+  const { data, error } = await query;
+  if (error) { toast('Error loading candidates: ' + error.message, 'error'); return; }
+
+  const container = document.getElementById('candidatesList');
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No candidates match your filters</p></div>';
+    return;
+  }
+
+  container.innerHTML = data.map(c => {
+    const catIcon = {document:'📄',image:'🖼️',video:'🎬',specification:'📐'}[c.asset_category] || '📎';
+    return '<div class="candidate-card">' +
+      '<div class="candidate-header">' +
+        '<div class="candidate-title">' + catIcon + ' ' + esc(c.title || 'Untitled') + '</div>' +
+        statusBadge(c.status) +
+      '</div>' +
+      '<div class="candidate-meta">' +
+        '<span>🏷️ ' + esc(c.brand_name) + '</span>' +
+        '<span>📦 ' + esc(c.model_raw || 'N/A') + '</span>' +
+        '<span>📂 ' + esc(c.asset_category) + (c.asset_type ? ' / ' + c.asset_type : '') + '</span>' +
+        '<span>🔗 ' + esc(c.source_domain || extractDomain(c.url)) + '</span>' +
+        (c.match_confidence ? '<span>🎯 ' + Math.round(c.match_confidence * 100) + '%</span>' : '') +
+      '</div>' +
+      '<a href="' + esc(c.url) + '" target="_blank" class="candidate-url">' + esc(c.url) + '</a>' +
+      '<div class="candidate-actions">' +
+        (c.status === 'discovered' || c.status === 'needs_review' || c.status === 'matched' ?
+          '<button class="btn btn-sm btn-success" onclick="approveCandidate(\'' + c.id + '\')">✓ Approve</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="rejectCandidate(\'' + c.id + '\')">✕ Reject</button>' +
+          '<button class="btn btn-sm" onclick="reviewCandidate(\'' + c.id + '\')">🔍 Review</button>'
+        : c.status === 'approved' ?
+          '<button class="btn btn-sm btn-primary" onclick="submitToPim(\'' + c.id + '\')">⬆ Submit to PIM</button>'
+        : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+};
+
+window.approveCandidate = async function(id) {
+  const { error } = await sb.from('media_discovery_candidates').update({
+    status: 'approved',
+    reviewed_at: new Date().toISOString(),
+    requires_review: false,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) toast('Error: ' + error.message, 'error');
+  else { toast('Candidate approved', 'success'); loadCandidates(); }
+};
+
+window.rejectCandidate = async function(id) {
+  const { error } = await sb.from('media_discovery_candidates').update({
+    status: 'rejected',
+    reviewed_at: new Date().toISOString(),
+    requires_review: false,
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+  if (error) toast('Error: ' + error.message, 'error');
+  else { toast('Candidate rejected', 'success'); loadCandidates(); }
+};
+
+window.submitToPim = async function(id) {
+  // Fetch the full candidate
+  const { data: c, error } = await sb.from('media_discovery_candidates').select('*').eq('id', id).single();
+  if (error || !c) { toast('Error loading candidate', 'error'); return; }
+
+  let targetTable = '';
+  let insertData = {};
+
+  if (c.asset_category === 'document') {
+    targetTable = 'pim_product_documents';
+    insertData = {
+      product_id: c.matched_product_id,
+      brand_id: null,
+      doc_type: c.asset_type || 'spec_sheet',
+      title: c.title,
+      description: c.description,
+      file_url: c.url,
+      file_name: c.file_name,
+      mime_type: c.mime_type || 'application/pdf',
+      language: c.language || 'en',
+      locale: c.country === 'CA' ? 'en-CA' : 'en-US',
+      is_current: true,
+      source: 'media_discovery',
+      approved: false,
+      verification_status: 'discovered',
+      manufacturer_verified: false,
+      keywords: [c.brand_name, c.model_raw, 'official', 'manufacturer'].filter(Boolean),
+      audience_tiers: ['public'],
+      embargoed: false
+    };
+  } else if (c.asset_category === 'image') {
+    targetTable = 'pim_product_images';
+    insertData = {
+      product_id: c.matched_product_id,
+      brand_id: null,
+      image_type: c.asset_type || 'hero_image',
+      file_url: c.url,
+      cdn_url: c.url,
+      alt_text: c.title,
+      caption: c.description,
+      width_px: c.width_px,
+      height_px: c.height_px,
+      mime_type: c.mime_type || 'image/jpeg',
+      angle: c.angle,
+      background: c.background,
+      finish_shown: c.finish_shown,
+      is_primary: false,
+      source: 'media_discovery',
+      approved: false,
+      verification_status: 'discovered',
+      manufacturer_verified: false,
+      keywords: [c.brand_name, c.model_raw, 'official'].filter(Boolean),
+      audience_tiers: ['public'],
+      embargoed: false
+    };
+  } else if (c.asset_category === 'video') {
+    targetTable = 'pim_product_videos';
+    insertData = {
+      product_id: c.matched_product_id,
+      brand_id: null,
+      video_type: c.asset_type || 'product_overview',
+      title: c.title,
+      description: c.description,
+      video_url: c.url,
+      embed_url: c.embed_url,
+      thumbnail_url: c.thumbnail_url,
+      platform: c.platform || 'manufacturer_cdn',
+      external_video_id: c.external_video_id,
+      duration_seconds: c.duration_seconds,
+      has_captions: c.has_captions,
+      language: c.language || 'en',
+      country: c.country || 'CA',
+      source: 'media_discovery',
+      source_reference: c.source_url,
+      approved: false,
+      verification_status: 'discovered',
+      manufacturer_verified: false,
+      is_current: true,
+      keywords: [c.brand_name, c.model_raw, 'official', 'manufacturer'].filter(Boolean),
+      audience_tiers: ['public'],
+      embargoed: false
+    };
+  } else {
+    toast('Unsupported category: ' + c.asset_category, 'error');
+    return;
+  }
+
+  const { data: inserted, error: insErr } = await sb.from(targetTable).insert(insertData).select('id').single();
+  if (insErr) {
+    toast('PIM insert error: ' + insErr.message, 'error');
+    return;
+  }
+
+  // Update candidate as submitted
+  await sb.from('media_discovery_candidates').update({
+    status: 'submitted',
+    submitted_to_table: targetTable,
+    submitted_record_id: inserted.id,
+    submitted_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }).eq('id', id);
+
+  toast('Submitted to ' + targetTable, 'success');
+  loadCandidates();
+};
+
+window.reviewCandidate = async function(id) {
+  const { data: c } = await sb.from('media_discovery_candidates').select('*').eq('id', id).single();
+  if (!c) return;
+
+  document.getElementById('reviewTitle').textContent = 'Review: ' + (c.title || 'Untitled');
+  document.getElementById('reviewBody').innerHTML =
+    '<div style="display:grid;gap:12px">' +
+      field('Brand', c.brand_name) +
+      field('Model', c.model_raw) +
+      field('Category', c.asset_category) +
+      field('Asset Type', c.asset_type) +
+      field('URL', '<a href="' + esc(c.url) + '" target="_blank" style="color:var(--accent);word-break:break-all">' + esc(c.url) + '</a>') +
+      field('Source', c.source_domain) +
+      field('Confidence', c.match_confidence ? Math.round(c.match_confidence * 100) + '%' : 'N/A') +
+      field('Status', statusBadge(c.status)) +
+      field('Description', c.description || 'None') +
+      (c.raw_metadata && Object.keys(c.raw_metadata).length ?
+        '<div><label style="font-size:0.75rem;color:var(--text3);font-weight:600">Raw Metadata</label>' +
+        '<pre style="background:var(--bg);padding:10px;border-radius:var(--radius);font-size:0.7rem;overflow-x:auto;max-height:200px">' + esc(JSON.stringify(c.raw_metadata, null, 2)) + '</pre></div>' : '') +
+    '</div>';
+
+  document.getElementById('reviewFooter').innerHTML =
+    '<button class="btn" onclick="closeReview()">Close</button>' +
+    (c.status !== 'approved' && c.status !== 'submitted' && c.status !== 'rejected' ?
+      '<button class="btn btn-danger" onclick="rejectCandidate(\'' + c.id + '\');closeReview()">Reject</button>' +
+      '<button class="btn btn-success" onclick="approveCandidate(\'' + c.id + '\');closeReview()">Approve</button>' : '');
+
+  document.getElementById('reviewModal').classList.add('show');
+};
+
+window.closeReview = function() {
+  document.getElementById('reviewModal').classList.remove('show');
+};
+
+function field(label, value) {
+  return '<div><div style="font-size:0.7rem;color:var(--text3);font-weight:600;margin-bottom:2px">' + label + '</div>' +
+    '<div style="font-size:0.8125rem">' + (value || 'N/A') + '</div></div>';
+}
+
+// ── Sources ──
+window.loadSources = async function() {
+  const { data, error } = await sb.from('media_source_registry').select('*').order('brand_name');
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+  document.getElementById('sourcesTable').innerHTML = (data || []).map(s =>
+    '<tr>' +
+      '<td><strong>' + esc(s.brand_name) + '</strong>' + (s.parent_company ? '<br><span style="color:var(--text3);font-size:0.7rem">' + esc(s.parent_company) + '</span>' : '') + '</td>' +
+      '<td>' + esc(s.domain) + '</td>' +
+      '<td>' + esc(s.source_type) + '</td>' +
+      '<td><span class="badge badge-purple">' + esc(s.parser_type) + '</span></td>' +
+      '<td>' + (s.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-red">Inactive</span>') + '</td>' +
+      '<td>' + s.priority + '</td>' +
+      '<td style="color:var(--text3)">' + (s.last_successful_run ? timeAgo(s.last_successful_run) : 'Never') + '</td>' +
+      '<td>' + (s.reliability_score || 1.0) + '</td>' +
+      '<td><button class="btn btn-sm" onclick="toggleSource(\'' + s.id + '\',' + !s.is_active + ')">' + (s.is_active ? 'Disable' : 'Enable') + '</button></td>' +
+    '</tr>'
+  ).join('');
+};
+
+window.toggleSource = async function(id, active) {
+  await sb.from('media_source_registry').update({ is_active: active, updated_at: new Date().toISOString() }).eq('id', id);
+  toast('Source ' + (active ? 'enabled' : 'disabled'), 'success');
+  loadSources();
+};
+
+window.showAddSource = function() {
+  document.getElementById('reviewTitle').textContent = 'Add Source';
+  document.getElementById('reviewBody').innerHTML =
+    '<div class="form-group"><label>Brand Name</label><input class="form-control" id="srcBrand"></div>' +
+    '<div class="form-group"><label>Parent Company</label><input class="form-control" id="srcParent"></div>' +
+    '<div class="form-group"><label>Domain</label><input class="form-control" id="srcDomain" placeholder="example.com"></div>' +
+    '<div class="form-group"><label>Source Type</label><select class="form-control" id="srcType">' +
+      '<option value="product_page">Product Page</option><option value="support_library">Support Library</option>' +
+      '<option value="youtube_channel">YouTube Channel</option><option value="document_library">Document Library</option>' +
+      '<option value="cdn">CDN</option><option value="api">API</option></select></div>' +
+    '<div class="form-group"><label>YouTube Channel ID</label><input class="form-control" id="srcYT"></div>' +
+    '<div class="form-group"><label>Notes</label><textarea class="form-control" id="srcNotes"></textarea></div>';
+
+  document.getElementById('reviewFooter').innerHTML =
+    '<button class="btn" onclick="closeReview()">Cancel</button>' +
+    '<button class="btn btn-primary" onclick="saveSource()">Save</button>';
+  document.getElementById('reviewModal').classList.add('show');
+};
+
+window.saveSource = async function() {
+  const brand = document.getElementById('srcBrand').value.trim();
+  const domain = document.getElementById('srcDomain').value.trim();
+  if (!brand || !domain) { toast('Brand and domain required', 'error'); return; }
+
+  const { error } = await sb.from('media_source_registry').insert({
+    brand_name: brand,
+    parent_company: document.getElementById('srcParent').value.trim() || null,
+    domain: domain,
+    source_type: document.getElementById('srcType').value,
+    youtube_channel_id: document.getElementById('srcYT').value.trim() || null,
+    notes: document.getElementById('srcNotes').value.trim() || null
+  });
+
+  if (error) toast('Error: ' + error.message, 'error');
+  else { toast('Source added', 'success'); closeReview(); loadSources(); }
+};
+
+// ── Runs ──
+window.loadRuns = async function() {
+  const { data, error } = await sb.from('media_discovery_runs').select('*').order('created_at', { ascending: false }).limit(50);
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+  const tbody = document.getElementById('runsTable');
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3)">No runs yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(r =>
+    '<tr>' +
+      '<td style="font-family:monospace;font-size:0.7rem;color:var(--text3)">' + r.id.slice(0,8) + '</td>' +
+      '<td>' + esc(r.brand_name || 'N/A') + '</td>' +
+      '<td>' + esc(r.model || 'All') + '</td>' +
+      '<td><span class="badge badge-blue">' + esc(r.run_type) + '</span></td>' +
+      '<td>' + statusBadge(r.status) + '</td>' +
+      '<td><strong>' + (r.candidates_created || 0) + '</strong></td>' +
+      '<td>' + (r.duplicates_found || 0) + '</td>' +
+      '<td>' + (r.errors_count || 0) + '</td>' +
+      '<td>' + (r.duration_ms ? (r.duration_ms / 1000).toFixed(1) + 's' : '-') + '</td>' +
+      '<td style="color:var(--text3)">' + timeAgo(r.created_at) + '</td>' +
+    '</tr>'
+  ).join('');
+};
+
+// ── Helpers ──
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+window.esc = esc;
+
+function statusBadge(status) {
+  const map = {
+    discovered: 'badge-blue', queued: 'badge-blue', running: 'badge-blue',
+    matched: 'badge-cyan', extracted: 'badge-cyan',
+    needs_review: 'badge-amber', ambiguous: 'badge-amber',
+    approved: 'badge-green', completed: 'badge-green', submitted: 'badge-green',
+    rejected: 'badge-red', failed: 'badge-red',
+    duplicate: 'badge-purple'
+  };
+  return '<span class="badge ' + (map[status] || 'badge-blue') + '">' + (status || 'unknown') + '</span>';
+}
+window.statusBadge = statusBadge;
+
+function timeAgo(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts);
+  const now = new Date();
+  const s = Math.floor((now - d) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+window.timeAgo = timeAgo;
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Init ──
+async function init() {
+  updateApiDot();
+  await initAuth();
+  await loadProducts();
+  loadDashboard();
+}
+
+init();
+</script>
+</body>
+</html>
