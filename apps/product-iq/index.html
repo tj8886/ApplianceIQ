@@ -288,6 +288,7 @@ async function loadCoreData(){
   ]);
   productsCache=p.data||[];brandsCache=b.data||[];assetTypesCache=at.data||[];
 }
+window.loadCoreData=loadCoreData;
 
 async function loadAssets(){
   const[d,i,v,m,da,cs]=await Promise.all([
@@ -498,7 +499,7 @@ async function renderProductDetail(mc,pid){
   pdTab('overview');
 }
 
-window.pdTab=function(tab){
+window.pdTab=async function(tab){
   document.querySelectorAll('#pdTabs .tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('#pdTabs .tab').forEach(t=>{
     const txt=t.textContent.toLowerCase();
