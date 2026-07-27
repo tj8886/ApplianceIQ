@@ -543,8 +543,67 @@ Find as many relevant recent articles as possible. Check industry sources like:
 - Trade show coverage (KBIS, IBS, CES)
 Focus on the last 6 months but include major older stories if significant.`;
 
-async function retailerPriceCheck(query, country, model) {
-  const prompt = country === "US" ? RETAILER_PRICE_PROMPT_US : RETAILER_PRICE_PROMPT;
+async function loadRetailersFromDB() {
+  try {
+    const res = await supaFetch("aiq_retailers?status=eq.active&has_ecommerce=eq.true&select=id,name,country,website,type,price_tier&order=country,name");
+    return await res.json();
+  } catch (e) { console.error("Failed to load retailers:", e); return []; }
+}
+
+function buildRetailerPrompt(retailers, country) {
+  const currency = country === "US" ? "USD" : "CAD";
+  const countryLabel = country === "US" ? "US" : "Canadian";
+  const retailerList = retailers
+    .filter(r => r.website && !r.website.includes("?"))
+    .map(r => `- ${r.name} (${r.website})`)
+    .join("\n");
+
+  return `You are a ${countryLabel} appliance retail price checker. For the given product, search EACH of these ${countryLabel} retailers and find their current price, stock status, and any sale/clearance/open box flags.
+
+${retailerList}
+
+Return ONLY valid JSON, no markdown, no backticks:
+
+{
+  "found": true,
+  "brand_name": "",
+  "model": "",
+  "retailers": [
+    {
+      "retailer": "Retailer Name",
+      "url": "https://...",
+      "price": null,
+      "regular_price": null,
+      "on_sale": false,
+      "sale_label": "",
+      "in_stock": true,
+      "stock_note": "",
+      "condition": "new",
+      "is_open_box": false,
+      "is_clearance": false,
+      "is_refurbished": false,
+      "is_floor_model": false,
+      "shipping_available": true,
+      "free_delivery": false,
+      "shipping_cost": null
+    }
+  ]
+}
+
+IMPORTANT: Only include retailers that actually carry this product. If a retailer does not list the product, do NOT include them. Check each retailer's ${countryLabel} site specifically. Return the actual product page URL for each. Prices in ${currency}.
+
+CRITICAL RULES:
+- Only return a URL if you actually found the product page. Do NOT guess or construct URLs.
+- If a retailer shows the product as DISCONTINUED, set condition to "discontinued" and look for "Replaced by" or "Successor" model info.
+- If no price is shown (even if product is listed), set price to null.
+- Look carefully for badges like "Discontinued", "Clearance", "Open Box", "Floor Model", "Last One", "While Supplies Last", "No Longer Available".
+- If a retailer page says "Replaced by [model]", include that in stock_note.`;
+}
+
+async function retailerPriceCheck(query, country, model, selectedRetailersList) {
+  const prompt = selectedRetailersList && selectedRetailersList.length > 0
+    ? buildRetailerPrompt(selectedRetailersList, country)
+    : (country === "US" ? RETAILER_PRICE_PROMPT_US : RETAILER_PRICE_PROMPT);
   const suffix = country === "US" ? " — check US retailers, prices in USD" : " — check Canadian retailers, prices in CAD";
   const result = await callAI(prompt, "Find retail prices for: " + query + suffix, 2, model || "claude-sonnet-4-6");
   if (result.found || result.retailers) { result.found = true; result._retailerCheck = true; result._country = country || "CA"; return result; }
@@ -1389,6 +1448,9 @@ function PIMScraper() {
   const [showMarketPicker, setShowMarketPicker] = useState(false);
   const [retailerMode, setRetailerMode] = useState("rt-single");
   const [retailerCountry, setRetailerCountry] = useState("CA");
+  const [dbRetailers, setDbRetailers] = useState([]);
+  const [selectedRetailers, setSelectedRetailers] = useState(new Set());
+  const [retailersLoaded, setRetailersLoaded] = useState(false);
   React.useEffect(() => { setRetailerCountry(market); }, [market]);
   const [intelMode, setIntelMode] = useState("company");
 
@@ -2723,7 +2785,7 @@ function PIMScraper() {
             <div style={s.card}>
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>🏪 Retailer Price Comparison</div>
               <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
-                Checks Best Buy, Home Depot, RONA, Canadian Appliance Source, Goemans, Midland, Trail, Dufresne, Appliance Canada, Futures, TA Appliance, Visions, Leon's, The Brick & more.
+                Select which retailers to check. Pulls from the PIM retailer database.
               </div>
 
               {/* Sub-mode tabs + country toggle */}
@@ -2734,23 +2796,74 @@ function PIMScraper() {
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: 4, background: palette.card, borderRadius: 8, padding: 2, border: "1px solid " + palette.border }}>
-                  <button onClick={() => setRetailerCountry("CA")} style={{ ...s.btn, ...s.btnSm, padding: "6px 14px", fontSize: 12, background: retailerCountry === "CA" ? palette.accent : "transparent", color: retailerCountry === "CA" ? "#fff" : palette.textDim, border: "none" }}>🇨🇦 Canada</button>
-                  <button onClick={() => setRetailerCountry("US")} style={{ ...s.btn, ...s.btnSm, padding: "6px 14px", fontSize: 12, background: retailerCountry === "US" ? palette.accent : "transparent", color: retailerCountry === "US" ? "#fff" : palette.textDim, border: "none" }}>🇺🇸 USA</button>
+                  <button onClick={() => { setRetailerCountry("CA"); setSelectedRetailers(new Set()); }} style={{ ...s.btn, ...s.btnSm, padding: "6px 14px", fontSize: 12, background: retailerCountry === "CA" ? palette.accent : "transparent", color: retailerCountry === "CA" ? "#fff" : palette.textDim, border: "none" }}>🇨🇦 Canada</button>
+                  <button onClick={() => { setRetailerCountry("US"); setSelectedRetailers(new Set()); }} style={{ ...s.btn, ...s.btnSm, padding: "6px 14px", fontSize: 12, background: retailerCountry === "US" ? palette.accent : "transparent", color: retailerCountry === "US" ? "#fff" : palette.textDim, border: "none" }}>🇺🇸 USA</button>
                 </div>
               </div>
+
+              {/* Retailer selector grid */}
+              {(() => {
+                // Load retailers on first render
+                if (!retailersLoaded) {
+                  loadRetailersFromDB().then(r => { setDbRetailers(r || []); setRetailersLoaded(true); });
+                }
+                const countryRetailers = dbRetailers.filter(r => r.country === retailerCountry);
+                const typeGroups = {};
+                countryRetailers.forEach(r => { const t = r.type || "other"; if (!typeGroups[t]) typeGroups[t] = []; typeGroups[t].push(r); });
+                const typeLabels = { big_box: "Big Box", appliance_specialist: "Appliance Specialists", furniture_appliance: "Furniture & Appliance", warehouse: "Warehouse", online: "Online", clearance_outlet: "Clearance/Outlet", electronics: "Electronics", building_supply_appliance: "Building Supply", distributor: "Distributor", other: "Other" };
+
+                return (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                      <button style={{ ...s.btn, ...s.btnSm, fontSize: 11 }} onClick={() => setSelectedRetailers(new Set(countryRetailers.map(r => r.id)))}>Select All ({countryRetailers.length})</button>
+                      <button style={{ ...s.btn, ...s.btnSm, fontSize: 11 }} onClick={() => setSelectedRetailers(new Set())}>Clear All</button>
+                      <button style={{ ...s.btn, ...s.btnSm, fontSize: 11 }} onClick={() => setSelectedRetailers(new Set(countryRetailers.filter(r => r.type === "big_box" || r.type === "warehouse").map(r => r.id)))}>Big Box Only</button>
+                      <button style={{ ...s.btn, ...s.btnSm, fontSize: 11 }} onClick={() => setSelectedRetailers(new Set(countryRetailers.filter(r => r.type === "appliance_specialist").map(r => r.id)))}>Specialists Only</button>
+                      <span style={{ fontSize: 12, color: palette.accentText, fontWeight: 600, padding: "4px 8px" }}>{selectedRetailers.size} selected</span>
+                    </div>
+                    <div style={{ maxHeight: 240, overflowY: "auto", border: "1px solid " + palette.border, borderRadius: 8, padding: 8, background: palette.bg }}>
+                      {Object.entries(typeGroups).map(([type, retailers]) => (
+                        <div key={type} style={{ marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: palette.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4, paddingLeft: 4 }}>{typeLabels[type] || type}</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                            {retailers.map(r => {
+                              const sel = selectedRetailers.has(r.id);
+                              return (
+                                <button key={r.id}
+                                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: "pointer", border: "1px solid " + (sel ? palette.accent + "60" : palette.border), background: sel ? palette.accentSoft : "transparent", color: sel ? palette.accentText : palette.textDim, transition: "all 0.15s" }}
+                                  onClick={() => { const next = new Set(selectedRetailers); if (sel) next.delete(r.id); else next.add(r.id); setSelectedRetailers(next); }}>
+                                  <span style={{ width: 14, height: 14, borderRadius: 3, border: "1.5px solid " + (sel ? palette.accent : palette.border), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, background: sel ? palette.accent : "transparent", color: "#fff" }}>{sel ? "✓" : ""}</span>
+                                  {r.name}
+                                  {r.website && <span style={{ fontSize: 10, color: palette.textMuted }}>({r.website.replace(/[?"\\]/g, "")})</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Single retailer check */}
               {retailerMode === "rt-single" && (
                 <div style={s.inputRow}>
                   <input style={s.input} placeholder="Brand + Model (e.g. LG LRMVS3006S)" value={query} onChange={e => setQuery(e.target.value)}
-                    onKeyDown={e => { if(e.key==="Enter"&&!loading){ setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query, retailerCountry, activeModel).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
-                  <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
-                    if(!query.trim())return; setLoading(true);
+                    onKeyDown={e => { if(e.key==="Enter"&&!loading){
+                      const selList = dbRetailers.filter(r => selectedRetailers.has(r.id));
+                      if(!selList.length){alert("Select at least one retailer");return;}
+                      setLoading(true); setProgress({current:1,total:1,currentQuery:query}); retailerPriceCheck(query, retailerCountry, activeModel, selList).then(r=>{if(r.found){r.query=query;if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,{...r,query}]);setLoading(false)})}}} />
+                  <button style={{ ...s.btn, background: "#00b894" }} disabled={loading || !selectedRetailers.size} onClick={async () => {
+                    if(!query.trim())return;
+                    const selList = dbRetailers.filter(r => selectedRetailers.has(r.id));
+                    if(!selList.length)return;
+                    setLoading(true);
                     setProgress({current:1,total:1,currentQuery:query});
-                    const r=await retailerPriceCheck(query, retailerCountry, activeModel); r.query=query;
+                    const r=await retailerPriceCheck(query, retailerCountry, activeModel, selList); r.query=query;
                     if(r.found){if(!r.brand_name)r.brand_name=query.split(" ")[0];if(!r.model)r.model=query.split(" ").slice(1).join(" ");if(autoSave)await doRetailerSave(r);setResults(p=>[...p,r])}else setResults(p=>[...p,r]);
                     setLoading(false);
-                  }}>{loading?"Checking…":"🏪 Check Retailers"}</button>
+                  }}>{loading?"Checking…":"🏪 Check " + selectedRetailers.size + " Retailers"}</button>
                 </div>
               )}
 
@@ -2759,15 +2872,17 @@ function PIMScraper() {
                 <div>
                   <textarea style={s.textarea} rows={6} placeholder={"One per line:\nLG LRMVS3006S\nWhirlpool WRF555SDFZ\nSamsung RF23A9671SR"} value={bulkText} onChange={e => setBulkText(e.target.value)} />
                   <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
-                    <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
+                    <button style={{ ...s.btn, background: "#00b894" }} disabled={loading || !selectedRetailers.size} onClick={async () => {
                       const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
                       if (!lines.length) return;
+                      const selList = dbRetailers.filter(r => selectedRetailers.has(r.id));
+                      if(!selList.length)return;
                       setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
                       for (let i = 0; i < lines.length; i++) {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await retailerPriceCheck(lines[i], retailerCountry, activeModel);
+                          const r = await retailerPriceCheck(lines[i], retailerCountry, activeModel, selList);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -2779,7 +2894,7 @@ function PIMScraper() {
                       }
                       setLoading(false);
                     }}>
-                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "🏪 Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "🏪 Check " + bulkText.split("\n").filter(Boolean).length + " Products @ " + selectedRetailers.size + " Retailers"}
                     </button>
                     {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
                     {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
@@ -2802,15 +2917,17 @@ function PIMScraper() {
                   </div>
                   <textarea style={s.textarea} rows={6} value={bulkText} onChange={e => setBulkText(e.target.value)} placeholder="Load products from PIM using the buttons above" />
                   <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center" }}>
-                    <button style={{ ...s.btn, background: "#00b894" }} disabled={loading} onClick={async () => {
+                    <button style={{ ...s.btn, background: "#00b894" }} disabled={loading || !selectedRetailers.size} onClick={async () => {
                       const lines = bulkText.split("\n").map(l => l.trim()).filter(Boolean);
                       if (!lines.length) return;
+                      const selList = dbRetailers.filter(r => selectedRetailers.has(r.id));
+                      if(!selList.length)return;
                       setLoading(true); abortRef.current = false; saveCountRef.current = { saved: 0, failed: 0 };
                       for (let i = 0; i < lines.length; i++) {
                         if (abortRef.current) break;
                         setProgress({ current: i + 1, total: lines.length, currentQuery: lines[i] });
                         try {
-                          const r = await retailerPriceCheck(lines[i], retailerCountry, activeModel);
+                          const r = await retailerPriceCheck(lines[i], retailerCountry, activeModel, selList);
                           if (r.found) {
                             if (!r.brand_name) r.brand_name = lines[i].split(" ")[0];
                             if (!r.model) r.model = lines[i].split(" ").slice(1).join(" ");
@@ -2822,7 +2939,7 @@ function PIMScraper() {
                       }
                       setLoading(false);
                     }}>
-                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "🏪 Check " + bulkText.split("\n").filter(Boolean).length + " Products"}
+                      {loading ? "Checking " + progress.current + "/" + progress.total + "…" : "🏪 Check " + bulkText.split("\n").filter(Boolean).length + " Products @ " + selectedRetailers.size + " Retailers"}
                     </button>
                     {loading && <button style={{ ...s.btn, ...s.btnSm, ...s.btnOutline }} onClick={() => { abortRef.current = true; }}>Stop</button>}
                     {loading && <span style={{ fontSize: 13, color: palette.textDim }}>{progress.currentQuery}</span>}
