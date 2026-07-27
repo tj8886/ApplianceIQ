@@ -495,6 +495,7 @@ body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,Ari
       <button id="nav-brands" class="topbar-nav-btn" onclick="showView('brands')">Brand Academy</button>
       <button id="nav-resources" class="topbar-nav-btn" onclick="showView('resources')">Resources</button>
       <button id="nav-vendors" class="topbar-nav-btn" onclick="showView('vendors')">Vendors</button>
+      <button id="nav-compare" class="topbar-nav-btn" onclick="showView('compare')">Between Brands</button>
       <button id="nav-scorecard" class="topbar-nav-btn" onclick="showView('scorecard')">Daily Five</button>
       <button class="topbar-nav-btn" onclick="showRoleplayPicker()" style="color:var(--teal)">🎬 Roleplay</button>
     </div>
@@ -544,6 +545,9 @@ body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,Ari
       </div>
       <div id="scorecard-view" style="display:none">
         <div class="resources-view-inner" id="scorecard-inner"></div>
+      </div>
+      <div id="compare-view" style="display:none">
+        <div class="resources-view-inner" id="compare-inner"></div>
       </div>
     </div>
   </div>
@@ -1916,7 +1920,7 @@ function openVendor(id) {
 
 function showView(view) {
   if (typeof aiqSpeechStop==='function') aiqSpeechStop();
-  ['learn','tracks','brands','resources','vendors','scorecard'].forEach(v => {
+  ['learn','tracks','brands','resources','vendors','compare','scorecard'].forEach(v => {
     document.getElementById(`nav-${v}`)?.classList.toggle('active', v === view);
   });
   document.getElementById('dashboard').style.display = view==='learn' ? 'block' : 'none';
@@ -1926,12 +1930,14 @@ function showView(view) {
   document.getElementById('resources-view').style.display = view==='resources' ? 'block' : 'none';
   document.getElementById('vendors-view').style.display = view==='vendors' ? 'block' : 'none';
   document.getElementById('scorecard-view').style.display = view==='scorecard' ? 'block' : 'none';
+  document.getElementById('compare-view').style.display = view==='compare' ? 'block' : 'none';
   document.getElementById('reader').style.overflowY = 'auto';
   if (view === 'learn') renderDashboard();
   if (view === 'tracks') renderTracksGrid();
   if (view === 'brands') renderBrandAcademy();
   if (view === 'resources') renderResources();
   if (view === 'vendors') renderVendors();
+  if (view === 'compare') renderCompare();
   if (view === 'scorecard') renderScorecard();
 }
 
@@ -3293,12 +3299,171 @@ async function endRoleplay() {
   chat.scrollTop = chat.scrollHeight;
 }
 
+// ── BETWEEN BRANDS COMPARISON MODULE ──────────────────────────────────────
+let _compareData = null;
+let _compareFilter = 'all';
+let _compareOpenId = null;
+
+async function loadCompareData() {
+  if (_compareData) return _compareData;
+  const { data, error } = await sb.from('competitive_cross_reference')
+    .select('*, brand1:brand_catalog!competitive_cross_reference_brand1_id_fkey(brand_name), brand2:brand_catalog!competitive_cross_reference_brand2_id_fkey(brand_name), brand3:brand_catalog!competitive_cross_reference_brand3_id_fkey(brand_name), brand4:brand_catalog!competitive_cross_reference_brand4_id_fkey(brand_name), brand5:brand_catalog!competitive_cross_reference_brand5_id_fkey(brand_name), brand6:brand_catalog!competitive_cross_reference_brand6_id_fkey(brand_name)')
+    .order('category').order('tier');
+  if (error) {
+    // Fallback: load without joins
+    const r2 = await sb.from('competitive_cross_reference').select('*').order('category').order('tier');
+    _compareData = r2.data || [];
+  } else {
+    _compareData = data || [];
+  }
+  return _compareData;
+}
+
+async function renderCompare(filter) {
+  if (filter) _compareFilter = filter;
+  const el = document.getElementById('compare-inner');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted)">Loading comparisons...</div>';
+  const data = await loadCompareData();
+  const categories = [...new Set(data.map(d => d.category))].sort();
+  const tiers = [...new Set(data.map(d => d.tier))].sort();
+
+  const filtered = _compareFilter === 'all' ? data : data.filter(d => d.tier === _compareFilter || d.category === _compareFilter);
+
+  el.innerHTML = '<div class="resources-view-inner" style="max-width:1100px;margin:0 auto;padding:24px">' +
+    '<div style="margin-bottom:24px">' +
+      '<h2 style="font-size:24px;font-weight:800;margin-bottom:4px;color:var(--white,#fff)">⚔️ Between Brands</h2>' +
+      '<p style="color:var(--muted);font-size:14px;margin-bottom:16px">Head-to-head competitive matchups across every category and price tier. Know the alternatives before your customer asks.</p>' +
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">' +
+        '<button class="res-cat-btn' + (_compareFilter==='all'?' active':'') + '" onclick="renderCompare(\'all\')">All (' + data.length + ')</button>' +
+        tiers.map(t => '<button class="res-cat-btn' + (_compareFilter===t?' active':'') + '" onclick="renderCompare(\'' + t + '\')">' + t + '</button>').join('') +
+      '</div>' +
+      '<div style="display:flex;gap:4px;flex-wrap:wrap">' +
+        categories.map(c => {
+          var count = data.filter(d => d.category === c).length;
+          return '<button class="res-cat-btn' + (_compareFilter===c?' active':'') + '" onclick="renderCompare(\'' + c.replace(/'/g,"\\'") + '\')" style="font-size:11px">' + c + ' (' + count + ')</button>';
+        }).join('') +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:12px">' +
+      filtered.map(function(row) {
+        var brands = [];
+        for (var i = 1; i <= 6; i++) {
+          var bn = row['brand' + i];
+          var bName = (bn && typeof bn === 'object' && bn.brand_name) ? bn.brand_name : (row['brand' + i + '_model'] ? 'Brand ' + i : null);
+          if (row['brand' + i + '_model']) {
+            brands.push({ name: bName || '—', model: row['brand' + i + '_model'] || '', notes: row['brand' + i + '_notes'] || '' });
+          }
+        }
+        var isOpen = _compareOpenId === row.id;
+        var tierColor = row.tier === 'Luxury' ? '#a78bfa' : row.tier === 'Premium' ? '#60a5fa' : row.tier === 'Mid-Range' ? '#34d399' : row.tier === 'Budget' ? '#fbbf24' : '#94a3b8';
+        return '<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:all .2s' + (isOpen ? ';border-color:rgba(47,125,114,.4)' : '') + '">' +
+          '<div onclick="toggleCompare(\'' + row.id + '\')" style="padding:16px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">' +
+            '<div style="flex:1">' +
+              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
+                '<span style="font-size:11px;font-weight:700;color:' + tierColor + ';background:' + tierColor + '15;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">' + row.tier + '</span>' +
+                (row.price_range ? '<span style="font-size:11px;color:var(--muted)">' + row.price_range + '</span>' : '') +
+              '</div>' +
+              '<h3 style="font-size:16px;font-weight:700;color:var(--white,#1f2b3d);margin:0">' + row.category + '</h3>' +
+              '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">' +
+                brands.map(function(b) { return '<span style="font-size:11px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);padding:2px 8px;border-radius:999px;color:var(--muted)">' + b.name + '</span>'; }).join('') +
+              '</div>' +
+            '</div>' +
+            '<span style="font-size:18px;transition:transform .2s;transform:rotate(' + (isOpen ? '180' : '0') + 'deg);color:var(--muted)">▼</span>' +
+          '</div>' +
+          (isOpen ? '<div style="padding:0 20px 20px;border-top:1px solid var(--line)">' +
+            (row.comparison_notes ? '<p style="font-size:13px;color:var(--teal,#0d9488);font-style:italic;margin:12px 0 16px;padding:10px 14px;background:rgba(13,148,136,.08);border-radius:8px;border-left:3px solid var(--teal,#0d9488)">💡 ' + row.comparison_notes + '</p>' : '') +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">' +
+              brands.map(function(b, idx) {
+                var colors = ['#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#ef4444','#10b981'];
+                var c = colors[idx % colors.length];
+                return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;border-top:3px solid ' + c + '">' +
+                  '<h4 style="font-size:14px;font-weight:700;color:var(--white,#1f2b3d);margin-bottom:2px">' + b.name + '</h4>' +
+                  '<p style="font-size:12px;font-weight:600;color:' + c + ';margin-bottom:8px;word-break:break-word">' + b.model + '</p>' +
+                  '<p style="font-size:12px;color:var(--muted);line-height:1.6">' + b.notes + '</p>' +
+                '</div>';
+              }).join('') +
+            '</div>' +
+            '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">' +
+              '<button onclick="startCompareQuiz(\'' + row.id + '\')" style="font-size:12px;font-weight:700;color:var(--teal,#0d9488);background:rgba(13,148,136,.1);border:1px solid rgba(13,148,136,.2);padding:6px 14px;border-radius:8px;cursor:pointer">🎯 Quiz Me on This</button>' +
+              '<button onclick="startCompareRoleplay(\'' + row.category.replace(/'/g,"\\'") + '\')" style="font-size:12px;font-weight:700;color:#8b5cf6;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);padding:6px 14px;border-radius:8px;cursor:pointer">🎬 Roleplay This Category</button>' +
+            '</div>' +
+          '</div>' : '') +
+        '</div>';
+      }).join('') +
+    '</div>' +
+    '<div style="margin-top:32px;padding:20px;background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.15);border-radius:14px;text-align:center">' +
+      '<p style="font-size:13px;color:var(--muted);margin-bottom:8px">📊 <b>' + data.length + '</b> competitive matchups across <b>' + categories.length + '</b> categories and <b>' + tiers.length + '</b> price tiers</p>' +
+      '<p style="font-size:12px;color:var(--muted)">Data powered by the IQ Intelligence database. Updated as new products launch.</p>' +
+    '</div>' +
+  '</div>';
+}
+
+function toggleCompare(id) {
+  _compareOpenId = _compareOpenId === id ? null : id;
+  renderCompare();
+}
+
+async function startCompareQuiz(rowId) {
+  const data = await loadCompareData();
+  const row = data.find(r => r.id === rowId);
+  if (!row) return;
+  var brands = [];
+  for (var i = 1; i <= 6; i++) {
+    var bn = row['brand' + i];
+    var bName = (bn && typeof bn === 'object' && bn.brand_name) ? bn.brand_name : null;
+    if (row['brand' + i + '_model'] && bName) {
+      brands.push({ name: bName, model: row['brand' + i + '_model'], notes: row['brand' + i + '_notes'] || '' });
+    }
+  }
+  if (brands.length < 3) { showToast('Not enough brands for a quiz'); return; }
+  // Pick a random brand and quiz on its differentiator
+  var pick = brands[Math.floor(Math.random() * brands.length)];
+  var others = brands.filter(b => b.name !== pick.name).map(b => b.name);
+  var wrongAnswers = others.sort(() => Math.random() - 0.5).slice(0, 2);
+  var question = 'In the ' + row.tier + ' ' + row.category + ' segment, which brand is described as: "' + pick.notes.split(',')[0].trim() + '"?';
+  var options = [pick.name, ...wrongAnswers].sort(() => Math.random() - 0.5);
+  var correctIdx = options.indexOf(pick.name);
+  // Simple inline quiz popup
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:grid;place-items:center;padding:20px';
+  overlay.innerHTML = '<div style="background:var(--card,#fff);border-radius:16px;padding:32px;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">' +
+    '<h3 style="font-size:18px;margin-bottom:8px;color:var(--white,#1f2b3d)">🎯 Quick Quiz: ' + row.category + '</h3>' +
+    '<p style="font-size:14px;color:var(--muted);margin-bottom:20px">' + question + '</p>' +
+    '<div style="display:flex;flex-direction:column;gap:8px" id="quiz-opts">' +
+      options.map(function(o, oi) {
+        return '<button onclick="checkCompareAnswer(this,' + oi + ',' + correctIdx + ')" style="padding:12px 16px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--white,#1f2b3d);font:600 14px Inter,sans-serif;cursor:pointer;text-align:left;transition:all .2s">' + o + '</button>';
+      }).join('') +
+    '</div>' +
+    '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="margin-top:16px;font-size:12px;color:var(--muted);background:none;border:none;cursor:pointer">Close</button>' +
+  '</div>';
+  document.body.appendChild(overlay);
+}
+
+function checkCompareAnswer(btn, picked, correct) {
+  var btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(function(b, i) {
+    b.style.pointerEvents = 'none';
+    if (i === correct) { b.style.background = 'rgba(16,185,129,.15)'; b.style.borderColor = '#10b981'; b.style.color = '#10b981'; }
+    if (i === picked && picked !== correct) { b.style.background = 'rgba(239,68,68,.15)'; b.style.borderColor = '#ef4444'; b.style.color = '#ef4444'; }
+  });
+  if (picked === correct) showToast('✅ Correct!');
+  else showToast('❌ Not quite — review the matchup!');
+}
+
+function startCompareRoleplay(category) {
+  if (typeof showRoleplayPicker === 'function') {
+    showRoleplayPicker();
+    showToast('Start a roleplay about ' + category + '!');
+  }
+}
+
 function showToast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy,#0f1f3d);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000);}
 
 // Expose to window for inline onclick handlers
 [signIn,signUp,signOut,showDashboard,showView,switchTab,toggleSidebar,toggleNotifications,markAllNotifRead,readNotif,
  loadChapter,setChapterMode,toggleComplete,startTrack,startQuiz,submitQuiz,answerQuiz,
- renderResources,renderVendors,openVendor,renderBrandAcademy,openBrandDetail,toggleBrandLevel,
+ renderResources,renderVendors,openVendor,renderBrandAcademy,openBrandDetail,toggleBrandLevel,renderCompare,toggleCompare,startCompareQuiz,checkCompareAnswer,startCompareRoleplay,
  startRoleplay,sendRoleplayMessage,endRoleplay,showRoleplayPicker,
  openTrainer,closeTrainer,sendTrainer,trainerAsk,aiqSpeechToggle,aiqSpeechStop,
  selectBrandQuizOpt,submitBrandQuiz,setBrandAssignment,closeCertificate,printCertificate,saveScorecard,showToast
