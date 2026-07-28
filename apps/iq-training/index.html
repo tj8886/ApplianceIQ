@@ -364,6 +364,17 @@ let S = {
   repProgress: {}
 };
 
+// ── PILLAR CONSTANTS ──
+var pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ' };
+var pillarIcons = { sales_iq:'💰', product_iq:'🔧', brand_iq:'🏷️', leadership_iq:'👑' };
+var pillarColors = { sales_iq:'#6366f1', product_iq:'#06b6d4', brand_iq:'#f59e0b', leadership_iq:'#a855f7' };
+var pillarDescs = {
+  sales_iq:'The complete selling system. Scripts, objection handling, closing techniques, and the psychology of the sale.',
+  product_iq:'Category-by-category product mastery. Specs that sell, features that matter, and competitive cross-references.',
+  brand_iq:'Know every brand on your floor. 156 brands, each with PIM-linked product data, story, tier, and positioning.',
+  leadership_iq:'From seller to leader. Hiring, coaching, training systems, P&L, metrics, and culture building.'
+};
+
 // ── AUTH ──
 window.doLogin = async function() {
   const email = document.getElementById('login-email').value.trim();
@@ -467,16 +478,6 @@ function crumb(...parts) {
   }).join('<span class="sep">›</span>');
 }
 
-var pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ' };
-var pillarIcons = { sales_iq:'💰', product_iq:'🔧', brand_iq:'🏷️', leadership_iq:'👑' };
-var pillarColors = { sales_iq:'#6366f1', product_iq:'#06b6d4', brand_iq:'#f59e0b', leadership_iq:'#a855f7' };
-var pillarDescs = {
-  sales_iq:'The complete selling system — from greeting to referral. Scripts, objection handling, closing techniques, and the psychology of the sale.',
-  product_iq:'Category-by-category product mastery. Specs that sell, features that matter, installation considerations, and competitive cross-references.',
-  brand_iq:'Know every brand on your floor — their story, tier, strengths, weaknesses, and how to position them. 156 brands, each with PIM-linked product data.',
-  leadership_iq:'From seller to leader. Hiring, coaching, training systems, P&L, metrics, and building a culture that retains top talent.'
-};
-
 function renderDashboard(el) {
   var totalCards = 307;
   var pillars = ['sales_iq','product_iq','brand_iq','leadership_iq'];
@@ -567,13 +568,13 @@ function renderZone(el) {
   const zone = S.zones.find(z => z.id === currentZone);
   if (!zone) { navTo('dashboard'); return; }
   const zoneLanes = S.lanes.filter(l => l.zone_id === currentZone);
-  const pillarColors = { sales_iq:'var(--accent2)', product_iq:'var(--cyan)', brand_iq:'var(--gold)', leadership_iq:'#a855f7' };
-  const pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ' };
+  const laneTagColors = { sales_iq:'var(--accent2)', product_iq:'var(--cyan)', brand_iq:'var(--gold)', leadership_iq:'#a855f7' };
 
   const lanesHtml = zoneLanes.map(l => {
     const pct = 0;
-    return '<div class="lane-card" onclick="navTo(\'lane\',{lane:'+l.id+'})">'
-      + '<div class="lane-tag" style="background:' + (pillarColors[l.pillar]||'var(--accent)') + '22;color:' + (pillarColors[l.pillar]||'var(--accent)') + '">' + (pillarLabels[l.pillar]||l.pillar) + '</div>'
+    const tagCol = laneTagColors[l.pillar] || 'var(--accent)';
+    return '<div class="lane-card" onclick="navTo(\'lane\',{zone:'+currentZone+',lane:'+l.id+'})">'
+      + '<div class="lane-tag" style="background:' + tagCol + '22;color:' + tagCol + '">' + (pillarLabels[l.pillar]||l.pillar) + '</div>'
       + '<h4>' + esc(l.name) + '</h4>'
       + '<div class="lane-desc">' + esc(l.description||'') + '</div>'
       + '<div class="lane-progress"><div class="lane-progress-bar"><div class="lane-progress-fill" style="width:'+pct+'%"></div></div><div class="lane-progress-text">'+pct+'%</div></div>'
