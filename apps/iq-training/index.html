@@ -267,9 +267,10 @@ a{color:var(--accent2);text-decoration:none}
   <div class="bottom-nav">
     <div class="bottom-nav-inner">
       <div class="bnav-item active" onclick="navTo('dashboard')"><span>🏠</span>Home</div>
+      <div class="bnav-item" onclick="navTo('pillar',{deck:'sales_iq'})"><span>💰</span>Sales</div>
+      <div class="bnav-item" onclick="navTo('pillar',{deck:'product_iq'})"><span>🔧</span>Product</div>
       <div class="bnav-item" onclick="navTo('brands')"><span>🏷️</span>Brands</div>
       <div class="bnav-item" onclick="navTo('badges')"><span>🏅</span>Badges</div>
-      <div class="bnav-item" onclick="navTo('notifications')"><span>🔔</span>Alerts</div>
     </div>
   </div>
 </div>
@@ -443,12 +444,13 @@ function renderView() {
   const bc = document.getElementById('breadcrumb');
   switch(currentView) {
     case 'dashboard': renderDashboard(mc); bc.innerHTML = ''; break;
+    case 'pillar': renderPillar(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [pillarLabels[currentDeck] || currentDeck]); break;
     case 'zone': renderZone(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [S.zones.find(z=>z.id===currentZone)?.name]); break;
     case 'lane': renderLane(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [S.zones.find(z=>z.id===currentZone)?.name,'zone',{zone:currentZone}], [S.lanes.find(l=>l.id===currentLane)?.name]); break;
-    case 'brands': renderBrands(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brands']); break;
+    case 'brands': renderBrands(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brand IQ']); break;
     case 'badges': renderBadges(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Badges']); break;
     case 'notifications': renderNotifPage(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Notifications']); break;
-    case 'brand-detail': renderBrandDetail(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brands','brands'], [currentDeck?.name || 'Brand']); break;
+    case 'brand-detail': renderBrandDetail(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brand IQ','brands'], [currentDeck?.name || 'Brand']); break;
   }
   mc.classList.add('fade-in');
   setTimeout(() => mc.classList.remove('fade-in'), 300);
@@ -465,14 +467,39 @@ function crumb(...parts) {
   }).join('<span class="sep">›</span>');
 }
 
+var pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ' };
+var pillarIcons = { sales_iq:'💰', product_iq:'🔧', brand_iq:'🏷️', leadership_iq:'👑' };
+var pillarColors = { sales_iq:'#6366f1', product_iq:'#06b6d4', brand_iq:'#f59e0b', leadership_iq:'#a855f7' };
+var pillarDescs = {
+  sales_iq:'The complete selling system — from greeting to referral. Scripts, objection handling, closing techniques, and the psychology of the sale.',
+  product_iq:'Category-by-category product mastery. Specs that sell, features that matter, installation considerations, and competitive cross-references.',
+  brand_iq:'Know every brand on your floor — their story, tier, strengths, weaknesses, and how to position them. 156 brands, each with PIM-linked product data.',
+  leadership_iq:'From seller to leader. Hiring, coaching, training systems, P&L, metrics, and building a culture that retains top talent.'
+};
+
 function renderDashboard(el) {
-  const totalCards = 307;
-  const completedPct = Math.round((S.completedCards.size / totalCards) * 100);
-  const zoneHtml = S.zones.map(z => {
-    const isLocked = z.zone_number > 2;
-    const isCurrent = z.zone_number <= 2;
-    const pct = z.zone_number === 1 ? 100 : (z.zone_number === 2 ? 15 : 0);
-    const descs = ['Days 1-14: Culture, floor basics, vocabulary','Weeks 3-10: Sales process, product deep dive, brands, competitive','Months 4-8: Advanced selling, specialization prep','Months 9-18: Category or brand mastery','Month 18+: Leadership, mentoring, continuous growth'];
+  var totalCards = 307;
+  var pillars = ['sales_iq','product_iq','brand_iq','leadership_iq'];
+  var pillarCounts = {};
+  pillars.forEach(function(p) { pillarCounts[p] = S.courses.filter(function(c) { return c.pillar === p; }).length; });
+
+  var pillarHtml = pillars.map(function(p) {
+    var count = pillarCounts[p];
+    var col = pillarColors[p];
+    var clickAction = p === 'brand_iq' ? "navTo('brands')" : "navTo('pillar',{deck:'" + p + "'})";
+    return '<div class="zone-card" style="border-top:3px solid ' + col + '" onclick="' + clickAction + '">'
+      + '<div style="font-size:28px;margin-bottom:8px">' + pillarIcons[p] + '</div>'
+      + '<h3>' + pillarLabels[p] + '</h3>'
+      + '<div class="zone-desc">' + pillarDescs[p] + '</div>'
+      + '<div style="margin-top:12px;font-size:13px;font-weight:600;color:' + col + '">' + count + ' courses</div>'
+      + '</div>';
+  }).join('');
+
+  var zoneHtml = S.zones.map(function(z) {
+    var isLocked = z.zone_number > 2;
+    var isCurrent = z.zone_number <= 2;
+    var pct = z.zone_number === 1 ? 100 : (z.zone_number === 2 ? 15 : 0);
+    var descs = ['Days 1-14: Culture, floor basics, vocabulary','Weeks 3-10: Sales process, product deep dive, brands, competitive','Months 4-8: Advanced selling, specialization prep','Months 9-18: Category or brand mastery','Month 18+: Leadership, mentoring, continuous growth'];
     return '<div class="zone-card ' + (isLocked?'locked':'') + (isCurrent&&z.zone_number===2?' current':'') + '" onclick="' + (isLocked?'':'navTo(\'zone\',{zone:'+z.id+'})') + '">'
       + (isLocked?'<div class="lock-icon">🔒</div>':'')
       + '<div class="zone-num">Zone ' + z.zone_number + '</div>'
@@ -483,22 +510,57 @@ function renderDashboard(el) {
       + '</div>';
   }).join('');
 
-  const recentNotifs = S.notifications.slice(0, 5).map(n =>
-    '<div class="notif-item ' + (!n.is_read?'unread':'') + '">'
+  var recentNotifs = S.notifications.slice(0, 5).map(function(n) {
+    return '<div class="notif-item ' + (!n.is_read?'unread':'') + '">'
     + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
-    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>'
-  ).join('') || '<p style="color:var(--text3);text-align:center;padding:20px;font-size:13px">No notifications yet</p>';
+    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
+  }).join('') || '<p style="color:var(--text3);text-align:center;padding:20px;font-size:13px">No notifications yet</p>';
 
-  el.innerHTML = '<div class="dash-header"><h2>Your Training</h2><p>Learn fast, sell smart, grow daily</p></div>'
+  el.innerHTML = '<div class="dash-header"><h2>Your Training</h2><p>Four pillars. Five zones. One system to master appliance sales.</p></div>'
     + '<div class="dash-grid">'
     + '<div class="stat-card accent"><div class="label">Cards Completed</div><div class="value">' + S.completedCards.size + '</div><div class="sub">of ' + totalCards + ' total</div></div>'
     + '<div class="stat-card green"><div class="label">Current Zone</div><div class="value">2</div><div class="sub">The Build</div></div>'
     + '<div class="stat-card gold"><div class="label">Badges Earned</div><div class="value">' + S.earnedBadges.length + '</div><div class="sub">of ' + S.badges.length + ' available</div></div>'
     + '</div>'
-    + '<div class="section-header"><h3>Zone Map</h3></div>'
+    + '<div class="section-header"><h3>The Four Pillars</h3></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px">' + pillarHtml + '</div>'
+    + '<div class="section-header"><h3>Your Progression — Zone Map</h3></div>'
     + '<div class="zone-map">' + zoneHtml + '</div>'
     + '<div class="section-header"><h3>Recent Notifications</h3><span class="see-all" onclick="navTo(\'notifications\')">See all</span></div>'
     + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + recentNotifs + '</div>';
+}
+
+function renderPillar(el) {
+  var pillar = currentDeck;
+  if (!pillar || !pillarLabels[pillar]) { navTo('dashboard'); return; }
+  var courses = S.courses.filter(function(c) { return c.pillar === pillar; });
+  var col = pillarColors[pillar];
+  var lanes = S.lanes.filter(function(l) { return l.pillar === pillar; });
+
+  var coursesHtml = courses.map(function(c) {
+    return '<div class="deck-row" onclick="navTo(\'brands\')">'
+      + '<div class="deck-num" style="background:' + col + '22;color:' + col + '">' + (c.icon || pillarIcons[pillar]) + '</div>'
+      + '<div class="deck-info"><h5>' + esc(c.name) + '</h5><p>' + esc(c.subtitle || '') + '</p></div>'
+      + '</div>';
+  }).join('');
+
+  var lanesHtml = lanes.length ? '<div class="section-header" style="margin-top:24px"><h3>Training Lanes</h3></div>'
+    + '<div class="lanes-container">' + lanes.map(function(l) {
+      var zone = S.zones.find(function(z) { return z.id === l.zone_id; });
+      return '<div class="lane-card" onclick="navTo(\'lane\',{zone:' + l.zone_id + ',lane:' + l.id + '})">'
+        + '<div class="lane-tag" style="background:' + col + '22;color:' + col + '">' + (zone ? 'Zone ' + zone.zone_number : '') + '</div>'
+        + '<h4>' + esc(l.name) + '</h4>'
+        + '<div class="lane-desc">' + esc(l.description || '') + '</div>'
+        + '</div>';
+    }).join('') + '</div>' : '';
+
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
+    + '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;background:' + col + '15;border:2px solid ' + col + ';border-radius:var(--radius)">' + pillarIcons[pillar] + '</div>'
+    + '<div><h2 style="font-size:24px;font-weight:800">' + pillarLabels[pillar] + '</h2>'
+    + '<p style="color:var(--text2);font-size:13px">' + courses.length + ' courses · ' + pillarDescs[pillar].substring(0,80) + '...</p></div></div>'
+    + lanesHtml
+    + '<div class="section-header" style="margin-top:24px"><h3>All Courses (' + courses.length + ')</h3></div>'
+    + '<div class="deck-list">' + coursesHtml + '</div>';
 }
 
 function renderZone(el) {
