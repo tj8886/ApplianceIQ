@@ -386,7 +386,10 @@ if (session) {
 async function initApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.remove('hidden');
-  await Promise.all([loadZones(), loadCourses(), loadBadgesData(), loadNotifications()]);
+  try {
+    await Promise.all([loadZones(), loadCourses(), loadBadgesData(), loadNotifications()]);
+    console.log('Data loaded:', S.zones.length, 'zones,', S.courses.length, 'courses,', S.badges.length, 'badges,', S.notifications.length, 'notifs');
+  } catch(e) { console.error('Init error:', e); }
   renderView();
 }
 
@@ -394,12 +397,12 @@ async function initApp() {
 async function loadZones() {
   const { data } = await sb.from('iq_zones').select('*').order('zone_number');
   S.zones = data || [];
-  const { data: lanes } = await sb.from('iq_lanes').select('*').order('zone_id,sort_order');
+  const { data: lanes } = await sb.from('iq_lanes').select('*').order('zone_id').order('sort_order');
   S.lanes = lanes || [];
 }
 
 async function loadCourses() {
-  const { data } = await sb.from('iq_courses').select('id,pillar,course_key,name,subtitle,icon,brand_id,zone_level,category,sort_order').order('pillar,sort_order');
+  const { data } = await sb.from('iq_courses').select('id,pillar,course_key,name,subtitle,icon,brand_id,zone_level,category,sort_order').order('pillar').order('sort_order');
   S.courses = data || [];
 }
 
@@ -414,7 +417,7 @@ async function loadCardsForDeck(deckId) {
 }
 
 async function loadBadgesData() {
-  const { data } = await sb.from('iq_badges').select('id,badge_key,badge_type,name,description,icon,color,pillar,brand_id,course_id').order('badge_type,sort_order');
+  const { data } = await sb.from('iq_badges').select('id,badge_key,badge_type,name,description,icon,color,pillar,brand_id,course_id').order('badge_type').order('sort_order');
   S.badges = data || [];
 }
 
@@ -429,7 +432,7 @@ window.loadNotifications = async function() {
 };
 
 async function loadBrandProducts(brandId) {
-  const { data } = await sb.from('iq_product_cards').select('*').eq('brand_id', brandId).order('card_type,title');
+  const { data } = await sb.from('iq_product_cards').select('*').eq('brand_id', brandId).order('card_type').order('title');
   return data || [];
 }
 
