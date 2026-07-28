@@ -186,6 +186,51 @@ a{color:var(--accent);text-decoration:none}
 .brand-card .brand-tier.ultra_luxury{color:#7e22ce}
 .brand-card .brand-parent{font-size:12px;color:var(--text3)}
 
+/* ── LIVE PRACTICE SCORER ── */
+.recorder-panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px}
+.recorder-header{padding:20px 24px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f0fdf9,#ecfeff)}
+.recorder-header h3{font-size:18px;font-weight:800;color:var(--navy);margin-bottom:4px}
+.recorder-header p{font-size:13px;color:var(--text2)}
+.recorder-body{padding:24px}
+.rec-status{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.rec-dot{width:14px;height:14px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.rec-dot.recording{background:#dc2626;animation:pulse 1s infinite}
+.rec-dot.done{background:var(--green)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.rec-status-text{font-size:15px;font-weight:600;color:var(--navy)}
+.rec-timer{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--text2)}
+.rec-controls{display:flex;gap:12px;margin-bottom:20px}
+.rec-btn{padding:12px 28px;border-radius:var(--radius-xs);font-size:14px;font-weight:700;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
+.rec-btn.start{background:var(--accent);color:#fff}
+.rec-btn.start:hover{background:var(--accent2);transform:translateY(-1px)}
+.rec-btn.stop{background:#dc2626;color:#fff}
+.rec-btn.stop:hover{background:#b91c1c}
+.rec-btn.score{background:var(--navy);color:#fff}
+.rec-btn.score:hover{background:var(--navy-light);transform:translateY(-1px)}
+.rec-btn:disabled{opacity:.4;cursor:default;transform:none}
+.transcript-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;max-height:300px;overflow-y:auto;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text)}
+.transcript-box .turn{margin-bottom:8px;padding:8px 12px;border-radius:8px}
+.transcript-box .turn.rep{background:rgba(13,148,136,.06);border-left:3px solid var(--accent)}
+.transcript-box .turn.cust{background:rgba(30,58,95,.04);border-left:3px solid var(--navy)}
+.turn-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.turn-label.rep{color:var(--accent)}
+.turn-label.cust{color:var(--navy)}
+.role-toggle{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-xs);overflow:hidden;width:fit-content}
+.role-toggle button{padding:8px 20px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--surface2);color:var(--text2)}
+.role-toggle button.active-rep{background:var(--accent);color:#fff}
+.role-toggle button.active-cust{background:var(--navy);color:#fff}
+.scorecard{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:24px}
+.scorecard-header{padding:20px 24px;background:linear-gradient(135deg,var(--navy),#2c5282);color:#fff}
+.scorecard-header h3{font-size:20px;font-weight:800;margin-bottom:4px}
+.scorecard-header .total-score{font-size:48px;font-weight:900;margin-top:8px}
+.score-row{display:flex;align-items:center;padding:14px 24px;border-bottom:1px solid var(--border)}
+.score-row:last-child{border-bottom:none}
+.score-row .score-label{flex:1;font-size:14px;font-weight:600;color:var(--navy)}
+.score-row .score-bar{flex:2;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden;margin:0 16px}
+.score-row .score-bar-fill{height:100%;border-radius:4px;transition:width .6s}
+.score-row .score-val{font-size:16px;font-weight:800;min-width:40px;text-align:right}
+.score-feedback{padding:16px 24px;font-size:13px;line-height:1.6;color:var(--text2);border-top:1px solid var(--border);background:var(--surface2)}
+
 /* ── ROLEPLAY / AI COACH ── */
 .coach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px}
 .coach-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(30,58,95,.04)}
@@ -838,6 +883,11 @@ function renderRoleplay(el) {
     renderChat(el);
     return;
   }
+  if (window._scorecard) {
+    renderScorecard(el);
+    return;
+  }
+
   var coachHtml = Object.keys(coaches).map(function(k) {
     var c = coaches[k];
     return '<div class="coach-card" onclick="startChat(\'' + k + '\')">'
@@ -847,7 +897,32 @@ function renderRoleplay(el) {
       + '<p>' + c.desc + '</p></div>';
   }).join('');
 
-  el.innerHTML = '<div class="dash-header"><h2>AI Coach</h2><p>Choose a coach for roleplay, Q&A, or product walkthroughs. They pull live data from the PIM.</p></div>'
+  // Live Practice Scorer
+  var recState = window._recState || { recording: false, turns: [], currentRole: 'rep', timer: 0 };
+  var turnsHtml = recState.turns.length ? recState.turns.map(function(t) {
+    return '<div class="turn ' + t.role + '"><div class="turn-label ' + t.role + '">' + (t.role === 'rep' ? '🟢 Sales Rep' : '🔵 Customer') + '</div>' + esc(t.text) + '</div>';
+  }).join('') : '<p style="color:var(--text3);text-align:center;padding:20px">Start recording a practice session. Toggle between Rep and Customer as each person speaks.</p>';
+
+  var practiceHtml = '<div class="recorder-panel">'
+    + '<div class="recorder-header"><h3>🎙 Live Practice Scorer</h3><p>Record a real practice session, then get AI-scored on all 10 steps of selling, add-ons, cross-selling, warranty, and greeting.</p></div>'
+    + '<div class="recorder-body">'
+    + '<div class="rec-status"><div class="rec-dot ' + (recState.recording ? 'recording' : (recState.turns.length ? 'done' : '')) + '"></div>'
+    + '<div class="rec-status-text">' + (recState.recording ? 'Recording...' : (recState.turns.length ? 'Session captured — ' + recState.turns.length + ' turns' : 'Ready to record')) + '</div>'
+    + '<div class="rec-timer" id="rec-timer">' + formatTime(recState.timer) + '</div></div>'
+    + '<div class="role-toggle"><button class="' + (recState.currentRole === 'rep' ? 'active-rep' : '') + '" onclick="setRecRole(\'rep\')">🟢 Sales Rep</button>'
+    + '<button class="' + (recState.currentRole === 'cust' ? 'active-cust' : '') + '" onclick="setRecRole(\'cust\')">🔵 Customer</button></div>'
+    + '<div class="rec-controls">'
+    + (recState.recording
+      ? '<button class="rec-btn stop" onclick="stopRecording()">⏹ Stop Recording</button>'
+      : '<button class="rec-btn start" onclick="startRecording()">🎙 Start Recording</button>')
+    + '<button class="rec-btn score" onclick="scoreSession()"' + (recState.turns.length < 2 ? ' disabled' : '') + '>📊 Score This Session</button>'
+    + (recState.turns.length ? '<button class="rec-btn" style="background:var(--surface3);color:var(--text2)" onclick="clearRecording()">Clear</button>' : '')
+    + '</div>'
+    + '<div class="transcript-box" id="transcript-box">' + turnsHtml + '</div>'
+    + '</div></div>';
+
+  el.innerHTML = practiceHtml
+    + '<div class="dash-header" style="margin-top:8px"><h2>AI Coach Chat</h2><p>Choose a coach for roleplay, Q&A, or product walkthroughs.</p></div>'
     + '<div class="coach-grid">' + coachHtml + '</div>'
     + '<div class="section-header"><h3>Quick Topics</h3></div>'
     + '<div class="topic-pills">'
@@ -860,6 +935,209 @@ function renderRoleplay(el) {
     + '<div class="topic-pill" onclick="startChat(\'leah\',\'Help me design a luxury kitchen column layout\')">Kitchen column design</div>'
     + '<div class="topic-pill" onclick="startChat(\'caden\',\'Explain heat pump dryers to me like I am new\')">Heat pump dryers</div>'
     + '</div>';
+}
+
+function formatTime(s) {
+  var m = Math.floor(s / 60);
+  var sec = s % 60;
+  return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+function startRecording() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Speech recognition requires Chrome or Edge browser.');
+    return;
+  }
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognition = new SpeechRec();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-CA';
+
+  var recState = window._recState || { recording: false, turns: [], currentRole: 'rep', timer: 0 };
+  recState.recording = true;
+  recState.timer = 0;
+  window._recState = recState;
+  window._recognition = recognition;
+  window._interimText = '';
+
+  // Timer
+  window._recInterval = setInterval(function() {
+    recState.timer++;
+    var timerEl = document.getElementById('rec-timer');
+    if (timerEl) timerEl.textContent = formatTime(recState.timer);
+  }, 1000);
+
+  recognition.onresult = function(event) {
+    var interim = '';
+    var final_text = '';
+    for (var i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        final_text += event.results[i][0].transcript;
+      } else {
+        interim += event.results[i][0].transcript;
+      }
+    }
+    if (final_text.trim()) {
+      recState.turns.push({ role: recState.currentRole, text: final_text.trim() });
+      var box = document.getElementById('transcript-box');
+      if (box) {
+        var turnDiv = document.createElement('div');
+        turnDiv.className = 'turn ' + recState.currentRole;
+        turnDiv.innerHTML = '<div class="turn-label ' + recState.currentRole + '">' + (recState.currentRole === 'rep' ? '🟢 Sales Rep' : '🔵 Customer') + '</div>' + esc(final_text.trim());
+        box.appendChild(turnDiv);
+        box.scrollTop = box.scrollHeight;
+      }
+    }
+  };
+
+  recognition.onerror = function(e) {
+    console.log('Speech error:', e.error);
+    if (e.error === 'no-speech') return;
+  };
+
+  recognition.onend = function() {
+    if (recState.recording) recognition.start();
+  };
+
+  recognition.start();
+  renderView();
+}
+window.startRecording = startRecording;
+
+function stopRecording() {
+  var recState = window._recState;
+  if (!recState) return;
+  recState.recording = false;
+  if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); }
+  if (window._recInterval) clearInterval(window._recInterval);
+  window._recState = recState;
+  renderView();
+}
+window.stopRecording = stopRecording;
+
+function setRecRole(role) {
+  var recState = window._recState || { recording: false, turns: [], currentRole: 'rep', timer: 0 };
+  recState.currentRole = role;
+  window._recState = recState;
+  renderView();
+}
+window.setRecRole = setRecRole;
+
+function clearRecording() {
+  if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); }
+  if (window._recInterval) clearInterval(window._recInterval);
+  window._recState = { recording: false, turns: [], currentRole: 'rep', timer: 0 };
+  window._scorecard = null;
+  renderView();
+}
+window.clearRecording = clearRecording;
+
+async function scoreSession() {
+  var recState = window._recState;
+  if (!recState || recState.turns.length < 2) return;
+
+  var transcript = recState.turns.map(function(t) {
+    return (t.role === 'rep' ? 'SALES REP' : 'CUSTOMER') + ': ' + t.text;
+  }).join('\n');
+
+  var mc = document.getElementById('main-content');
+  mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2);font-size:15px;font-weight:500">Analyzing ' + recState.turns.length + ' turns across ' + formatTime(recState.timer) + '...</p><p style="color:var(--text3);font-size:13px;margin-top:8px">Scoring against all 10 steps of selling</p></div>';
+
+  var scorePrompt = 'You are the ApplianceIQ Sales Scoring AI. You analyze recorded practice sales sessions for appliance retail.\n\n'
+    + 'Score this transcript on EACH of the following categories (0-10 each). Return ONLY valid JSON, no markdown, no backticks, no preamble.\n\n'
+    + 'SCORING CATEGORIES:\n'
+    + '1. greeting — Was the greeting warm, non-commission, inviting? Did they give the customer space?\n'
+    + '2. rapport — Did they find a human connection? Renovation, lifestyle, personal details?\n'
+    + '3. discovery — Did they ask about needs, pain points, timeline, budget, decision-makers?\n'
+    + '4. product_selection — Did they narrow to 2-3 options matched to needs? Rule of Three?\n'
+    + '5. lifestyle_demo — Did they get the customer to touch/interact? Paint a lifestyle picture?\n'
+    + '6. value_building — Did they justify price with cost-per-use, longevity, service value?\n'
+    + '7. objection_handling — Did they acknowledge, empathize, redirect? Feel-felt-found?\n'
+    + '8. closing — Did they ask for the sale? Assumptive or alternative close?\n'
+    + '9. complete_ticket — Did they mention protection plans, accessories, delivery, installation?\n'
+    + '10. followup — Did they mention follow-up, referrals, business card, next steps?\n'
+    + '11. cross_selling — Did they suggest complementary products (hood with range, pedestal with washer)?\n'
+    + '12. product_knowledge — Did the rep demonstrate accurate specs, features, comparisons?\n\n'
+    + 'ALSO PROVIDE:\n'
+    + '- overall_score: weighted average out of 100\n'
+    + '- summary: 2-3 sentence overall assessment\n'
+    + '- top_strength: the single best thing the rep did\n'
+    + '- top_improvement: the single biggest area to work on\n'
+    + '- specific_feedback: object with a 1-sentence note per category\n\n'
+    + 'RETURN FORMAT (JSON only, no wrapping):\n'
+    + '{"scores":{"greeting":7,"rapport":8,...},"overall_score":72,"summary":"...","top_strength":"...","top_improvement":"...","specific_feedback":{"greeting":"...","rapport":"...",...}}\n\n'
+    + 'TRANSCRIPT:\n' + transcript;
+
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: scorePrompt }]
+      })
+    });
+    var data = await resp.json();
+    var text = data.content ? data.content.map(function(b) { return b.text || ''; }).join('') : '';
+    var clean = text.replace(/```json|```/g, '').trim();
+    window._scorecard = JSON.parse(clean);
+    window._scorecard._transcript = recState.turns;
+    window._scorecard._duration = recState.timer;
+  } catch(e) {
+    console.error('Score error:', e);
+    window._scorecard = { scores: {}, overall_score: 0, summary: 'Scoring failed — please try again.', top_strength: '', top_improvement: '', specific_feedback: {} };
+  }
+  renderView();
+}
+window.scoreSession = scoreSession;
+
+function renderScorecard(el) {
+  var sc = window._scorecard;
+  if (!sc) { renderRoleplay(el); return; }
+
+  var categories = [
+    { key:'greeting', label:'The Greeting', icon:'👋' },
+    { key:'rapport', label:'Building Rapport', icon:'🤝' },
+    { key:'discovery', label:'Needs Discovery', icon:'🔍' },
+    { key:'product_selection', label:'Product Selection', icon:'🎯' },
+    { key:'lifestyle_demo', label:'Lifestyle Demo', icon:'✋' },
+    { key:'value_building', label:'Building Value', icon:'💎' },
+    { key:'objection_handling', label:'Objection Handling', icon:'🛡' },
+    { key:'closing', label:'Closing', icon:'🤝' },
+    { key:'complete_ticket', label:'Complete Ticket', icon:'📋' },
+    { key:'followup', label:'Follow-Up & Referrals', icon:'📞' },
+    { key:'cross_selling', label:'Cross-Selling', icon:'🔗' },
+    { key:'product_knowledge', label:'Product Knowledge', icon:'📚' }
+  ];
+
+  var overall = sc.overall_score || 0;
+  var scoreColor = overall >= 80 ? 'var(--green)' : (overall >= 60 ? 'var(--gold)' : 'var(--red)');
+
+  var rowsHtml = categories.map(function(c) {
+    var val = (sc.scores && sc.scores[c.key]) || 0;
+    var pct = val * 10;
+    var barColor = val >= 8 ? 'var(--green)' : (val >= 6 ? 'var(--accent)' : (val >= 4 ? 'var(--gold)' : 'var(--red)'));
+    var feedback = (sc.specific_feedback && sc.specific_feedback[c.key]) || '';
+    return '<div class="score-row"><div class="score-label">' + c.icon + ' ' + c.label + '</div>'
+      + '<div class="score-bar"><div class="score-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>'
+      + '<div class="score-val" style="color:' + barColor + '">' + val + '</div></div>'
+      + (feedback ? '<div class="score-feedback">' + esc(feedback) + '</div>' : '');
+  }).join('');
+
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer" onclick="window._scorecard=null;renderView()">'
+    + '<span style="color:var(--text2);font-size:18px">&#8592;</span><span style="color:var(--text2);font-size:14px">Back to Coach</span></div>'
+    + '<div class="scorecard">'
+    + '<div class="scorecard-header"><h3>Practice Session Scorecard</h3>'
+    + '<p style="opacity:.75;font-size:13px">' + (sc._transcript ? sc._transcript.length + ' turns' : '') + (sc._duration ? ' &middot; ' + formatTime(sc._duration) : '') + '</p>'
+    + '<div class="total-score" style="color:' + scoreColor + '">' + overall + '<span style="font-size:20px;opacity:.6">/100</span></div></div>'
+    + rowsHtml
+    + '<div style="padding:20px 24px;border-top:1px solid var(--border)">'
+    + '<p style="font-size:14px;line-height:1.7;color:var(--text);margin-bottom:12px"><strong>' + esc(sc.summary || '') + '</strong></p>'
+    + (sc.top_strength ? '<p style="font-size:13px;color:var(--green);margin-bottom:6px">💪 <strong>Top strength:</strong> ' + esc(sc.top_strength) + '</p>' : '')
+    + (sc.top_improvement ? '<p style="font-size:13px;color:var(--gold)">📈 <strong>Work on:</strong> ' + esc(sc.top_improvement) + '</p>' : '')
+    + '</div></div>';
 }
 
 function renderChat(el) {
