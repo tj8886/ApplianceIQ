@@ -898,33 +898,30 @@ function renderRoleplay(el) {
   }).join('');
 
   // Live Practice Scorer
-  var recState = window._recState || { recording: false, turns: [], currentRole: 'rep', timer: 0 };
-  var turnsHtml = recState.turns.length ? recState.turns.map(function(t) {
-    return '<div class="turn ' + t.role + '"><div class="turn-label ' + t.role + '">' + (t.role === 'rep' ? '🟢 Sales Rep' : '🔵 Customer') + '</div>' + esc(t.text) + '</div>';
-  }).join('') : '<p style="color:var(--text3);text-align:center;padding:20px">Start recording a practice session. Toggle between Rep and Customer as each person speaks.</p>';
+  var recState = window._recState || { recording: false, transcript: '', timer: 0 };
+  var hasTranscript = recState.transcript && recState.transcript.trim().length > 0;
 
   var practiceHtml = '<div class="recorder-panel">'
-    + '<div class="recorder-header"><h3>🎙 Live Practice Scorer</h3><p>Record a real practice session, then get AI-scored on all 10 steps of selling, add-ons, cross-selling, warranty, and greeting.</p></div>'
+    + '<div class="recorder-header"><h3>🎙 Live Practice Scorer</h3><p>Record a real sales practice between two people. AI listens, figures out who is the rep and who is the customer, then scores against all 12 selling categories.</p></div>'
     + '<div class="recorder-body">'
-    + '<div class="rec-status"><div class="rec-dot ' + (recState.recording ? 'recording' : (recState.turns.length ? 'done' : '')) + '"></div>'
-    + '<div class="rec-status-text">' + (recState.recording ? 'Recording...' : (recState.turns.length ? 'Session captured — ' + recState.turns.length + ' turns' : 'Ready to record')) + '</div>'
+    + '<div class="rec-status"><div class="rec-dot ' + (recState.recording ? 'recording' : (hasTranscript ? 'done' : '')) + '"></div>'
+    + '<div class="rec-status-text">' + (recState.recording ? 'Listening... just talk naturally' : (hasTranscript ? 'Session captured' : 'Ready — hit record and start your practice')) + '</div>'
     + '<div class="rec-timer" id="rec-timer">' + formatTime(recState.timer) + '</div></div>'
-    + '<div class="role-toggle"><button class="' + (recState.currentRole === 'rep' ? 'active-rep' : '') + '" onclick="setRecRole(\'rep\')">🟢 Sales Rep</button>'
-    + '<button class="' + (recState.currentRole === 'cust' ? 'active-cust' : '') + '" onclick="setRecRole(\'cust\')">🔵 Customer</button></div>'
     + '<div class="rec-controls">'
     + (recState.recording
       ? '<button class="rec-btn stop" onclick="stopRecording()">⏹ Stop Recording</button>'
       : '<button class="rec-btn start" onclick="startRecording()">🎙 Start Recording</button>')
-    + '<button class="rec-btn score" onclick="scoreSession()"' + (recState.turns.length < 2 ? ' disabled' : '') + '>📊 Score This Session</button>'
-    + (recState.turns.length ? '<button class="rec-btn" style="background:var(--surface3);color:var(--text2)" onclick="clearRecording()">Clear</button>' : '')
+    + '<button class="rec-btn score" onclick="scoreSession()"' + (!hasTranscript ? ' disabled' : '') + '>📊 Score This Session</button>'
+    + (hasTranscript ? '<button class="rec-btn" style="background:var(--surface3);color:var(--text2)" onclick="clearRecording()">Clear</button>' : '')
     + '</div>'
-    + '<div class="transcript-box" id="transcript-box">' + turnsHtml + '</div>'
+    + '<div class="transcript-box" id="transcript-box">' + (hasTranscript ? '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>' : '<p style="color:var(--text3);text-align:center;padding:20px">Hit record, then practice your pitch. Both people just talk — the AI will figure out who is the rep and who is the customer when it scores.</p>') + '</div>'
     + '</div></div>';
 
-  el.innerHTML = practiceHtml
-    + '<div class="dash-header" style="margin-top:8px"><h2>AI Coach Chat</h2><p>Choose a coach for roleplay, Q&A, or product walkthroughs.</p></div>'
+  el.innerHTML = '<div class="dash-header"><h2>AI Coach</h2><p>Two ways to train — practice with AI or record a live session for scoring.</p></div>'
+    + practiceHtml
+    + '<div class="dash-header" style="margin-top:24px"><h2>AI Roleplay Chat</h2><p>Type-based coaching. Pick a persona, ask anything, roleplay scenarios. Live PIM data in every answer.</p></div>'
     + '<div class="coach-grid">' + coachHtml + '</div>'
-    + '<div class="section-header"><h3>Quick Topics</h3></div>'
+    + '<div class="section-header"><h3>Quick Scenarios</h3></div>'
     + '<div class="topic-pills">'
     + '<div class="topic-pill" onclick="startChat(\'tj\',\'Customer says they found it cheaper online\')">Price objection</div>'
     + '<div class="topic-pill" onclick="startChat(\'natalie\',\'Compare induction vs gas cooktops\')">Induction vs gas</div>'
@@ -954,14 +951,10 @@ function startRecording() {
   recognition.interimResults = true;
   recognition.lang = 'en-CA';
 
-  var recState = window._recState || { recording: false, turns: [], currentRole: 'rep', timer: 0 };
-  recState.recording = true;
-  recState.timer = 0;
+  var recState = { recording: true, transcript: '', timer: 0 };
   window._recState = recState;
   window._recognition = recognition;
-  window._interimText = '';
 
-  // Timer
   window._recInterval = setInterval(function() {
     recState.timer++;
     var timerEl = document.getElementById('rec-timer');
@@ -969,31 +962,25 @@ function startRecording() {
   }, 1000);
 
   recognition.onresult = function(event) {
-    var interim = '';
     var final_text = '';
     for (var i = event.resultIndex; i < event.results.length; i++) {
       if (event.results[i].isFinal) {
         final_text += event.results[i][0].transcript;
-      } else {
-        interim += event.results[i][0].transcript;
       }
     }
     if (final_text.trim()) {
-      recState.turns.push({ role: recState.currentRole, text: final_text.trim() });
+      recState.transcript += (recState.transcript ? ' ' : '') + final_text.trim();
       var box = document.getElementById('transcript-box');
       if (box) {
-        var turnDiv = document.createElement('div');
-        turnDiv.className = 'turn ' + recState.currentRole;
-        turnDiv.innerHTML = '<div class="turn-label ' + recState.currentRole + '">' + (recState.currentRole === 'rep' ? '🟢 Sales Rep' : '🔵 Customer') + '</div>' + esc(final_text.trim());
-        box.appendChild(turnDiv);
+        box.innerHTML = '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>';
         box.scrollTop = box.scrollHeight;
       }
     }
   };
 
   recognition.onerror = function(e) {
-    console.log('Speech error:', e.error);
     if (e.error === 'no-speech') return;
+    console.log('Speech error:', e.error);
   };
 
   recognition.onend = function() {
@@ -1016,18 +1003,10 @@ function stopRecording() {
 }
 window.stopRecording = stopRecording;
 
-function setRecRole(role) {
-  var recState = window._recState || { recording: false, turns: [], currentRole: 'rep', timer: 0 };
-  recState.currentRole = role;
-  window._recState = recState;
-  renderView();
-}
-window.setRecRole = setRecRole;
-
 function clearRecording() {
   if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); }
   if (window._recInterval) clearInterval(window._recInterval);
-  window._recState = { recording: false, turns: [], currentRole: 'rep', timer: 0 };
+  window._recState = { recording: false, transcript: '', timer: 0 };
   window._scorecard = null;
   renderView();
 }
@@ -1035,25 +1014,22 @@ window.clearRecording = clearRecording;
 
 async function scoreSession() {
   var recState = window._recState;
-  if (!recState || recState.turns.length < 2) return;
-
-  var transcript = recState.turns.map(function(t) {
-    return (t.role === 'rep' ? 'SALES REP' : 'CUSTOMER') + ': ' + t.text;
-  }).join('\n');
+  if (!recState || !recState.transcript || recState.transcript.trim().length < 20) return;
 
   var mc = document.getElementById('main-content');
-  mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2);font-size:15px;font-weight:500">Analyzing ' + recState.turns.length + ' turns across ' + formatTime(recState.timer) + '...</p><p style="color:var(--text3);font-size:13px;margin-top:8px">Scoring against all 10 steps of selling</p></div>';
+  mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2);font-size:15px;font-weight:500">Analyzing ' + formatTime(recState.timer) + ' of practice...</p><p style="color:var(--text3);font-size:13px;margin-top:8px">AI is identifying the rep vs customer and scoring against 12 categories</p></div>';
 
   var scorePrompt = 'You are the ApplianceIQ Sales Scoring AI. You analyze recorded practice sales sessions for appliance retail.\n\n'
-    + 'Score this transcript on EACH of the following categories (0-10 each). Return ONLY valid JSON, no markdown, no backticks, no preamble.\n\n'
+    + 'Below is a transcript of a practice session between a sales rep and a customer (or someone playing the customer). The transcript is NOT labeled by speaker — YOU must figure out from context who is the sales rep and who is the customer based on their language, questions, and behavior.\n\n'
+    + 'Score the SALES REP performance on EACH of the following categories (0-10 each). Return ONLY valid JSON, no markdown, no preamble.\n\n'
     + 'SCORING CATEGORIES:\n'
     + '1. greeting — Was the greeting warm, non-commission, inviting? Did they give the customer space?\n'
     + '2. rapport — Did they find a human connection? Renovation, lifestyle, personal details?\n'
     + '3. discovery — Did they ask about needs, pain points, timeline, budget, decision-makers?\n'
     + '4. product_selection — Did they narrow to 2-3 options matched to needs? Rule of Three?\n'
-    + '5. lifestyle_demo — Did they get the customer to touch/interact? Paint a lifestyle picture?\n'
+    + '5. lifestyle_demo — Did they paint a lifestyle picture? Get the customer to imagine the product in their life?\n'
     + '6. value_building — Did they justify price with cost-per-use, longevity, service value?\n'
-    + '7. objection_handling — Did they acknowledge, empathize, redirect? Feel-felt-found?\n'
+    + '7. objection_handling — Did they acknowledge, empathize, redirect? Not fight?\n'
     + '8. closing — Did they ask for the sale? Assumptive or alternative close?\n'
     + '9. complete_ticket — Did they mention protection plans, accessories, delivery, installation?\n'
     + '10. followup — Did they mention follow-up, referrals, business card, next steps?\n'
@@ -1064,10 +1040,11 @@ async function scoreSession() {
     + '- summary: 2-3 sentence overall assessment\n'
     + '- top_strength: the single best thing the rep did\n'
     + '- top_improvement: the single biggest area to work on\n'
-    + '- specific_feedback: object with a 1-sentence note per category\n\n'
+    + '- specific_feedback: object with a 1-sentence coaching note per category\n\n'
+    + 'If a category was not observed in the conversation, score it 0 and note "Not observed in this session" in feedback.\n\n'
     + 'RETURN FORMAT (JSON only, no wrapping):\n'
-    + '{"scores":{"greeting":7,"rapport":8,...},"overall_score":72,"summary":"...","top_strength":"...","top_improvement":"...","specific_feedback":{"greeting":"...","rapport":"...",...}}\n\n'
-    + 'TRANSCRIPT:\n' + transcript;
+    + '{"scores":{"greeting":7,"rapport":8,"discovery":6,"product_selection":5,"lifestyle_demo":4,"value_building":6,"objection_handling":7,"closing":3,"complete_ticket":2,"followup":1,"cross_selling":3,"product_knowledge":7},"overall_score":52,"summary":"...","top_strength":"...","top_improvement":"...","specific_feedback":{"greeting":"...","rapport":"...","discovery":"...","product_selection":"...","lifestyle_demo":"...","value_building":"...","objection_handling":"...","closing":"...","complete_ticket":"...","followup":"...","cross_selling":"...","product_knowledge":"..."}}\n\n'
+    + 'TRANSCRIPT OF PRACTICE SESSION:\n' + recState.transcript;
 
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1083,7 +1060,7 @@ async function scoreSession() {
     var text = data.content ? data.content.map(function(b) { return b.text || ''; }).join('') : '';
     var clean = text.replace(/```json|```/g, '').trim();
     window._scorecard = JSON.parse(clean);
-    window._scorecard._transcript = recState.turns;
+    window._scorecard._transcript = recState.transcript;
     window._scorecard._duration = recState.timer;
   } catch(e) {
     console.error('Score error:', e);
@@ -1130,7 +1107,7 @@ function renderScorecard(el) {
     + '<span style="color:var(--text2);font-size:18px">&#8592;</span><span style="color:var(--text2);font-size:14px">Back to Coach</span></div>'
     + '<div class="scorecard">'
     + '<div class="scorecard-header"><h3>Practice Session Scorecard</h3>'
-    + '<p style="opacity:.75;font-size:13px">' + (sc._transcript ? sc._transcript.length + ' turns' : '') + (sc._duration ? ' &middot; ' + formatTime(sc._duration) : '') + '</p>'
+    + '<p style="opacity:.75;font-size:13px">' + (sc._duration ? formatTime(sc._duration) + ' session' : '') + '</p>'
     + '<div class="total-score" style="color:' + scoreColor + '">' + overall + '<span style="font-size:20px;opacity:.6">/100</span></div></div>'
     + rowsHtml
     + '<div style="padding:20px 24px;border-top:1px solid var(--border)">'
