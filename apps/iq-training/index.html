@@ -421,7 +421,7 @@ async function loadBadgesData() {
   S.badges = data || [];
 }
 
-window.loadNotifications = async function() {
+async function loadNotifications() {
   const { data } = await sb.from('iq_notifications').select('*').order('created_at', { ascending: false }).limit(30);
   S.notifications = data || [];
   renderNotifPanel();
@@ -429,7 +429,8 @@ window.loadNotifications = async function() {
   const badge = document.getElementById('notif-count');
   if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
   else { badge.classList.add('hidden'); }
-};
+}
+window.loadNotifications = loadNotifications;
 
 async function loadBrandProducts(brandId) {
   const { data } = await sb.from('iq_product_cards').select('*').eq('brand_id', brandId).order('card_type').order('title');
@@ -437,7 +438,7 @@ async function loadBrandProducts(brandId) {
 }
 
 // ── RENDERERS ──
-window.renderView = function() {
+function renderView() {
   const mc = document.getElementById('main-content');
   const bc = document.getElementById('breadcrumb');
   switch(currentView) {
@@ -452,6 +453,8 @@ window.renderView = function() {
   mc.classList.add('fade-in');
   setTimeout(() => mc.classList.remove('fade-in'), 300);
 };
+
+window.renderView = renderView;
 
 function crumb(...parts) {
   return parts.map((p, i) => {
@@ -538,7 +541,7 @@ async function renderLane(el) {
     + '<div class="deck-list">' + decksHtml + '</div>';
 }
 
-window.openDeck = async function(deckId) {
+async function openDeck(deckId) {
   const player = document.getElementById('card-player');
   player.style.display = 'block';
   player.innerHTML = '<div class="loading-spinner" style="margin-top:40vh"></div>';
@@ -546,9 +549,10 @@ window.openDeck = async function(deckId) {
   const deck = S.decks.find(d => d.id === deckId);
   window._playerState = { deckId, cardIndex: 0, cards: S.cards, deck };
   renderCard();
-};
+}
+window.openDeck = openDeck;
 
-window.renderCard = function() {
+function renderCard() {
   const ps = window._playerState;
   if (!ps || !ps.cards.length) return;
   const card = ps.cards[ps.cardIndex];
@@ -592,7 +596,9 @@ window.renderCard = function() {
     + '</div></div></div>';
 };
 
-window.checkQuiz = function(el, correct) {
+window.renderCard = renderCard;
+
+function checkQuiz(el, correct) {
   const opts = el.parentElement.querySelectorAll('.quiz-opt');
   opts.forEach(o => {
     o.classList.add('disabled');
@@ -601,7 +607,7 @@ window.checkQuiz = function(el, correct) {
   });
 };
 
-window.nextCard = function() {
+function nextCard() {
   const ps = window._playerState;
   if (ps.cardIndex < ps.cards.length - 1) {
     ps.cardIndex++;
@@ -611,17 +617,22 @@ window.nextCard = function() {
     closePlayer();
     renderView();
   }
-};
+}
 
-window.prevCard = function() {
+function prevCard() {
   const ps = window._playerState;
   if (ps.cardIndex > 0) { ps.cardIndex--; renderCard(); }
-};
+}
 
-window.closePlayer = function() {
+function closePlayer() {
   document.getElementById('card-player').style.display = 'none';
   window._playerState = null;
-};
+}
+
+window.checkQuiz = checkQuiz;
+window.nextCard = nextCard;
+window.prevCard = prevCard;
+window.closePlayer = closePlayer;
 
 function renderBrands(el) {
   const brandCourses = S.courses.filter(c => c.pillar === 'brand_iq').sort((a,b) => a.name.localeCompare(b.name));
