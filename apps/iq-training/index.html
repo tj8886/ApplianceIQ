@@ -485,11 +485,32 @@ async function loadBadgesData() {
 }
 
 async function loadNotifications() {
-  const { data } = await sb.from('iq_notifications').select('*').order('created_at', { ascending: false }).limit(30);
+  var { data } = await sb.from('iq_notifications').select('*').order('created_at', { ascending: false }).limit(30);
   S.notifications = data || [];
+  
+  // Enrich with deck routing info for new_deck notifications
+  if (S.notifications.length) {
+    var courseIds = S.notifications.filter(function(n) { return n.course_id; }).map(function(n) { return n.course_id; });
+    if (courseIds.length) {
+      var { data: decks } = await sb.from('iq_decks').select('id,course_id,lane_id').in('course_id', courseIds);
+      var { data: lanes } = await sb.from('iq_lanes').select('id,zone_id').in('id', (decks||[]).map(function(d) { return d.lane_id; }));
+      var laneMap = {};
+      (lanes||[]).forEach(function(l) { laneMap[l.id] = l; });
+      var deckMap = {};
+      (decks||[]).forEach(function(d) { deckMap[d.course_id] = d; });
+      S.notifications.forEach(function(n) {
+        if (n.course_id && deckMap[n.course_id]) {
+          n._deck_id = deckMap[n.course_id].id;
+          n._lane_id = deckMap[n.course_id].lane_id;
+          n._zone_id = laneMap[deckMap[n.course_id].lane_id] ? laneMap[deckMap[n.course_id].lane_id].zone_id : null;
+        }
+      });
+    }
+  }
+
   renderNotifPanel();
-  const unread = (data || []).filter(n => !n.is_read).length;
-  const badge = document.getElementById('notif-count');
+  var unread = S.notifications.filter(function(n) { return !n.is_read; }).length;
+  var badge = document.getElementById('notif-count');
   if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
   else { badge.classList.add('hidden'); }
 }
@@ -920,20 +941,82 @@ function renderBadges(el) {
 }
 
 function renderNotifPage(el) {
-  var notifsHtml = S.notifications.map(function(n) {
-    var action = '';
-    if (n.course_id) action = "navTo('zone',{zone:2})";
-    else if (n.brand_id) action = "navTo('brands')";
-    else if (n.notification_type === 'new_competitive_entry') action = "navTo('zone',{zone:2})";
-    else action = "";
-    return '<div class="notif-item ' + (!n.is_read?'unread':'') + '"' + (action ? ' onclick="' + action + '" style="cursor:pointer"' : '') + '>'
-    + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
-    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
+  var unread = S.notifications.filter(function(n) { return !n.is_read; }).length;
+  var notifsHtml = S.notifications.map(function(n, i) {
+    var action = getNotifAction(n);
+    var actionLabel = getNotifLabel(n);
+    return '<div class="notif-item ' + (!n.is_read ? 'unread' : '') + '" style="cursor:pointer" onclick="clickNotif(' + i + ')">'
+      + '<div class="notif-icon">' + (n.icon || '📢') + '</div>'
+      + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body || '') + '</p>'
+      + (actionLabel ? '<div style="margin-top:4px"><span style="font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline">' + actionLabel + ' &#8250;</span></div>' : '')
+      + '<div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
   }).join('') || '<p style="color:var(--text3);text-align:center;padding:40px;font-size:13px">No notifications yet</p>';
 
-  el.innerHTML = '<div class="dash-header"><h2>Notifications</h2><p>' + S.notifications.length + ' alerts</p></div>'
+  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
+    + '<div><h2 style="font-size:28px;font-weight:800;color:var(--navy)">Notifications</h2><p style="color:var(--text2);font-size:14px">' + S.notifications.length + ' alerts' + (unread ? ' · ' + unread + ' unread' : '') + '</p></div>'
+    + '<div style="display:flex;gap:8px">'
+    + (unread ? '<button onclick="markAllRead()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:13px;font-weight:600;cursor:pointer">Mark All Read</button>' : '')
+    + '<button onclick="clearAllNotifs()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius-xs);font-size:13px;font-weight:600;cursor:pointer">Clear All</button>'
+    + '</div></div>'
     + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + notifsHtml + '</div>';
 }
+
+function getNotifAction(n) {
+  if (n._deck_id) return "openDeck(" + n._deck_id + ")";
+  if (n.brand_id) return "navTo('brands')";
+  if (n.notification_type === 'new_product') return "navTo('brands')";
+  return "";
+}
+
+function getNotifLabel(n) {
+  if (n._deck_id) return "Open this lesson";
+  if (n.notification_type === 'new_deck') return "Go to training";
+  if (n.brand_id || n.notification_type === 'new_product') return "View in Brand IQ";
+  if (n.notification_type === 'new_competitive_entry') return "View competitive intel";
+  return "";
+}
+
+async function clickNotif(index) {
+  var n = S.notifications[index];
+  if (!n) return;
+  // Mark as read
+  if (!n.is_read) {
+    n.is_read = true;
+    sb.from('iq_notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', n.id).then(function() {});
+    var unread = S.notifications.filter(function(n) { return !n.is_read; }).length;
+    var badge = document.getElementById('notif-count');
+    if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
+  }
+  // Navigate
+  var action = getNotifAction(n);
+  if (action) {
+    eval(action);
+  }
+}
+window.clickNotif = clickNotif;
+
+async function markAllRead() {
+  var ids = S.notifications.filter(function(n) { return !n.is_read; }).map(function(n) { return n.id; });
+  if (!ids.length) return;
+  S.notifications.forEach(function(n) { n.is_read = true; });
+  sb.from('iq_notifications').update({ is_read: true, read_at: new Date().toISOString() }).in('id', ids).then(function() {});
+  var badge = document.getElementById('notif-count');
+  badge.classList.add('hidden');
+  renderView();
+}
+window.markAllRead = markAllRead;
+
+async function clearAllNotifs() {
+  var ids = S.notifications.map(function(n) { return n.id; });
+  if (!ids.length) return;
+  sb.from('iq_notifications').delete().in('id', ids).then(function() {});
+  S.notifications = [];
+  var badge = document.getElementById('notif-count');
+  badge.classList.add('hidden');
+  renderView();
+}
+window.clearAllNotifs = clearAllNotifs;
 
 function renderNotifPanel() {
   const list = document.getElementById('notif-list');
