@@ -623,7 +623,7 @@ function renderPipeline(){
     const items=filtered.filter(d=>d.stage===st.name);
     const cv=items.reduce((s,d)=>s+Number(d.value_amount||0),0);
     return '<div class="col" data-stage="'+esc(st.name)+'"><h3><span>'+esc(st.name)+'</span><span class="cv num">'+(items.length?money(cv):'')+'</span></h3>'
-    +items.map(d=>{
+    +(items.map(d=>{
       const cn=d.contacts?d.contacts.first_name+' '+(d.contacts.last_name??''):'';
       const parts=cache.participants.filter(p=>p.deal_id===d.id);
       const daysSince=d.last_contact_at?Math.floor((Date.now()-new Date(d.last_contact_at).getTime())/864e5):null;
@@ -642,7 +642,7 @@ function renderPipeline(){
         +'<div class="v num">'+money(d.value_amount)+(d.margin_pct?' <span style="font-size:11px;color:var(--steel)">'+d.margin_pct+'%</span>':'')+'</div>'
         +'<div class="m">'+esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')+(parts.length>1?' +'+(parts.length-1):'')+(d.next_action?' · '+esc(d.next_action):'')+'</div>'
         +(tags?'<div class="dm">'+tags+'</div>':'')+'</button>';
-    }).join('')||'<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>'+'</div>';
+    }).join('')||'<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>')+'</div>';
   }).join('');
   mainEl.innerHTML='<div class="page-head"><div><h1>Pipeline</h1><div class="sub">'+esc(currentOrg.name)+' · <b class="num">'+money(total)+'</b> open</div></div>'
     +'<div class="head-actions"><button class="btn btn-ghost btn-sm" id="editStagesBtn">Edit stages</button><button class="btn btn-primary" id="newDealBtn">+ New opportunity</button></div></div>'
