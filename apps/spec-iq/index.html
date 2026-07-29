@@ -459,7 +459,7 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
             <label>Search Product Database</label>
             <input id="ap-search" autocomplete="off" placeholder="Start typing brand, model, or description…" style="width:100%;padding-right:36px" oninput="debounceProductSearch()" onkeydown="handleSearchKey(event)" />
             <svg class="icon" style="position:absolute;right:12px;top:36px;width:16px;height:16px;color:var(--steel);pointer-events:none"><use href="#i-search"/></svg>
-            <div id="ap-search-results" style="display:none;position:absolute;z-index:100;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--white);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);margin-top:4px"></div>
+            <div id="ap-search-results" style="display:none;position:absolute;z-index:9999;top:100%;left:0;right:0;max-height:360px;overflow-y:auto;background:var(--white);border:2px solid var(--focus);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.2);margin-top:4px"></div>
           </div>
           <div style="font-size:12px;color:var(--steel);margin:-10px 0 14px;display:flex;align-items:center;gap:6px">Select from results to auto-fill, or enter details manually below.</div>
           <div class="grid3" style="margin-bottom:12px">
@@ -827,18 +827,21 @@ async function productSearch(){
   var q=el('ap-search').value.trim();
   var box=el('ap-search-results');
   if(q.length<2){box.style.display='none';_searchResults=[];_searchIdx=-1;return}
+  if(!window.sb){box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">Loading database connection…</div>';box.style.display='block';return}
   try{
-    var query=sb.from('aiq_products').select('id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage').limit(12);
+    var query=window.sb.from('aiq_products').select('id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage').limit(12);
     var terms=q.split(/\s+/).map(function(t){return t.replace(/[%_\\()',."]/g,'')}).filter(function(t){return t.length>0});
     if(!terms.length){box.style.display='none';return}
-    terms.forEach(function(t){query=query.or('brand_name.ilike.*'+t+'*,model.ilike.*'+t+'*,short_description.ilike.*'+t+'*')});
+    var orParts=[];
+    terms.forEach(function(t){orParts.push('brand_name.ilike.*'+t+'*,model.ilike.*'+t+'*,short_description.ilike.*'+t+'*')});
+    orParts.forEach(function(p){query=query.or(p)});
     var res=await query;
-    if(res.error||!res.data){box.style.display='none';return}
-    _searchResults=res.data;_searchIdx=-1;
+    if(res.error){console.error('Search query error:',res.error);box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">Search error. Enter details manually below.</div>';box.style.display='block';return}
+    _searchResults=res.data||[];_searchIdx=-1;
     if(!_searchResults.length){box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">No products found. Enter details manually below.</div>';box.style.display='block';return}
     box.innerHTML=_searchResults.map(function(p,i){
       var cat=p.category?(p.category.charAt(0).toUpperCase()+p.category.slice(1)):'';
-      return'<div class="ap-sr" data-i="'+i+'" onclick="selectSearchResult('+i+')" onmouseenter="_searchIdx='+i+';highlightSearchResult()" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .1s"><div style="display:flex;justify-content:space-between;align-items:center"><div><span style="font-weight:600;font-size:14px">'+esc(p.brand_name)+'</span> <span style="color:var(--steel);font-size:13px">'+esc(p.model)+'</span></div>'+(p.msrp?'<span style="font-family:Sora;font-weight:600;font-size:13px;color:var(--focus)">$'+parseFloat(p.msrp).toLocaleString()+'</span>':'')+'</div><div style="font-size:12px;color:var(--steel);margin-top:2px">'+esc(p.short_description||'')+(cat?' · '+cat:'')+'</div></div>'
+      return'<div class="ap-sr" data-i="'+i+'" onclick="selectSearchResult('+i+')" onmouseenter="_searchIdx='+i+';highlightSearchResult()" style="padding:14px 20px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .15s"><div style="display:flex;justify-content:space-between;align-items:center"><div><span style="font-weight:700;font-size:15px">'+esc(p.brand_name)+'</span> <span style="color:var(--navy);font-size:14px;font-weight:600">'+esc(p.model)+'</span></div>'+(p.msrp?'<span style="font-family:Sora;font-weight:700;font-size:14px;color:var(--focus)">$'+parseFloat(p.msrp).toLocaleString()+'</span>':'')+'</div><div style="font-size:13px;color:var(--steel);margin-top:4px">'+esc(p.short_description||'')+(cat?' · '+cat:'')+'</div></div>'
     }).join('');
     box.style.display='block';
   }catch(e){console.error('Product search error:',e)}
@@ -868,7 +871,7 @@ async function selectSearchResult(i){
   el('ap-product-preview').classList.add('hidden');
   /* Fetch images, docs, brand logo in parallel */
   try{
-    var _sb=window.sb||sb;
+    var _sb=window.sb;
     var [imgRes,docRes,brandRes]=await Promise.all([
       _sb.from('pim_product_images').select('file_url,cdn_url,image_type,is_primary').eq('product_id',p.id).order('is_primary',{ascending:false}).limit(5),
       _sb.from('pim_product_documents').select('doc_type,title,file_url').eq('product_id',p.id),
