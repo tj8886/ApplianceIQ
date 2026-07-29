@@ -967,9 +967,19 @@ function openDealModal(deal){
     if(!isNew&&deal.temperature!==newTemp){row.temperature_changed_at=new Date().toISOString();row.temperature_changed_by=currentUser.id;row.temperature_reason='Manual update';
       sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'deal',entity_id:deal.id,from_temperature:deal.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
     if(isNew){row.stage_entered_at=new Date().toISOString();row.owner_user_id=currentUser.id;}
-    const q2=isNew?sb.from('crm_deals').insert(row):sb.from('crm_deals').update(row).eq('id',deal.id);
-    const{error}=await q2;if(error)return formErr(error.message);
+    const q2=isNew?sb.from('crm_deals').insert(row).select('id').single():sb.from('crm_deals').update(row).eq('id',deal.id);
+    const{data:savedDeal,error}=await q2;if(error)return formErr(error.message);
     if(!isNew&&deal.stage!==stage)await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:stage,changed_by:currentUser.id});
+    // Auto-enroll contact in default sequence on new deal
+    if(isNew&&contactId){
+      const{data:defaultCamp}=await sb.from('aicrm_outreach_campaigns').select('id').eq('organization_id',currentOrg.id).eq('status','active').limit(1).single();
+      if(defaultCamp){
+        const{data:existing}=await sb.from('aicrm_sequence_enrollments').select('id').eq('contact_id',contactId).eq('campaign_id',defaultCamp.id).eq('status','active').maybeSingle();
+        if(!existing){
+          await sb.from('aicrm_sequence_enrollments').insert({organization_id:currentOrg.id,contact_id:contactId,campaign_id:defaultCamp.id,deal_id:savedDeal?.id||null,current_step:1,status:'active'});
+        }
+      }
+    }
     closeModal();render();
   };
 }
@@ -1266,7 +1276,7 @@ async function renderCommunications(){
     +'<div class="sla-card"><div class="sv num">'+enr.filter(e=>e.status==='active').length+'</div><div class="sl">Active Sequences</div></div>'
     +'<div class="sla-card"><div class="sv num">'+tmpl.length+'</div><div class="sl">Templates</div></div>'
     +'</div>'
-    +'<div class="comms-tabs" id="commsTabs">'+tabBtn('inbox','Inbox',em.length)+tabBtn('templates','Templates',tmpl.length)+tabBtn('sequences','Sequences',camps.length)+tabBtn('enrollments','Enrollments',enr.length)+tabBtn('sla','SLA Alerts',overdue.length+hot.length)+'</div>'
+    +'<div class="comms-tabs" id="commsTabs">'+tabBtn('inbox','Inbox',em.length)+tabBtn('templates','Templates',tmpl.length)+tabBtn('sequences','Sequences',camps.length)+tabBtn('enrollments','Enrollments',enr.length)+tabBtn('price_alerts','🔥 Price Alerts',null)+tabBtn('sla','SLA Alerts',overdue.length+hot.length)+'</div>'
     +'<div id="commsContent"></div>';
 
   const cc=$('#commsContent');
@@ -1302,6 +1312,7 @@ async function renderCommunications(){
       const isActive=e.status==='active';
       return '<div class="enroll-card"><div class="en-top"><span class="en-name">'+esc(cn)+'</span><div style="display:flex;gap:6px;align-items:center"><span class="chip '+(e.status==='active'?'g':e.status==='completed'?'n':'a')+'">'+esc(e.status)+'</span>'
         +(isActive&&currentStepData?'<button class="btn btn-primary btn-sm" data-send-step="'+e.id+'" data-step-idx="'+(e.current_step-1)+'" data-camp-id="'+e.campaign_id+'" data-contact-id="'+e.contact_id+'">'+( currentStepData.channel==='email'?'✉ Send Step '+e.current_step:'✓ Complete Step '+e.current_step)+'</button>':'')
+        +(isActive?'<button class="btn btn-ghost btn-sm" data-optout="'+e.id+'" style="color:#ff6b6b;border-color:#ff6b6b55">Opt Out</button>':'')
         +'</div></div>'
         +'<div class="en-seq">'+(camp?esc(camp.name):'—')+' · Step '+e.current_step+'/'+totalSteps+' · Enrolled '+ago(e.enrolled_at)+'</div>'
         +'<div class="en-progress">'+Array.from({length:totalSteps},(_,i)=>'<div class="en-dot'+(i<e.current_step-1?' done':i===e.current_step-1?' current':'')+'"></div>').join('')+'</div></div>';
@@ -1338,6 +1349,56 @@ async function renderCommunications(){
         closeModal();renderCommunications();
       };
     });
+    // Opt-out binding
+    $$('[data-optout]').forEach(b=>{b.onclick=async()=>{
+      if(!confirm('Remove this contact from the sequence? They will not receive further automated outreach.'))return;
+      await sb.from('aicrm_sequence_enrollments').update({status:'unenrolled',unenrolled_at:new Date().toISOString(),unenroll_reason:'manual_opt_out'}).eq('id',b.dataset.optout);
+      renderCommunications();
+    };});
+  } else if(commsTab==='price_alerts'){
+    // Price drop detection — compare current prices vs history
+    const{data:products}=await sb.from('aiq_products').select('id,brand_name,model,series,category,msrp,sale_price,lowest_price,short_description').not('msrp','is',null).order('brand_name');
+    const{data:history}=await sb.from('pim_price_history').select('product_id,msrp,sale_price,lowest_price,checked_at').order('checked_at',{ascending:false}).limit(200);
+    const prods=products??[];const hist=history??[];
+    // Find products where current price < previous price
+    const drops=[];
+    prods.forEach(p=>{
+      const prevRecords=hist.filter(h=>h.product_id===p.id);
+      if(!prevRecords.length)return;
+      const prev=prevRecords[0];
+      const currentBest=p.sale_price||p.msrp;
+      const prevBest=prev.sale_price||prev.msrp;
+      if(currentBest&&prevBest&&Number(currentBest)<Number(prevBest)){
+        drops.push({...p,prevPrice:Number(prevBest),currentPrice:Number(currentBest),savings:Number(prevBest)-Number(currentBest),pct:Math.round((1-Number(currentBest)/Number(prevBest))*100)});
+      }
+    });
+    // Also find products with sale_price < msrp (current promotions)
+    const promos=prods.filter(p=>p.sale_price&&p.msrp&&Number(p.sale_price)<Number(p.msrp)&&!drops.find(d=>d.id===p.id)).map(p=>({...p,prevPrice:Number(p.msrp),currentPrice:Number(p.sale_price),savings:Number(p.msrp)-Number(p.sale_price),pct:Math.round((1-Number(p.sale_price)/Number(p.msrp))*100)}));
+    const allDrops=[...drops,...promos].sort((a,b)=>b.pct-a.pct);
+
+    cc.innerHTML='<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px"><span style="font-size:20px">🔥</span><b>'+allDrops.length+' Price Drops & Promotions</b><span class="sub">Auto-generate alert emails for contacts with matching deals</span></div>'
+      +(allDrops.length?allDrops.map(d=>'<div class="email-card" style="display:flex;align-items:center;gap:14px"><div style="flex:1"><div style="font-weight:700;font-size:14px">'+esc(d.brand_name)+' '+esc(d.model)+'</div><div class="sub">'+esc(d.series||d.category||'')+' · '+esc(d.short_description||'')+'</div><div style="margin-top:4px"><span style="text-decoration:line-through;color:var(--steel);font-size:13px">$'+d.prevPrice.toLocaleString()+'</span> <span style="color:var(--verified);font-weight:800;font-size:16px">$'+d.currentPrice.toLocaleString()+'</span> <span class="chip g">SAVE $'+d.savings.toLocaleString()+' ('+d.pct+'%)</span></div></div><button class="btn btn-primary btn-sm" data-price-alert="'+d.id+'" data-pa-brand="'+esc(d.brand_name)+'" data-pa-model="'+esc(d.model)+'" data-pa-price="'+d.currentPrice+'" data-pa-was="'+d.prevPrice+'" data-pa-save="'+d.savings+'">📧 Send Alerts</button></div>').join('')
+      :'<div class="empty" style="padding:40px;text-align:center">No price drops detected. When product prices change in the PIM, alerts will appear here.</div>');
+
+    $$('[data-price-alert]').forEach(b=>{b.onclick=async()=>{
+      const brand=b.dataset.paBrand,model=b.dataset.paModel,price=b.dataset.paPrice,was=b.dataset.paWas,save=b.dataset.paSave;
+      // Find contacts with deals in matching categories
+      const matchingContacts=cts.filter(c=>c.email);
+      const subject='🔥 PRICE ALERT — '+brand+' '+model+' just dropped!';
+      const body='Hi {{contact_first_name}},\n\nGreat news! The '+brand+' '+model+' just had a price drop and we wanted you to be the first to know.\n\n'
+        +'Was: $'+Number(was).toLocaleString()+'\n'
+        +'Now: $'+Number(price).toLocaleString()+'\n'
+        +'You Save: $'+Number(save).toLocaleString()+'!\n\n'
+        +'This is a limited-time opportunity — these deals don\'t last long. Give us a call or reply to this email and we\'ll get everything set up for you.\n\n'
+        +'Looking forward to helping you get a great deal!\n\n{{salesperson_name}}';
+
+      // Open compose pre-filled with the price alert
+      openComposeModal(null,null,tmpl);
+      setTimeout(()=>{
+        const s=$('#ce_subj'),bo=$('#ce_body');
+        if(s)s.value=subject;if(bo)bo.value=body;
+      },50);
+    };});
   } else if(commsTab==='sla'){
     const alerts=[...overdue.map(c=>({...c,reason:'Overdue follow-up',sev:'danger'})),...hot.map(c=>({...c,reason:'Hot lead idle 3+ days',sev:'warn'})),...noContact14.map(c=>({...c,reason:'No contact in 14+ days',sev:'danger'}))].sort((a,b)=>(b.days_since_contact??0)-(a.days_since_contact??0));
     cc.innerHTML=alerts.length?alerts.map(a=>'<div class="d5-item"><div class="d5-num" style="background:var(--'+(a.sev==='danger'?'danger':'amber')+')">'+(a.days_since_contact??'?')+'</div><div class="d5-body"><div class="d5c">'+esc(a.first_name+' '+(a.last_name??''))+'</div><div class="d5r">'+esc(a.reason)+(a.email?' · '+esc(a.email):'')+'</div></div><div class="d5-actions"><button class="btn btn-primary btn-sm" data-qe="'+a.id+'">Email</button></div></div>').join(''):'<div class="empty" style="padding:40px;text-align:center">All follow-ups on track. Nice work!</div>';
