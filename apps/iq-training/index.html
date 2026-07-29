@@ -577,8 +577,8 @@ function renderDashboard(el) {
     + '</div>'
     + '<div style="background:linear-gradient(135deg,var(--navy),#2c5282);border-radius:var(--radius);padding:24px;margin-bottom:28px;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(30,58,95,.15)" onclick="navTo(\'roleplay\')" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">'
     + '<div style="display:flex;align-items:center;gap:16px"><div style="font-size:36px">🎤</div><div>'
-    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">AI Coach — Live Roleplay</h3>'
-    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">6 coaching personas pulling live PIM data. Practice objections, learn products, roleplay customer scenarios.</p>'
+    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Beat the Bot &amp; Human to Human Challenge</h3>'
+    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">Go 1-on-1 against AI or record a live practice session for AI scoring. Type or talk — you pick the role.</p>'
     + '</div><div style="color:rgba(255,255,255,.5);font-size:24px;margin-left:auto">&#8250;</div></div></div>'
     + '<div class="section-header"><h3>The Four Pillars</h3></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px">' + pillarHtml + '</div>'
@@ -902,7 +902,7 @@ function renderRoleplay(el) {
   var hasTranscript = recState.transcript && recState.transcript.trim().length > 0;
 
   var practiceHtml = '<div class="recorder-panel">'
-    + '<div class="recorder-header"><h3>🎙 Live Practice Scorer</h3><p>Record a real sales practice between two people. AI listens, figures out who is the rep and who is the customer, then scores against all 12 selling categories.</p></div>'
+    + '<div class="recorder-header"><h3>🤝 The Human to Human Challenge</h3><p>Two people practice a live sales interaction. AI listens, figures out who is the rep and who is the customer, then scores against all 12 selling categories.</p></div>'
     + '<div class="recorder-body">'
     + '<div class="rec-status"><div class="rec-dot ' + (recState.recording ? 'recording' : (hasTranscript ? 'done' : '')) + '"></div>'
     + '<div class="rec-status-text">' + (recState.recording ? 'Listening... just talk naturally' : (hasTranscript ? 'Session captured' : 'Ready — hit record and start your practice')) + '</div>'
@@ -917,9 +917,9 @@ function renderRoleplay(el) {
     + '<div class="transcript-box" id="transcript-box">' + (hasTranscript ? '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>' : '<p style="color:var(--text3);text-align:center;padding:20px">Hit record, then practice your pitch. Both people just talk — the AI will figure out who is the rep and who is the customer when it scores.</p>') + '</div>'
     + '</div></div>';
 
-  el.innerHTML = '<div class="dash-header"><h2>AI Coach</h2><p>Two ways to train — practice with AI or record a live session for scoring.</p></div>'
+  el.innerHTML = '<div class="dash-header"><h2>Training Arena</h2><p>Beat the Bot or challenge a teammate. Type or talk — AI scores everything.</p></div>'
     + practiceHtml
-    + '<div class="dash-header" style="margin-top:24px"><h2>AI Roleplay</h2><p>Three ways to practice — type or talk, you pick the role.</p></div>'
+    + '<div class="dash-header" style="margin-top:24px"><h2>🤖 Beat the Bot</h2><p>Go 1-on-1 against the AI. You pick the role — type or talk your way through it.</p></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px">'
     + '<div class="coach-card" style="border-top:3px solid var(--accent)" onclick="startChat(\'tj\',null,\'ai_customer\')"><div class="coach-avatar">🛒</div><h4>AI is the Customer</h4><p style="color:var(--accent);font-weight:600">You practice selling</p><p>AI plays a realistic customer with objections, budget concerns, and curveballs. You sell.</p></div>'
     + '<div class="coach-card" style="border-top:3px solid var(--navy)" onclick="startChat(\'tj\',null,\'ai_rep\')"><div class="coach-avatar">👔</div><h4>AI is the Rep</h4><p style="color:var(--navy);font-weight:600">Watch & learn</p><p>You play the customer. AI demonstrates the perfect 10-step sales process so you can see how it is done.</p></div>'
