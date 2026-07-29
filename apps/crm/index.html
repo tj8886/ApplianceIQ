@@ -1240,7 +1240,14 @@ async function renderRecordings(){
     }).join('')||'<tr><td colspan="6" class="empty">No recordings yet. Record a pitch to get AI coaching feedback.</td></tr>'
     +'</tbody></table><div id="recP"></div>';
   $('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
-  $$('[data-play]').forEach(b=>{b.onclick=async()=>{const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;const{data}=await sb.storage.from('crm-media').createSignedUrl(rec.file_path,300);if(data?.signedUrl)$('#recP').innerHTML='<div class="dash-panel" style="margin-top:16px"><h3>'+esc(rec.file_name)+(rec.crm_deals?' — '+esc(rec.crm_deals.title):'')+'</h3><audio controls src="'+data.signedUrl+'" style="width:100%"></audio></div>';};});
+  $$('[data-play]').forEach(b=>{b.onclick=async()=>{
+    const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;
+    b.textContent='Loading…';b.disabled=true;
+    const{data,error}=await sb.storage.from('crm-media').createSignedUrl(rec.file_path,600);
+    b.textContent='Play';b.disabled=false;
+    if(error||!data?.signedUrl){$('#recP').innerHTML='<div class="dash-panel" style="margin-top:16px;border-color:var(--danger)"><p style="color:var(--danger)">Could not load recording: '+(error?.message||'Signed URL failed')+'</p><p class="sub">File: '+esc(rec.file_path)+'</p></div>';return;}
+    $('#recP').innerHTML='<div class="dash-panel" style="margin-top:16px"><h3>🎙 '+esc(rec.file_name)+(rec.crm_deals?' — '+esc(rec.crm_deals.title):'')+'</h3><div class="sub" style="margin-bottom:8px">'+new Date(rec.created_at).toLocaleString()+(rec.duration_seconds?' · '+fmtTime(rec.duration_seconds):'')+'</div><audio controls autoplay src="'+data.signedUrl+'" style="width:100%"></audio></div>';
+  };});
 }
 
 function openRecorderModal(dealId){
@@ -1275,7 +1282,14 @@ function openRecorderModal(dealId){
         if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
         const{error:ie}=await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_confirmed:true,consent_confirmed_at:new Date().toISOString()});
         if(ie){$('#rS').textContent='Save failed: '+ie.message;return;}
-        openModal('<h2>✓ Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ '+fmtTime(elapsed)+' recorded'+(linkedDeal?' for '+esc(linkedDeal.title):'')+'</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>');
+        // Generate signed URL for immediate playback
+        const{data:urlData}=await sb.storage.from('crm-media').createSignedUrl(path,600);
+        const playUrl=urlData?.signedUrl||'';
+        openModal('<h2>✓ Recording Saved</h2>'
+          +'<div style="text-align:center;color:var(--verified);font-weight:700;margin:12px 0">'+fmtTime(elapsed)+' recorded'+(linkedDeal?' for '+esc(linkedDeal.title):'')+'</div>'
+          +(playUrl?'<div style="margin:12px 0"><audio controls src="'+playUrl+'" style="width:100%"></audio></div>':'')
+          +'<div style="text-align:center;font-size:12px;color:var(--steel);margin-bottom:12px">You can also play this from the Recordings page anytime.</div>'
+          +'<div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>');
         $('#r_done').onclick=()=>{closeModal();render();};
       }catch(ex){$('#rS').textContent='Error: '+(ex.message||ex);}
     };
