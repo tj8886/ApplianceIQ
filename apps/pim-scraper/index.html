@@ -872,7 +872,9 @@ async function callClaude(systemPrompt, userMsg, retries = 3, modelOverride = nu
       const allText = (data.content || [])
         .filter((b) => b.type === "text")
         .map((b) => b.text)
-        .join("\n");
+        .join("\n")
+        // Strip citation tags, <cite>, <source>, etc. that Claude sometimes injects
+        .replace(/<\/?(?:cite|antml:cite|source|ref|footnote|sup|annotation)[^>]*>/gi, "");
       const parsed = extractJSON(allText);
       if (parsed && (parsed.found === true || parsed.model || parsed.brand_name)) {
         parsed.found = true;
@@ -1692,7 +1694,165 @@ function PIMScraper() {
   const [saveQueue, setSaveQueue] = useState([]); // tracks auto-saved items
   const saveCountRef = useRef({ saved: 0, failed: 0 });
 
-  const doSave = async (data) => {
+  // ── Universal Data Sanitizer ──────────────────────────────────────────
+  // Handles messy/inconsistent AI responses: wrong field names, citation tags,
+  // "Yes"/"No" strings in boolean columns, "$1,299.99" in numeric columns, etc.
+
+  function stripTags(val) {
+    // Remove <cite>, <cite>, and any other XML/HTML tags from values
+    if (typeof val !== "string") return val;
+    return val.replace(/<\/?[^>]+(>|$)/g, "").replace(/&lt;\/?[^&]+(>|&gt;)/g, "").trim();
+  }
+
+  function toBool(val) {
+    if (typeof val === "boolean") return val;
+    if (val == null || val === "") return null;
+    const s = stripTags(String(val)).toLowerCase().trim();
+    if (["yes", "true", "1", "y"].includes(s)) return true;
+    if (["no", "false", "0", "n", "n/a", "na", "none"].includes(s)) return false;
+    return null; // genuinely unparseable → null (nullable column)
+  }
+
+  function toNum(val) {
+    if (typeof val === "number") return isNaN(val) ? null : val;
+    if (val == null || val === "") return null;
+    const s = stripTags(String(val))
+      .replace(/[$€£¥,CAD USD]/g, "")  // strip currency
+      .replace(/\s*(lbs?|kg|inches|in|"|″|cu\.?\s*ft\.?|watts?|W|amps?|A|volts?|V|hz)\s*$/i, "") // strip units
+      .trim();
+    const n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+
+  // Map common AI-generated field names → actual aiq_products columns
+  const FIELD_ALIASES = {
+    product_name: "short_description",
+    name: "short_description",
+    title: "short_description",
+    product_title: "short_description",
+    description: "short_description",
+    product_description: "long_description",
+    full_description: "long_description",
+    marketing_description: "long_description",
+    price: "msrp",
+    retail_price: "msrp",
+    list_price: "msrp",
+    suggested_price: "msrp",
+    regular_price: "msrp",
+    width: "width_inches",
+    height: "height_inches",
+    depth: "depth_inches",
+    weight: "weight_lbs",
+    capacity: "capacity_cu_ft",
+    color_name: "color",
+    finish_name: "finish",
+    colour: "color",
+    colour_family: "color_family",
+    model_number: "model",
+    sku: "model",
+    is_energy_star: "energy_star",
+    energystar: "energy_star",
+    is_ada_compliant: "ada_compliant",
+    ada: "ada_compliant",
+    discontinued: "is_discontinued",
+    clearance: "is_clearance",
+    end_of_life: "is_end_of_life",
+    open_box: "is_open_box",
+    refurbished: "is_refurbished",
+    brand: "brand_name",
+    manufacturer: "manufacturer_name",
+  };
+
+  // All boolean columns in aiq_products
+  const BOOL_COLS = new Set([
+    "energy_star", "ada_compliant", "public_visible", "ships_ltl",
+    "is_discontinued", "is_clearance", "is_end_of_life", "is_open_box", "is_refurbished",
+  ]);
+
+  // All numeric columns in aiq_products
+  const NUM_COLS = new Set([
+    "msrp", "sale_price", "lowest_price", "map_price", "dealer_cost",
+    "weight_lbs", "width_inches", "height_inches", "depth_inches",
+    "depth_with_handles", "depth_without_handles", "capacity_cu_ft",
+    "amperage", "wattage", "source_confidence",
+    "version_number", "lead_time_days", "min_order_qty",
+  ]);
+
+  // Columns that actually exist in aiq_products (whitelist for final record)
+  const VALID_COLS = new Set([
+    "id","organization_id","manufacturer_name","brand_name","product_line","category",
+    "series","model","status","launch_date","discontinued_date","msrp",
+    "country_availability","product_family","short_description","public_visible",
+    "approval_status","version_number","created_at","updated_at","brand_id",
+    "manufacturer_id","source_type","source_reference","source_confidence",
+    "source_extracted_at","source_review_status","source_reviewed_by",
+    "source_reviewed_at","published_at","unpublished_at","created_by","updated_by",
+    "long_description","features_html","upc","ean","gtin","finish","color",
+    "color_family","energy_star","ada_compliant","made_in","weight_lbs",
+    "width_inches","height_inches","depth_inches","map_price","dealer_cost",
+    "freight_class","ships_ltl","lead_time_days","min_order_qty","sale_price",
+    "lowest_price","lowest_price_source","price_currency","price_checked_at",
+    "condition_flags","is_discontinued","is_clearance","is_end_of_life",
+    "is_open_box","is_refurbished","replacement_model","condition_notes",
+    "specs_json","available_colors","capacity_cu_ft","voltage","amperage",
+    "wattage","frequency_hz","installation_type","depth_with_handles",
+    "depth_without_handles","market",
+  ]);
+
+  function sanitizeForDB(data) {
+    // Phase 1: Normalize field names from AI aliases
+    const normalized = { ...data };
+    for (const [alias, realCol] of Object.entries(FIELD_ALIASES)) {
+      if (alias in normalized && !(realCol in normalized)) {
+        normalized[realCol] = normalized[alias];
+      }
+      delete normalized[alias]; // remove alias either way
+    }
+
+    // Phase 2: Strip citation/XML tags from ALL string values (recursive for nested objects)
+    function cleanStrings(obj) {
+      if (obj == null) return obj;
+      if (typeof obj === "string") return stripTags(obj);
+      if (Array.isArray(obj)) return obj.map(cleanStrings);
+      if (typeof obj === "object") {
+        const out = {};
+        for (const [k, v] of Object.entries(obj)) out[k] = cleanStrings(v);
+        return out;
+      }
+      return obj;
+    }
+    const cleaned = cleanStrings(normalized);
+
+    // Phase 3: Coerce booleans and numerics
+    for (const col of BOOL_COLS) {
+      if (col in cleaned) cleaned[col] = toBool(cleaned[col]);
+    }
+    for (const col of NUM_COLS) {
+      if (col in cleaned) cleaned[col] = toNum(cleaned[col]);
+    }
+
+    return cleaned;
+  }
+
+  // Sanitize the final productData object — strip unknown columns
+  function sanitizeProductRecord(record) {
+    const safe = {};
+    for (const [k, v] of Object.entries(record)) {
+      if (VALID_COLS.has(k)) {
+        // Final pass: ensure booleans/numerics are correct type
+        if (BOOL_COLS.has(k)) safe[k] = toBool(v);
+        else if (NUM_COLS.has(k)) safe[k] = toNum(v);
+        else if (typeof v === "string") safe[k] = stripTags(v);
+        else safe[k] = v;
+      }
+      // Unknown columns silently dropped
+    }
+    return safe;
+  }
+
+  const doSave = async (rawData) => {
+    // Sanitize incoming AI data before anything else
+    const data = sanitizeForDB(rawData);
     // Skip product save for intel/news data — those use their own save functions
     if (data._intel || data._news || data._retailerCheck || data._media) return true;
     // Reuse handleSave logic but without UI index management
@@ -1743,21 +1903,24 @@ function PIMScraper() {
         source_review_status: "accepted", updated_at: new Date().toISOString(),
       };
 
+      // Final sanitization — strip unknown columns and coerce types
+      const safeProductData = sanitizeProductRecord(productData);
+
       let productId;
       if (existing && existing.length > 0) {
         productId = existing[0].id;
-        const res = await supaFetch(`aiq_products?id=eq.${productId}`, { method: "PATCH", body: JSON.stringify(productData) });
+        const res = await supaFetch(`aiq_products?id=eq.${productId}`, { method: "PATCH", body: JSON.stringify(safeProductData) });
         if (!res.ok) throw new Error(await res.text());
         setSaved(p => [...p, { model: data.model, action: "updated", id: productId }]);
       } else {
         const orgRes = await supaFetch("organizations?select=id&limit=1");
         const orgs = await orgRes.json();
         if (!orgs.length) throw new Error("No organization found");
-        productData.organization_id = orgs[0].id;
-        productData.approval_status = "approved";
-        productData.public_visible = true;
-        productData.version_number = 1;
-        const res = await supaFetch("aiq_products", { method: "POST", body: JSON.stringify(productData) });
+        safeProductData.organization_id = orgs[0].id;
+        safeProductData.approval_status = "approved";
+        safeProductData.public_visible = true;
+        safeProductData.version_number = 1;
+        const res = await supaFetch("aiq_products", { method: "POST", body: JSON.stringify(safeProductData) });
         if (!res.ok) throw new Error(await res.text());
         const created = await res.json();
         productId = created[0]?.id;
@@ -1900,7 +2063,8 @@ function PIMScraper() {
       else if (cond.is_clearance) updates.status = "clearance";
       else if (cond.is_end_of_life) updates.status = "end_of_life";
 
-      const res = await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify(updates) });
+      const safeUpdates = sanitizeProductRecord(updates);
+      const res = await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify(safeUpdates) });
       if (!res.ok) throw new Error(await res.text());
 
       // Log to price history
@@ -1993,7 +2157,7 @@ function PIMScraper() {
         if (lowestPrice) { updates.lowest_price = lowestPrice; updates.lowest_price_source = lowestSource; }
         if (anyDiscontinued) { updates.is_discontinued = true; updates.status = "discontinued"; }
         if (replacementModel) { updates.replacement_model = replacementModel; }
-        await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify(updates) }).catch(() => {});
+        await supaFetch("aiq_products?id=eq." + productId, { method: "PATCH", body: JSON.stringify(sanitizeProductRecord(updates)) }).catch(() => {});
       }
 
       setSaved(p => [...p, { model, action: data.retailers.length + " retailers checked", id: productId }]);
