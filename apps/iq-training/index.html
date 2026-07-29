@@ -528,7 +528,8 @@ function renderView() {
   switch(currentView) {
     case 'dashboard': renderDashboard(mc); bc.innerHTML = ''; break;
     case 'pillar': renderPillar(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [pillarLabels[currentDeck] || currentDeck]); break;
-    case 'roleplay': renderRoleplay(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['AI Coach']); break;
+    case 'course': renderCourse(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [pillarLabels[window._currentCourse?.pillar] || 'Course', 'pillar', window._currentCourse?.pillar], [window._currentCourse?.name || 'Course']); break;
+    case 'roleplay': renderRoleplay(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Training Arena']); break;
     case 'zone': renderZone(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [S.zones.find(z=>z.id===currentZone)?.name]); break;
     case 'lane': renderLane(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [S.zones.find(z=>z.id===currentZone)?.name,'zone',{zone:currentZone}], [S.lanes.find(l=>l.id===currentLane)?.name]); break;
     case 'brands': renderBrands(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brand IQ']); break;
@@ -622,9 +623,16 @@ function renderPillar(el) {
   var lanes = S.lanes.filter(function(l) { return l.pillar === pillar; });
 
   var coursesHtml = courses.map(function(c) {
-    return '<div class="deck-row" onclick="navTo(\'brands\')">'
+    var clickAction = '';
+    if (pillar === 'brand_iq') {
+      clickAction = "navTo('brand-detail',{deck:" + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + "})";
+    } else {
+      clickAction = "openCourse(" + c.id + ")";
+    }
+    return '<div class="deck-row" onclick="' + clickAction + '">'
       + '<div class="deck-num" style="background:' + col + '22;color:' + col + '">' + (c.icon || pillarIcons[pillar]) + '</div>'
       + '<div class="deck-info"><h5>' + esc(c.name) + '</h5><p>' + esc(c.subtitle || '') + '</p></div>'
+      + '<div style="color:var(--text3);font-size:16px">&#8250;</div>'
       + '</div>';
   }).join('');
 
@@ -1046,6 +1054,50 @@ var coaches = {
   leah: { name:'Leah', avatar:'🎨', role:'Design Consultant', desc:'Kitchen design, aesthetics, finishes, panel-ready, color matching.', color:'#e11d48' }
 };
 var rpState = { coach: null, messages: [], loading: false, context: null };
+
+async function openCourse(courseId) {
+  var course = S.courses.find(function(c) { return c.id === courseId; });
+  if (!course) return;
+  window._currentCourse = course;
+  // Load decks for this course
+  var { data } = await sb.from('iq_decks').select('*').eq('course_id', courseId).order('sort_order');
+  window._courseDecks = data || [];
+  currentView = 'course';
+  renderView();
+}
+window.openCourse = openCourse;
+
+function renderCourse(el) {
+  var course = window._currentCourse;
+  var decks = window._courseDecks || [];
+  if (!course) { navTo('dashboard'); return; }
+
+  var col = pillarColors[course.pillar] || 'var(--accent)';
+  var pillarName = pillarLabels[course.pillar] || course.pillar;
+
+  var decksHtml = decks.length ? decks.map(function(d) {
+    var done = S.completedDecks.has(d.id);
+    return '<div class="deck-row ' + (done ? 'completed' : '') + '" onclick="openDeck(' + d.id + ')">'
+      + '<div class="deck-num">' + (done ? '✓' : d.deck_number) + '</div>'
+      + '<div class="deck-info"><h5>' + esc(d.title) + '</h5><p>' + esc((d.description || '').substring(0, 100)) + (d.description && d.description.length > 100 ? '...' : '') + '</p></div>'
+      + '<div class="deck-meta"><div class="time">⏱ ' + (d.estimated_minutes || 5) + 'min</div></div>'
+      + '</div>';
+  }).join('') : '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:32px;text-align:center">'
+    + '<p style="font-size:15px;color:var(--text2);margin-bottom:12px">No lessons built for this course yet.</p>'
+    + '<p style="font-size:13px;color:var(--text3)">Content is being developed — check back soon or ask the AI Coach about this topic.</p>'
+    + '<button onclick="startChat(\'caden\',\'Teach me about ' + esc(course.name).replace(/'/g, '') + '\')" style="margin-top:16px;padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:600;cursor:pointer">Ask AI Coach About This</button>'
+    + '</div>';
+
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="navTo(\'pillar\',{deck:\'' + course.pillar + '\'})">'
+    + '<span style="color:var(--text2);font-size:18px">&#8592;</span>'
+    + '<span style="color:var(--text2);font-size:14px">Back to ' + esc(pillarName) + '</span></div>'
+    + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
+    + '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;background:' + col + '15;border:2px solid ' + col + ';border-radius:var(--radius)">' + (course.icon || pillarIcons[course.pillar] || '📘') + '</div>'
+    + '<div><h2 style="font-size:24px;font-weight:800;color:var(--navy)">' + esc(course.name) + '</h2>'
+    + '<p style="color:var(--text2);font-size:13px">' + esc(course.subtitle || pillarName) + ' · ' + decks.length + ' lessons</p></div></div>'
+    + '<div class="section-header"><h3>Lessons</h3></div>'
+    + '<div class="deck-list">' + decksHtml + '</div>';
+}
 
 function renderRoleplay(el) {
   if (rpState.coach && rpState.messages.length > 0) {
