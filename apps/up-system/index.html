@@ -800,6 +800,35 @@ async function syncWalkInToCRM(waitingRow,products){
     await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:null,to_stage:'Floor Visit / Demo',changed_by:currentUser.id,changed_at:new Date().toISOString(),notes:'Created from IQ Up System walk-in'});
     await sb.from('iq_customer_waiting_queue').update({crm_contact_id:contact.id,crm_deal_id:deal.id}).eq('id',waitingRow.id);
     await sb.from('iq_integration_links').insert({organization_id:currentOrg.id,store_id:currentStore.id,iq_system_record_type:'customer_waiting',iq_system_record_id:waitingRow.id,crmai_record_type:'deal',crmai_record_id:deal.id,external_system:'crm',sync_status:'synced',last_synced_at:new Date().toISOString()});
+
+    /* ── Spec IQ: auto-create project + draft package ── */
+    try{
+      const projName=`${fullName} — Walk-In Package`;
+      const{data:proj}=await sb.from('speciq_projects').insert({
+        organization_id:currentOrg.id,
+        customer_name:fullName,
+        customer_email:waitingRow.customer_email||null,
+        customer_phone:waitingRow.customer_phone||null,
+        project_name:projName,
+        contact_id:contact.id,
+        deal_id:deal.id,
+        created_by:waitingRow.requested_employee_user_id||currentUser.id,
+        notes:'Auto-created from IQ Up System'
+      }).select('id').single();
+      if(proj){
+        await sb.from('speciq_packages').insert({
+          organization_id:currentOrg.id,
+          project_id:proj.id,
+          package_name:projName,
+          status:'draft',
+          contact_id:contact.id,
+          deal_id:deal.id,
+          salesperson_name:currentUser.user_metadata?.full_name||fullName,
+          created_by:waitingRow.requested_employee_user_id||currentUser.id
+        });
+      }
+    }catch(specErr){console.warn('Spec IQ auto-project creation failed:',specErr);}
+
   }catch(e){console.warn('CRM sync failed:',e);}
 }
 

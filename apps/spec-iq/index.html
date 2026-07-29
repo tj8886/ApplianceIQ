@@ -1264,6 +1264,19 @@ window.savePackage=async(status)=>{
     }
     if(status==='sent')await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'sent'});
 
+    /* ── Sync package total back to CRM deal ── */
+    if(selectedCrmDealId){
+      try{
+        const finalTotal=total+(svcTotal||0)+(warTotal||0);
+        const dealPatch={value_amount:finalTotal,updated_at:new Date().toISOString()};
+        if(status==='sent')dealPatch.stage='Proposal Sent';
+        await sb.from('crm_deals').update(dealPatch).eq('id',selectedCrmDealId);
+        if(status==='sent'){
+          await sb.from('crm_stage_history').insert({deal_id:selectedCrmDealId,organization_id:userOrgId,from_stage:'Floor Visit / Demo',to_stage:'Proposal Sent',changed_by:currentUser.id,changed_at:new Date().toISOString(),notes:'Spec IQ package "'+pkgName+'" sent to customer'}).catch(()=>{});
+        }
+      }catch(crmErr){console.warn('CRM deal sync failed:',crmErr);}
+    }
+
     builderProducts=[];
     selectedCrmContactId=null;selectedCrmDealId=null;
     if(el('b-contact-search'))el('b-contact-search').value='';
