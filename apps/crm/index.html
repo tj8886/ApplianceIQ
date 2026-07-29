@@ -441,6 +441,31 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .merge-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
 .merge-tag{font-size:10px;background:#eef1f7;padding:2px 8px;border-radius:4px;cursor:pointer;border:none;color:var(--navy);font-weight:600}
 .merge-tag:hover{background:#dce3f0}
+
+/* === AI HERO CARDS === */
+.ai-hero{background:linear-gradient(135deg,#0f1f3d 0%,#1a3366 100%);border-radius:14px;padding:24px;margin-bottom:16px;color:#fff;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.ai-hero{grid-template-columns:1fr}}
+.ai-hero-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:18px}
+.ai-hero-card h3{margin:0 0 4px;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ai-hero-card p{margin:0 0 12px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5}
+.ai-hero-card textarea,.ai-hero-card input,.ai-hero-card select{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:9px 12px;width:100%;font:inherit;font-size:13px}
+.ai-hero-card textarea::placeholder,.ai-hero-card input::placeholder{color:rgba(255,255,255,.4)}
+.ai-hero-card .btn-ai{background:#fff;color:var(--navy);font-weight:700;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px}
+.ai-hero-card .btn-ai:hover{background:#e9ecf3}
+.ai-hero-card .btn-ai-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600}
+.ai-hero-card .btn-ai-ghost:hover{background:rgba(255,255,255,.2)}
+
+/* === FLOATING AI COACH === */
+.ai-coach-bar{background:linear-gradient(135deg,#0f1f3d,#1a3366);border-radius:14px;padding:16px 20px;margin-bottom:16px;color:#fff;display:flex;align-items:center;gap:14px}
+.ai-coach-bar .acb-icon{font-size:28px;flex-shrink:0}
+.ai-coach-bar .acb-body{flex:1;min-width:0}
+.ai-coach-bar .acb-title{font-weight:700;font-size:14px;margin-bottom:2px}
+.ai-coach-bar .acb-sub{font-size:12px;color:rgba(255,255,255,.6)}
+.ai-coach-bar .acb-input{display:flex;gap:8px;margin-top:8px}
+.ai-coach-bar input{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:8px 12px;font:inherit;font-size:13px}
+.ai-coach-bar input::placeholder{color:rgba(255,255,255,.4)}
+.ai-coach-bar .btn-ai{background:#fff;color:var(--navy);font-weight:700;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px}
+.ai-coach-bar .btn-ai:hover{background:#e9ecf3}
 </style>
 </head>
 <body>
@@ -655,6 +680,36 @@ function renderBanner(){
 }
 
 // ===== PIPELINE =====
+// === AI COACH BAR (reusable across views) ===
+function aiCoachBar(){
+  return '<div class="ai-coach-bar"><div class="acb-icon">🤖</div><div class="acb-body"><div class="acb-title">AI Sales Coach</div><div class="acb-sub">Ask about your pipeline, get coaching tips, objection handling, or product advice</div><div class="acb-input"><input id="coachBarInput" placeholder="Ask your AI coach anything…"><button class="btn-ai" id="coachBarSend">Ask</button></div><div id="coachBarReply" style="margin-top:8px;font-size:13px;display:none;background:rgba(255,255,255,.08);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto"></div></div></div>';
+}
+function bindCoachBar(){
+  const btn=$('#coachBarSend');const inp=$('#coachBarInput');
+  if(!btn||!inp)return;
+  const send=async()=>{
+    const txt=inp.value.trim();if(!txt)return;
+    const reply=$('#coachBarReply');reply.style.display='block';reply.textContent='Thinking…';
+    inp.value='';btn.disabled=true;
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,
+          system:'You are TJ, an expert appliance retail sales coach. Keep responses concise (2-3 paragraphs max). Be practical, specific, and encouraging. Reference real sales techniques. If asked about products, give specific appliance knowledge. Always speak as a coach helping a salesperson improve.',
+          messages:[{role:'user',content:txt}]})
+      });
+      const data=await resp.json();
+      const text=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+      reply.textContent=text||'No response — try rephrasing your question.';
+    }catch(err){
+      reply.innerHTML='<span style="opacity:.6">Coach unavailable right now. Try the full <b>Ask the Team</b> or <b>AI Assistant</b> views from the sidebar.</span>';
+    }
+    btn.disabled=false;
+  };
+  btn.onclick=send;
+  inp.onkeydown=(e)=>{if(e.key==='Enter'){e.preventDefault();send();}};
+}
+
 function renderPipeline(){
   const q=searchTerm.toLowerCase();
   const filtered=cache.deals.filter(d=>{
@@ -692,9 +747,11 @@ function renderPipeline(){
   }).join('');
   mainEl.innerHTML='<div class="page-head"><div><h1>Pipeline</h1><div class="sub">'+esc(currentOrg.name)+' · <b class="num">'+money(total)+'</b> open</div></div>'
     +'<div class="head-actions"><button class="btn btn-ghost btn-sm" id="editStagesBtn">Edit stages</button><button class="btn btn-primary" id="newDealBtn">+ New opportunity</button></div></div>'
+    +aiCoachBar()
     +searchBar('Search deals by name, contact, or company…')
     +'<div class="view-toggle" id="vt"><button class="'+(pipeView==='active'?'active':'')+'" data-pv="active">Active</button><button class="'+(pipeView==='archived'?'active':'')+'" data-pv="archived">Archived</button><button class="'+(pipeView==='all'?'active':'')+'" data-pv="all">All</button></div>'
     +'<div class="board" id="pipeBoard">'+cols+'</div>';
+  bindCoachBar();
   bindSearch(renderPipeline);
   $$('#vt button').forEach(b=>{b.onclick=()=>{pipeView=b.dataset.pv;renderPipeline();};});
   $('#newDealBtn').onclick=()=>openDealModal(null);
@@ -1102,8 +1159,23 @@ async function renderCommunications(){
 
   const tabBtn=(id,lbl,cnt)=>'<button class="'+(commsTab===id?'active':'')+'" data-ct="'+id+'">'+lbl+(cnt?' <span class="num" style="font-size:10px;opacity:.7">('+cnt+')</span>':'')+'</button>';
 
-  mainEl.innerHTML='<div class="page-head"><div><h1>📧 Communications</h1><div class="sub">'+esc(currentOrg.name)+' · '+em.length+' emails sent</div></div>'
+  mainEl.innerHTML='<div class="page-head"><div><h1>📧 Communications Intelligence</h1><div class="sub">'+esc(currentOrg.name)+' · AI-powered outreach</div></div>'
     +'<div class="head-actions"><button class="btn btn-primary" id="composeBtn">✉ Compose Email</button></div></div>'
+
+    +'<div class="ai-hero">'
+    +'<div class="ai-hero-card"><h3>✨ AI Email Drafter</h3><p>Tell the AI what you want to say and who it is for. It drafts, you review and edit, then send — always under your name.</p>'
+    +'<div class="field" style="margin-bottom:8px"><select id="ai_contact" style="margin-bottom:6px"><option value="">Select a contact…</option>'+cts.filter(c=>c.email).map(c=>'<option value="'+c.id+'">'+esc(c.first_name+' '+(c.last_name||''))+' — '+esc(c.email)+'</option>').join('')+'</select></div>'
+    +'<textarea id="ai_prompt" rows="2" placeholder="e.g. Follow up on yesterday\'s visit, they liked the Bosch 800 dishwasher. Mention our free install promo."></textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn-ai" id="ai_draft_hero">✨ Draft Email</button><button class="btn-ai-ghost" id="ai_blank_hero">Blank Compose</button></div></div>'
+
+    +'<div class="ai-hero-card"><h3>🚀 Sequence Outreach</h3><p>Enroll contacts in automated follow-up sequences. AI generates each email from your templates — you approve before it sends.</p>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+    +'<div style="text-align:center;padding:10px;background:rgba(255,255,255,.06);border-radius:8px"><div style="font-size:22px;font-weight:800">'+enr.filter(e=>e.status==='active').length+'</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;opacity:.6">Active</div></div>'
+    +'<div style="text-align:center;padding:10px;background:rgba(255,255,255,.06);border-radius:8px"><div style="font-size:22px;font-weight:800">'+camps.length+'</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;opacity:.6">Sequences</div></div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px"><button class="btn-ai" id="ai_enroll_hero">+ Enroll Contact</button><button class="btn-ai-ghost" id="ai_seq_hero">View Sequences</button></div></div>'
+    +'</div>'
+
     +'<div class="sla-grid">'
     +'<div class="sla-card'+(overdue.length?' danger':'')+'"><div class="sv num">'+overdue.length+'</div><div class="sl">Overdue Follow-ups</div></div>'
     +'<div class="sla-card'+(hot.length?' warn':'')+'"><div class="sv num">'+hot.length+'</div><div class="sl">Hot Leads Idle 3d+</div></div>'
@@ -1192,6 +1264,20 @@ async function renderCommunications(){
 
   $$('#commsTabs button').forEach(b=>{b.onclick=()=>{commsTab=b.dataset.ct;renderCommunications();};});
   $('#composeBtn')?.addEventListener('click',()=>openComposeModal(null,null,tmpl));
+  // AI hero bindings
+  $('#ai_draft_hero')?.addEventListener('click',()=>{
+    const cid=$('#ai_contact')?.value;const prompt=$('#ai_prompt')?.value?.trim();
+    const ct=cid?cts.find(c=>c.id===cid):null;
+    openComposeModal(ct,null,tmpl);
+    // Auto-trigger AI draft after modal opens
+    if(prompt)setTimeout(()=>{const el=$('#ce_ai_prompt');if(el){el.value=prompt;$('#ce_ai_draft')?.click();}},100);
+  });
+  $('#ai_blank_hero')?.addEventListener('click',()=>{
+    const cid=$('#ai_contact')?.value;const ct=cid?cts.find(c=>c.id===cid):null;
+    openComposeModal(ct,null,tmpl);
+  });
+  $('#ai_enroll_hero')?.addEventListener('click',()=>{commsTab='enrollments';renderCommunications();setTimeout(()=>$('#enrollBtn')?.click(),100);});
+  $('#ai_seq_hero')?.addEventListener('click',()=>{commsTab='sequences';renderCommunications();});
   $$('[data-eid]').forEach(b=>{b.onclick=()=>{const e=em.find(x=>x.id===b.dataset.eid);if(e)openEmailDetail(e);};});
 }
 
