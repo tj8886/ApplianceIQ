@@ -1137,14 +1137,53 @@ async function renderCommunications(){
         +'<div style="margin-top:10px">'+steps.map(s=>'<div class="seq-step"><div class="seq-step-num">'+s.step_number+'</div><div class="seq-step-body"><div class="ss-ch '+esc(s.channel)+'">'+esc(s.channel)+(s.requires_manual_approval?' · approval required':'')+'</div>'+(s.subject_template?'<div class="ss-subj">'+esc(s.subject_template)+'</div>':'')+'<div class="ss-delay">'+(s.delay_days===0?'Immediately':'After '+s.delay_days+' day'+(s.delay_days>1?'s':''))+(s.purpose?' · '+esc(s.purpose):'')+'</div></div></div>').join('')+'</div></div>';
     }).join(''):'<div class="empty" style="padding:40px;text-align:center">No sequences configured.</div>';
   } else if(commsTab==='enrollments'){
-    cc.innerHTML=enr.length?enr.map(e=>{
+    cc.innerHTML='<div class="head-actions" style="margin-bottom:12px"><button class="btn btn-ghost btn-sm" id="enrollBtn">+ Enroll Contact</button></div>'
+      +(enr.length?enr.map(e=>{
       const cn=e.contacts?e.contacts.first_name+' '+(e.contacts.last_name??''):'Unknown';
       const camp=e.aicrm_outreach_campaigns;
-      const totalSteps=camps.find(c=>c.id===e.campaign_id)?.aicrm_sequence_steps?.length||5;
-      return '<div class="enroll-card"><div class="en-top"><span class="en-name">'+esc(cn)+'</span><span class="chip '+(e.status==='active'?'g':e.status==='completed'?'n':'a')+'">'+esc(e.status)+'</span></div>'
+      const campData=camps.find(c=>c.id===e.campaign_id);
+      const steps=(campData?.aicrm_sequence_steps||[]).sort((a,b)=>a.step_number-b.step_number);
+      const totalSteps=steps.length||5;
+      const currentStepData=steps.find(s=>s.step_number===e.current_step);
+      const isActive=e.status==='active';
+      return '<div class="enroll-card"><div class="en-top"><span class="en-name">'+esc(cn)+'</span><div style="display:flex;gap:6px;align-items:center"><span class="chip '+(e.status==='active'?'g':e.status==='completed'?'n':'a')+'">'+esc(e.status)+'</span>'
+        +(isActive&&currentStepData?'<button class="btn btn-primary btn-sm" data-send-step="'+e.id+'" data-step-idx="'+(e.current_step-1)+'" data-camp-id="'+e.campaign_id+'" data-contact-id="'+e.contact_id+'">'+( currentStepData.channel==='email'?'✉ Send Step '+e.current_step:'✓ Complete Step '+e.current_step)+'</button>':'')
+        +'</div></div>'
         +'<div class="en-seq">'+(camp?esc(camp.name):'—')+' · Step '+e.current_step+'/'+totalSteps+' · Enrolled '+ago(e.enrolled_at)+'</div>'
         +'<div class="en-progress">'+Array.from({length:totalSteps},(_,i)=>'<div class="en-dot'+(i<e.current_step-1?' done':i===e.current_step-1?' current':'')+'"></div>').join('')+'</div></div>';
-    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No active enrollments. Enroll contacts from their detail page or compose an email to start.</div>';
+    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No active enrollments. Click Enroll Contact to start a sequence.</div>');
+    // Bind send step buttons
+    $$('[data-send-step]').forEach(b=>{b.onclick=async()=>{
+      const campData=camps.find(c=>c.id===b.dataset.campId);
+      const steps=(campData?.aicrm_sequence_steps||[]).sort((a,b2)=>a.step_number-b2.step_number);
+      const step=steps[parseInt(b.dataset.stepIdx)];
+      const ct=cts.find(c=>c.id===b.dataset.contactId)||await sb.from('contacts').select('*').eq('id',b.dataset.contactId).single().then(r=>r.data);
+      if(step?.channel==='email'){
+        openComposeModal(ct,null,tmpl,step);
+      } else {
+        // Task step — create a task and advance
+        await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title:step?.body_template||'Follow-up task',assignee_user_id:currentUser.id,contact_id:ct?.id,priority:'high',task_type:'follow_up',source:'sequence',metadata:{}});
+        await sb.from('aicrm_sequence_enrollments').update({current_step:parseInt(b.dataset.stepIdx)+2,last_contacted_at:new Date().toISOString()}).eq('id',b.dataset.sendStep);
+        renderCommunications();
+      }
+    };});
+    // Enroll contact button
+    $('#enrollBtn')?.addEventListener('click',async()=>{
+      const contactOpts=cts.filter(c=>c.email).map(c=>'<option value="'+c.id+'">'+esc(c.first_name+' '+(c.last_name||''))+' — '+esc(c.email)+'</option>').join('');
+      const campOpts=camps.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');
+      openModal('<h2>Enroll Contact in Sequence</h2>'
+        +'<div class="field"><label>Contact</label><select id="enr_c"><option value="">Select…</option>'+contactOpts+'</select></div>'
+        +'<div class="field"><label>Sequence</label><select id="enr_s">'+campOpts+'</select></div>'
+        +'<div class="form-err" id="formErr"></div>'
+        +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="enr_go">Enroll</button></div>');
+      $('#enr_go').onclick=async()=>{
+        const cid=$('#enr_c').value;const sid=$('#enr_s').value;
+        if(!cid)return formErr('Select a contact.');
+        const{error}=await sb.from('aicrm_sequence_enrollments').insert({organization_id:currentOrg.id,contact_id:cid,campaign_id:sid,current_step:1,status:'active'});
+        if(error)return formErr(error.message);
+        closeModal();renderCommunications();
+      };
+    });
   } else if(commsTab==='sla'){
     const alerts=[...overdue.map(c=>({...c,reason:'Overdue follow-up',sev:'danger'})),...hot.map(c=>({...c,reason:'Hot lead idle 3+ days',sev:'warn'})),...noContact14.map(c=>({...c,reason:'No contact in 14+ days',sev:'danger'}))].sort((a,b)=>(b.days_since_contact??0)-(a.days_since_contact??0));
     cc.innerHTML=alerts.length?alerts.map(a=>'<div class="d5-item"><div class="d5-num" style="background:var(--'+(a.sev==='danger'?'danger':'amber')+')">'+(a.days_since_contact??'?')+'</div><div class="d5-body"><div class="d5c">'+esc(a.first_name+' '+(a.last_name??''))+'</div><div class="d5r">'+esc(a.reason)+(a.email?' · '+esc(a.email):'')+'</div></div><div class="d5-actions"><button class="btn btn-primary btn-sm" data-qe="'+a.id+'">Email</button></div></div>').join(''):'<div class="empty" style="padding:40px;text-align:center">All follow-ups on track. Nice work!</div>';
@@ -1156,17 +1195,33 @@ async function renderCommunications(){
   $$('[data-eid]').forEach(b=>{b.onclick=()=>{const e=em.find(x=>x.id===b.dataset.eid);if(e)openEmailDetail(e);};});
 }
 
-function openComposeModal(contact,deal,templates){
+function openComposeModal(contact,deal,templates,seqStep){
   const tmplOptions=(templates||[]).map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('');
   const toVal=contact?.email||'';
-  const subjVal='';
-  const bodyVal='';
-  openModal('<h2>✉ Compose Email</h2>'
+  const subjVal=seqStep?.subject_template||'';
+  const bodyVal=seqStep?.body_template||'';
+  // Get rep name from profile
+  const repName=currentUser?.user_metadata?.full_name||'';
+
+  openModal('<h2>✉ '+(seqStep?'Sequence Email — Review & Send':'Compose Email')+'</h2>'
     +'<div class="compose-body">'
-    +'<div class="field"><label>To</label><input id="ce_to" value="'+esc(toVal)+'" placeholder="recipient@example.com"></div>'
-    +'<div class="field"><label>Template (optional)</label><select id="ce_tmpl"><option value="">— No template —</option>'+tmplOptions+'</select></div>'
+    +'<div class="field-row"><div class="field"><label>From (Rep Name)</label><input id="ce_from" value="'+esc(repName)+'" placeholder="Your name — shown as sender"></div>'
+    +'<div class="field"><label>To</label><input id="ce_to" value="'+esc(toVal)+'" placeholder="recipient@example.com"></div></div>'
+    +'<div class="field"><label>Template</label><select id="ce_tmpl"><option value="">— No template —</option>'+tmplOptions+'</select></div>'
+
+    +'<div style="background:#f0f3f9;border-radius:10px;padding:14px;margin:8px 0">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:16px">🤖</span><b style="font-size:13px">AI Email Assistant</b></div>'
+    +'<div class="field"><label>Describe what you want to say</label><textarea id="ce_ai_prompt" rows="2" placeholder="e.g. Follow up on their visit yesterday, they were interested in the Bosch 800 series dishwasher. Mention our current promotion."></textarea></div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="ce_ai_draft">✨ Draft with AI</button>'
+    +'<button class="btn btn-ghost btn-sm" id="ce_ai_improve">🔄 Improve Draft</button>'
+    +'<button class="btn btn-ghost btn-sm" id="ce_ai_shorter">✂ Make Shorter</button>'
+    +'<button class="btn btn-ghost btn-sm" id="ce_ai_formal">👔 More Formal</button>'
+    +'<button class="btn btn-ghost btn-sm" id="ce_ai_casual">😊 More Casual</button></div>'
+    +'<div id="ce_ai_status" style="font-size:11px;color:var(--steel);margin-top:4px;display:none"></div>'
+    +'</div>'
+
     +'<div class="field"><label>Subject</label><input id="ce_subj" value="'+esc(subjVal)+'"></div>'
-    +'<div class="field"><label>Body</label><textarea id="ce_body" rows="8">'+esc(bodyVal)+'</textarea>'
+    +'<div class="field"><label>Body <span style="font-size:11px;color:var(--steel)">(edit freely before sending)</span></label><textarea id="ce_body" rows="10">'+esc(bodyVal)+'</textarea>'
     +'<div class="merge-hint">Merge fields: <span class="merge-tags">'
     +['contact_first_name','product_name','salesperson_name','quote_number','quote_total'].map(f=>'<button class="merge-tag" data-mf="'+f+'">{{'+f+'}}</button>').join('')
     +'</span></div></div>'
@@ -1182,23 +1237,99 @@ function openComposeModal(contact,deal,templates){
   };
   $$('[data-mf]').forEach(b=>{b.onclick=()=>{const ta=$('#ce_body');const tag='{{'+b.dataset.mf+'}}';const pos=ta.selectionStart;ta.value=ta.value.slice(0,pos)+tag+ta.value.slice(pos);ta.focus();};});
 
+  // AI drafting functions
+  async function aiEmailAction(action){
+    const status=$('#ce_ai_status');status.style.display='block';status.textContent='Generating…';
+    const senderName=$('#ce_from').value.trim()||'Sales Rep';
+    const prompt=$('#ce_ai_prompt').value.trim();
+    const existingBody=$('#ce_body').value.trim();
+    const existingSubj=$('#ce_subj').value.trim();
+
+    // Build context about the contact and deal
+    let context='You are drafting a professional sales email for an appliance retail salesperson.\n';
+    context+='The email must appear as if written personally by the salesperson: '+senderName+'.\n';
+    context+='Sign off with the salesperson name. Never mention AI or automation.\n';
+    if(contact){
+      context+='Customer: '+contact.first_name+' '+(contact.last_name||'')+'\n';
+      if(contact.email)context+='Email: '+contact.email+'\n';
+      if(contact.temperature)context+='Temperature: '+contact.temperature+'\n';
+      if(contact.days_since_contact!=null)context+='Days since last contact: '+contact.days_since_contact+'\n';
+    }
+    if(deal){
+      context+='Deal: '+deal.title+'\nStage: '+deal.stage+'\nValue: $'+deal.value_amount+'\n';
+    }
+
+    let userMsg='';
+    if(action==='draft'){
+      if(!prompt){status.textContent='Type what you want to say in the prompt box above.';return;}
+      userMsg=context+'\nThe salesperson wants to communicate the following:\n'+prompt+'\n\nDraft a complete professional email with subject line and body. Format as:\nSUBJECT: [subject]\n\n[body]';
+    } else if(action==='improve'){
+      if(!existingBody){status.textContent='Write or draft an email first.';return;}
+      userMsg=context+'\nImprove this email. Make it more compelling and professional while keeping the same message. Keep the same length.\n\nCurrent subject: '+existingSubj+'\nCurrent body:\n'+existingBody+'\n\nReturn the improved version as:\nSUBJECT: [subject]\n\n[body]';
+    } else if(action==='shorter'){
+      if(!existingBody){status.textContent='Write or draft an email first.';return;}
+      userMsg=context+'\nMake this email shorter and more concise. Cut it roughly in half while keeping the key message.\n\nCurrent subject: '+existingSubj+'\nCurrent body:\n'+existingBody+'\n\nReturn as:\nSUBJECT: [subject]\n\n[body]';
+    } else if(action==='formal'){
+      if(!existingBody){status.textContent='Write or draft an email first.';return;}
+      userMsg=context+'\nRewrite this email in a more professional and formal tone. Same content, more polished.\n\nCurrent body:\n'+existingBody+'\n\nReturn as:\nSUBJECT: '+existingSubj+'\n\n[body]';
+    } else if(action==='casual'){
+      if(!existingBody){status.textContent='Write or draft an email first.';return;}
+      userMsg=context+'\nRewrite this email in a warmer, more conversational tone. Keep it professional but friendly.\n\nCurrent body:\n'+existingBody+'\n\nReturn as:\nSUBJECT: '+existingSubj+'\n\n[body]';
+    }
+
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
+          messages:[{role:'user',content:userMsg}]})
+      });
+      const data=await resp.json();
+      const text=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+      // Parse SUBJECT: line
+      const subjMatch=text.match(/^SUBJECT:\s*(.+)$/m);
+      if(subjMatch){$('#ce_subj').value=subjMatch[1].trim();}
+      // Body is everything after the SUBJECT line
+      const bodyStart=text.indexOf('\n',text.indexOf('SUBJECT:'));
+      if(bodyStart>-1){$('#ce_body').value=text.slice(bodyStart).trim();}else{$('#ce_body').value=text.trim();}
+      status.textContent='Draft ready — review and edit before sending.';
+    }catch(err){
+      status.textContent='AI unavailable: '+err.message+'. You can still write manually.';
+    }
+  }
+
+  $('#ce_ai_draft').onclick=()=>aiEmailAction('draft');
+  $('#ce_ai_improve').onclick=()=>aiEmailAction('improve');
+  $('#ce_ai_shorter').onclick=()=>aiEmailAction('shorter');
+  $('#ce_ai_formal').onclick=()=>aiEmailAction('formal');
+  $('#ce_ai_casual').onclick=()=>aiEmailAction('casual');
+
+  // Pre-fill merge fields if we have data
+  if(seqStep&&contact){
+    const senderName=$('#ce_from').value.trim()||'Sales Rep';
+    let s=$('#ce_subj').value,b=$('#ce_body').value;
+    const mergeAll=(str)=>str.replace(/\{\{contact_first_name\}\}/g,contact.first_name||'').replace(/\{\{salesperson_name\}\}/g,senderName).replace(/\{\{product_name\}\}/g,'').replace(/\{\{special_offer\}\}/g,'');
+    $('#ce_subj').value=mergeAll(s);$('#ce_body').value=mergeAll(b);
+  }
+
   $('#ce_send').onclick=async()=>{
     const to=$('#ce_to').value.trim();
     const subj=$('#ce_subj').value.trim();
     const body=$('#ce_body').value.trim();
+    const senderName=$('#ce_from').value.trim()||'Sales Rep';
     if(!to||!subj||!body)return formErr('To, Subject, and Body are all required.');
     if(!to.includes('@'))return formErr('Enter a valid email address.');
 
-    // Merge fields with contact data
+    // Merge remaining fields with contact data
     let finalSubj=subj,finalBody=body;
-    if(contact){
-      const rep=(s)=>s.replace(/\{\{contact_first_name\}\}/g,contact.first_name||'').replace(/\{\{salesperson_name\}\}/g,currentUser?.user_metadata?.full_name||'Your Sales Rep');
-      finalSubj=rep(finalSubj);finalBody=rep(finalBody);
+    const mergeAll=(s)=>s.replace(/\{\{contact_first_name\}\}/g,contact?.first_name||'').replace(/\{\{salesperson_name\}\}/g,senderName);
+    finalSubj=mergeAll(finalSubj);finalBody=mergeAll(finalBody);
+    // Ensure sign-off uses rep name if not already present
+    if(!finalBody.includes(senderName)&&senderName!=='Sales Rep'){
+      finalBody+='\n\n'+senderName;
     }
 
     $('#ce_send').disabled=true;$('#ce_send').textContent='Sending…';
 
-    // Try edge function first, fall back to direct insert
     try{
       const{data:{session}}=await sb.auth.getSession();
       const resp=await fetch(SUPABASE_URL+'/functions/v1/email-dispatcher',{
@@ -1209,14 +1340,12 @@ function openComposeModal(contact,deal,templates){
       });
       const result=await resp.json();
       if(!resp.ok)throw new Error(result.detail||result.error||'Send failed');
-      // Update contact last_communication_at
       if(contact){await sb.from('contacts').update({last_communication_at:new Date().toISOString(),last_contact_method:'email',last_contacted_by:currentUser.id,days_since_contact:0}).eq('id',contact.id);}
       closeModal();render();
     }catch(err){
-      // Fallback: save directly to crm_emails as draft/queued
-      const{error}=await sb.from('crm_emails').insert({organization_id:currentOrg.id,user_id:currentUser.id,to_email:to,subject:finalSubj,body:finalBody,status:'queued',channel:'email',
+      const{error}=await sb.from('crm_emails').insert({organization_id:currentOrg.id,user_id:currentUser.id,to_email:to,from_email:senderName,subject:finalSubj,body:finalBody,status:'queued',channel:'email',
         contact_id:contact?.id||null,deal_id:deal?.id||null,
-        metadata:{crm_record_type:contact?'contact':deal?'deal':null,send_error:err.message}});
+        metadata:{crm_record_type:contact?'contact':deal?'deal':null,send_error:err.message,sender_name:senderName}});
       if(error){formErr(error.message);$('#ce_send').disabled=false;$('#ce_send').textContent='Send Email';return;}
       if(contact){await sb.from('contacts').update({last_communication_at:new Date().toISOString(),last_contact_method:'email',last_contacted_by:currentUser.id,days_since_contact:0}).eq('id',contact.id);}
       closeModal();render();
