@@ -476,6 +476,14 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
             <div><label>Depth (in)</label><input id="ap-d" type="number" step="0.1" placeholder="27.25" /></div>
           </div>
           <div style="margin-bottom:16px"><label>Electrical Requirements</label><input id="ap-elec" placeholder="120V, 15A dedicated circuit" /></div>
+          <div id="ap-pim-link" class="hidden" style="margin-bottom:16px;padding:12px 16px;background:var(--verified-soft,#e6f9ef);border:1px solid var(--verified,#1a9e56);border-radius:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><svg class="icon" style="width:16px;height:16px;color:var(--verified)"><use href="#i-check"/></svg><span style="font-weight:600;font-size:13px;color:var(--verified)">Linked to PIM Product</span></div>
+            <div id="ap-pim-assets" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+          </div>
+          <div id="ap-product-preview" class="hidden" style="margin-bottom:16px;display:flex;gap:16px;align-items:flex-start">
+            <img id="ap-product-img" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid var(--line);object-fit:contain;background:white" />
+            <div id="ap-brand-logo-wrap" style="display:flex;align-items:center"><img id="ap-brand-logo" style="max-height:40px;max-width:120px;object-fit:contain" /></div>
+          </div>
           <div class="flex" style="gap:8px"><button class="btn btn-p" onclick="addProduct()">Add to Package</button><button class="btn btn-s" onclick="toggleAddProduct()">Cancel</button></div>
         </div>
         <div id="product-list"></div>
@@ -835,7 +843,8 @@ async function productSearch(){
     box.style.display='block';
   }catch(e){console.error('Product search error:',e)}
 }
-function selectSearchResult(i){
+var _selectedPimId=null,_selectedPimImage=null,_selectedBrandLogo=null,_selectedSpecSheet=null,_selectedInstallGuide=null,_selectedDocs=[];
+async function selectSearchResult(i){
   var p=_searchResults[i];if(!p)return;
   el('ap-name').value=p.short_description||'';
   el('ap-brand').value=p.brand_name||'';
@@ -852,6 +861,56 @@ function selectSearchResult(i){
   el('ap-search').value=p.brand_name+' '+p.model;
   el('ap-search-results').style.display='none';
   _searchResults=[];_searchIdx=-1;
+  _selectedPimId=p.id;_selectedPimImage=null;_selectedBrandLogo=null;_selectedSpecSheet=null;_selectedInstallGuide=null;_selectedDocs=[];
+  /* Show PIM link indicator */
+  el('ap-pim-link').classList.remove('hidden');
+  el('ap-pim-assets').innerHTML='<span style="font-size:12px;color:var(--steel)">Loading assets…</span>';
+  el('ap-product-preview').classList.add('hidden');
+  /* Fetch images, docs, brand logo in parallel */
+  try{
+    var _sb=window.sb||sb;
+    var [imgRes,docRes,brandRes]=await Promise.all([
+      _sb.from('pim_product_images').select('file_url,cdn_url,image_type,is_primary').eq('product_id',p.id).order('is_primary',{ascending:false}).limit(5),
+      _sb.from('pim_product_documents').select('doc_type,title,file_url').eq('product_id',p.id),
+      _sb.from('brand_catalog').select('logo_url').eq('brand_name',p.brand_name).limit(1)
+    ]);
+    /* Product image */
+    var imgs=imgRes.data||[];
+    var heroImg=imgs.find(function(x){return x.image_type==='hero'})||imgs.find(function(x){return x.is_primary})||imgs[0];
+    if(heroImg){
+      var imgUrl=heroImg.cdn_url||heroImg.file_url;
+      if(imgUrl&&(imgUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)||imgUrl.includes('/images/'))){
+        _selectedPimImage=imgUrl;
+        el('ap-product-img').src=imgUrl;
+        el('ap-product-img').style.display='';
+        el('ap-product-preview').classList.remove('hidden');
+        el('ap-product-preview').style.display='flex';
+      }
+    }
+    /* Brand logo */
+    var brandData=(brandRes.data||[])[0];
+    if(brandData&&brandData.logo_url){
+      _selectedBrandLogo=brandData.logo_url;
+      el('ap-brand-logo').src=brandData.logo_url;
+      el('ap-brand-logo-wrap').style.display='flex';
+      el('ap-product-preview').classList.remove('hidden');
+      el('ap-product-preview').style.display='flex';
+    }else{el('ap-brand-logo-wrap').style.display='none'}
+    /* Documents */
+    var docs=docRes.data||[];
+    _selectedDocs=docs;
+    var assetsHTML='';
+    var specDoc=docs.find(function(d){return d.doc_type==='spec_sheet'});
+    var installDoc=docs.find(function(d){return d.doc_type==='installation_guide'});
+    var energyDoc=docs.find(function(d){return d.doc_type==='energy_guide'});
+    var ownerDoc=docs.find(function(d){return d.doc_type==='owners_manual'});
+    if(specDoc){_selectedSpecSheet=specDoc.file_url;assetsHTML+='<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:white;border-radius:4px;font-size:12px;font-weight:600"><svg class="icon" style="width:12px;height:12px;color:var(--focus)"><use href="#i-file"/></svg>Spec Sheet</span>'}
+    if(installDoc){_selectedInstallGuide=installDoc.file_url;assetsHTML+='<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:white;border-radius:4px;font-size:12px;font-weight:600"><svg class="icon" style="width:12px;height:12px;color:var(--focus)"><use href="#i-file"/></svg>Install Guide</span>'}
+    if(energyDoc){assetsHTML+='<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:white;border-radius:4px;font-size:12px;font-weight:600"><svg class="icon" style="width:12px;height:12px;color:var(--focus)"><use href="#i-file"/></svg>Energy Guide</span>'}
+    if(ownerDoc){assetsHTML+='<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:white;border-radius:4px;font-size:12px;font-weight:600"><svg class="icon" style="width:12px;height:12px;color:var(--focus)"><use href="#i-file"/></svg>Owner Manual</span>'}
+    if(imgs.length){assetsHTML+='<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:white;border-radius:4px;font-size:12px;font-weight:600"><svg class="icon" style="width:12px;height:12px;color:var(--focus)"><use href="#i-eye"/></svg>'+imgs.length+' Image'+(imgs.length>1?'s':'')+'</span>'}
+    el('ap-pim-assets').innerHTML=assetsHTML||'<span style="font-size:12px;color:var(--steel)">No assets found in PIM</span>';
+  }catch(e){console.error('Asset fetch error:',e);el('ap-pim-assets').innerHTML='<span style="font-size:12px;color:var(--steel)">Could not load assets</span>'}
   el('ap-name').focus();
 }
 function handleSearchKey(e){
@@ -865,14 +924,14 @@ function handleSearchKey(e){
 function highlightSearchResult(){var items=document.querySelectorAll('.ap-sr');items.forEach(function(el,i){el.style.background=i===_searchIdx?'var(--focus-soft)':''})}
 document.addEventListener('click',function(e){var box=el('ap-search-results');var inp=el('ap-search');if(box&&inp&&!box.contains(e.target)&&e.target!==inp)box.style.display='none'});
 
-function toggleAddProduct(){el('add-product-form').classList.toggle('hidden');var s=el('ap-search');if(s)s.value='';var b=el('ap-search-results');if(b)b.style.display='none';_searchResults=[];_searchIdx=-1}
+function toggleAddProduct(){el('add-product-form').classList.toggle('hidden');var s=el('ap-search');if(s)s.value='';var b=el('ap-search-results');if(b)b.style.display='none';_searchResults=[];_searchIdx=-1;_selectedPimId=null;_selectedPimImage=null;_selectedBrandLogo=null;_selectedSpecSheet=null;_selectedInstallGuide=null;_selectedDocs=[];el('ap-pim-link').classList.add('hidden');el('ap-product-preview').classList.add('hidden')}
 function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden')}
 function closeGenericModal(){el('generic-modal').classList.add('hidden');el('generic-modal').innerHTML='';document.body.style.overflow=''}
 
 /* ==================== BUILDER ==================== */
 function setStep(n){currentStep=n;[1,2,3,4,5].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)renderServicesStep();if(n===4)initValidityStep();if(n===5)renderSummary()}
 function resetBuilder(){builderProducts=[];builderServices=[];currentStep=1;setStep(1);renderProducts();el('b-issue-date').value=new Date().toISOString().split('T')[0];el('b-validity').value='14';updateExpiryPreview()}
-function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,msrp:parseFloat(el('ap-msrp').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null});['ap-search','ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');renderProducts()}
+function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}builderProducts.push({id:Date.now(),aiq_product_id:_selectedPimId||null,product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,msrp:parseFloat(el('ap-msrp').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null,product_image:_selectedPimImage||null,brand_logo:_selectedBrandLogo||null,spec_sheet_url:_selectedSpecSheet||null,install_guide_url:_selectedInstallGuide||null,docs:_selectedDocs||[]});_selectedPimId=null;_selectedPimImage=null;_selectedBrandLogo=null;_selectedSpecSheet=null;_selectedInstallGuide=null;_selectedDocs=[];['ap-search','ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-cat').selectedIndex=0;el('ap-pim-link').classList.add('hidden');el('ap-product-preview').classList.add('hidden');el('add-product-form').classList.add('hidden');renderProducts()}
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
 function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});
   var warOpts=warrantyCatalog.map(function(w){return'<option value="'+w.id+'" data-price="'+(w.selling_price||0)+'" data-included="'+(w.is_included?'1':'0')+'">'+esc(w.warranty_name)+(w.is_included?' (Included)':w.selling_price>0?' — $'+parseFloat(w.selling_price).toLocaleString():'')+'</option>'}).join('');
@@ -880,7 +939,12 @@ function renderProducts(){var list=el('product-list');if(!list)return;el('produc
     var warSel=p.warranty_id||'';
     var warName=p.warranty_name||'';
     var warPrice=p.warranty_price||0;
-    return'<div class="card" style="padding:14px 20px;margin-bottom:8px"><div class="flex between"><div class="flex" style="gap:12px"><svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+p.category+(p.finish?' · '+esc(p.finish):'')+(p.width_inches?' · '+p.width_inches+'"W':'')+'</div></div></div><div class="flex" style="gap:16px">'+(p.msrp>0?'<span class="num" style="font-weight:600;font-family:Sora">$'+p.msrp.toLocaleString()+'</span>':'')+'<button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'
+    var pimBadge=p.aiq_product_id?'<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--verified-soft,#e6f9ef);border-radius:4px;font-size:11px;font-weight:600;color:var(--verified,#1a9e56);margin-left:6px"><svg class="icon" style="width:10px;height:10px"><use href="#i-check"/></svg>PIM</span>':'';
+    var docBadges='';
+    if(p.spec_sheet_url)docBadges+='<a href="'+esc(p.spec_sheet_url)+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--focus-soft);border-radius:4px;font-size:11px;font-weight:600;color:var(--focus);text-decoration:none" onclick="event.stopPropagation()"><svg class="icon" style="width:10px;height:10px"><use href="#i-file"/></svg>Spec</a>';
+    if(p.install_guide_url)docBadges+='<a href="'+esc(p.install_guide_url)+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--focus-soft);border-radius:4px;font-size:11px;font-weight:600;color:var(--focus);text-decoration:none;margin-left:4px" onclick="event.stopPropagation()"><svg class="icon" style="width:10px;height:10px"><use href="#i-file"/></svg>Install</a>';
+    var thumbHTML=p.product_image?'<img src="'+esc(p.product_image)+'" style="width:48px;height:48px;border-radius:6px;object-fit:contain;border:1px solid var(--line);background:white;flex-shrink:0" onerror="this.style.display=\'none\'" />':'';
+    return'<div class="card" style="padding:14px 20px;margin-bottom:8px"><div class="flex between"><div class="flex" style="gap:12px">'+thumbHTML+'<svg class="icon" style="color:var(--steel)"><use href="#i-grip"/></svg><div><div style="font-weight:600;font-size:14px">'+esc(p.brand)+' '+esc(p.product_name)+pimBadge+'</div><div style="font-size:13px;color:var(--steel)">'+esc(p.model_number)+' · '+p.category+(p.finish?' · '+esc(p.finish):'')+(p.width_inches?' · '+p.width_inches+'"W':'')+'</div>'+(docBadges?'<div style="margin-top:4px">'+docBadges+'</div>':'')+'</div></div><div class="flex" style="gap:16px">'+(p.msrp>0?'<span class="num" style="font-weight:600;font-family:Sora">$'+p.msrp.toLocaleString()+'</span>':'')+'<button class="btn btn-g" style="padding:6px" onclick="removeProduct('+p.id+')"><svg class="icon" style="color:var(--danger)"><use href="#i-trash"/></svg></button></div></div>'
     +(warrantyCatalog.length?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px"><svg class="icon" style="width:14px;height:14px;color:var(--verified);flex-shrink:0"><use href="#i-shield"/></svg><select style="flex:1;padding:8px 12px;font-size:13px" onchange="selectWarranty('+p.id+',this)"><option value="">No warranty selected</option>'+warOpts+'</select>'+(warPrice>0?'<span class="num" style="font-size:13px;font-weight:600;color:var(--verified)">+$'+warPrice.toLocaleString()+'</span>':'')+'</div>':'')
     +'</div>'
   }).join('');
@@ -1272,11 +1336,23 @@ function buildPrintHTML(pkg,products,retailer,services,warranties){
   var html='';
 
   /* --- COVER PAGE with validity --- */
+  /* Collect unique brand logos from products */
+  var brandLogos=[];var seenBrands={};
+  products.forEach(function(p){if(p.brand_logo&&!seenBrands[p.brand]){seenBrands[p.brand]=1;brandLogos.push({brand:p.brand,url:p.brand_logo})}});
+
   html+='<div class="print-page print-cover">';
   html+='<div class="print-cover-logos">';
   if(logoHTML)html+=logoHTML+'<div style="width:1px;height:60px;background:#e3e8f0"></div>';
   html+='<div style="display:flex;align-items:center;gap:8px">'+aiqLogo+'<span style="font-family:Sora,sans-serif;font-weight:700;font-size:20px;color:#0f1f3d">Spec IQ</span></div>';
   html+='</div>';
+
+  /* Brand logos row */
+  if(brandLogos.length){
+    html+='<div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;justify-content:center">';
+    brandLogos.forEach(function(bl){html+='<img src="'+esc(bl.url)+'" alt="'+esc(bl.brand)+'" style="max-height:36px;max-width:120px;object-fit:contain" onerror="this.style.display=\'none\'" />'});
+    html+='</div>';
+  }
+
   if(retailer&&retailer.store_name)html+='<div style="font-size:12pt;color:#5b6b85;margin-bottom:40px">Prepared by '+esc(retailer.store_name)+'</div>';
   html+='<h1>'+esc(pkg.package_name)+'</h1>';
   html+='<div class="cover-subtitle">Appliance Specification Package</div>';
@@ -1308,6 +1384,22 @@ function buildPrintHTML(pkg,products,retailer,services,warranties){
     html+='<div class="print-approval-stamp">✓ AUTHORIZED</div>';
   }
   if(retailer&&retailer.store_phone)html+='<div style="margin-top:40px;font-size:9pt;color:#5b6b85">'+esc(retailer.store_phone)+(retailer.store_email?' · '+esc(retailer.store_email):'')+(retailer.store_website?' · '+esc(retailer.store_website):'')+'</div>';
+  /* Rep & store contact block */
+  var hasAddr=retailer&&(retailer.store_address||retailer.store_city);
+  if(salesperson||hasAddr){
+    html+='<div style="margin-top:20px;padding:16px 24px;background:#f7f8fb;border-radius:8px;text-align:left;display:inline-block;min-width:300px">';
+    if(salesperson)html+='<div style="font-weight:700;font-size:11pt;margin-bottom:4px">'+esc(salesperson)+'</div>';
+    if(retailer&&retailer.store_name)html+='<div style="font-size:9pt;color:#5b6b85">'+esc(retailer.store_name)+'</div>';
+    if(retailer&&retailer.store_address)html+='<div style="font-size:9pt;color:#5b6b85">'+esc(retailer.store_address)+'</div>';
+    if(retailer&&(retailer.store_city||retailer.store_province||retailer.store_postal)){
+      var addrLine=[retailer.store_city,retailer.store_province].filter(Boolean).join(', ');
+      if(retailer.store_postal)addrLine+='  '+retailer.store_postal;
+      html+='<div style="font-size:9pt;color:#5b6b85">'+esc(addrLine)+'</div>';
+    }
+    if(retailer&&retailer.store_phone)html+='<div style="font-size:9pt;color:#5b6b85;margin-top:6px">'+esc(retailer.store_phone)+'</div>';
+    if(retailer&&retailer.store_email)html+='<div style="font-size:9pt;color:#5b6b85">'+esc(retailer.store_email)+'</div>';
+    html+='</div>';
+  }
   html+='</div>';
 
   /* --- PRODUCT PAGES --- */
@@ -1315,13 +1407,29 @@ function buildPrintHTML(pkg,products,retailer,services,warranties){
   html+='<h2 class="print-section-title">Appliance Specifications</h2>';
   products.forEach(function(p){
     var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean);
-    html+='<div class="print-product"><div style="display:flex;justify-content:space-between;align-items:flex-start"><h3>'+esc(p.brand)+' '+esc(p.product_name)+'</h3>';
+    html+='<div class="print-product">';
+    /* Product header with optional image and brand logo */
+    html+='<div style="display:flex;gap:16px;align-items:flex-start">';
+    if(p.product_image)html+='<img src="'+esc(p.product_image)+'" style="width:80px;height:80px;object-fit:contain;border-radius:6px;border:1px solid #e3e8f0;background:white;flex-shrink:0" onerror="this.style.display=\'none\'" />';
+    html+='<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:flex-start">';
+    html+='<div>';
+    if(p.brand_logo)html+='<img src="'+esc(p.brand_logo)+'" style="max-height:20px;max-width:80px;object-fit:contain;margin-bottom:4px;display:block" onerror="this.style.display=\'none\'" />';
+    html+='<h3>'+esc(p.brand)+' '+esc(p.product_name)+'</h3></div>';
     if(p.msrp>0)html+='<span style="font-family:Sora,sans-serif;font-weight:700;font-size:13pt">$'+parseFloat(p.msrp).toLocaleString()+'</span>';
-    html+='</div><div style="font-size:9pt;color:#5b6b85;margin-bottom:10px">Model '+esc(p.model_number)+' · '+esc(p.category)+(p.finish?' · '+esc(p.finish):'')+'</div>';
+    html+='</div>';
+    html+='<div style="font-size:9pt;color:#5b6b85;margin-bottom:10px">Model '+esc(p.model_number)+' · '+esc(p.category)+(p.finish?' · '+esc(p.finish):'')+'</div>';
     html+='<div class="specs-grid">';
     if(dims.length)html+='<div><dt>Dimensions</dt><dd>'+dims.map(function(d){return d+'"'}).join(' × ')+(p.width_inches?' (W×H×D)':'')+'</dd></div>';
     if(p.electrical_requirements)html+='<div><dt>Electrical</dt><dd>'+esc(p.electrical_requirements)+'</dd></div>';
-    html+='</div></div>';
+    html+='</div>';
+    /* Document links */
+    if(p.spec_sheet_url||p.install_guide_url){
+      html+='<div style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">';
+      if(p.spec_sheet_url)html+='<a href="'+esc(p.spec_sheet_url)+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:8pt;color:#3b5bdb;text-decoration:none;padding:3px 10px;background:#edf2ff;border-radius:4px">📄 Specification Sheet</a>';
+      if(p.install_guide_url)html+='<a href="'+esc(p.install_guide_url)+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;font-size:8pt;color:#3b5bdb;text-decoration:none;padding:3px 10px;background:#edf2ff;border-radius:4px">🔧 Installation Guide</a>';
+      html+='</div>';
+    }
+    html+='</div></div></div>';
   });
   html+='</div>';
 
