@@ -455,6 +455,13 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
         <div class="flex between" style="margin-bottom:16px"><h3 id="product-count">0 appliances added</h3><button class="btn btn-p" onclick="toggleAddProduct()"><svg class="icon" style="width:16px;height:16px"><use href="#i-plus"/></svg> Add Appliance</button></div>
         <div id="add-product-form" class="card hidden" style="margin-bottom:16px;border-color:var(--focus)">
           <h4 style="margin-bottom:16px">Add an Appliance</h4>
+          <div style="margin-bottom:16px;position:relative">
+            <label>Search Product Database</label>
+            <input id="ap-search" autocomplete="off" placeholder="Start typing brand, model, or description…" style="width:100%;padding-right:36px" oninput="debounceProductSearch()" onkeydown="handleSearchKey(event)" />
+            <svg class="icon" style="position:absolute;right:12px;top:36px;width:16px;height:16px;color:var(--steel);pointer-events:none"><use href="#i-search"/></svg>
+            <div id="ap-search-results" style="display:none;position:absolute;z-index:100;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:var(--white);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);margin-top:4px"></div>
+          </div>
+          <div style="font-size:12px;color:var(--steel);margin:-10px 0 14px;display:flex;align-items:center;gap:6px">Select from results to auto-fill, or enter details manually below.</div>
           <div class="grid3" style="margin-bottom:12px">
             <div><label>Product Name</label><input id="ap-name" placeholder="French Door Refrigerator" /></div>
             <div><label>Brand</label><input id="ap-brand" placeholder="Sub-Zero" /></div>
@@ -805,14 +812,67 @@ function showAuth(mode){authMode=mode;el('landing').style.display='none';hide('p
 function toggleAuthMode(e){e.preventDefault();showAuth(authMode==='login'?'signup':'login')}
 function navigate(view){['dashboard','projects','packages','builder','approvals','settings','team'].forEach(function(v){el('view-'+v).classList.toggle('hidden',v!==view)});document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.classList.toggle('active',a.dataset.view===view)});if(view==='projects'&&window._loadProjects)window._loadProjects();if(view==='packages')loadPackages();if(view==='builder')resetBuilder();if(view==='approvals')loadApprovals();if(view==='settings')loadRetailerSettings();if(view==='team')loadTeam()}
 function toggleNewProject(){el('new-project-form').classList.toggle('hidden')}
-function toggleAddProduct(){el('add-product-form').classList.toggle('hidden')}
+/* ==================== PRODUCT AUTOCOMPLETE ==================== */
+var _searchTimer=null,_searchIdx=-1,_searchResults=[];
+function debounceProductSearch(){clearTimeout(_searchTimer);_searchTimer=setTimeout(productSearch,250)}
+async function productSearch(){
+  var q=el('ap-search').value.trim();
+  var box=el('ap-search-results');
+  if(q.length<2){box.style.display='none';_searchResults=[];_searchIdx=-1;return}
+  try{
+    var query=sb.from('aiq_products').select('id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage').limit(12);
+    var terms=q.split(/\s+/).map(function(t){return t.replace(/[%_\\()',."]/g,'')}).filter(function(t){return t.length>0});
+    if(!terms.length){box.style.display='none';return}
+    terms.forEach(function(t){query=query.or('brand_name.ilike.%'+t+'%,model.ilike.%'+t+'%,short_description.ilike.%'+t+'%')});
+    var res=await query;
+    if(res.error||!res.data){box.style.display='none';return}
+    _searchResults=res.data;_searchIdx=-1;
+    if(!_searchResults.length){box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">No products found. Enter details manually below.</div>';box.style.display='block';return}
+    box.innerHTML=_searchResults.map(function(p,i){
+      var cat=p.category?(p.category.charAt(0).toUpperCase()+p.category.slice(1)):'';
+      return'<div class="ap-sr" data-i="'+i+'" onclick="selectSearchResult('+i+')" onmouseenter="_searchIdx='+i+';highlightSearchResult()" style="padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .1s"><div style="display:flex;justify-content:space-between;align-items:center"><div><span style="font-weight:600;font-size:14px">'+esc(p.brand_name)+'</span> <span style="color:var(--steel);font-size:13px">'+esc(p.model)+'</span></div>'+(p.msrp?'<span style="font-family:Sora;font-weight:600;font-size:13px;color:var(--focus)">$'+parseFloat(p.msrp).toLocaleString()+'</span>':'')+'</div><div style="font-size:12px;color:var(--steel);margin-top:2px">'+esc(p.short_description||'')+(cat?' · '+cat:'')+'</div></div>'
+    }).join('');
+    box.style.display='block';
+  }catch(e){console.error('Product search error:',e)}
+}
+function selectSearchResult(i){
+  var p=_searchResults[i];if(!p)return;
+  el('ap-name').value=p.short_description||'';
+  el('ap-brand').value=p.brand_name||'';
+  el('ap-model').value=p.model||'';
+  if(p.category){var catMap={'dishwashers':'Dishwasher','ranges':'Range','refrigerators':'Refrigerator','cooktops':'Cooktop','wall_ovens':'Wall Oven','hoods':'Hood','microwaves':'Microwave','washers':'Washer','laundry':'Washer','dryers':'Dryer','wine_storage':'Wine Storage','freezers':'Freezer'};var sel=el('ap-cat');var mapped=catMap[p.category.toLowerCase()]||p.category;for(var j=0;j<sel.options.length;j++){if(sel.options[j].value.toLowerCase()===mapped.toLowerCase()||sel.options[j].text.toLowerCase()===mapped.toLowerCase()){sel.selectedIndex=j;break}}}
+  el('ap-finish').value=p.finish||'';
+  el('ap-msrp').value=p.msrp?parseFloat(p.msrp):'';
+  el('ap-w').value=p.width_inches?parseFloat(p.width_inches):'';
+  el('ap-h').value=p.height_inches?parseFloat(p.height_inches):'';
+  el('ap-d').value=p.depth_inches?parseFloat(p.depth_inches):'';
+  if(p.voltage&&p.amperage)el('ap-elec').value=p.voltage+'V, '+parseFloat(p.amperage)+'A';
+  else if(p.voltage)el('ap-elec').value=p.voltage+'V';
+  else el('ap-elec').value='';
+  el('ap-search').value=p.brand_name+' '+p.model;
+  el('ap-search-results').style.display='none';
+  _searchResults=[];_searchIdx=-1;
+  el('ap-name').focus();
+}
+function handleSearchKey(e){
+  var box=el('ap-search-results');
+  if(box.style.display==='none'||!_searchResults.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_searchIdx=Math.min(_searchIdx+1,_searchResults.length-1);highlightSearchResult()}
+  else if(e.key==='ArrowUp'){e.preventDefault();_searchIdx=Math.max(_searchIdx-1,0);highlightSearchResult()}
+  else if(e.key==='Enter'&&_searchIdx>=0){e.preventDefault();selectSearchResult(_searchIdx)}
+  else if(e.key==='Escape'){box.style.display='none';_searchIdx=-1}
+}
+function highlightSearchResult(){var items=document.querySelectorAll('.ap-sr');items.forEach(function(el,i){el.style.background=i===_searchIdx?'var(--focus-soft)':''})}
+document.addEventListener('click',function(e){var box=el('ap-search-results');var inp=el('ap-search');if(box&&inp&&!box.contains(e.target)&&e.target!==inp)box.style.display='none'});
+
+function toggleAddProduct(){el('add-product-form').classList.toggle('hidden');var s=el('ap-search');if(s)s.value='';var b=el('ap-search-results');if(b)b.style.display='none';_searchResults=[];_searchIdx=-1}
 function toggleInviteForm(){el('invite-form').classList.toggle('hidden');el('invite-error').classList.add('hidden');el('invite-success').classList.add('hidden')}
 function closeGenericModal(){el('generic-modal').classList.add('hidden');el('generic-modal').innerHTML='';document.body.style.overflow=''}
 
 /* ==================== BUILDER ==================== */
 function setStep(n){currentStep=n;[1,2,3,4,5].forEach(function(s){el('step-'+s).classList.toggle('hidden',s!==currentStep);var b=document.querySelectorAll('.step-btn');if(b[s-1])b[s-1].classList.toggle('active',s===currentStep)});el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(n===3)renderServicesStep();if(n===4)initValidityStep();if(n===5)renderSummary()}
 function resetBuilder(){builderProducts=[];builderServices=[];currentStep=1;setStep(1);renderProducts();el('b-issue-date').value=new Date().toISOString().split('T')[0];el('b-validity').value='14';updateExpiryPreview()}
-function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,msrp:parseFloat(el('ap-msrp').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null});['ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');renderProducts()}
+function addProduct(){var name=el('ap-name').value,model=el('ap-model').value;if(!name||!model){alert('Product name and model number are required.');return}builderProducts.push({id:Date.now(),product_name:name,brand:el('ap-brand').value,model_number:model,category:el('ap-cat').value,finish:el('ap-finish').value,msrp:parseFloat(el('ap-msrp').value)||0,width_inches:parseFloat(el('ap-w').value)||null,height_inches:parseFloat(el('ap-h').value)||null,depth_inches:parseFloat(el('ap-d').value)||null,electrical_requirements:el('ap-elec').value||null});['ap-search','ap-name','ap-brand','ap-model','ap-finish','ap-msrp','ap-w','ap-h','ap-d','ap-elec'].forEach(function(id){el(id).value=''});el('ap-cat').selectedIndex=0;el('add-product-form').classList.add('hidden');renderProducts()}
 function removeProduct(id){builderProducts=builderProducts.filter(function(p){return p.id!==id});renderProducts()}
 function renderProducts(){var list=el('product-list');if(!list)return;el('product-count').textContent=builderProducts.length+' appliance'+(builderProducts.length!==1?'s':'')+' added';if(!builderProducts.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-package"/></svg><p>No appliances added yet.</p></div>';el('product-total').classList.add('hidden');return}var total=0;builderProducts.forEach(function(p){total+=(p.msrp||0)});
   var warOpts=warrantyCatalog.map(function(w){return'<option value="'+w.id+'" data-price="'+(w.selling_price||0)+'" data-included="'+(w.is_included?'1':'0')+'">'+esc(w.warranty_name)+(w.is_included?' (Included)':w.selling_price>0?' — $'+parseFloat(w.selling_price).toLocaleString():'')+'</option>'}).join('');
@@ -981,6 +1041,7 @@ document.addEventListener('DOMContentLoaded',function(){
 <script type="module">
 import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
+window.sb=sb;
 let currentUser=null;let userOrgId=null;let userRole=null;let retailerSettings=null;let allPackages=[];let allApprovals=[];
 
 async function resolveOrg(){
