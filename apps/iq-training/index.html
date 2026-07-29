@@ -919,7 +919,13 @@ function renderRoleplay(el) {
 
   el.innerHTML = '<div class="dash-header"><h2>AI Coach</h2><p>Two ways to train — practice with AI or record a live session for scoring.</p></div>'
     + practiceHtml
-    + '<div class="dash-header" style="margin-top:24px"><h2>AI Roleplay Chat</h2><p>Type-based coaching. Pick a persona, ask anything, roleplay scenarios. Live PIM data in every answer.</p></div>'
+    + '<div class="dash-header" style="margin-top:24px"><h2>AI Roleplay</h2><p>Three ways to practice — type or talk, you pick the role.</p></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px">'
+    + '<div class="coach-card" style="border-top:3px solid var(--accent)" onclick="startChat(\'tj\',null,\'ai_customer\')"><div class="coach-avatar">🛒</div><h4>AI is the Customer</h4><p style="color:var(--accent);font-weight:600">You practice selling</p><p>AI plays a realistic customer with objections, budget concerns, and curveballs. You sell.</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--navy)" onclick="startChat(\'tj\',null,\'ai_rep\')"><div class="coach-avatar">👔</div><h4>AI is the Rep</h4><p style="color:var(--navy);font-weight:600">Watch & learn</p><p>You play the customer. AI demonstrates the perfect 10-step sales process so you can see how it is done.</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--green)" onclick="startChat(\'tj\')"><div class="coach-avatar">🎤</div><h4>Coach Q&A</h4><p style="color:var(--green);font-weight:600">Ask anything</p><p>Pick a coaching persona and ask questions, get scripts, discuss strategy. Live PIM data in every answer.</p></div>'
+    + '</div>'
+    + '<div class="section-header"><h3>Pick a Coach for Q&A</h3></div>'
     + '<div class="coach-grid">' + coachHtml + '</div>'
     + '<div class="section-header"><h3>Quick Scenarios</h3></div>'
     + '<div class="topic-pills">'
@@ -1119,41 +1125,119 @@ function renderScorecard(el) {
 
 function renderChat(el) {
   var c = coaches[rpState.coach];
+  var mode = rpState.mode || 'coach'; // coach, ai_customer, ai_rep
+  var modeLabel = mode === 'ai_customer' ? 'AI is the Customer — you sell' : (mode === 'ai_rep' ? 'AI is the Rep — you are the customer' : c.role);
+  var inputMode = rpState.inputMode || 'type'; // type, voice
+  var isListening = rpState.listening || false;
+
   var msgsHtml = rpState.messages.map(function(m) {
     if (m.role === 'assistant') {
-      return '<div class="chat-msg coach"><div class="msg-name">' + c.avatar + ' ' + c.name + '</div>' + formatMsg(m.content) + '</div>';
+      var label = mode === 'ai_customer' ? '🛒 Customer' : (mode === 'ai_rep' ? '👔 Sales Rep' : c.avatar + ' ' + c.name);
+      return '<div class="chat-msg coach"><div class="msg-name">' + label + '</div>' + formatMsg(m.content) + '</div>';
     } else {
       return '<div class="chat-msg user">' + esc(m.content) + '</div>';
     }
   }).join('');
   if (rpState.loading) {
-    msgsHtml += '<div class="chat-msg coach typing">' + c.avatar + ' ' + c.name + ' is thinking...</div>';
+    msgsHtml += '<div class="chat-msg coach typing">Thinking...</div>';
   }
+
+  var inputHtml = '<div class="chat-input-bar">'
+    + '<div style="display:flex;gap:4px;margin-right:4px">'
+    + '<button onclick="toggleInputMode(\'type\')" style="padding:6px 10px;border:none;border-radius:12px;font-size:16px;cursor:pointer;background:' + (inputMode === 'type' ? 'var(--accent)' : 'var(--surface3)') + ';color:' + (inputMode === 'type' ? '#fff' : 'var(--text3)') + '" title="Type">⌨️</button>'
+    + '<button onclick="toggleInputMode(\'voice\')" style="padding:6px 10px;border:none;border-radius:12px;font-size:16px;cursor:pointer;background:' + (inputMode === 'voice' ? 'var(--accent)' : 'var(--surface3)') + ';color:' + (inputMode === 'voice' ? '#fff' : 'var(--text3)') + '" title="Voice">🎙</button>'
+    + '</div>';
+
+  if (inputMode === 'type') {
+    inputHtml += '<input type="text" id="chat-input" placeholder="Type your message..." onkeydown="if(event.key===\'Enter\')sendMsg()">'
+      + '<button onclick="sendMsg()" id="chat-send-btn"' + (rpState.loading ? ' disabled' : '') + '>Send</button>';
+  } else {
+    inputHtml += '<div style="flex:1;display:flex;align-items:center;gap:8px">'
+      + '<div id="voice-status" style="font-size:13px;color:' + (isListening ? 'var(--accent)' : 'var(--text3)') + ';font-weight:500">' + (isListening ? '🔴 Listening... tap Stop when done' : 'Tap Start to speak') + '</div></div>'
+      + (isListening
+        ? '<button onclick="stopVoiceInput()" style="padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer">Stop</button>'
+        : '<button onclick="startVoiceInput()" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer"' + (rpState.loading ? ' disabled' : '') + '>Start</button>');
+  }
+  inputHtml += '</div>';
 
   el.innerHTML = '<div class="chat-container">'
     + '<div class="chat-header"><div class="chat-header-avatar">' + c.avatar + '</div>'
-    + '<div class="chat-header-info"><h4>' + c.name + '</h4><p>' + c.role + '</p></div>'
-    + '<div class="chat-close" onclick="endChat()">End Chat</div></div>'
+    + '<div class="chat-header-info"><h4>' + (mode === 'coach' ? c.name : (mode === 'ai_customer' ? 'Sales Practice' : 'Watch & Learn')) + '</h4><p>' + modeLabel + '</p></div>'
+    + '<div class="chat-close" onclick="endChat()">End</div></div>'
     + '<div class="chat-messages" id="chat-msgs">' + msgsHtml + '</div>'
-    + '<div class="chat-input-bar">'
-    + '<input type="text" id="chat-input" placeholder="Ask ' + c.name + ' anything..." onkeydown="if(event.key===\'Enter\')sendMsg()">'
-    + '<button onclick="sendMsg()" id="chat-send-btn"' + (rpState.loading?' disabled':'') + '>Send</button>'
-    + '</div></div>';
+    + inputHtml
+    + '</div>';
 
   var msgBox = document.getElementById('chat-msgs');
   if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+  if (inputMode === 'type') { var inp = document.getElementById('chat-input'); if (inp) inp.focus(); }
 }
+
+function toggleInputMode(mode) {
+  if (rpState.listening) stopVoiceInput();
+  rpState.inputMode = mode;
+  renderView();
+}
+window.toggleInputMode = toggleInputMode;
+
+function startVoiceInput() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Speech recognition requires Chrome or Edge.');
+    return;
+  }
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = new SpeechRec();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'en-CA';
+  window._chatVoice = rec;
+  window._chatVoiceText = '';
+  rpState.listening = true;
+  renderView();
+
+  rec.onresult = function(event) {
+    var text = '';
+    for (var i = 0; i < event.results.length; i++) {
+      text += event.results[i][0].transcript;
+    }
+    window._chatVoiceText = text;
+    var status = document.getElementById('voice-status');
+    if (status) status.textContent = '🔴 "' + text.substring(0, 60) + (text.length > 60 ? '...' : '') + '"';
+  };
+  rec.onerror = function(e) { if (e.error !== 'no-speech') console.log('Voice error:', e.error); };
+  rec.onend = function() { if (rpState.listening) rec.start(); };
+  rec.start();
+}
+window.startVoiceInput = startVoiceInput;
+
+function stopVoiceInput() {
+  rpState.listening = false;
+  if (window._chatVoice) { window._chatVoice.onend = null; window._chatVoice.stop(); }
+  var text = (window._chatVoiceText || '').trim();
+  if (text) {
+    rpState.messages.push({ role: 'user', content: text });
+    window._chatVoiceText = '';
+    renderView();
+    callCoach();
+  } else {
+    renderView();
+  }
+}
+window.stopVoiceInput = stopVoiceInput;
 
 function formatMsg(text) {
   if (!text) return '';
   return esc(text).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
 
-async function startChat(coachKey, initialMsg) {
+async function startChat(coachKey, initialMsg, mode) {
   rpState.coach = coachKey;
   rpState.messages = [];
   rpState.loading = false;
   rpState.context = null;
+  rpState.mode = mode || 'coach';
+  rpState.inputMode = 'type';
+  rpState.listening = false;
 
   // Load live context from Supabase
   try {
@@ -1180,6 +1264,14 @@ async function startChat(coachKey, initialMsg) {
   } catch(e) {
     console.error('Context load error:', e);
     rpState.context = 'Live data unavailable.';
+  }
+
+  // For AI customer mode, send opening scenario
+  if (rpState.mode === 'ai_customer' && !initialMsg) {
+    initialMsg = 'Start a roleplay. You are a customer walking into an appliance store. Pick a realistic scenario (reno, replacement, browsing, etc.) and open the conversation as the customer would. I am the sales rep.';
+  }
+  if (rpState.mode === 'ai_rep' && !initialMsg) {
+    initialMsg = 'Start a roleplay. You are an expert appliance sales rep. I am a customer walking into the store. Greet me and begin the sales process. I will respond as the customer.';
   }
 
   if (initialMsg) {
@@ -1210,17 +1302,44 @@ async function callCoach() {
   renderView();
 
   var c = coaches[rpState.coach];
-  var sysPrompt = 'You are ' + c.name + ', ' + c.role + ' at ApplianceIQ — a training platform for appliance sales reps in Canada.\n\n'
-    + 'PERSONA: ' + c.desc + '\n\n'
-    + 'RULES:\n'
-    + '- Stay in character as ' + c.name + ' at ALL times\n'
-    + '- Keep responses concise (2-4 paragraphs max) — sales reps are busy\n'
-    + '- Use real product data, specs, and prices from the context below when relevant\n'
-    + '- Give actionable scripts, not theory\n'
-    + '- If roleplaying a customer scenario, play both sides — coach the rep through it\n'
-    + '- Reference Canadian context (pricing in CAD, building codes, EnerGuide)\n'
-    + '- When you disagree with another coach approach, say so briefly\n\n'
-    + 'LIVE DATA FROM PIM:\n' + (rpState.context || 'No data loaded.');
+  var sysPrompt = '';
+
+  if (rpState.mode === 'ai_customer') {
+    sysPrompt = 'You are a CUSTOMER in an appliance store. You are roleplaying with a sales rep who is practicing their skills.\n\n'
+      + 'RULES:\n'
+      + '- Stay in character as a realistic Canadian customer at ALL times\n'
+      + '- Be a believable shopper — have a backstory, budget concerns, preferences, and realistic objections\n'
+      + '- Mix behaviors: sometimes be easy, sometimes be difficult, sometimes bring up online prices, sometimes mention your spouse needs to agree\n'
+      + '- React naturally to what the rep says — if they do great discovery, open up more. If they push too hard, get defensive\n'
+      + '- Throw realistic curveballs: "I saw this cheaper on Amazon", "I need to talk to my wife first", "We are just looking today"\n'
+      + '- Use Canadian references (mention cities, stores, renovation projects)\n'
+      + '- Keep responses SHORT (2-4 sentences) like a real customer would speak\n'
+      + '- Reference real products and prices from the data below when relevant\n\n'
+      + 'LIVE PRODUCT DATA:\n' + (rpState.context || 'No data loaded.');
+  } else if (rpState.mode === 'ai_rep') {
+    sysPrompt = 'You are an EXPERT APPLIANCE SALES REP demonstrating best practices. The user is playing the customer.\n\n'
+      + 'RULES:\n'
+      + '- Demonstrate the ApplianceIQ 10-step sales process perfectly\n'
+      + '- Show proper greeting (warm, non-commission), rapport building, needs discovery, product selection (rule of 3), lifestyle demo, value building, objection handling, closing, complete ticket (warranties, accessories), and follow-up\n'
+      + '- Use real product specs, MSRPs, and competitive knowledge from the data below\n'
+      + '- Show how to cross-sell (hood with range, pedestal with washer, protection plans)\n'
+      + '- Be the example of what a perfect rep looks like\n'
+      + '- Keep responses concise but thorough — show the technique, explain WHY in brackets [coaching note: this builds trust]\n'
+      + '- Reference Canadian context (CAD pricing, building codes, EnerGuide)\n\n'
+      + 'LIVE PRODUCT DATA:\n' + (rpState.context || 'No data loaded.');
+  } else {
+    sysPrompt = 'You are ' + c.name + ', ' + c.role + ' at ApplianceIQ — a training platform for appliance sales reps in Canada.\n\n'
+      + 'PERSONA: ' + c.desc + '\n\n'
+      + 'RULES:\n'
+      + '- Stay in character as ' + c.name + ' at ALL times\n'
+      + '- Keep responses concise (2-4 paragraphs max) — sales reps are busy\n'
+      + '- Use real product data, specs, and prices from the context below when relevant\n'
+      + '- Give actionable scripts, not theory\n'
+      + '- If roleplaying a customer scenario, play both sides — coach the rep through it\n'
+      + '- Reference Canadian context (pricing in CAD, building codes, EnerGuide)\n'
+      + '- When you disagree with another coach approach, say so briefly\n\n'
+      + 'LIVE DATA FROM PIM:\n' + (rpState.context || 'No data loaded.');
+  }
 
   var apiMessages = rpState.messages.map(function(m) { return { role: m.role, content: m.content }; });
 
