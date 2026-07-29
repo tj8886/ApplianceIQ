@@ -682,25 +682,105 @@ function renderBanner(){
 // ===== PIPELINE =====
 // === AI COACH BAR (reusable across views) ===
 function aiCoachBar(){
-  return '<div class="ai-coach-bar"><div class="acb-icon">🤖</div><div class="acb-body"><div class="acb-title">AI Sales Coach</div><div class="acb-sub">Ask about your pipeline, get coaching tips, objection handling, or product advice</div><div class="acb-input"><input id="coachBarInput" placeholder="Ask your AI coach anything…"><button class="btn-ai" id="coachBarSend">Ask</button></div><div id="coachBarReply" style="margin-top:8px;font-size:13px;display:none;background:rgba(255,255,255,.08);border-radius:8px;padding:10px;max-height:160px;overflow-y:auto"></div></div></div>';
+  return '<div class="ai-coach-bar" style="flex-wrap:wrap"><div class="acb-icon">🤖</div><div class="acb-body" style="width:100%"><div class="acb-title">AI Sales Coach · Product Intelligence</div><div class="acb-sub">Ask coaching questions, compare products ("Bosch 800 vs Miele dishwasher"), get selling points, or objection handling</div><div class="acb-input"><input id="coachBarInput" placeholder="e.g. Compare Bosch 800 vs 500 series dishwasher, or: how do I handle price objections?"><button class="btn-ai" id="coachBarSend">Ask</button></div><div id="coachBarReply" style="margin-top:10px;display:none;background:rgba(255,255,255,.1);border-radius:10px;padding:14px;max-height:400px;overflow-y:auto;font-size:13px;line-height:1.6"></div></div></div>';
+}
+async function pimProductSearch(query){
+  // Extract brand/model/category terms for PIM lookup
+  const words=query.toLowerCase();
+  const q=words.replace(/compare|versus|vs\.?|between|and|the|with|difference|what|which|better|best|recommend/gi,'').trim();
+  const terms=q.split(/[\s,]+/).filter(w=>w.length>2);
+  if(!terms.length)return[];
+  // Build an OR search across brand, model, series, category, short_description
+  let query_str='';
+  const filters=terms.slice(0,6).map(t=>'brand_name.ilike.%'+t+'%,model.ilike.%'+t+'%,series.ilike.%'+t+'%,category.ilike.%'+t+'%,short_description.ilike.%'+t+'%');
+  const{data}=await sb.from('aiq_products').select('brand_name,model,category,series,product_line,msrp,sale_price,short_description,finish,color,capacity_cu_ft,width_inches,height_inches,depth_inches,depth_with_handles,energy_star,ada_compliant,installation_type,voltage,wattage,amperage,weight_lbs,specs_json,is_discontinued,made_in').or(filters.join(',')).limit(20);
+  return data??[];
+}
+function renderProductTable(products){
+  if(!products.length)return'';
+  const cols=products.slice(0,4);
+  const specs=[
+    ['Brand','brand_name'],['Model','model'],['Series','series'],['Category','category'],
+    ['MSRP','msrp'],['Sale Price','sale_price'],['Description','short_description'],
+    ['Capacity','capacity_cu_ft'],['Width','width_inches'],['Height','height_inches'],
+    ['Depth','depth_inches'],['Depth w/ Handles','depth_with_handles'],
+    ['Voltage','voltage'],['Wattage','wattage'],['Weight (lbs)','weight_lbs'],
+    ['Energy Star','energy_star'],['ADA','ada_compliant'],['Installation','installation_type'],
+    ['Finish','finish'],['Color','color'],['Made In','made_in'],['Discontinued','is_discontinued']
+  ];
+  const fmtVal=(v,k)=>{
+    if(v===null||v===undefined||v==='')return'—';
+    if(k==='msrp'||k==='sale_price')return'$'+Number(v).toLocaleString();
+    if(v===true)return'✅ Yes';if(v===false)return'—';
+    return String(v);
+  };
+  // Filter out rows where ALL products have no value
+  const visibleSpecs=specs.filter(([,k])=>cols.some(p=>p[k]!=null&&p[k]!==''&&p[k]!==false));
+  let html='<table style="width:100%;border-collapse:collapse;font-size:12px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;margin:10px 0">';
+  html+='<thead><tr><th style="text-align:left;padding:8px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:11px;text-transform:uppercase;letter-spacing:.04em">Spec</th>';
+  cols.forEach(p=>{html+='<th style="text-align:left;padding:8px;background:rgba(255,255,255,.08);color:#fff;font-weight:700">'+p.brand_name+' '+p.model+'</th>';});
+  html+='</tr></thead><tbody>';
+  visibleSpecs.forEach(([label,key])=>{
+    html+='<tr>';
+    html+='<td style="padding:6px 8px;border-top:1px solid rgba(255,255,255,.08);font-weight:600;color:rgba(255,255,255,.7)">'+label+'</td>';
+    cols.forEach(p=>{html+='<td style="padding:6px 8px;border-top:1px solid rgba(255,255,255,.08);color:#fff">'+fmtVal(p[key],key)+'</td>';});
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  return html;
 }
 function bindCoachBar(){
   const btn=$('#coachBarSend');const inp=$('#coachBarInput');
   if(!btn||!inp)return;
   const send=async()=>{
     const txt=inp.value.trim();if(!txt)return;
-    const reply=$('#coachBarReply');reply.style.display='block';reply.textContent='Thinking…';
+    const reply=$('#coachBarReply');reply.style.display='block';reply.innerHTML='<div style="opacity:.6">Searching products and thinking…</div>';
     inp.value='';btn.disabled=true;
+
+    // Check if this is a product question — search PIM
+    const isProductQ=/compar|vs\.?|versus|product|model|series|brand|dishwash|washer|dryer|fridge|refriger|range|oven|cook|hood|micro|freezer|laundry|bosch|miele|electrolux|thermador|sub.zero|wolf|cove|café|samsung|lg|whirlpool|maytag|kitchenaid|frigidaire|beko|fisher|dacor|jenn|gaggenau|speed.queen|asko|blomberg/i.test(txt);
+    let products=[];
+    let productContext='';
+    if(isProductQ){
+      try{
+        products=await pimProductSearch(txt);
+        if(products.length){
+          productContext='\n\nPRODUCT DATA FROM PIM (use this real data):\n'+JSON.stringify(products.map(p=>({brand:p.brand_name,model:p.model,series:p.series,category:p.category,msrp:p.msrp,sale:p.sale_price,desc:p.short_description,capacity:p.capacity_cu_ft,width:p.width_inches,height:p.height_inches,depth:p.depth_inches,energy_star:p.energy_star,voltage:p.voltage,install:p.installation_type,discontinued:p.is_discontinued})));
+        }
+      }catch(e){/* PIM search failed, continue without */}
+    }
+
     try{
+      const sysPrompt='You are an expert appliance retail sales coach and product specialist. You have deep knowledge of all major appliance brands.\n\n'
+        +'RULES:\n'
+        +'- If product data is provided, use ONLY the real data — never invent specs.\n'
+        +'- For comparisons: first list the key differences, then write a SELLING SYNOPSIS — a 3-4 sentence pitch the rep can say out loud to a customer explaining the real difference in plain language.\n'
+        +'- For single products: highlight the top 3 selling points and one honest limitation.\n'
+        +'- Keep responses concise and actionable — reps are busy.\n'
+        +'- Speak as a coach. Be direct, practical, specific.\n'
+        +'- Format comparisons clearly. Use plain text headings with === markers, not markdown.';
+
       const resp=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,
-          system:'You are TJ, an expert appliance retail sales coach. Keep responses concise (2-3 paragraphs max). Be practical, specific, and encouraging. Reference real sales techniques. If asked about products, give specific appliance knowledge. Always speak as a coach helping a salesperson improve.',
-          messages:[{role:'user',content:txt}]})
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,
+          system:sysPrompt,
+          messages:[{role:'user',content:txt+productContext}]})
       });
       const data=await resp.json();
       const text=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
-      reply.textContent=text||'No response — try rephrasing your question.';
+
+      // Build reply with product table + AI analysis
+      let html='';
+      if(products.length>1){
+        html+=renderProductTable(products);
+      }
+      // Convert text to styled HTML
+      html+='<div style="color:#fff;white-space:pre-wrap;line-height:1.7">'
+        +text.replace(/===(.*?)===/g,'<div style="font-weight:800;font-size:14px;margin:12px 0 4px;color:#fff;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:4px">$1</div>')
+            .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+            .replace(/^- /gm,'• ')
+        +'</div>';
+      reply.innerHTML=html;
     }catch(err){
       reply.innerHTML='<span style="opacity:.6">Coach unavailable right now. Try the full <b>Ask the Team</b> or <b>AI Assistant</b> views from the sidebar.</span>';
     }
