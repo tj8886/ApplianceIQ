@@ -1304,10 +1304,22 @@ window.renderPackagesList=function(){
     const days=daysRemaining(p.quote_expires_at);
     const expiryTxt=p.quote_expires_at?fmtDate(p.quote_expires_at):'—';
     const expiryBadge=days!==null?(days<0?'<span class="badge badge-r">Expired</span>':days<=3?'<span class="badge badge-y">'+expiryLabel(days)+'</span>':'<span style="font-size:12px;color:var(--steel)">'+expiryLabel(days)+'</span>'):'';
-    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+(p.quote_number||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+(p.approval_status&&p.approval_status!=='not_required'?' '+approvalBadge(p.approval_status):'')+'</td><td>'+expiryTxt+'<div>'+expiryBadge+'</div></td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button></div></td></tr>'}).join('');
+    return'<tr style="cursor:pointer" onclick="openPackageDetail(\''+p.id+'\')"><td><div style="font-weight:600">'+esc(p.package_name)+'</div><div style="font-size:12px;color:var(--steel)">'+(p.quote_number||'')+'</div></td><td>'+esc(cust)+'</td><td>'+statusBadge(p.status)+(p.approval_status&&p.approval_status!=='not_required'?' '+approvalBadge(p.approval_status):'')+'</td><td>'+expiryTxt+'<div>'+expiryBadge+'</div></td><td class="r num" style="font-family:Sora">$'+(parseFloat(p.total_msrp)||0).toLocaleString()+'</td><td>'+fmtDate(p.created_at)+'</td><td><div class="flex" style="gap:4px"><button class="btn btn-focus" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();openPackageDetail(\''+p.id+'\')">View</button><button class="btn btn-g" style="padding:5px 8px" onclick="event.stopPropagation();deletePackage(\''+p.id+'\',\''+esc(p.package_name).replace(/'/g,"\\'")+'\')"><svg class="icon" style="width:14px;height:14px;color:var(--danger)"><use href="#i-trash"/></svg></button></div></td></tr>'}).join('');
 };
 
-/* ==================== APPROVALS LIST ==================== */
+async function deletePackage(pkgId,pkgName){
+  if(!confirm('Delete package "'+pkgName+'"?\n\nThis will permanently remove the package and all its products, services, and warranties.'))return;
+  try{
+    await sb.from('speciq_package_warranties').delete().eq('package_id',pkgId);
+    await sb.from('speciq_package_services').delete().eq('package_id',pkgId);
+    await sb.from('speciq_package_products').delete().eq('package_id',pkgId);
+    const{error}=await sb.from('speciq_packages').delete().eq('id',pkgId);
+    if(error)throw error;
+    allPackages=allPackages.filter(function(p){return p.id!==pkgId});
+    renderPackagesList();
+  }catch(e){console.error('Delete error:',e);alert('Failed to delete package: '+(e.message||e))}
+}
+window.deletePackage=deletePackage;
 async function loadApprovals(){
   try{
     const{data}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name)').in('approval_status',['pending','approved','approved_with_conditions','changes_requested','rejected']).order('submitted_at',{ascending:false});
