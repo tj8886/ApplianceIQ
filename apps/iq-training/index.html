@@ -920,14 +920,19 @@ function renderBadges(el) {
 }
 
 function renderNotifPage(el) {
-  const notifsHtml = S.notifications.map(n =>
-    '<div class="notif-item ' + (!n.is_read?'unread':'') + '">'
+  var notifsHtml = S.notifications.map(function(n) {
+    var action = '';
+    if (n.course_id) action = "navTo('zone',{zone:2})";
+    else if (n.brand_id) action = "navTo('brands')";
+    else if (n.notification_type === 'new_competitive_entry') action = "navTo('zone',{zone:2})";
+    else action = "";
+    return '<div class="notif-item ' + (!n.is_read?'unread':'') + '"' + (action ? ' onclick="' + action + '" style="cursor:pointer"' : '') + '>'
     + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
-    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>'
-  ).join('') || '<p style="color:var(--text3);text-align:center;padding:40px;font-size:13px">No notifications yet</p>';
+    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
+  }).join('') || '<p style="color:var(--text3);text-align:center;padding:40px;font-size:13px">No notifications yet</p>';
 
   el.innerHTML = '<div class="dash-header"><h2>Notifications</h2><p>' + S.notifications.length + ' alerts</p></div>'
-    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + notifsHtml + '</div>';
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + notifsHtml + '</div>';
 }
 
 function renderNotifPanel() {
