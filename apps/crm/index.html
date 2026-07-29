@@ -396,6 +396,51 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 @media(min-width:769px){.mobile-header,.mobile-overlay{display:none}}
 
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* === COMMUNICATIONS === */
+.comms-tabs{display:flex;gap:2px;background:#eef1f7;border-radius:8px;padding:2px;margin-bottom:16px}
+.comms-tabs button{padding:6px 14px;border:none;background:0 0;border-radius:6px;font-size:12px;font-weight:600;color:var(--steel);cursor:pointer}
+.comms-tabs button.active{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.email-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.email-card:hover{border-color:var(--navy)}
+.email-card .ec-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.email-card .ec-to{font-weight:600;font-size:13px}.email-card .ec-date{font-size:11px;color:var(--steel)}
+.email-card .ec-subj{font-size:14px;font-weight:700;margin-bottom:2px}
+.email-card .ec-preview{font-size:12px;color:var(--steel);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.email-card .ec-status{display:inline-flex;align-items:center;gap:4px;margin-top:6px}
+.seq-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:10px}
+.seq-card h4{margin:0 0 4px;font-size:14px;font-weight:700}
+.seq-card .seq-meta{font-size:12px;color:var(--steel)}
+.seq-step{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.seq-step:last-child{border-bottom:none}
+.seq-step-num{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0}
+.seq-step-body{flex:1;min-width:0}
+.seq-step-body .ss-ch{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.seq-step-body .ss-ch.email{color:var(--focus)}.seq-step-body .ss-ch.task{color:var(--amber)}.seq-step-body .ss-ch.call{color:var(--verified)}
+.seq-step-body .ss-subj{font-weight:600;font-size:13px;margin-top:2px}
+.seq-step-body .ss-delay{font-size:11px;color:var(--steel)}
+.tmpl-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.tmpl-card:hover{border-color:var(--navy)}
+.tmpl-card h4{margin:0 0 2px;font-size:14px;font-weight:700}
+.tmpl-card .tc-cat{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--steel)}
+.tmpl-card .tc-preview{font-size:12px;color:var(--steel);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.enroll-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:8px}
+.enroll-card .en-top{display:flex;justify-content:space-between;align-items:center}
+.enroll-card .en-name{font-weight:700;font-size:14px}
+.enroll-card .en-seq{font-size:12px;color:var(--steel)}
+.enroll-card .en-progress{display:flex;gap:4px;margin-top:8px}
+.enroll-card .en-dot{width:24px;height:6px;border-radius:3px;background:#eef1f7}
+.enroll-card .en-dot.done{background:var(--verified)}.enroll-card .en-dot.current{background:var(--focus)}
+.sla-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.sla-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.sla-card .sv{font-size:28px;font-weight:800}.sla-card .sl{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
+.sla-card.warn .sv{color:var(--amber)}.sla-card.danger .sv{color:var(--danger)}
+.compose-body{display:flex;flex-direction:column;gap:10px}
+.compose-body textarea{min-height:180px;resize:vertical}
+.merge-hint{font-size:11px;color:var(--steel);margin-top:4px}
+.merge-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.merge-tag{font-size:10px;background:#eef1f7;padding:2px 8px;border-radius:4px;cursor:pointer;border:none;color:var(--navy);font-weight:600}
+.merge-tag:hover{background:#dce3f0}
 </style>
 </head>
 <body>
@@ -488,6 +533,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="deliveries">🚚 Deliveries</button>
 <button class="nav-btn" data-view="recordings">🎙 Recordings</button>
 <button class="nav-btn" data-view="products">📦 Products</button>
+<button class="nav-btn" data-view="communications">📧 Communications</button>
 <div class="nav-sep"></div>
 <button class="nav-btn" data-view="dashboard">📉 Dashboard</button>
 <button class="nav-btn" data-view="manager">👔 Manager</button>
@@ -587,7 +633,7 @@ async function render(){
   showLoading();
   if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
-  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam};
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam};
   (views[currentView]||renderPipeline)();
 }
 
@@ -1036,6 +1082,186 @@ function openRecorderModal(dealId){
 }
 
 // ===== DASHBOARD =====
+// ===== COMMUNICATIONS ENGINE =====
+let commsTab='inbox';
+async function renderCommunications(){
+  const[{data:emails},{data:templates},{data:campaigns},{data:enrollments},{data:contacts}]=await Promise.all([
+    sb.from('crm_emails').select('*').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}).limit(100),
+    sb.from('communication_templates').select('*').eq('organization_id',currentOrg.id).eq('is_active',true).order('name'),
+    sb.from('aicrm_outreach_campaigns').select('*,aicrm_sequence_steps(*)').eq('organization_id',currentOrg.id).order('name'),
+    sb.from('aicrm_sequence_enrollments').select('*,contacts(first_name,last_name,email),aicrm_outreach_campaigns(name)').eq('organization_id',currentOrg.id).order('enrolled_at',{ascending:false}).limit(50),
+    sb.from('contacts').select('id,first_name,last_name,email,days_since_contact,followup_status,next_followup_date,temperature').eq('organization_id',currentOrg.id).order('days_since_contact',{ascending:false}).limit(200)
+  ]);
+  const em=emails??[];const tmpl=templates??[];const camps=campaigns??[];const enr=enrollments??[];const cts=contacts??[];
+
+  // SLA metrics
+  const overdue=cts.filter(c=>c.next_followup_date&&new Date(c.next_followup_date)<new Date());
+  const noContact7=cts.filter(c=>(c.days_since_contact??0)>7);
+  const noContact14=cts.filter(c=>(c.days_since_contact??0)>14);
+  const hot=cts.filter(c=>c.temperature==='hot'&&(c.days_since_contact??0)>3);
+
+  const tabBtn=(id,lbl,cnt)=>'<button class="'+(commsTab===id?'active':'')+'" data-ct="'+id+'">'+lbl+(cnt?' <span class="num" style="font-size:10px;opacity:.7">('+cnt+')</span>':'')+'</button>';
+
+  mainEl.innerHTML='<div class="page-head"><div><h1>📧 Communications</h1><div class="sub">'+esc(currentOrg.name)+' · '+em.length+' emails sent</div></div>'
+    +'<div class="head-actions"><button class="btn btn-primary" id="composeBtn">✉ Compose Email</button></div></div>'
+    +'<div class="sla-grid">'
+    +'<div class="sla-card'+(overdue.length?' danger':'')+'"><div class="sv num">'+overdue.length+'</div><div class="sl">Overdue Follow-ups</div></div>'
+    +'<div class="sla-card'+(hot.length?' warn':'')+'"><div class="sv num">'+hot.length+'</div><div class="sl">Hot Leads Idle 3d+</div></div>'
+    +'<div class="sla-card'+(noContact7.length>5?' warn':'')+'"><div class="sv num">'+noContact7.length+'</div><div class="sl">No Contact 7d+</div></div>'
+    +'<div class="sla-card'+(noContact14.length?' danger':'')+'"><div class="sv num">'+noContact14.length+'</div><div class="sl">No Contact 14d+</div></div>'
+    +'<div class="sla-card"><div class="sv num">'+enr.filter(e=>e.status==='active').length+'</div><div class="sl">Active Sequences</div></div>'
+    +'<div class="sla-card"><div class="sv num">'+tmpl.length+'</div><div class="sl">Templates</div></div>'
+    +'</div>'
+    +'<div class="comms-tabs" id="commsTabs">'+tabBtn('inbox','Inbox',em.length)+tabBtn('templates','Templates',tmpl.length)+tabBtn('sequences','Sequences',camps.length)+tabBtn('enrollments','Enrollments',enr.length)+tabBtn('sla','SLA Alerts',overdue.length+hot.length)+'</div>'
+    +'<div id="commsContent"></div>';
+
+  const cc=$('#commsContent');
+  if(commsTab==='inbox'){
+    cc.innerHTML=em.length?em.map(e=>{
+      const st=e.status||'sent';
+      const stColor=st==='sent'?'g':st==='delivered'?'g':st==='opened'?'a':st==='failed'?'r':'n';
+      return '<div class="email-card" data-eid="'+e.id+'"><div class="ec-top"><span class="ec-to">To: '+esc(e.to_email||'—')+'</span><span class="ec-date">'+ago(e.sent_at)+'</span></div>'
+        +'<div class="ec-subj">'+esc(e.subject)+'</div>'
+        +'<div class="ec-preview">'+esc((e.body||'').slice(0,120))+'</div>'
+        +'<div class="ec-status"><span class="chip '+stColor+'">'+esc(st)+'</span>'+(e.channel&&e.channel!=='email'?' <span class="chip n">'+esc(e.channel)+'</span>':'')+'</div></div>';
+    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No emails sent yet. Click Compose to send your first email.</div>';
+  } else if(commsTab==='templates'){
+    cc.innerHTML='<div class="head-actions" style="margin-bottom:12px"><button class="btn btn-ghost btn-sm" id="newTmplBtn">+ New Template</button></div>'
+      +(tmpl.length?tmpl.map(t=>'<div class="tmpl-card" data-tid="'+t.id+'"><h4>'+esc(t.name)+'</h4><div class="tc-cat">'+esc(t.category||'general')+' · '+esc(t.channel)+'</div><div class="tc-preview">'+esc(t.subject_template||'')+'</div></div>').join(''):'<div class="empty" style="padding:40px;text-align:center">No templates yet.</div>');
+    $('#newTmplBtn')?.addEventListener('click',()=>openTemplateModal(null,tmpl));
+    $$('[data-tid]').forEach(b=>{b.onclick=()=>{const t=tmpl.find(x=>x.id===b.dataset.tid);if(t)openTemplateModal(t,tmpl);};});
+  } else if(commsTab==='sequences'){
+    cc.innerHTML=camps.length?camps.map(c=>{
+      const steps=(c.aicrm_sequence_steps||[]).sort((a,b)=>a.step_number-b.step_number);
+      return '<div class="seq-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><h4>'+esc(c.name)+'</h4><div class="seq-meta">'+esc(c.campaign_type)+' · <span class="chip '+(c.status==='active'?'g':'n')+'">'+esc(c.status)+'</span> · '+steps.length+' steps</div></div></div>'
+        +'<div style="margin-top:10px">'+steps.map(s=>'<div class="seq-step"><div class="seq-step-num">'+s.step_number+'</div><div class="seq-step-body"><div class="ss-ch '+esc(s.channel)+'">'+esc(s.channel)+(s.requires_manual_approval?' · approval required':'')+'</div>'+(s.subject_template?'<div class="ss-subj">'+esc(s.subject_template)+'</div>':'')+'<div class="ss-delay">'+(s.delay_days===0?'Immediately':'After '+s.delay_days+' day'+(s.delay_days>1?'s':''))+(s.purpose?' · '+esc(s.purpose):'')+'</div></div></div>').join('')+'</div></div>';
+    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No sequences configured.</div>';
+  } else if(commsTab==='enrollments'){
+    cc.innerHTML=enr.length?enr.map(e=>{
+      const cn=e.contacts?e.contacts.first_name+' '+(e.contacts.last_name??''):'Unknown';
+      const camp=e.aicrm_outreach_campaigns;
+      const totalSteps=camps.find(c=>c.id===e.campaign_id)?.aicrm_sequence_steps?.length||5;
+      return '<div class="enroll-card"><div class="en-top"><span class="en-name">'+esc(cn)+'</span><span class="chip '+(e.status==='active'?'g':e.status==='completed'?'n':'a')+'">'+esc(e.status)+'</span></div>'
+        +'<div class="en-seq">'+(camp?esc(camp.name):'—')+' · Step '+e.current_step+'/'+totalSteps+' · Enrolled '+ago(e.enrolled_at)+'</div>'
+        +'<div class="en-progress">'+Array.from({length:totalSteps},(_,i)=>'<div class="en-dot'+(i<e.current_step-1?' done':i===e.current_step-1?' current':'')+'"></div>').join('')+'</div></div>';
+    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No active enrollments. Enroll contacts from their detail page or compose an email to start.</div>';
+  } else if(commsTab==='sla'){
+    const alerts=[...overdue.map(c=>({...c,reason:'Overdue follow-up',sev:'danger'})),...hot.map(c=>({...c,reason:'Hot lead idle 3+ days',sev:'warn'})),...noContact14.map(c=>({...c,reason:'No contact in 14+ days',sev:'danger'}))].sort((a,b)=>(b.days_since_contact??0)-(a.days_since_contact??0));
+    cc.innerHTML=alerts.length?alerts.map(a=>'<div class="d5-item"><div class="d5-num" style="background:var(--'+(a.sev==='danger'?'danger':'amber')+')">'+(a.days_since_contact??'?')+'</div><div class="d5-body"><div class="d5c">'+esc(a.first_name+' '+(a.last_name??''))+'</div><div class="d5r">'+esc(a.reason)+(a.email?' · '+esc(a.email):'')+'</div></div><div class="d5-actions"><button class="btn btn-primary btn-sm" data-qe="'+a.id+'">Email</button></div></div>').join(''):'<div class="empty" style="padding:40px;text-align:center">All follow-ups on track. Nice work!</div>';
+    $$('[data-qe]').forEach(b=>{b.onclick=()=>{const ct=cts.find(c=>c.id===b.dataset.qe);if(ct)openComposeModal(ct,null,tmpl);};});
+  }
+
+  $$('#commsTabs button').forEach(b=>{b.onclick=()=>{commsTab=b.dataset.ct;renderCommunications();};});
+  $('#composeBtn')?.addEventListener('click',()=>openComposeModal(null,null,tmpl));
+  $$('[data-eid]').forEach(b=>{b.onclick=()=>{const e=em.find(x=>x.id===b.dataset.eid);if(e)openEmailDetail(e);};});
+}
+
+function openComposeModal(contact,deal,templates){
+  const tmplOptions=(templates||[]).map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('');
+  const toVal=contact?.email||'';
+  const subjVal='';
+  const bodyVal='';
+  openModal('<h2>✉ Compose Email</h2>'
+    +'<div class="compose-body">'
+    +'<div class="field"><label>To</label><input id="ce_to" value="'+esc(toVal)+'" placeholder="recipient@example.com"></div>'
+    +'<div class="field"><label>Template (optional)</label><select id="ce_tmpl"><option value="">— No template —</option>'+tmplOptions+'</select></div>'
+    +'<div class="field"><label>Subject</label><input id="ce_subj" value="'+esc(subjVal)+'"></div>'
+    +'<div class="field"><label>Body</label><textarea id="ce_body" rows="8">'+esc(bodyVal)+'</textarea>'
+    +'<div class="merge-hint">Merge fields: <span class="merge-tags">'
+    +['contact_first_name','product_name','salesperson_name','quote_number','quote_total'].map(f=>'<button class="merge-tag" data-mf="'+f+'">{{'+f+'}}</button>').join('')
+    +'</span></div></div>'
+    +'<div class="form-err" id="ce_err"></div>'
+    +'</div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="ce_send">Send Email</button></div>');
+
+  const tmplData=(templates||[]);
+  $('#ce_tmpl').onchange=()=>{
+    const tid=$('#ce_tmpl').value;
+    const t=tmplData.find(x=>x.id===tid);
+    if(t){$('#ce_subj').value=t.subject_template||'';$('#ce_body').value=t.body_template||'';}
+  };
+  $$('[data-mf]').forEach(b=>{b.onclick=()=>{const ta=$('#ce_body');const tag='{{'+b.dataset.mf+'}}';const pos=ta.selectionStart;ta.value=ta.value.slice(0,pos)+tag+ta.value.slice(pos);ta.focus();};});
+
+  $('#ce_send').onclick=async()=>{
+    const to=$('#ce_to').value.trim();
+    const subj=$('#ce_subj').value.trim();
+    const body=$('#ce_body').value.trim();
+    if(!to||!subj||!body)return formErr('To, Subject, and Body are all required.');
+    if(!to.includes('@'))return formErr('Enter a valid email address.');
+
+    // Merge fields with contact data
+    let finalSubj=subj,finalBody=body;
+    if(contact){
+      const rep=(s)=>s.replace(/\{\{contact_first_name\}\}/g,contact.first_name||'').replace(/\{\{salesperson_name\}\}/g,currentUser?.user_metadata?.full_name||'Your Sales Rep');
+      finalSubj=rep(finalSubj);finalBody=rep(finalBody);
+    }
+
+    $('#ce_send').disabled=true;$('#ce_send').textContent='Sending…';
+
+    // Try edge function first, fall back to direct insert
+    try{
+      const{data:{session}}=await sb.auth.getSession();
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/email-dispatcher',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({organization_id:currentOrg.id,to_email:to,subject:finalSubj,body:finalBody,
+          crm_record_type:contact?'contact':deal?'deal':null,crm_record_id:contact?.id||deal?.id||null,
+          record_label:contact?(contact.first_name+' '+(contact.last_name||'')):deal?.title||null})
+      });
+      const result=await resp.json();
+      if(!resp.ok)throw new Error(result.detail||result.error||'Send failed');
+      // Update contact last_communication_at
+      if(contact){await sb.from('contacts').update({last_communication_at:new Date().toISOString(),last_contact_method:'email',last_contacted_by:currentUser.id,days_since_contact:0}).eq('id',contact.id);}
+      closeModal();render();
+    }catch(err){
+      // Fallback: save directly to crm_emails as draft/queued
+      const{error}=await sb.from('crm_emails').insert({organization_id:currentOrg.id,user_id:currentUser.id,to_email:to,subject:finalSubj,body:finalBody,status:'queued',channel:'email',
+        contact_id:contact?.id||null,deal_id:deal?.id||null,
+        metadata:{crm_record_type:contact?'contact':deal?'deal':null,send_error:err.message}});
+      if(error){formErr(error.message);$('#ce_send').disabled=false;$('#ce_send').textContent='Send Email';return;}
+      if(contact){await sb.from('contacts').update({last_communication_at:new Date().toISOString(),last_contact_method:'email',last_contacted_by:currentUser.id,days_since_contact:0}).eq('id',contact.id);}
+      closeModal();render();
+    }
+  };
+}
+
+function openEmailDetail(e){
+  openModal('<h2>📧 Email Detail</h2>'
+    +'<div style="margin-bottom:12px"><div class="field-row"><div class="field"><label>To</label><div>'+esc(e.to_email||'—')+'</div></div><div class="field"><label>Status</label><span class="chip '+(e.status==='sent'||e.status==='delivered'?'g':e.status==='failed'?'r':'n')+'">'+esc(e.status)+'</span></div></div>'
+    +'<div class="field"><label>Subject</label><div style="font-weight:700">'+esc(e.subject)+'</div></div>'
+    +'<div class="field"><label>Body</label><div style="white-space:pre-wrap;font-size:13px;background:#f7f9fd;padding:12px;border-radius:8px;max-height:300px;overflow-y:auto">'+esc(e.body||'')+'</div></div>'
+    +'<div class="field"><label>Sent</label><div>'+new Date(e.sent_at).toLocaleString()+'</div></div>'
+    +(e.provider_message_id?'<div class="field"><label>Provider ID</label><div style="font-size:11px;color:var(--steel)">'+esc(e.provider_message_id)+'</div></div>':'')
+    +'</div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>');
+}
+
+function openTemplateModal(t,allTemplates){
+  const isNew=!t;
+  openModal('<h2>'+(isNew?'New Template':'Edit Template')+'</h2>'
+    +'<div class="field"><label>Name</label><input id="tm_n" value="'+esc(t?.name||'')+'"></div>'
+    +'<div class="field-row"><div class="field"><label>Channel</label><select id="tm_ch"><option value="email" '+(t?.channel==='email'||!t?'selected':'')+'>Email</option><option value="sms" '+(t?.channel==='sms'?'selected':'')+'>SMS</option></select></div>'
+    +'<div class="field"><label>Category</label><select id="tm_cat"><option value="general">General</option><option value="post_visit" '+(t?.category==='post_visit'?'selected':'')+'>Post Visit</option><option value="quote_followup" '+(t?.category==='quote_followup'?'selected':'')+'>Quote Follow-up</option><option value="delivery" '+(t?.category==='delivery'?'selected':'')+'>Delivery</option><option value="post_sale" '+(t?.category==='post_sale'?'selected':'')+'>Post Sale</option><option value="re_engagement" '+(t?.category==='re_engagement'?'selected':'')+'>Re-engagement</option></select></div></div>'
+    +'<div class="field"><label>Subject</label><input id="tm_s" value="'+esc(t?.subject_template||'')+'"></div>'
+    +'<div class="field"><label>Body</label><textarea id="tm_b" rows="8">'+esc(t?.body_template||'')+'</textarea>'
+    +'<div class="merge-hint">Available: <span class="merge-tags">'
+    +['contact_first_name','product_name','salesperson_name','quote_number','delivery_date'].map(f=>'<button class="merge-tag" data-mtf="'+f+'">{{'+f+'}}</button>').join('')
+    +'</span></div></div>'
+    +'<div class="form-err" id="tm_err"></div>'
+    +'<div class="sheet-actions">'+(isNew?'':'<button class="btn btn-danger btn-sm" id="tm_del">Delete</button>')+'<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="tm_save">Save</button></div>');
+
+  $$('[data-mtf]').forEach(b=>{b.onclick=()=>{const ta=$('#tm_b');const tag='{{'+b.dataset.mtf+'}}';const pos=ta.selectionStart;ta.value=ta.value.slice(0,pos)+tag+ta.value.slice(pos);ta.focus();};});
+
+  $('#tm_save').onclick=async()=>{
+    const name=$('#tm_n').value.trim();const body=$('#tm_b').value.trim();
+    if(!name||!body)return formErr('Name and Body are required.');
+    const row={organization_id:currentOrg.id,name,channel:$('#tm_ch').value,category:$('#tm_cat').value,subject_template:$('#tm_s').value.trim()||null,body_template:body};
+    const{error}=isNew?await sb.from('communication_templates').insert(row):await sb.from('communication_templates').update(row).eq('id',t.id);
+    if(error)return formErr(error.message);
+    closeModal();render();
+  };
+  $('#tm_del')?.addEventListener('click',async()=>{if(!confirm('Delete this template?'))return;await sb.from('communication_templates').delete().eq('id',t.id);closeModal();render();});
+}
+
 async function renderDashboard(){const since=new Date(Date.now()-30*864e5).toISOString();const[{data:reviews},{data:events}]=await Promise.all([sb.from('ai_coaching_reviews').select('overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('review_kind','coaching').order('created_at',{ascending:true}).limit(200),sb.from('kpi_events').select('event_type,created_at').eq('organization_id',currentOrg.id).gte('created_at',since)]);
 const rv=(reviews??[]).filter(r=>r.overall_score!=null);const latest=rv.length?rv[rv.length-1]:null;const avg30=(()=>{const w=rv.filter(r=>r.created_at>=since);return w.length?w.reduce((s,r)=>s+Number(r.overall_score),0)/w.length:null;})();const cnt=type=>(events??[]).filter(e=>e.event_type===type).length;const last10=rv.slice(-10);
 const STEPS={prospecting:'Prospecting',preparation:'Preparation',needs_discovery:'Discovery',presentation:'Presentation',objection_handling:'Objections',closing:'Closing',follow_up:'Follow-up'};const sa={};Object.keys(STEPS).forEach(k=>{const v=rv.map(r=>Number(r.kpi_scores?.[k])).filter(v=>!isNaN(v));sa[k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:null;});
@@ -1124,7 +1350,8 @@ async function openContactDetail(ct){
       +'</div>'
       +'<div class="cd-actions-bar">'
         +'<button class="btn btn-ghost btn-sm" data-ql="phone_call" data-qlid="'+ct.id+'">📞 Call</button>'
-        +'<button class="btn btn-ghost btn-sm" data-ql="email" data-qlid="'+ct.id+'">📧 Email</button>'
+        +'<button class="btn btn-ghost btn-sm" data-ql="email" data-qlid="'+ct.id+'">📧 Log Email</button>'
+        +'<button class="btn btn-primary btn-sm" id="cd_compose">✉ Send Email</button>'
         +'<button class="btn btn-ghost btn-sm" data-ql="sms" data-qlid="'+ct.id+'">💬 Text</button>'
         +'<button class="btn btn-ghost btn-sm" data-ql="meeting" data-qlid="'+ct.id+'">🤝 Meet</button>'
       +'</div>'
@@ -1148,6 +1375,7 @@ async function openContactDetail(ct){
   $('#cd_log').onclick=()=>openLogModal(ct.id);
   // Quick log buttons (proper modal instead of prompt())
   $$('[data-ql]').forEach(b=>{b.onclick=()=>openQuickLogModal(b.dataset.ql,b.dataset.qlid);});
+  $('#cd_compose')?.addEventListener('click',async()=>{const{data:tmpl}=await sb.from('communication_templates').select('*').eq('organization_id',currentOrg.id).eq('is_active',true);openComposeModal(ct,null,tmpl??[]);});
 }
 
 function openQuickLogModal(type,contactId){
