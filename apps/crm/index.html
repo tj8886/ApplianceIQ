@@ -1273,7 +1273,7 @@ function openRecorderModal(dealId){
       try{
         const{error:ue}=await sb.storage.from('crm-media').upload(path,blob,{contentType:recorder.mimeType});
         if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
-        const{error:ie}=await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_obtained:true,consent_method:'in_app_checkbox'});
+        const{error:ie}=await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_confirmed:true,consent_confirmed_at:new Date().toISOString(),kind:'pitch',recording_source:'crm'});
         if(ie){$('#rS').textContent='Save failed: '+ie.message;return;}
         openModal('<h2>✓ Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ '+fmtTime(elapsed)+' recorded'+(linkedDeal?' for '+esc(linkedDeal.title):'')+'</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>');
         $('#r_done').onclick=()=>{closeModal();render();};
