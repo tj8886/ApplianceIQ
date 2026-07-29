@@ -421,6 +421,13 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .seq-step-body .ss-ch.email{color:var(--focus)}.seq-step-body .ss-ch.task{color:var(--amber)}.seq-step-body .ss-ch.call{color:var(--verified)}
 .seq-step-body .ss-subj{font-weight:600;font-size:13px;margin-top:2px}
 .seq-step-body .ss-delay{font-size:11px;color:var(--steel)}
+.seq-email-preview{background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:8px;font-size:12px;line-height:1.6;white-space:pre-wrap;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease,opacity .3s ease;opacity:0;padding:0 14px}
+.seq-email-preview.open{max-height:600px;opacity:1;padding:12px 14px}
+.seq-email-preview .sep-subj{font-weight:700;font-size:13px;margin-bottom:6px;color:var(--navy)}
+.seq-email-preview .sep-body{color:var(--ink)}
+.seq-toggle{font-size:11px;color:var(--focus);cursor:pointer;border:none;background:none;font-weight:600;padding:0;margin-top:4px}
+.seq-toggle:hover{text-decoration:underline}
+.seq-step-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .tmpl-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
 .tmpl-card:hover{border-color:var(--navy)}
 .tmpl-card h4{margin:0 0 2px;font-size:14px;font-weight:700}
@@ -1283,12 +1290,21 @@ async function renderCommunications(){
   if(commsTab==='inbox'){
     cc.innerHTML=em.length?em.map(e=>{
       const st=e.status||'sent';
-      const stColor=st==='sent'?'g':st==='delivered'?'g':st==='opened'?'a':st==='failed'?'r':'n';
-      return '<div class="email-card" data-eid="'+e.id+'"><div class="ec-top"><span class="ec-to">To: '+esc(e.to_email||'—')+'</span><span class="ec-date">'+ago(e.sent_at)+'</span></div>'
+      const stColor=st==='sent'?'g':st==='delivered'?'g':st==='opened'?'a':st==='failed'?'r':st==='queued'?'n':'n';
+      const channelIcon=e.channel==='sms'?'💬':e.channel==='call'?'📞':'📧';
+      const contactName=e.contact_id?cts.find(c=>c.id===e.contact_id):null;
+      const fromName=e.from_email||e.metadata?.sender_name||'';
+      return '<div class="email-card" data-eid="'+e.id+'">'
+        +'<div class="ec-top"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">'+channelIcon+'</span><span class="ec-to">'+(contactName?esc(contactName.first_name+' '+(contactName.last_name||''))+' · ':'')+esc(e.to_email||'—')+'</span></div><span class="ec-date">'+ago(e.sent_at)+'</span></div>'
+        +(fromName?'<div style="font-size:11px;color:var(--steel);margin-bottom:2px">From: '+esc(fromName)+'</div>':'')
         +'<div class="ec-subj">'+esc(e.subject)+'</div>'
-        +'<div class="ec-preview">'+esc((e.body||'').slice(0,120))+'</div>'
-        +'<div class="ec-status"><span class="chip '+stColor+'">'+esc(st)+'</span>'+(e.channel&&e.channel!=='email'?' <span class="chip n">'+esc(e.channel)+'</span>':'')+'</div></div>';
-    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No emails sent yet. Click Compose to send your first email.</div>';
+        +'<div class="ec-preview">'+esc((e.body||'').slice(0,150))+'</div>'
+        +'<div class="ec-status"><span class="chip '+stColor+'">'+esc(st)+'</span>'
+        +(e.channel&&e.channel!=='email'?' <span class="chip n">'+esc(e.channel)+'</span>':'')
+        +(e.template_id?' <span class="chip n">template</span>':'')
+        +(e.sequence_enrollment_id?' <span class="chip a">sequence</span>':'')
+        +'</div></div>';
+    }).join(''):'<div class="empty" style="padding:40px;text-align:center">No emails sent yet. Use the AI Email Drafter above or click Compose to send your first email.</div>';
   } else if(commsTab==='templates'){
     cc.innerHTML='<div class="head-actions" style="margin-bottom:12px"><button class="btn btn-ghost btn-sm" id="newTmplBtn">+ New Template</button></div>'
       +(tmpl.length?tmpl.map(t=>'<div class="tmpl-card" data-tid="'+t.id+'"><h4>'+esc(t.name)+'</h4><div class="tc-cat">'+esc(t.category||'general')+' · '+esc(t.channel)+'</div><div class="tc-preview">'+esc(t.subject_template||'')+'</div></div>').join(''):'<div class="empty" style="padding:40px;text-align:center">No templates yet.</div>');
@@ -1297,9 +1313,63 @@ async function renderCommunications(){
   } else if(commsTab==='sequences'){
     cc.innerHTML=camps.length?camps.map(c=>{
       const steps=(c.aicrm_sequence_steps||[]).sort((a,b)=>a.step_number-b.step_number);
-      return '<div class="seq-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><h4>'+esc(c.name)+'</h4><div class="seq-meta">'+esc(c.campaign_type)+' · <span class="chip '+(c.status==='active'?'g':'n')+'">'+esc(c.status)+'</span> · '+steps.length+' steps</div></div></div>'
-        +'<div style="margin-top:10px">'+steps.map(s=>'<div class="seq-step"><div class="seq-step-num">'+s.step_number+'</div><div class="seq-step-body"><div class="ss-ch '+esc(s.channel)+'">'+esc(s.channel)+(s.requires_manual_approval?' · approval required':'')+'</div>'+(s.subject_template?'<div class="ss-subj">'+esc(s.subject_template)+'</div>':'')+'<div class="ss-delay">'+(s.delay_days===0?'Immediately':'After '+s.delay_days+' day'+(s.delay_days>1?'s':''))+(s.purpose?' · '+esc(s.purpose):'')+'</div></div></div>').join('')+'</div></div>';
+      // Count emails sent from this sequence
+      const seqEmails=em.filter(e=>e.metadata?.campaign_id===c.id);
+      return '<div class="seq-card"><div style="display:flex;justify-content:space-between;align-items:center"><div><h4>'+esc(c.name)+'</h4><div class="seq-meta">'+esc(c.campaign_type)+' · <span class="chip '+(c.status==='active'?'g':'n')+'">'+esc(c.status)+'</span> · '+steps.length+' steps · '+seqEmails.length+' emails sent</div>'+(c.description?'<div style="font-size:12px;color:var(--steel);margin-top:4px;max-width:600px">'+esc(c.description)+'</div>':'')+'</div></div>'
+        +'<div style="margin-top:14px">'+steps.map(s=>{
+          const isEmail=s.channel==='email';
+          const dayLabel=s.delay_days===0?'Day 0 — Immediately':'Day '+s.delay_days;
+          const channelIcon=s.channel==='email'?'📧':s.channel==='task'?'✅':s.channel==='call'?'📞':'📋';
+          const purposeLabel=(s.purpose||'').replace(/_/g,' ');
+
+          let html='<div class="seq-step" style="padding:14px 0"><div class="seq-step-num">'+s.step_number+'</div><div class="seq-step-body" style="width:100%">';
+          html+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
+          html+='<div><span class="ss-ch '+esc(s.channel)+'">'+channelIcon+' '+esc(s.channel.toUpperCase())+'</span>';
+          html+=' <span style="font-size:11px;color:var(--steel);margin-left:6px">'+dayLabel+'</span>';
+          if(purposeLabel)html+=' <span style="font-size:10px;background:#eef1f7;padding:1px 8px;border-radius:4px;color:var(--navy)">'+esc(purposeLabel)+'</span>';
+          if(s.requires_manual_approval)html+=' <span style="font-size:10px;background:#fff8e6;padding:1px 8px;border-radius:4px;color:#856404">approval required</span>';
+          html+='</div>';
+          html+='<div class="seq-step-actions">';
+          if(isEmail)html+='<button class="seq-toggle" data-toggle-step="'+s.id+'">👁 View Email</button>';
+          if(isEmail)html+='<button class="btn btn-ghost btn-sm" data-edit-step="'+s.id+'">✏️ Edit</button>';
+          html+='</div></div>';
+
+          if(isEmail&&s.subject_template){
+            html+='<div class="ss-subj" style="margin-top:6px">Subject: '+esc(s.subject_template)+'</div>';
+          }
+          if(!isEmail&&s.body_template){
+            html+='<div style="margin-top:6px;font-size:12px;color:var(--steel);font-style:italic">Task: '+esc(s.body_template.slice(0,120))+(s.body_template.length>120?'…':'')+'</div>';
+          }
+
+          // Email preview (hidden by default, toggled by View Email button)
+          if(isEmail&&s.body_template){
+            html+='<div class="seq-email-preview" id="sep_'+s.id+'">';
+            html+='<div class="sep-subj">'+esc(s.subject_template||'(No subject)')+'</div>';
+            html+='<div class="sep-body">'+esc(s.body_template)+'</div>';
+            html+='</div>';
+          }
+          // Task detail (always visible for tasks)
+          if(!isEmail&&s.body_template){
+            html+='<div style="margin-top:8px;background:#fff8e6;border:1px solid #f0e6cc;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;white-space:pre-wrap">'+esc(s.body_template)+'</div>';
+          }
+
+          html+='</div></div>';
+          return html;
+        }).join('')+'</div></div>';
     }).join(''):'<div class="empty" style="padding:40px;text-align:center">No sequences configured.</div>';
+
+    // Bind toggle and edit buttons
+    $$('[data-toggle-step]').forEach(b=>{b.onclick=()=>{
+      const preview=$('#sep_'+b.dataset.toggleStep);
+      if(preview){
+        preview.classList.toggle('open');
+        b.textContent=preview.classList.contains('open')?'🔽 Hide Email':'👁 View Email';
+      }
+    };});
+    $$('[data-edit-step]').forEach(b=>{b.onclick=()=>{
+      const step=camps.flatMap(c=>(c.aicrm_sequence_steps||[])).find(s=>s.id===b.dataset.editStep);
+      if(step)openStepEditModal(step);
+    };});
   } else if(commsTab==='enrollments'){
     cc.innerHTML='<div class="head-actions" style="margin-bottom:12px"><button class="btn btn-ghost btn-sm" id="enrollBtn">+ Enroll Contact</button></div>'
       +(enr.length?enr.map(e=>{
@@ -1618,6 +1688,31 @@ function openTemplateModal(t,allTemplates){
     closeModal();render();
   };
   $('#tm_del')?.addEventListener('click',async()=>{if(!confirm('Delete this template?'))return;await sb.from('communication_templates').delete().eq('id',t.id);closeModal();render();});
+}
+
+function openStepEditModal(step){
+  const isEmail=step.channel==='email';
+  openModal('<h2>✏️ Edit Sequence Step '+step.step_number+'</h2>'
+    +'<div style="margin-bottom:12px"><span class="chip '+(step.channel==='email'?'n':'a')+'">'+esc(step.channel)+'</span> <span style="font-size:12px;color:var(--steel)">Day '+(step.delay_days||0)+(step.purpose?' · '+esc(step.purpose.replace(/_/g,' ')):'')+'</span></div>'
+    +(isEmail?'<div class="field"><label>Subject Line</label><input id="se_subj" value="'+esc(step.subject_template||'')+'"></div>':'')
+    +'<div class="field"><label>'+(isEmail?'Email Body':'Task Description')+'</label><textarea id="se_body" rows="'+(isEmail?'12':'4')+'">'+esc(step.body_template||'')+'</textarea>'
+    +(isEmail?'<div class="merge-hint">Merge fields: <span class="merge-tags">'
+    +['contact_first_name','product_name','salesperson_name','special_offer','quote_number'].map(f=>'<button class="merge-tag" data-smf="'+f+'">{{'+f+'}}</button>').join('')
+    +'</span></div>':'')+'</div>'
+    +'<div class="field-row"><div class="field"><label>Delay (days after previous step)</label><input type="number" id="se_delay" value="'+(step.delay_days||0)+'" min="0"></div>'
+    +'<div class="field"><label>Requires approval</label><select id="se_approve"><option value="true" '+(step.requires_manual_approval?'selected':'')+'>Yes — rep reviews before send</option><option value="false" '+(!step.requires_manual_approval?'selected':'')+'>No — auto-send</option></select></div></div>'
+    +'<div class="form-err" id="formErr"></div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="se_save">Save Changes</button></div>');
+
+  $$('[data-smf]').forEach(b=>{b.onclick=()=>{const ta=$('#se_body');const tag='{{'+b.dataset.smf+'}}';const pos=ta.selectionStart;ta.value=ta.value.slice(0,pos)+tag+ta.value.slice(pos);ta.focus();};});
+
+  $('#se_save').onclick=async()=>{
+    const update={delay_days:parseInt($('#se_delay').value)||0,requires_manual_approval:$('#se_approve').value==='true',body_template:$('#se_body').value};
+    if(isEmail)update.subject_template=$('#se_subj').value.trim();
+    const{error}=await sb.from('aicrm_sequence_steps').update(update).eq('id',step.id);
+    if(error)return formErr(error.message);
+    closeModal();render();
+  };
 }
 
 async function renderDashboard(){const since=new Date(Date.now()-30*864e5).toISOString();const[{data:reviews},{data:events}]=await Promise.all([sb.from('ai_coaching_reviews').select('overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('review_kind','coaching').order('created_at',{ascending:true}).limit(200),sb.from('kpi_events').select('event_type,created_at').eq('organization_id',currentOrg.id).gte('created_at',since)]);
