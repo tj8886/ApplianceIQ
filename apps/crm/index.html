@@ -647,7 +647,20 @@ function searchBar(placeholder,onInput){
 }
 function bindSearch(cb){
   const inp=$('#globalSearch');const clr=$('#searchClear');
-  if(inp){inp.oninput=()=>{searchTerm=inp.value;clr.classList.toggle('show',!!searchTerm);cb();};inp.focus();}
+  if(inp){
+    inp.oninput=()=>{
+      const pos=inp.selectionStart;
+      searchTerm=inp.value;
+      clr.classList.toggle('show',!!searchTerm);
+      cb();
+      // Restore cursor position after re-render
+      const newInp=$('#globalSearch');
+      if(newInp){newInp.focus();newInp.setSelectionRange(pos,pos);}
+    };
+    // Place cursor at end on initial focus
+    inp.focus();
+    inp.setSelectionRange(inp.value.length,inp.value.length);
+  }
   if(clr){clr.onclick=()=>{searchTerm='';if(inp)inp.value='';clr.classList.remove('show');cb();};}
 }
 
@@ -1208,31 +1221,68 @@ function renderTasks(){sb.from('crm_tasks').select('*,crm_deals(title)').eq('org
 
 // ===== RECORDINGS =====
 const REC_MAX=10800;function fmtTime(s){if(s>=3600){const h=Math.floor(s/3600);return h+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
-async function renderRecordings(){const{data:recs}=await sb.from('sales_recordings').select('*').eq('organization_id',currentOrg.id).order('created_at',{ascending:false});const rids=(recs??[]).map(r=>r.coaching_review_id).filter(Boolean);let rvs={};if(rids.length){const{data:rv}=await sb.from('ai_coaching_reviews').select('id,overall_score').in('id',rids);(rv??[]).forEach(r=>rvs[r.id]=r);}
-mainEl.innerHTML='<div class="page-head"><div><h1>🎙 Recordings</h1><div class="sub num">'+(recs??[]).length+'</div></div><div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 Record</button></div></div><table><thead><tr><th>Recording</th><th>Status</th><th>Score</th><th></th></tr></thead><tbody>'+(recs??[]).map(r=>{const sc=r.coaching_review_id&&rvs[r.coaching_review_id]?.overall_score!=null?Number(rvs[r.coaching_review_id].overall_score).toFixed(1)+'/10':'—';return '<tr><td><b>'+esc(r.file_name??'Recording')+'</b><div class="sub num">'+new Date(r.created_at).toLocaleDateString()+(r.duration_seconds?' · '+fmtTime(r.duration_seconds):'')+'</div></td><td><span class="chip '+(r.status==='complete'?'g':r.status==='failed'?'r':'n')+'">'+esc(r.status)+'</span></td><td class="num">'+sc+'</td><td><button class="btn btn-ghost btn-sm" data-play="'+r.id+'">Play</button></td></tr>';}).join('')||'<tr><td colspan="4" class="empty">No recordings yet. Record a pitch to get AI coaching feedback.</td></tr>'+'</tbody></table><div id="recP"></div>';
-$('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
-$$('[data-play]').forEach(b=>{b.onclick=async()=>{const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;const{data}=await sb.storage.from('crm-media').createSignedUrl(rec.file_path,300);if(data?.signedUrl)$('#recP').innerHTML='<div class="dash-panel" style="margin-top:16px"><audio controls src="'+data.signedUrl+'" style="width:100%"></audio></div>';};});}
+async function renderRecordings(){
+  await loadCore();
+  const{data:recs}=await sb.from('sales_recordings').select('*,crm_deals(id,title,value_amount,stage)').eq('organization_id',currentOrg.id).order('created_at',{ascending:false});
+  const rids=(recs??[]).map(r=>r.coaching_review_id).filter(Boolean);let rvs={};
+  if(rids.length){const{data:rv}=await sb.from('ai_coaching_reviews').select('id,overall_score').in('id',rids);(rv??[]).forEach(r=>rvs[r.id]=r);}
+  mainEl.innerHTML='<div class="page-head"><div><h1>🎙 Recordings</h1><div class="sub num">'+(recs??[]).length+' recordings</div></div><div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 New Recording</button></div></div>'
+    +'<table><thead><tr><th>Recording</th><th>Deal</th><th>Duration</th><th>Status</th><th>Score</th><th></th></tr></thead><tbody>'
+    +(recs??[]).map(r=>{
+      const sc=r.coaching_review_id&&rvs[r.coaching_review_id]?.overall_score!=null?Number(rvs[r.coaching_review_id].overall_score).toFixed(1)+'/10':'—';
+      const dealName=r.crm_deals?.title||'—';
+      return '<tr><td><b>'+esc(r.file_name??'Recording')+'</b><div class="sub num">'+new Date(r.created_at).toLocaleDateString()+'</div></td>'
+        +'<td>'+esc(dealName)+'</td>'
+        +'<td class="num">'+(r.duration_seconds?fmtTime(r.duration_seconds):'—')+'</td>'
+        +'<td><span class="chip '+(r.status==='complete'?'g':r.status==='failed'?'r':'n')+'">'+esc(r.status)+'</span></td>'
+        +'<td class="num">'+sc+'</td>'
+        +'<td><button class="btn btn-ghost btn-sm" data-play="'+r.id+'">Play</button></td></tr>';
+    }).join('')||'<tr><td colspan="6" class="empty">No recordings yet. Record a pitch to get AI coaching feedback.</td></tr>'
+    +'</tbody></table><div id="recP"></div>';
+  $('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
+  $$('[data-play]').forEach(b=>{b.onclick=async()=>{const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;const{data}=await sb.storage.from('crm-media').createSignedUrl(rec.file_path,300);if(data?.signedUrl)$('#recP').innerHTML='<div class="dash-panel" style="margin-top:16px"><h3>'+esc(rec.file_name)+(rec.crm_deals?' — '+esc(rec.crm_deals.title):'')+'</h3><audio controls src="'+data.signedUrl+'" style="width:100%"></audio></div>';};});
+}
 
 function openRecorderModal(dealId){
   if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){openModal('<h2>Not supported</h2><p>Audio recording requires Chrome, Safari, or Firefox with microphone access.</p><div class="sheet-actions"><button class="btn btn-primary" id="rec_ok">OK</button></div>');$('#rec_ok').onclick=closeModal;return;}
   const deal=dealId?cache.deals.find(d=>d.id===dealId):null;
   let selectedDealId=dealId||null;
   let stream,recorder,chunks=[],elapsed=0,timer;
-  const dealOpts=cache.deals.filter(d=>!d.closed_at&&!d.is_archived);
-  openModal('<h2>🎙 Record'+(deal?' — '+esc(deal.title):'')+'</h2>'+(deal?'<div class="sub" style="margin-bottom:10px">'+money(deal.value_amount)+' · '+esc(deal.stage)+'</div>':'<div class="field" style="margin-bottom:10px"><label>Link to deal</label><select id="rec_deal"><option value="">— No deal —</option>'+dealOpts.map(d=>'<option value="'+d.id+'">'+esc(d.title)+' ('+money(d.value_amount)+')</option>').join('')+'</select></div>')
-    +'<div class="consent-row"><input type="checkbox" id="rc"><div>All participants have been informed this conversation is recorded for coaching purposes.</div></div><div class="rec-timer" id="rT">0:00</div><div id="rS" style="text-align:center;color:var(--steel);font-size:13px"></div><div class="sheet-actions"><button class="btn btn-ghost" id="r_cancel">Cancel</button><button class="btn btn-primary" id="r_start" disabled>Start Recording</button><button class="btn btn-danger" id="r_stop" style="display:none">Stop</button></div>');
+  const dealOpts=(cache.deals||[]).filter(d=>!d.closed_at&&!d.is_archived);
+  openModal('<h2>🎙 Record'+(deal?' — '+esc(deal.title):'')+'</h2>'
+    +(deal?'<div class="sub" style="margin-bottom:10px">'+money(deal.value_amount)+' · '+esc(deal.stage)+'</div>'
+    :'<div class="field" style="margin-bottom:10px"><label>Link to deal (optional)</label><select id="rec_deal"><option value="">— No deal —</option>'+dealOpts.map(d=>'<option value="'+d.id+'"'+(d.id===dealId?' selected':'')+'>'+esc(d.title)+' ('+money(d.value_amount)+')</option>').join('')+'</select></div>')
+    +'<div class="consent-row"><input type="checkbox" id="rc"><div>All participants have been informed this conversation is recorded for coaching purposes.</div></div>'
+    +'<div class="rec-timer" id="rT">0:00</div>'
+    +'<div id="rS" style="text-align:center;color:var(--steel);font-size:13px"></div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" id="r_cancel">Cancel</button><button class="btn btn-primary" id="r_start" disabled>Start Recording</button><button class="btn btn-danger" id="r_stop" style="display:none">Stop</button></div>');
   if(!deal){$('#rec_deal')?.addEventListener('change',()=>{selectedDealId=$('#rec_deal').value||null;});}
   $('#rc').onchange=()=>{$('#r_start').disabled=!$('#rc').checked;};
-  $('#r_start').onclick=async()=>{try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch{return formErr('Microphone access denied.');}recorder=new MediaRecorder(stream);chunks=[];elapsed=0;
+  $('#r_start').onclick=async()=>{
+    try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch(e){return formErr('Microphone access denied: '+(e.message||e));}
+    recorder=new MediaRecorder(stream);chunks=[];elapsed=0;
     const linkedDeal=selectedDealId?cache.deals.find(d=>d.id===selectedDealId):deal;
     recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-    recorder.onstop=async()=>{clearInterval(timer);stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:recorder.mimeType});$('#rS').innerHTML='<div class="spin" style="margin:8px auto"></div> Uploading…';
-      const ext=recorder.mimeType.includes('webm')?'webm':'ogg';const fn=(linkedDeal?esc(linkedDeal.title).replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_':'pitch_')+Date.now()+'.'+ext;const path=currentOrg.id+'/'+currentUser.id+'/'+fn;
-      const{error:ue}=await sb.storage.from('crm-media').upload(path,blob,{contentType:recorder.mimeType});if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
-      await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_obtained:true,consent_method:'in_app_checkbox'});
-      openModal('<h2>Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ '+fmtTime(elapsed)+' recorded'+(linkedDeal?' for '+esc(linkedDeal.title):'')+'</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>');$('#r_done').onclick=()=>{closeModal();render();};};
+    recorder.onstop=async()=>{
+      clearInterval(timer);stream.getTracks().forEach(t=>t.stop());
+      const blob=new Blob(chunks,{type:recorder.mimeType});
+      $('#rS').innerHTML='<div class="spin" style="margin:8px auto"></div> Uploading…';
+      const ext=recorder.mimeType.includes('webm')?'webm':recorder.mimeType.includes('mp4')?'mp4':'ogg';
+      const fn=(linkedDeal?esc(linkedDeal.title).replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_':'pitch_')+Date.now()+'.'+ext;
+      const path=currentOrg.id+'/'+currentUser.id+'/'+fn;
+      try{
+        const{error:ue}=await sb.storage.from('crm-media').upload(path,blob,{contentType:recorder.mimeType});
+        if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
+        const{error:ie}=await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_obtained:true,consent_method:'in_app_checkbox'});
+        if(ie){$('#rS').textContent='Save failed: '+ie.message;return;}
+        openModal('<h2>✓ Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ '+fmtTime(elapsed)+' recorded'+(linkedDeal?' for '+esc(linkedDeal.title):'')+'</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>');
+        $('#r_done').onclick=()=>{closeModal();render();};
+      }catch(ex){$('#rS').textContent='Error: '+(ex.message||ex);}
+    };
     recorder.start(1000);$('#r_start').style.display='none';$('#r_stop').style.display='';
-    timer=setInterval(()=>{elapsed++;$('#rT').textContent=fmtTime(elapsed);if(elapsed>=REC_MAX)recorder.stop();},1000);$('#rS').innerHTML='<span class="rec-dot"></span> Recording…';};
+    timer=setInterval(()=>{elapsed++;$('#rT').textContent=fmtTime(elapsed);if(elapsed>=REC_MAX)recorder.stop();},1000);
+    $('#rS').innerHTML='<span class="rec-dot"></span> Recording…';
+  };
   $('#r_stop').onclick=()=>{if(recorder?.state==='recording')recorder.stop();};
   $('#r_cancel').onclick=()=>{if(recorder?.state==='recording')recorder.stop();stream?.getTracks().forEach(t=>t.stop());clearInterval(timer);closeModal();};
 }
