@@ -1280,17 +1280,80 @@ function openRecorderModal(dealId){
       try{
         const{error:ue}=await sb.storage.from('crm-media').upload(path,blob,{contentType:recorder.mimeType});
         if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
-        const{error:ie}=await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_confirmed:true,consent_confirmed_at:new Date().toISOString()});
+        const{error:ie}=await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:selectedDealId||dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_confirmed:true,consent_confirmed_at:new Date().toISOString()}).select('id').single();
         if(ie){$('#rS').textContent='Save failed: '+ie.message;return;}
+        const recId=ie?null:(await sb.from('sales_recordings').select('id').eq('file_path',path).single()).data?.id;
         // Generate signed URL for immediate playback
         const{data:urlData}=await sb.storage.from('crm-media').createSignedUrl(path,600);
         const playUrl=urlData?.signedUrl||'';
         openModal('<h2>✓ Recording Saved</h2>'
           +'<div style="text-align:center;color:var(--verified);font-weight:700;margin:12px 0">'+fmtTime(elapsed)+' recorded'+(linkedDeal?' for '+esc(linkedDeal.title):'')+'</div>'
           +(playUrl?'<div style="margin:12px 0"><audio controls src="'+playUrl+'" style="width:100%"></audio></div>':'')
-          +'<div style="text-align:center;font-size:12px;color:var(--steel);margin-bottom:12px">You can also play this from the Recordings page anytime.</div>'
-          +'<div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>');
+          +'<div id="aiAnalyzeSection" style="background:#f0f3f9;border-radius:10px;padding:16px;margin:12px 0;text-align:center">'
+          +'<div style="font-size:14px;font-weight:700;margin-bottom:4px">🤖 AI Coaching Analysis</div>'
+          +'<div style="font-size:12px;color:var(--steel);margin-bottom:10px">AI will transcribe, score your pitch, extract CRM notes, and create action tasks from any promises you made.</div>'
+          +'<button class="btn btn-primary" id="r_analyze">✨ Analyze Recording</button>'
+          +'</div>'
+          +'<div id="aiAnalyzeResult" style="display:none"></div>'
+          +'<div class="sheet-actions"><button class="btn btn-ghost" id="r_done">Done</button></div>');
         $('#r_done').onclick=()=>{closeModal();render();};
+        // AI Analysis
+        $('#r_analyze').onclick=async()=>{
+          const sec=$('#aiAnalyzeSection');
+          sec.innerHTML='<div style="font-size:14px;font-weight:700;margin-bottom:8px">🤖 Analyzing…</div><div style="font-size:12px;color:var(--steel)">Transcribing audio and generating coaching analysis…</div>';
+          try{
+            // Convert blob to base64
+            const reader=new FileReader();
+            const b64=await new Promise((res,rej)=>{reader.onload=()=>res(reader.result.split(',')[1]);reader.onerror=()=>rej(new Error('Read failed'));reader.readAsDataURL(blob);});
+            const mediaType=recorder.mimeType.split(';')[0]||'audio/webm';
+            const dealContext=linkedDeal?'Deal: '+linkedDeal.title+', Stage: '+linkedDeal.stage+', Value: $'+linkedDeal.value_amount:'No deal linked';
+            const resp=await fetch('https://api.anthropic.com/v1/messages',{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
+                system:'You are an expert appliance retail sales coach analyzing a recorded sales interaction. Return ONLY valid JSON with no markdown fences. Use this exact structure:\n{\n"transcript_summary": "2-3 sentence summary of what was discussed",\n"coaching_score": 7.5,\n"coaching_strengths": ["strength 1","strength 2"],\n"coaching_improvements": ["improvement 1","improvement 2"],\n"selling_steps_used": ["greeting","discovery","presentation"],\n"crm_notes": "Key info for the CRM: what the customer wants, products discussed, objections raised, decisions made",\n"customer_needs": ["need 1","need 2"],\n"products_discussed": ["product 1","product 2"],\n"action_items": [{"task":"Follow up with pricing on Bosch 800","priority":"high","due_days":2},{"task":"Send comparison sheet","priority":"medium","due_days":1}],\n"follow_up_recommended": true,\n"follow_up_reason": "Customer showed strong interest but needs pricing confirmation"\n}',
+                messages:[{role:'user',content:[
+                  {type:'document',source:{type:'base64',media_type:mediaType,data:b64}},
+                  {type:'text',text:'Analyze this sales recording. Context: '+dealContext+'. Return ONLY the JSON object, no other text.'}
+                ]}]
+              })
+            });
+            const data=await resp.json();
+            const text=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+            const analysis=JSON.parse(text.replace(/```json\n?|```/g,'').trim());
+
+            // Display results
+            const res=$('#aiAnalyzeResult');res.style.display='block';
+            res.innerHTML='<div style="margin-top:12px">'
+              +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><div style="width:56px;height:56px;border-radius:50%;background:'+(analysis.coaching_score>=7?'var(--verified)':analysis.coaching_score>=5?'var(--amber)':'var(--danger)')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800">'+Number(analysis.coaching_score).toFixed(1)+'</div><div><div style="font-weight:700;font-size:15px">Coaching Score</div><div style="font-size:12px;color:var(--steel)">'+esc(analysis.transcript_summary||'')+'</div></div></div>'
+              +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+              +'<div style="background:#e8f6ee;border-radius:8px;padding:10px"><div style="font-weight:700;font-size:12px;color:#14663a;margin-bottom:4px">✅ Strengths</div>'+(analysis.coaching_strengths||[]).map(s=>'<div style="font-size:12px;margin:2px 0">• '+esc(s)+'</div>').join('')+'</div>'
+              +'<div style="background:#fdecea;border-radius:8px;padding:10px"><div style="font-weight:700;font-size:12px;color:#8c2f22;margin-bottom:4px">📈 Improve</div>'+(analysis.coaching_improvements||[]).map(s=>'<div style="font-size:12px;margin:2px 0">• '+esc(s)+'</div>').join('')+'</div>'
+              +'</div>'
+              +(analysis.crm_notes?'<div style="background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px"><div style="font-weight:700;font-size:12px;margin-bottom:4px">📋 CRM Notes</div><div style="font-size:12px">'+esc(analysis.crm_notes)+'</div></div>':'')
+              +((analysis.action_items||[]).length?'<div style="background:#fff8e6;border:1px solid #f0e6cc;border-radius:8px;padding:10px;margin-bottom:12px"><div style="font-weight:700;font-size:12px;color:#856404;margin-bottom:6px">⚡ Action Items (auto-created as tasks)</div>'+(analysis.action_items||[]).map(a=>'<div style="font-size:12px;margin:3px 0;display:flex;gap:6px;align-items:center"><span class="chip '+(a.priority==='high'?'a':'n')+'">'+esc(a.priority)+'</span> '+esc(a.task)+'</div>').join('')+'</div>':'')
+              +(analysis.follow_up_recommended?'<div style="font-size:12px;color:var(--focus);font-weight:600">🔔 Follow-up recommended: '+esc(analysis.follow_up_reason||'')+'</div>':'')
+              +'</div>';
+            sec.innerHTML='<div style="color:var(--verified);font-weight:700">✅ Analysis Complete</div>';
+
+            // Save coaching review to DB
+            const reviewData={organization_id:currentOrg.id,user_id:currentUser.id,review_kind:'coaching',overall_score:analysis.coaching_score,kpi_scores:{strengths:analysis.coaching_strengths,improvements:analysis.coaching_improvements,steps_used:analysis.selling_steps_used},summary:analysis.transcript_summary,recommendations:(analysis.coaching_improvements||[]).join('. '),metadata:{products:analysis.products_discussed,customer_needs:analysis.customer_needs}};
+            const{data:review}=await sb.from('ai_coaching_reviews').insert(reviewData).select('id').single();
+            if(review&&recId){await sb.from('sales_recordings').update({coaching_review_id:review.id,status:'complete'}).eq('id',recId);}
+
+            // Save CRM activity
+            if(analysis.crm_notes){
+              await sb.from('activities').insert({organization_id:currentOrg.id,actor_user_id:currentUser.id,entity_type:linkedDeal?'deal':'unattached',entity_id:linkedDeal?.id||null,activity_type:'note',title:'AI Recording Analysis'+(linkedDeal?' — '+linkedDeal.title:''),summary:analysis.crm_notes,source:'ai_analysis',metadata:{coaching_score:analysis.coaching_score,products:analysis.products_discussed}});
+            }
+
+            // Create tasks from action items
+            for(const item of (analysis.action_items||[])){
+              const dueDate=new Date(Date.now()+(item.due_days||3)*864e5).toISOString();
+              await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title:item.task,assignee_user_id:currentUser.id,deal_id:linkedDeal?.id||null,contact_id:linkedDeal?.contact_id||null,due_at:dueDate,priority:item.priority||'medium',task_type:'follow_up',source:'ai_analysis',metadata:{from_recording:recId}});
+            }
+          }catch(err){
+            sec.innerHTML='<div style="color:var(--danger)">Analysis failed: '+esc(err.message||String(err))+'</div><div style="font-size:11px;color:var(--steel);margin-top:4px">You can still find this recording on the Recordings page and try again later.</div>';
+          }
+        };
       }catch(ex){$('#rS').textContent='Error: '+(ex.message||ex);}
     };
     recorder.start(1000);$('#r_start').style.display='none';$('#r_stop').style.display='';
