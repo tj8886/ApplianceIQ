@@ -1382,15 +1382,15 @@ async function renderCommunications(){
 
     $$('[data-price-alert]').forEach(b=>{b.onclick=async()=>{
       const brand=b.dataset.paBrand,model=b.dataset.paModel,price=b.dataset.paPrice,was=b.dataset.paWas,save=b.dataset.paSave;
-      // Find contacts with deals in matching categories
-      const matchingContacts=cts.filter(c=>c.email);
-      const subject='🔥 PRICE ALERT — '+brand+' '+model+' just dropped!';
-      const body='Hi {{contact_first_name}},\n\nGreat news! The '+brand+' '+model+' just had a price drop and we wanted you to be the first to know.\n\n'
-        +'Was: $'+Number(was).toLocaleString()+'\n'
-        +'Now: $'+Number(price).toLocaleString()+'\n'
-        +'You Save: $'+Number(save).toLocaleString()+'!\n\n'
-        +'This is a limited-time opportunity — these deals don\'t last long. Give us a call or reply to this email and we\'ll get everything set up for you.\n\n'
-        +'Looking forward to helping you get a great deal!\n\n{{salesperson_name}}';
+      // Find the price alert template
+      const paTmpl=tmpl.find(t=>t.category==='price_alert');
+      const subject=paTmpl?paTmpl.subject_template.replace(/\{\{product_name\}\}/g,brand+' '+model):'🔥 PRICE ALERT — '+brand+' '+model+' just dropped!';
+      const body=paTmpl?paTmpl.body_template
+        .replace(/\{\{product_name\}\}/g,brand+' '+model)
+        .replace(/\{\{was_price\}\}/g,'$'+Number(was).toLocaleString())
+        .replace(/\{\{new_price\}\}/g,'$'+Number(price).toLocaleString())
+        .replace(/\{\{savings\}\}/g,'$'+Number(save).toLocaleString())
+        :'Hi {{contact_first_name}},\n\nGreat news! The '+brand+' '+model+' just dropped from $'+Number(was).toLocaleString()+' to $'+Number(price).toLocaleString()+' — you save $'+Number(save).toLocaleString()+'!\n\nGive us a call and we will get you set up.\n\n{{salesperson_name}}';
 
       // Open compose pre-filled with the price alert
       openComposeModal(null,null,tmpl);
