@@ -66,6 +66,8 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
 .center{text-align:center}
 .mb3{margin-bottom:24px}
 .hidden{display:none!important}
+.proj-collapsed .proj-group-body{display:none}
+.proj-collapsed .proj-chevron{transform:rotate(90deg)}
 .num{font-variant-numeric:tabular-nums}
 
 .logo-mark{width:36px;height:36px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -1138,8 +1140,51 @@ async function loadPendingCount(){try{const{count}=await sb.from('speciq_package
 
 /* ==================== PROJECTS ==================== */
 let projects=[];
-async function loadProjects(){try{const{data}=await sb.from('speciq_projects').select('*').order('created_at',{ascending:false});projects=data||[]}catch(e){projects=[]}const q=(el('project-search')?.value||'').toLowerCase();const f=projects.filter(p=>(p.project_name||'').toLowerCase().includes(q)||(p.customer_name||'').toLowerCase().includes(q));const list=el('projects-list');if(!list)return;if(!f.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>';return}list.innerHTML=f.map(p=>'<div class="card flex between" style="padding:16px 24px;margin-bottom:8px"><div><div style="font-weight:600">'+esc(p.project_name)+'</div><div style="font-size:13px;color:var(--steel);margin-top:2px">'+esc(p.customer_name)+(p.room_name?' · '+esc(p.room_name):'')+'</div></div><div class="flex" style="gap:12px"><span class="badge badge-'+(p.status==='active'?'g':'y')+'">'+p.status+'</span><button class="btn btn-s" style="padding:6px 14px;font-size:13px" onclick="navigate(\'builder\');el(\'b-proj-name\').value=\''+esc(p.project_name)+'\';el(\'b-cust-name\').value=\''+esc(p.customer_name)+'\'">Build Package</button></div></div>').join('')}
+async function loadProjects(){try{const{data}=await sb.from('speciq_projects').select('*').order('created_at',{ascending:false});projects=data||[]}catch(e){projects=[]}const q=(el('project-search')?.value||'').toLowerCase();const f=projects.filter(p=>(p.project_name||'').toLowerCase().includes(q)||(p.customer_name||'').toLowerCase().includes(q));const list=el('projects-list');if(!list)return;if(!f.length){list.innerHTML='<div class="card center" style="padding:48px;color:var(--steel)"><svg class="icon" style="width:40px;height:40px;margin:0 auto 12px;opacity:.3"><use href="#i-folder"/></svg><p>No projects yet. Create one to start building spec packages.</p></div>';return}
+const groups={};f.forEach(p=>{const cName=(p.customer_name||'Unnamed Client').trim();if(!groups[cName])groups[cName]=[];groups[cName].push(p)});
+const sortedKeys=Object.keys(groups).sort((a,b)=>a.localeCompare(b));
+list.innerHTML=sortedKeys.map(cName=>{
+  const gProjects=groups[cName];
+  const count=gProjects.length;
+  const activeCount=gProjects.filter(p=>p.status==='active').length;
+  return '<div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">'
+    +'<div onclick="this.parentElement.classList.toggle(\'proj-collapsed\')" style="padding:16px 24px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--paper);border-bottom:1px solid var(--line)">'
+    +'<div style="display:flex;align-items:center;gap:12px"><svg class="icon" style="width:18px;height:18px;color:var(--focus)"><use href="#i-users"/></svg><div><span style="font-family:Sora,sans-serif;font-weight:700;font-size:15px;color:var(--navy)">'+esc(cName)+'</span><span style="margin-left:10px;font-size:12px;color:var(--steel)">'+count+' project'+(count>1?'s':'')+' \u00b7 '+activeCount+' active</span></div></div>'
+    +'<svg class="icon proj-chevron" style="width:16px;height:16px;color:var(--steel);transition:transform .2s"><use href="#i-grip"/></svg>'
+    +'</div>'
+    +'<div class="proj-group-body">'
+    +gProjects.map(p=>'<div style="padding:12px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="flex:1"><div style="font-weight:600;font-size:14px">'+esc(p.project_name)+'</div><div style="font-size:12px;color:var(--steel);margin-top:2px">'+(p.room_name?esc(p.room_name)+' \u00b7 ':'')+(p.property_address?esc(p.property_address)+' \u00b7 ':'')+fmtDate(p.created_at)+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<span class="badge badge-'+(p.status==='active'?'g':'y')+'">'+p.status+'</span>'
+      +'<button class="btn btn-s" style="padding:5px 12px;font-size:12px" onclick="event.stopPropagation();navigate(\'builder\');setTimeout(function(){el(\'b-proj-name\').value=\''+esc(p.project_name).replace(/'/g,"\\'")+'\';el(\'b-cust-name\').value=\''+esc(p.customer_name).replace(/'/g,"\\'")+'\'},50)" title="Build a package">Build</button>'
+      +'<button class="btn btn-g" style="padding:5px 8px" onclick="event.stopPropagation();deleteProject(\''+p.id+'\',\''+esc(p.project_name).replace(/'/g,"\\'")+'\','+gProjects.length+')" title="Delete project"><svg class="icon" style="width:14px;height:14px;color:var(--danger)"><use href="#i-trash"/></svg></button>'
+      +'</div></div>').join('')
+    +'</div></div>'
+}).join('')}
 window._loadProjects=loadProjects;window.renderProjects=loadProjects;
+async function deleteProject(projId,projName,siblingCount){
+  const{data:pkgs}=await sb.from('speciq_packages').select('id').eq('project_id',projId);
+  const pkgCount=(pkgs||[]).length;
+  let msg='Delete project "'+projName+'"?';
+  if(pkgCount)msg+='\n\nThis will also delete '+pkgCount+' package'+(pkgCount>1?'s':'')+' and all their products, services, and warranties.';
+  msg+='\n\nThis cannot be undone.';
+  if(!confirm(msg))return;
+  try{
+    for(const pkg of(pkgs||[])){
+      await sb.from('speciq_package_warranties').delete().eq('package_id',pkg.id);
+      await sb.from('speciq_package_services').delete().eq('package_id',pkg.id);
+      await sb.from('speciq_package_products').delete().eq('package_id',pkg.id);
+      await sb.from('speciq_package_events').delete().eq('package_id',pkg.id);
+      await sb.from('speciq_packages').delete().eq('id',pkg.id);
+    }
+    const{error}=await sb.from('speciq_projects').delete().eq('id',projId);
+    if(error)throw error;
+    projects=projects.filter(p=>p.id!==projId);
+    loadProjects();loadDashboardStats();
+  }catch(e){console.error('Delete project error:',e);alert('Failed to delete: '+(e.message||e))}
+}
+window.deleteProject=deleteProject;
 
 // ---- CRM contact linking (wizard step 1) ----
 // Lets a rep search their existing CRM contacts while building a package, so
