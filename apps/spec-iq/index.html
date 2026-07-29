@@ -827,17 +827,20 @@ async function productSearch(){
   var q=el('ap-search').value.trim();
   var box=el('ap-search-results');
   if(q.length<2){box.style.display='none';_searchResults=[];_searchIdx=-1;return}
-  if(!window.sb){box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">Loading database connection…</div>';box.style.display='block';return}
   try{
-    var query=window.sb.from('aiq_products').select('id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage').limit(12);
-    var terms=q.split(/\s+/).map(function(t){return t.replace(/[%_\\()',."]/g,'')}).filter(function(t){return t.length>0});
+    var terms=q.split(/\s+/).map(function(t){return t.replace(/[%_\\()',."*]/g,'')}).filter(function(t){return t.length>0});
     if(!terms.length){box.style.display='none';return}
-    var orParts=[];
-    terms.forEach(function(t){orParts.push('brand_name.ilike.*'+t+'*,model.ilike.*'+t+'*,short_description.ilike.*'+t+'*')});
-    orParts.forEach(function(p){query=query.or(p)});
-    var res=await query;
-    if(res.error){console.error('Search query error:',res.error);box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">Search error. Enter details manually below.</div>';box.style.display='block';return}
-    _searchResults=res.data||[];_searchIdx=-1;
+    var baseUrl='https://fumwwhyozeouoqscolke.supabase.co/rest/v1/aiq_products';
+    var cols='id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage';
+    var params='select='+cols+'&limit=12';
+    terms.forEach(function(t){
+      params+='&or=(brand_name.ilike.*'+encodeURIComponent(t)+'*,model.ilike.*'+encodeURIComponent(t)+'*,short_description.ilike.*'+encodeURIComponent(t)+'*)';
+    });
+    var apiKey='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+    var resp=await fetch(baseUrl+'?'+params,{headers:{'apikey':apiKey,'Authorization':'Bearer '+apiKey}});
+    if(!resp.ok){console.error('Search HTTP error:',resp.status);box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">Search error ('+resp.status+'). Enter details manually.</div>';box.style.display='block';return}
+    var data=await resp.json();
+    _searchResults=data||[];_searchIdx=-1;
     if(!_searchResults.length){box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">No products found. Enter details manually below.</div>';box.style.display='block';return}
     box.innerHTML=_searchResults.map(function(p,i){
       var cat=p.category?(p.category.charAt(0).toUpperCase()+p.category.slice(1)):'';
