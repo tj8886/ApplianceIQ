@@ -963,17 +963,24 @@ function renderNotifPage(el) {
 
 function getNotifAction(n) {
   if (n._deck_id) return "openDeck(" + n._deck_id + ")";
+  if (n._lane_id) return "navTo('lane',{zone:" + (n._zone_id||2) + ",lane:" + n._lane_id + "})";
+  if (n.notification_type === 'new_deck') return "navTo('zone',{zone:2})";
   if (n.brand_id) return "navTo('brands')";
-  if (n.notification_type === 'new_product') return "navTo('brands')";
-  return "";
+  if (n.notification_type === 'new_product' || n.notification_type === 'product_discontinued' || n.notification_type === 'product_clearance') return "navTo('brands')";
+  if (n.notification_type === 'new_competitive_entry') return "navTo('zone',{zone:2})";
+  if (n.notification_type === 'new_course') return "navTo('brands')";
+  return "navTo('dashboard')";
 }
 
 function getNotifLabel(n) {
   if (n._deck_id) return "Open this lesson";
-  if (n.notification_type === 'new_deck') return "Go to training";
+  if (n._lane_id) return "Go to lane";
+  if (n.notification_type === 'new_deck') return "Go to Zone 2: The Build";
+  if (n.notification_type === 'new_course') return "View in Brand IQ";
   if (n.brand_id || n.notification_type === 'new_product') return "View in Brand IQ";
+  if (n.notification_type === 'product_discontinued' || n.notification_type === 'product_clearance') return "View in Brand IQ";
   if (n.notification_type === 'new_competitive_entry') return "View competitive intel";
-  return "";
+  return "Go to dashboard";
 }
 
 async function clickNotif(index) {
