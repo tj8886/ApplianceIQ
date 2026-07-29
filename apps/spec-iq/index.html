@@ -831,7 +831,7 @@ async function productSearch(){
     var query=sb.from('aiq_products').select('id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage').limit(12);
     var terms=q.split(/\s+/).map(function(t){return t.replace(/[%_\\()',."]/g,'')}).filter(function(t){return t.length>0});
     if(!terms.length){box.style.display='none';return}
-    terms.forEach(function(t){query=query.or('brand_name.ilike.%'+t+'%,model.ilike.%'+t+'%,short_description.ilike.%'+t+'%')});
+    terms.forEach(function(t){query=query.or('brand_name.ilike.*'+t+'*,model.ilike.*'+t+'*,short_description.ilike.*'+t+'*')});
     var res=await query;
     if(res.error||!res.data){box.style.display='none';return}
     _searchResults=res.data;_searchIdx=-1;
