@@ -1240,6 +1240,7 @@ function openRecorderModal(dealId){
 // ===== DASHBOARD =====
 // ===== COMMUNICATIONS ENGINE =====
 let commsTab='inbox';
+let selectedRep=null;
 async function renderCommunications(){
   const[{data:emails},{data:templates},{data:campaigns},{data:enrollments},{data:contacts}]=await Promise.all([
     sb.from('crm_emails').select('*').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}).limit(100),
@@ -1283,7 +1284,7 @@ async function renderCommunications(){
     +'<div class="sla-card"><div class="sv num">'+enr.filter(e=>e.status==='active').length+'</div><div class="sl">Active Sequences</div></div>'
     +'<div class="sla-card"><div class="sv num">'+tmpl.length+'</div><div class="sl">Templates</div></div>'
     +'</div>'
-    +'<div class="comms-tabs" id="commsTabs">'+tabBtn('inbox','Inbox',em.length)+tabBtn('templates','Templates',tmpl.length)+tabBtn('sequences','Sequences',camps.length)+tabBtn('enrollments','Enrollments',enr.length)+tabBtn('price_alerts','🔥 Price Alerts',null)+tabBtn('sla','SLA Alerts',overdue.length+hot.length)+'</div>'
+    +'<div class="comms-tabs" id="commsTabs">'+tabBtn('inbox','Inbox',em.length)+tabBtn('templates','Templates',tmpl.length)+tabBtn('sequences','Sequences',camps.length)+tabBtn('enrollments','Enrollments',enr.length)+tabBtn('price_alerts','🔥 Price Alerts',null)+tabBtn('sla','SLA Alerts',overdue.length+hot.length)+tabBtn('rep_activity','👥 Rep Activity',null)+'</div>'
     +'<div id="commsContent"></div>';
 
   const cc=$('#commsContent');
@@ -1473,9 +1474,122 @@ async function renderCommunications(){
     const alerts=[...overdue.map(c=>({...c,reason:'Overdue follow-up',sev:'danger'})),...hot.map(c=>({...c,reason:'Hot lead idle 3+ days',sev:'warn'})),...noContact14.map(c=>({...c,reason:'No contact in 14+ days',sev:'danger'}))].sort((a,b)=>(b.days_since_contact??0)-(a.days_since_contact??0));
     cc.innerHTML=alerts.length?alerts.map(a=>'<div class="d5-item"><div class="d5-num" style="background:var(--'+(a.sev==='danger'?'danger':'amber')+')">'+(a.days_since_contact??'?')+'</div><div class="d5-body"><div class="d5c">'+esc(a.first_name+' '+(a.last_name??''))+'</div><div class="d5r">'+esc(a.reason)+(a.email?' · '+esc(a.email):'')+'</div></div><div class="d5-actions"><button class="btn btn-primary btn-sm" data-qe="'+a.id+'">Email</button></div></div>').join(''):'<div class="empty" style="padding:40px;text-align:center">All follow-ups on track. Nice work!</div>';
     $$('[data-qe]').forEach(b=>{b.onclick=()=>{const ct=cts.find(c=>c.id===b.dataset.qe);if(ct)openComposeModal(ct,null,tmpl);};});
+  } else if(commsTab==='rep_activity'){
+    // Load all rep data
+    const{data:members}=await sb.from('organization_members').select('user_id,role').eq('organization_id',currentOrg.id).eq('status','active');
+    const uids=(members??[]).map(m=>m.user_id);
+    let profileMap={};
+    if(uids.length){const{data:profiles}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids);(profiles??[]).forEach(p=>{profileMap[p.user_id]=p;});}
+    // Get deals, tasks, emails, activities for all reps
+    const[{data:allDeals},{data:allTasks},{data:allEmails},{data:allActs}]=await Promise.all([
+      sb.from('crm_deals').select('id,title,stage,value_amount,owner_user_id,contact_id,closed_at,created_at,temperature').eq('organization_id',currentOrg.id),
+      sb.from('crm_tasks').select('id,title,assignee_user_id,due_at,completed_at,priority').eq('organization_id',currentOrg.id),
+      sb.from('crm_emails').select('id,user_id,status,sent_at,to_email,subject').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}),
+      sb.from('activities').select('id,actor_user_id,activity_type,created_at,title').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(500)
+    ]);
+    const deals=allDeals??[];const tasks=allTasks??[];const repEmails=allEmails??[];const acts=allActs??[];
+
+    const repCards=(members??[]).map(m=>{
+      const uid=m.user_id;const prof=profileMap[uid];
+      const name=prof?.full_name||prof?.email||uid.slice(0,8);
+      const myDeals=deals.filter(d=>d.owner_user_id===uid);
+      const won=myDeals.filter(d=>d.closed_at&&d.stage?.toLowerCase().includes('won'));
+      const lost=myDeals.filter(d=>d.closed_at&&(d.stage?.toLowerCase().includes('lost')||d.stage?.toLowerCase().includes('dead')));
+      const active=myDeals.filter(d=>!d.closed_at);
+      const pipeline=active.reduce((s,d)=>s+Number(d.value_amount||0),0);
+      const revenue=won.reduce((s,d)=>s+Number(d.value_amount||0),0);
+      const myTasks=tasks.filter(t=>t.assignee_user_id===uid);
+      const overdueTasks=myTasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)<new Date());
+      const completedTasks=myTasks.filter(t=>t.completed_at);
+      const myEmails=repEmails.filter(e=>e.user_id===uid);
+      const myActs=acts.filter(a=>a.actor_user_id===uid);
+      const lastActivity=myActs.length?myActs[0]:null;
+      const actTypes={};myActs.forEach(a=>{actTypes[a.activity_type]=(actTypes[a.activity_type]||0)+1;});
+
+      return {uid,name,email:prof?.email,role:m.role,won:won.length,lost:lost.length,active:active.length,pipeline,revenue,
+        overdueTasks:overdueTasks.length,completedTasks:completedTasks.length,totalTasks:myTasks.length,
+        emailsSent:myEmails.length,totalActs:myActs.length,lastActivity,actTypes,
+        myDeals,myTasks,myEmails,myActs,overdueTasks:overdueTasks};
+    });
+
+    if(!selectedRep){
+      // Overview grid
+      cc.innerHTML='<div style="margin-bottom:12px"><b>'+repCards.length+' team members</b> <span class="sub">Click a rep to see their full activity</span></div>'
+        +'<div class="mgr-grid">'+repCards.map(r=>{
+          const hasIssues=r.overdueTasks.length>0||r.active>0&&r.emailsSent===0;
+          return '<div class="seq-card" style="cursor:pointer;'+(hasIssues?'border-color:var(--amber)':'')+'" data-rep-drill="'+r.uid+'">'
+            +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div><h4 style="margin:0">'+esc(r.name)+'</h4><div class="seq-meta">'+esc(r.role)+(r.email?' · '+esc(r.email):'')+'</div></div>'
+            +(r.lastActivity?'<span style="font-size:11px;color:var(--steel)">Last: '+ago(r.lastActivity.created_at)+'</span>':'')+'</div>'
+            +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">'
+            +'<div><div style="font-size:18px;font-weight:800;color:var(--verified)">'+r.won+'</div><div style="font-size:10px;color:var(--steel)">WON</div></div>'
+            +'<div><div style="font-size:18px;font-weight:800;color:var(--danger)">'+r.lost+'</div><div style="font-size:10px;color:var(--steel)">LOST</div></div>'
+            +'<div><div style="font-size:18px;font-weight:800">'+r.active+'</div><div style="font-size:10px;color:var(--steel)">ACTIVE</div></div>'
+            +'<div><div style="font-size:18px;font-weight:800;color:var(--focus)">'+r.emailsSent+'</div><div style="font-size:10px;color:var(--steel)">EMAILS</div></div>'
+            +'</div>'
+            +'<div style="display:flex;gap:12px;margin-top:10px;font-size:12px">'
+            +'<span>Pipeline: <b class="num">'+money(r.pipeline)+'</b></span>'
+            +'<span>Revenue: <b class="num" style="color:var(--verified)">'+money(r.revenue)+'</b></span>'
+            +(r.overdueTasks.length?'<span style="color:var(--danger)">⚠ '+r.overdueTasks.length+' overdue</span>':'')
+            +'</div></div>';
+        }).join('')+'</div>';
+      $$('[data-rep-drill]').forEach(b=>{b.onclick=()=>{selectedRep=b.dataset.repDrill;renderCommunications();};});
+    } else {
+      // Drill-down into specific rep
+      const r=repCards.find(x=>x.uid===selectedRep);
+      if(!r){selectedRep=null;renderCommunications();return;}
+      const now=new Date();
+      const last30=new Date(now-30*864e5);
+
+      cc.innerHTML='<div style="margin-bottom:14px"><button class="btn btn-ghost btn-sm" id="repBack">← All Reps</button></div>'
+        +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px"><div style="width:48px;height:48px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px">'+esc(r.name.charAt(0))+'</div><div><h3 style="margin:0">'+esc(r.name)+'</h3><div class="sub">'+esc(r.role)+(r.email?' · '+esc(r.email):'')+'</div></div></div>'
+
+        +'<div class="stat-grid">'
+        +'<div class="stat-card"><div class="lbl">Won</div><div class="val num" style="color:var(--verified)">'+r.won+'</div></div>'
+        +'<div class="stat-card"><div class="lbl">Lost</div><div class="val num" style="color:var(--danger)">'+r.lost+'</div></div>'
+        +'<div class="stat-card"><div class="lbl">Active Deals</div><div class="val num">'+r.active+'</div></div>'
+        +'<div class="stat-card"><div class="lbl">Pipeline</div><div class="val num">'+money(r.pipeline)+'</div></div>'
+        +'<div class="stat-card"><div class="lbl">Revenue</div><div class="val num" style="color:var(--verified)">'+money(r.revenue)+'</div></div>'
+        +'<div class="stat-card"><div class="lbl">Emails Sent</div><div class="val num" style="color:var(--focus)">'+r.emailsSent+'</div></div>'
+        +'<div class="stat-card'+(r.overdueTasks.length?' " style="border-color:var(--danger)':'')+'""><div class="lbl">Overdue Tasks</div><div class="val num" style="color:var(--danger)">'+r.overdueTasks.length+'</div></div>'
+        +'<div class="stat-card"><div class="lbl">Tasks Done</div><div class="val num">'+r.completedTasks+'/'+r.totalTasks+'</div></div>'
+        +'</div>'
+
+        // Activity breakdown
+        +'<div class="dash-panel"><h3>Activity Breakdown</h3><div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px">'
+        +Object.entries(r.actTypes).sort((a,b)=>b[1]-a[1]).map(([type,count])=>{
+          const icon=type==='phone_call'?'📞':type==='email'?'📧':type==='meeting'?'🤝':type==='sms'?'💬':type==='note'?'📝':'📋';
+          return '<div style="text-align:center;min-width:60px"><div style="font-size:20px">'+icon+'</div><div style="font-weight:800;font-size:16px">'+count+'</div><div style="font-size:10px;color:var(--steel);text-transform:uppercase">'+esc(type.replace(/_/g,' '))+'</div></div>';
+        }).join('')
+        +'</div></div>'
+
+        // Overdue tasks
+        +(r.overdueTasks.length?'<div class="dash-panel" style="border-color:var(--danger)"><h3 style="color:var(--danger)">⚠ Overdue Tasks</h3>'
+        +r.overdueTasks.map(t=>'<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><b>'+esc(t.title)+'</b><div class="sub">Due: '+new Date(t.due_at).toLocaleDateString()+' · <span style="color:var(--danger)">'+Math.floor((now-new Date(t.due_at))/864e5)+' days overdue</span>'+(t.priority?' · '+esc(t.priority):'')+'</div></div>').join('')
+        +'</div>':'')
+
+        // Active deals
+        +'<div class="dash-panel"><h3>Active Deals ('+r.active+')</h3>'
+        +(r.myDeals.filter(d=>!d.closed_at).length?r.myDeals.filter(d=>!d.closed_at).map(d=>'<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;display:flex;justify-content:space-between;align-items:center"><div><b>'+esc(d.title)+'</b><div class="sub">'+esc(d.stage)+' · <span class="temp-badge '+(d.temperature||'warm')+'">'+esc(d.temperature||'warm')+'</span></div></div><span class="num" style="font-weight:700">'+money(d.value_amount)+'</span></div>').join(''):'<div class="sub">No active deals</div>')
+        +'</div>'
+
+        // Recent emails
+        +'<div class="dash-panel"><h3>Recent Emails ('+r.emailsSent+')</h3>'
+        +(r.myEmails.length?r.myEmails.slice(0,10).map(e=>'<div style="padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><div style="display:flex;justify-content:space-between"><b>'+esc(e.subject||'(no subject)')+'</b><span style="font-size:11px;color:var(--steel)">'+ago(e.sent_at)+'</span></div><div class="sub">To: '+esc(e.to_email||'—')+' · <span class="chip '+(e.status==='sent'?'g':e.status==='failed'?'r':'n')+'">'+esc(e.status)+'</span></div></div>').join(''):'<div class="sub">No emails sent</div>')
+        +'</div>'
+
+        // Recent activity timeline
+        +'<div class="dash-panel"><h3>Recent Activity</h3>'
+        +(r.myActs.length?r.myActs.slice(0,15).map(a=>{
+          const icon=a.activity_type==='phone_call'?'📞':a.activity_type==='email'?'📧':a.activity_type==='meeting'?'🤝':a.activity_type==='sms'?'💬':'📝';
+          return '<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;display:flex;align-items:center;gap:8px"><span>'+icon+'</span><div style="flex:1"><b>'+esc(a.title||a.activity_type)+'</b></div><span style="font-size:11px;color:var(--steel)">'+ago(a.created_at)+'</span></div>';
+        }).join(''):'<div class="sub">No activity recorded</div>')
+        +'</div>';
+
+      $('#repBack')?.addEventListener('click',()=>{selectedRep=null;renderCommunications();});
+    }
   }
 
-  $$('#commsTabs button').forEach(b=>{b.onclick=()=>{commsTab=b.dataset.ct;renderCommunications();};});
+  $$('#commsTabs button').forEach(b=>{b.onclick=()=>{commsTab=b.dataset.ct;selectedRep=null;renderCommunications();};});
   $('#composeBtn')?.addEventListener('click',()=>openComposeModal(null,null,tmpl));
   // AI hero bindings
   $('#ai_draft_hero')?.addEventListener('click',()=>{
