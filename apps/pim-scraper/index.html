@@ -17,10 +17,12 @@ const { useState, useCallback, useRef } = React;
 const SUPABASE_URL = "https://fumwwhyozeouoqscolke.supabase.co";
 const SUPABASE_KEY = "sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
 
-let ANTHROPIC_API_KEY = "";
+let ANTHROPIC_API_KEY = ""; // Legacy fallback — prefer proxy
 let OPENAI_API_KEY = "";
+let SCRAPER_PROXY_KEY = ""; // Server-side proxy key (no raw AI keys in browser)
+const SCRAPER_PROXY_URL = SUPABASE_URL + "/functions/v1/scraper-proxy";
 
-// Key profiles: { name, anthropic, openai }
+// Key profiles: { name, anthropic, openai, proxyKey }
 let KEY_PROFILES = [];
 let ACTIVE_PROFILE_IDX = 0;
 try {
@@ -31,13 +33,14 @@ try {
     const oldA = localStorage.getItem("aiq_anthropic_key") || "";
     const oldO = localStorage.getItem("aiq_openai_key") || "";
     if (oldA || oldO) {
-      KEY_PROFILES = [{ name: "My Keys", anthropic: oldA, openai: oldO }];
+      KEY_PROFILES = [{ name: "My Keys", anthropic: oldA, openai: oldO, proxyKey: "" }];
       localStorage.setItem("aiq_key_profiles", JSON.stringify(KEY_PROFILES));
     }
   }
   if (KEY_PROFILES.length > 0) {
     const p = KEY_PROFILES[ACTIVE_PROFILE_IDX] || KEY_PROFILES[0];
-    ANTHROPIC_API_KEY = p.anthropic || "";
+    SCRAPER_PROXY_KEY = p.proxyKey || "";
+    ANTHROPIC_API_KEY = p.anthropic || ""; // Legacy fallback
     OPENAI_API_KEY = p.openai || "";
   }
 } catch(e) {}
@@ -78,6 +81,8 @@ const MODE_DEFAULT_MODELS = {
 
 let SAVED_MODEL = "";
 try { SAVED_MODEL = localStorage.getItem("aiq_scraper_model") || ""; } catch(e) {}
+let SAVED_REQUIRE_APPROVAL = false;
+try { SAVED_REQUIRE_APPROVAL = localStorage.getItem("aiq_scraper_require_approval") === "true"; } catch(e) {}
 
 const CATEGORIES = [
   "refrigeration","cooking","dishwashers","laundry","ventilation",
@@ -859,13 +864,18 @@ async function freeDataExtract(input, market) {
 async function callClaude(systemPrompt, userMsg, retries = 3, modelOverride = null) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
+      // Prefer server-side proxy (no AI keys in browser)
+      const useProxy = !!SCRAPER_PROXY_KEY;
+      const url = useProxy ? SCRAPER_PROXY_URL : "https://api.anthropic.com/v1/messages";
       const headers = { "Content-Type": "application/json" };
-      if (ANTHROPIC_API_KEY) {
+      if (useProxy) {
+        headers["x-proxy-key"] = SCRAPER_PROXY_KEY;
+      } else if (ANTHROPIC_API_KEY) {
         headers["x-api-key"] = ANTHROPIC_API_KEY;
         headers["anthropic-version"] = "2023-06-01";
         headers["anthropic-dangerous-direct-browser-access"] = "true";
       }
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch(url, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -1423,6 +1433,7 @@ function PIMScraper() {
   const [activeProfileIdx, setActiveProfileIdx] = useState(ACTIVE_PROFILE_IDX);
   const [editingProfile, setEditingProfile] = useState(null); // null or index
   const [editName, setEditName] = useState("");
+  const [editProxyKey, setEditProxyKey] = useState("");
   const [editAnthropic, setEditAnthropic] = useState("");
   const [editOpenai, setEditOpenai] = useState("");
 
@@ -1432,6 +1443,7 @@ function PIMScraper() {
     setActiveProfileIdx(idx);
     setApiKey(p.anthropic || "");
     setOpenaiKey(p.openai || "");
+    SCRAPER_PROXY_KEY = p.proxyKey || "";
     ANTHROPIC_API_KEY = p.anthropic || "";
     OPENAI_API_KEY = p.openai || "";
     try {
@@ -1450,6 +1462,7 @@ function PIMScraper() {
   const startAddProfile = () => {
     setEditingProfile(-1);
     setEditName("");
+    setEditProxyKey("");
     setEditAnthropic("");
     setEditOpenai("");
   };
@@ -1458,13 +1471,14 @@ function PIMScraper() {
     const p = profiles[idx];
     setEditingProfile(idx);
     setEditName(p.name);
+    setEditProxyKey(p.proxyKey || "");
     setEditAnthropic(p.anthropic || "");
     setEditOpenai(p.openai || "");
   };
 
   const saveEditingProfile = () => {
     if (!editName.trim()) return;
-    const entry = { name: editName.trim(), anthropic: editAnthropic.trim(), openai: editOpenai.trim() };
+    const entry = { name: editName.trim(), proxyKey: editProxyKey.trim(), anthropic: editAnthropic.trim(), openai: editOpenai.trim() };
     let updated;
     if (editingProfile === -1) {
       updated = [...profiles, entry];
@@ -1489,6 +1503,7 @@ function PIMScraper() {
     setEditingProfile(null);
   };
   const [selectedModel, setSelectedModel] = useState(SAVED_MODEL || "");
+  const [requireApproval, setRequireApproval] = useState(SAVED_REQUIRE_APPROVAL);
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const [priceMode, setPriceMode] = useState("pc-single");
@@ -1946,7 +1961,7 @@ function PIMScraper() {
         made_in: data.made_in || null, country_availability: data.country_availability || ["CA", "US"],
         source_type: "web_scrape", source_reference: data.source_url || null,
         source_confidence: 0.85, source_extracted_at: new Date().toISOString(),
-        source_review_status: "accepted", updated_at: new Date().toISOString(),
+        source_review_status: requireApproval ? "pending_review" : "accepted", updated_at: new Date().toISOString(),
       };
 
       // Final sanitization — strip unknown columns and coerce types
@@ -1963,8 +1978,8 @@ function PIMScraper() {
         const orgs = await orgRes.json();
         if (!orgs.length) throw new Error("No organization found");
         safeProductData.organization_id = orgs[0].id;
-        safeProductData.approval_status = "approved";
-        safeProductData.public_visible = true;
+        safeProductData.approval_status = requireApproval ? "pending" : "approved";
+        safeProductData.public_visible = !requireApproval;
         safeProductData.version_number = 1;
         const res = await supaFetch("aiq_products", { method: "POST", body: JSON.stringify(safeProductData) });
         if (!res.ok) throw new Error(await res.text());
@@ -1986,7 +2001,7 @@ function PIMScraper() {
               product_id: productId, image_type: imgs[i].type || (i === 0 ? "hero" : "product"),
               file_url: imgs[i].url, alt_text: imgs[i].alt || `${data.brand_name} ${data.model}`,
               is_primary: i === 0, display_order: i + 1, source: "web_scrape",
-              approved: true, audience_tiers: ["public"], embargoed: false,
+              approved: !requireApproval, audience_tiers: requireApproval ? [] : ["public"], embargoed: false,
             }), headers: { Prefer: "return=minimal" } }).catch(() => {});
           }
         }
@@ -2001,7 +2016,7 @@ function PIMScraper() {
                 file_url: doc.url, file_name: doc.url.split("/").pop() || `${doc.type}.pdf`,
                 mime_type: doc.url.endsWith(".pdf") ? "application/pdf" : "text/html",
                 language: "en", locale: "en-CA", is_current: true, source: "web_scrape",
-                approved: true, audience_tiers: ["public"], embargoed: false,
+                approved: !requireApproval, audience_tiers: requireApproval ? [] : ["public"], embargoed: false,
               }), headers: { Prefer: "return=minimal" } }).catch(() => {});
             }
           }
@@ -2479,6 +2494,13 @@ function PIMScraper() {
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: autoSave ? palette.green : palette.textMuted }}>Auto-save to PIM</span>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: requireApproval ? palette.accentSoft || "#2a2045" : palette.card, border: `1px solid ${requireApproval ? palette.accent + "40" : palette.border}`, borderRadius: 8, cursor: "pointer" }}
+            onClick={() => { const v = !requireApproval; setRequireApproval(v); try { localStorage.setItem("aiq_scraper_require_approval", String(v)); } catch(e) {} }}>
+            <div style={{ width: 36, height: 20, borderRadius: 10, background: requireApproval ? palette.accent : palette.border, position: "relative", transition: "background 0.2s" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: requireApproval ? 18 : 2, transition: "left 0.2s" }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: requireApproval ? palette.accent : palette.textMuted }}>Require Approval</span>
+          </div>
           {/* Model Switcher */}
           <div style={{ position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: palette.card, border: "1px solid " + palette.border, borderRadius: 8, cursor: "pointer", userSelect: "none" }}
@@ -2583,7 +2605,7 @@ function PIMScraper() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: palette.text }}>{p.name}</div>
                           <div style={{ display: "flex", gap: 8, fontSize: 10, color: palette.textMuted }}>
-                            <span style={{ color: p.anthropic ? palette.green : palette.red }}>Claude {p.anthropic ? "✓" : "✗"}</span>
+                            {p.proxyKey ? <span style={{ color: palette.accent }}>Proxy ✓</span> : <span style={{ color: p.anthropic ? palette.green : palette.red }}>Claude {p.anthropic ? "✓" : "✗"}</span>}
                             <span style={{ color: p.openai ? "#10a37f" : palette.red }}>GPT {p.openai ? "✓" : "✗"}</span>
                           </div>
                         </div>
@@ -2615,8 +2637,17 @@ function PIMScraper() {
                     </div>
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: 3, background: editProxyKey ? palette.accent : palette.textMuted }} />
+                        <span style={{ fontSize: 11, color: palette.textDim }}>Proxy Key <span style={{ fontSize: 9, color: palette.accent }}>(recommended)</span></span>
+                      </div>
+                      <input style={{ ...s.input, padding: "6px 10px", fontSize: 11 }} type="password"
+                        placeholder="Server-side proxy key — no AI keys in browser"
+                        value={editProxyKey} onChange={e => setEditProxyKey(e.target.value)} />
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
                         <div style={{ width: 6, height: 6, borderRadius: 3, background: editAnthropic ? palette.green : palette.red }} />
-                        <span style={{ fontSize: 11, color: palette.textDim }}>Anthropic Key</span>
+                        <span style={{ fontSize: 11, color: palette.textDim }}>Anthropic Key <span style={{ fontSize: 9, color: palette.textMuted }}>(legacy fallback)</span></span>
                       </div>
                       <input style={{ ...s.input, padding: "6px 10px", fontSize: 11 }} type="password"
                         placeholder="sk-ant-..." value={editAnthropic}
