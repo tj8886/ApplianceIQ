@@ -840,7 +840,7 @@ async function freeDataExtract(url) {
   if (!url || !url.match(/^https?:\/\//i)) return null;
   try {
     const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
     if (!res.ok) return null;
     const html = await res.text();
     if (!html || html.length < 200) return null;
@@ -1075,6 +1075,7 @@ function callAI(systemPrompt, userMsg, retries = 3, model = "claude-haiku-4-5-20
 async function scrapeProduct(query, model, market) {
   // Free-data-first: if query looks like a URL, try extracting structured data before AI
   const isUrl = /^https?:\/\//i.test(query.trim());
+  let rawHtmlSnippet = null;
   if (isUrl) {
     const freeResult = await freeDataExtract(query.trim());
     if (freeResult && freeResult.found && !freeResult._partial) {
@@ -1087,11 +1088,26 @@ async function scrapeProduct(query, model, market) {
       let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + supplement, 3, model);
       if (result.found) { result._freeDataAssist = true; return result; }
     }
+    // For OpenAI models (no real web search), fetch page HTML and pass as context
+    const modelInfo = MODELS.find(m => m.id === model);
+    if (modelInfo && modelInfo.provider === "openai") {
+      try {
+        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(query.trim());
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
+        if (res.ok) {
+          let html = await res.text();
+          // Extract just the useful parts: meta tags, JSON-LD, title
+          const metaSection = (html.match(/<head[\s>][\s\S]*?<\/head>/i) || [""])[0].slice(0, 15000);
+          rawHtmlSnippet = metaSection;
+        }
+      } catch(e) { /* timeout or CORS, continue */ }
+    }
   }
-  let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query, 3, model);
+  const htmlContext = rawHtmlSnippet ? "\n\n[RAW HTML FROM PAGE — extract product data from this]:\n" + rawHtmlSnippet : "";
+  let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + htmlContext, 3, model);
   if (result.found) return result;
   const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
-  result = await callAI(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price", 3, model);
+  result = await callAI(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price" + htmlContext, 3, model);
   if (result.found) return result;
   return { found: false, query, error: result.error || "Product not found after multiple attempts" };
 }
