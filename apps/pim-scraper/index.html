@@ -398,12 +398,19 @@ async function smartScrape(brand,model,url){
   r.status='fail';logEntry('Failed: '+brand+' '+model,'err');renderTab();return r;
 }
 
+async function autoSaveIfEnabled(result) {
+  if (!autoSave || !result.data || result._saved) return;
+  const idx = scrapeResults.indexOf(result);
+  if (idx >= 0) await saveToPim(idx);
+}
+
 /* ═══ SAVE ═══ */
 async function saveToPim(idx){
   const r=scrapeResults[idx];if(!r?.data)return;
   const d=r.data;logEntry('Saving '+r.brand+' '+r.model+'…');
   const{data:br}=await sb.from('brand_catalog').select('id').ilike('brand_name',r.brand).maybeSingle();
   const rec={
+    organization_id:'00000000-0000-0000-0000-000000000002',
     brand_name:d.brand_name||r.brand,manufacturer_name:d.manufacturer_name||d.brand_name||r.brand,
     model:d.model||r.model,category:d.category||null,short_description:d.short_description||d.product_name||null,
     msrp:d.msrp||null,price_currency:d.currency||'CAD',color:d.color||null,finish:d.finish||null,
@@ -714,7 +721,8 @@ function renderDiscover(){
 
   // Scrape results
   if(scrapeResults.length>0){
-    h+='<div class="results-panel" style="margin-top:16px"><div class="results-header"><h3>Scrape Results ('+scrapeResults.length+')</h3><div style="display:flex;gap:8px"><button class="btn btn-sm btn-secondary" onclick="window.S.exportJSON()">📋 Export</button><button class="btn btn-sm btn-danger" onclick="window.S.clearResults()">Clear</button></div></div><div class="results-body">';
+    const unsaved=scrapeResults.filter(r=>r.data&&!r._saved).length;
+    h+='<div class="results-panel" style="margin-top:16px"><div class="results-header"><h3>Scrape Results ('+scrapeResults.length+')</h3><div style="display:flex;gap:8px">'+(unsaved>0?'<button class="btn btn-sm btn-primary" onclick="window.S.saveAll()">💾 Save All ('+unsaved+')</button>':'')+'<button class="btn btn-sm btn-secondary" onclick="window.S.exportJSON()">📋 Export</button><button class="btn btn-sm btn-danger" onclick="window.S.clearResults()">Clear</button></div></div><div class="results-body">';
     for(let i=0;i<scrapeResults.length;i++){
       const r=scrapeResults[i];const tl=TL[r.tier_used]||TL[0];
       const sc=r.status==='ok'?'ok':r.status==='partial'?'partial':r.status==='fail'?'fail':'pending';
@@ -853,7 +861,8 @@ window.S = {
     const model=document.getElementById('modelInput')?.value?.trim();
     if(!brand||!model){alert('Select a brand and enter a model');return}
     isProcessing=true;renderTab();
-    await smartScrape(brand,model,null);
+    const result=await smartScrape(brand,model,null);
+    await autoSaveIfEnabled(result);
     isProcessing=false;renderTab();
   },
   async doUrlScrape(){
@@ -861,13 +870,15 @@ window.S = {
     if(!url||!url.startsWith('http')){alert('Paste a valid URL');return}
     const brand=selectedBrand||'Unknown';
     isProcessing=true;renderTab();
-    await smartScrape(brand,'',url);
+    const result=await smartScrape(brand,'',url);
+    await autoSaveIfEnabled(result);
     isProcessing=false;renderTab();
   },
   async scrapeUrl(url){
     if(isProcessing)return;
     isProcessing=true;renderTab();
-    await smartScrape(selectedBrand||'Unknown','',url);
+    const result=await smartScrape(selectedBrand||'Unknown','',url);
+    await autoSaveIfEnabled(result);
     isProcessing=false;renderTab();
   },
   async scrapeDiscovered(){
@@ -875,7 +886,8 @@ window.S = {
     const newOnes=discoverResults.results.filter(r=>!r.in_pim);
     isProcessing=true;renderTab();
     for(let i=0;i<newOnes.length;i++){
-      await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
+      const result=await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
+      await autoSaveIfEnabled(result);
       if(i<newOnes.length-1)await new Promise(r=>setTimeout(r,1000));
     }
     isProcessing=false;renderTab();
@@ -909,6 +921,12 @@ window.S = {
   },
 
   saveResult(i){saveToPim(i)},
+  async saveAll(){
+    for(let i=0;i<scrapeResults.length;i++){
+      if(scrapeResults[i].data&&!scrapeResults[i]._saved)await saveToPim(i);
+    }
+    renderTab();
+  },
   viewPimProduct(pid){
     if(!brandIntel)return;
     const p=brandIntel.products.find(x=>x.id===pid);if(!p)return;
