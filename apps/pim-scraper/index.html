@@ -847,15 +847,15 @@ async function freeDataExtract(url) {
     const result = { _freeData: true, source_url: url };
 
     // 1. JSON-LD Product schema
+    // Standard <script type="application/ld+json"> tags
     const ldMatches = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
     for (const tag of ldMatches) {
       try {
         const inner = tag.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim();
         let ld = JSON.parse(inner);
-        // Handle @graph arrays
-        if (ld["@graph"]) ld = ld["@graph"].find(g => g["@type"] === "Product") || ld;
-        if (Array.isArray(ld)) ld = ld.find(g => g["@type"] === "Product") || ld[0];
-        if (ld["@type"] === "Product" || ld.sku || ld.mpn || ld.gtin13) {
+        if (ld["@graph"]) ld = ld["@graph"].find(g => g["@type"] === "Product" || g["@type"] === "product") || ld;
+        if (Array.isArray(ld)) ld = ld.find(g => g["@type"] === "Product" || g["@type"] === "product") || ld[0];
+        if (/^product$/i.test(ld["@type"]) || ld.sku || ld.mpn || ld.gtin13) {
           result.brand_name = ld.brand?.name || ld.brand || "";
           result.model = ld.sku || ld.mpn || ld.model || "";
           result.short_description = ld.description || ld.name || "";
@@ -865,6 +865,32 @@ async function freeDataExtract(url) {
           result._jsonld = true;
         }
       } catch(e) { /* malformed JSON-LD, skip */ }
+    }
+    // Next.js __next_s dehydrated JSON-LD (LG, Samsung, etc.)
+    if (!result._jsonld) {
+      const nextMatches = html.match(/"type"\s*:\s*"application\/ld\+json"[^}]*"children"\s*:\s*"((?:[^"\\]|\\.)*)"/g) || [];
+      for (const nm of nextMatches) {
+        try {
+          const jsonStr = (nm.match(/"children"\s*:\s*"((?:[^"\\]|\\.)*)"/) || [])[1];
+          if (!jsonStr) continue;
+          let ld = JSON.parse(jsonStr.replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
+          if (/^product$/i.test(ld["@type"]) || ld.mpn || ld.sku) {
+            result.brand_name = ld.brand?.name || ld.brand || "";
+            result.model = ld.mpn || ld.sku || ld.model || "";
+            result.short_description = ld.name || ld.description || "";
+            if (ld.image) {
+              const imgs = Array.isArray(ld.image) ? ld.image : [ld.image];
+              result.images = imgs.map(u => ({ url: typeof u === "string" ? u : u.url, type: "product" }));
+            }
+            const offer = ld.offers?.price || ld.offers?.[0]?.price;
+            if (offer) result.msrp = parseFloat(offer);
+            if (ld.offers?.priceCurrency) result.currency = ld.offers.priceCurrency;
+            if (ld.offers?.availability) result.availability = ld.offers.availability.includes("InStock") ? "In Stock" : "Out of Stock";
+            result._jsonld = true;
+            break;
+          }
+        } catch(e) { /* parse error, skip */ }
+      }
     }
 
     // 2. Open Graph meta tags
