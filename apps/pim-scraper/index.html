@@ -611,7 +611,8 @@ function renderTab(){
       h+='</span>';
     }
   }
-  h+='<div style="margin-left:auto;display:flex;gap:8px;align-items:center">';
+  h+='<div style="margin-left:auto;display:flex;gap:12px;align-items:center">';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">Tier 2: <select onchange="aiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-save</label>';
   h+='<button class="btn btn-sm btn-secondary" onclick="window.S.setKeys()">🔑 Keys</button>';
   h+='</div></div>';
@@ -648,6 +649,8 @@ function renderDiscover(){
   // Discovery results
   if(discoverLoading){
     h+='<div style="text-align:center;padding:40px;color:var(--txt2)"><div style="font-size:13px">🔍 Searching sitemaps and web for '+esc(selectedBrand)+' products…</div></div>';
+  } else if(discoverResults && !discoverResults.results){
+    h+='<div style="padding:20px;color:var(--red);font-size:13px">Discovery returned no results. <button class="btn btn-sm btn-secondary" onclick="window.S.rediscover()">Retry</button></div>';
   }
 
   h+='<div class="log-panel'+(scrapeResults.length>0||discoverResults?' show':'')+'" id="scrapeLog"></div>';
@@ -657,13 +660,18 @@ function renderDiscover(){
     const newOnes=dr.results.filter(r=>!r.in_pim);
     const existing=dr.results.filter(r=>r.in_pim);
 
-    h+='<div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">';
+    h+='<div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap">';
     h+='<span style="font-size:14px;font-weight:700">Discovered '+dr.total+' URLs</span>';
     h+='<span class="tier-badge t1">'+newOnes.length+' new</span>';
     h+='<span class="tier-badge tu">'+existing.length+' in PIM</span>';
     if(dr.has_sitemap)h+='<span style="font-size:11px;color:var(--txt2)">via sitemap</span>';
-    if(newOnes.length>0)h+='<button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="window.S.scrapeDiscovered()" '+(isProcessing?'disabled':'')+'>🚀 Scrape All New ('+newOnes.length+')</button>';
-    h+='</div>';
+    const scrapedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url)).length;
+    const unsavedDisc=newOnes.filter(r=>{const sr=scrapeResults.find(s=>s.url===r.url);return sr&&sr.data&&!sr._saved}).length;
+    if(scrapedCount>0)h+='<span style="font-size:11px;color:var(--accent)">'+scrapedCount+' scraped</span>';
+    h+='<div style="margin-left:auto;display:flex;gap:8px">';
+    if(unsavedDisc>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveAll()">💾 Save All ('+unsavedDisc+')</button>';
+    if(newOnes.length>scrapedCount)h+='<button class="btn btn-sm btn-primary" onclick="window.S.scrapeDiscovered()" '+(isProcessing?'disabled':'')+'>🚀 Scrape '+(newOnes.length-scrapedCount)+' Remaining</button>';
+    h+='</div></div>';
 
     if(newOnes.length>0){
       h+='<div class="table-wrap" style="margin-bottom:16px"><table class="prod-table"><thead><tr><th>URL</th><th>Model</th><th>Source</th><th>Status</th><th>Action</th></tr></thead><tbody>';
@@ -746,11 +754,16 @@ function renderPriceSync() {
   const withPrice=brandIntel.products.filter(p=>p.msrp);
   const changed=psResults.filter(r=>r.live_price!==null&&r.live_price!==r.product.msrp).length;
 
-  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.psCheckAll()" '+(isProcessing||withPrice.length===0?'disabled':'')+'>💲 Check All Prices ('+withPrice.length+')</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Processing…':psResults.length>0?psResults.length+' checked, '+changed+' changed':'')+'</span></div>';
+  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.psCheckAll()" '+(isProcessing||withPrice.length===0?'disabled':'')+'>💲 Check Live Prices ('+withPrice.length+' with MSRP)</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Checking prices…':psResults.length>0?psResults.length+' checked, '+changed+' changed':'Select a brand to check prices against live data')+'</span></div>';
 
   h+='<div class="log-panel'+(psResults.length>0?' show':'')+'" id="scrapeLog"></div>';
 
   if(psResults.length>0){
+    const changedResults=psResults.filter(r=>r.live_price!==null&&Number(r.live_price)!==Number(r.product.msrp));
+    h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">';
+    h+='<span style="font-size:13px;font-weight:600">'+psResults.length+' checked</span>';
+    if(changedResults.length>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.psUpdateAll()">💲 Update All '+changedResults.length+' Changed</button>';
+    h+='</div>';
     h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Stored MSRP</th><th>Live Price</th><th>Δ</th><th>Tier</th><th>Action</th></tr></thead><tbody>';
     for(let i=0;i<psResults.length;i++){
       const r=psResults[i];const p=r.product;
@@ -780,7 +793,7 @@ function renderVerify() {
   const verified=vaResults.filter(r=>r.status==='verified').length;
   const drifted=vaResults.filter(r=>r.status==='drifted').length;
 
-  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.vaVerifyAll()" '+(isProcessing||brandIntel.products.length===0?'disabled':'')+'>🔍 Verify All ('+brandIntel.products.length+')</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Verifying…':vaResults.length>0?verified+' verified, '+drifted+' drifted':'')+'</span></div>';
+  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.vaVerifyAll()" '+(isProcessing||brandIntel.products.length===0?'disabled':'')+'>🔍 Verify '+brandIntel.products.length+' Products Against Live Data</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Verifying…':vaResults.length>0?verified+' verified, '+drifted+' drifted':'Re-scrape source URLs and compare with stored data')+'</span></div>';
 
   h+='<div class="log-panel'+(vaResults.length>0?' show':'')+'" id="scrapeLog"></div>';
 
@@ -820,7 +833,7 @@ function renderEnrich() {
   const filled=Object.values(enResults).reduce((s,r)=>s+(r.filled||0),0);
   const avgComp=products.length>0?Math.round(products.reduce((s,p)=>s+completeness(p),0)/products.length):0;
 
-  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(isProcessing||lowComp===0?'disabled':'')+'>🧩 Enrich Low &lt;50% ('+lowComp+')</button><span style="font-size:12px;color:var(--txt2)">Avg: '+avgComp+'% · '+filled+' fields filled'+(isProcessing?' · ⏳ Processing…':'')+'</span></div>';
+  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(isProcessing||lowComp===0?'disabled':'')+'>🧩 Auto-fill '+lowComp+' Incomplete Products</button><span style="font-size:12px;color:var(--txt2)">Avg completeness: '+avgComp+'% · '+filled+' fields filled this session'+(isProcessing?' · ⏳ Processing…':'')+'</span></div>';
 
   h+='<div class="log-panel'+(Object.keys(enResults).length>0?' show':'')+'" id="scrapeLog"></div>';
 
@@ -836,9 +849,10 @@ function renderEnrich() {
     if(result&&result.filled>0)h+='<span class="completeness high">+'+result.filled+'</span>';
     else if(result)h+='<span class="completeness low">—</span>';
     h+='</td><td>';
-    if(result&&result.filled>0&&!result._saved)h+='<button class="btn btn-sm btn-primary" onclick="window.S.enSave(\''+p.id+'\')">Save</button>';
-    else if(result&&result._saved)h+='<span style="color:var(--accent);font-size:11px">✓</span>';
-    else if(!result)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.enEnrichOne(\''+p.id+'\')">Enrich</button>';
+    if(result&&result.filled>0&&!result._saved)h+='<button class="btn btn-sm btn-primary" onclick="window.S.enSave(\''+p.id+'\')">Save +'+result.filled+'</button>';
+    else if(result&&result._saved)h+='<span style="color:var(--accent);font-size:11px">✓ saved</span>';
+    else if(!result&&miss.length>0)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.enEnrichOne(\''+p.id+'\')">Fill '+miss.length+' fields</button>';
+    else if(!result)h+='<span style="color:var(--accent);font-size:11px">✓ complete</span>';
     h+='</td></tr>';
   }
   h+='</tbody></table></div>';
@@ -855,6 +869,7 @@ window.S = {
   selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;psResults=[];vaResults=[];enResults={};loadBrandIntel(selectedBrand)},
   toggleAuto(){autoSave=!autoSave},
   clearResults(){scrapeResults=[];sessionCostTotal=0;document.getElementById('sessionCost').textContent='$0.00';renderTab()},
+  rediscover(){if(selectedBrand)discoverBrand(selectedBrand)},
 
   async doScrape(){
     const brand=selectedBrand;
@@ -883,7 +898,8 @@ window.S = {
   },
   async scrapeDiscovered(){
     if(!discoverResults||isProcessing)return;
-    const newOnes=discoverResults.results.filter(r=>!r.in_pim);
+    const newOnes=discoverResults.results.filter(r=>!r.in_pim && !scrapeResults.find(sr=>sr.url===r.url));
+    if(newOnes.length===0){alert('All URLs already scraped');return}
     isProcessing=true;renderTab();
     for(let i=0;i<newOnes.length;i++){
       const result=await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
@@ -984,10 +1000,17 @@ window.S = {
   async psUpdate(i){
     const r=psResults[i];if(!r||r.live_price===null)return;
     logEntry('Updating '+r.product.brand_name+' '+r.product.model+' MSRP → $'+r.live_price);
-    const{error}=await sb.from('aiq_products').update({msrp:r.live_price,price_checked_at:new Date().toISOString()}).eq('id',r.product.id);
+    const{error}=await sb.from('aiq_products').update({msrp:r.live_price,source_extracted_at:new Date().toISOString()}).eq('id',r.product.id);
     if(error){logEntry('Update err: '+error.message,'err');return}
     r.product.msrp=r.live_price;
     logEntry('Updated ✓','ok');renderTab();
+  },
+  async psUpdateAll(){
+    const changed=psResults.filter(r=>r.live_price!==null&&Number(r.live_price)!==Number(r.product.msrp));
+    for(const r of changed){
+      const idx=psResults.indexOf(r);
+      await window.S.psUpdate(idx);
+    }
   },
 
   /* ── Verify & Audit ── */
