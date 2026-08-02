@@ -422,7 +422,7 @@ async function saveToPim(idx){
     source_extracted_at:new Date().toISOString(),source_review_status:'pending',
     market:'CA',status:'active',brand_id:br?.id||null
   };
-  const{error}=await sb.from('aiq_products').insert(rec);
+  const{error}=await sb.from('aiq_products').upsert(rec,{onConflict:'brand_name,model,market',ignoreDuplicates:false});
   if(error){logEntry('Save err: '+error.message,'err');return}
   r._saved=true;logEntry('Saved ✓','ok');renderTab();
 }
