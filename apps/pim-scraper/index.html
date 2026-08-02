@@ -1413,6 +1413,7 @@ function PIMScraper() {
   const [errors, setErrors] = useState([]);
   const [existingProducts, setExistingProducts] = useState([]);
   const [enrichBatchSize, setEnrichBatchSize] = useState(50);
+  const [enrichBrand, setEnrichBrand] = useState("all");
   const [savingIdx, setSavingIdx] = useState(null);
   const abortRef = useRef(false);
   const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
@@ -2273,8 +2274,9 @@ function PIMScraper() {
 
   const handleEnrichExisting = async () => {
     if (!existingProducts.length) await loadExisting();
-    const incomplete = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
-    if (!incomplete.length) { setErrors((p) => [...p, "All products already have specs"]); return; }
+    let incomplete = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
+    if (enrichBrand !== "all") incomplete = incomplete.filter((p) => p.brand_name === enrichBrand);
+    if (!incomplete.length) { setErrors((p) => [...p, "No incomplete products" + (enrichBrand !== "all" ? " for " + enrichBrand : "")]); return; }
     const lines = incomplete.slice(0, enrichBatchSize).map((p) => `${p.brand_name} ${p.model}`);
     setBulkText(lines.join("\n"));
     setMode("bulk");
@@ -2421,7 +2423,10 @@ function PIMScraper() {
     }
   };
 
-  const missCount = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish).length;
+  const incompleteAll = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
+  const enrichBrands = [...new Set(incompleteAll.map((p) => p.brand_name))].sort();
+  const incompleteFiltered = enrichBrand === "all" ? incompleteAll : incompleteAll.filter((p) => p.brand_name === enrichBrand);
+  const missCount = incompleteFiltered.length;
 
   return (
     <div style={s.app}>
@@ -2869,13 +2874,19 @@ function PIMScraper() {
           <div style={{ ...s.card, marginBottom: 24 }}>
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Enrich Existing Products</div>
             <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
-              {existingProducts.length} products in PIM{missCount > 0 && <>, <span style={{ color: palette.yellow }}>{missCount} missing specs</span></>}
+              {existingProducts.length} products in PIM{incompleteAll.length > 0 && <>, <span style={{ color: palette.yellow }}>{incompleteAll.length} missing specs</span></>}
+              {enrichBrand !== "all" && <> — showing <span style={{ color: palette.accent }}>{enrichBrand}</span> ({missCount})</>}
             </div>
-            {missCount > 0 && (
-              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <button style={s.btn} onClick={handleEnrichExisting}>
-                  Scrape {Math.min(enrichBatchSize, missCount)} incomplete products
-                </button>
+            {incompleteAll.length > 0 && (
+              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
+                <select value={enrichBrand} onChange={(e) => setEnrichBrand(e.target.value)} style={{ ...s.input, flex: "none", width: 220, padding: "10px 8px" }}>
+                  <option value="all">All Brands ({incompleteAll.length})</option>
+                  {enrichBrands.map((b) => {
+                    const ct = incompleteAll.filter((p) => p.brand_name === b).length;
+                    const isFree = /^(lg|bosch)$/i.test(b.replace(/[^a-z]/gi, ""));
+                    return <option key={b} value={b}>{isFree ? "⚡ " : ""}{b} ({ct}){isFree ? " — FREE" : ""}</option>;
+                  })}
+                </select>
                 <select value={enrichBatchSize} onChange={(e) => setEnrichBatchSize(Number(e.target.value))} style={{ ...s.input, flex: "none", width: 80, padding: "10px 8px" }}>
                   <option value={20}>20</option>
                   <option value={50}>50</option>
@@ -2883,6 +2894,9 @@ function PIMScraper() {
                   <option value={250}>250</option>
                   <option value={500}>500</option>
                 </select>
+                <button style={s.btn} onClick={handleEnrichExisting}>
+                  Scrape {Math.min(enrichBatchSize, missCount)} products
+                </button>
               </div>
             )}
             {existingProducts.length > 0 && (
@@ -2893,7 +2907,7 @@ function PIMScraper() {
                       <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: palette.textMuted, fontWeight: 500 }}>{h}</th>
                     ))}
                   </tr></thead>
-                  <tbody>{existingProducts.map((p) => (
+                  <tbody>{existingProducts.filter((p) => enrichBrand === "all" || p.brand_name === enrichBrand).map((p) => (
                     <tr key={p.id} style={{ borderBottom: `1px solid ${palette.border}20` }}>
                       <td style={{ padding: "6px 8px" }}>{p.brand_name}</td>
                       <td style={{ padding: "6px 8px", fontFamily: "monospace", fontSize: 11 }}>{p.model}</td>
