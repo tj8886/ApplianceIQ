@@ -1412,8 +1412,6 @@ function PIMScraper() {
   const [saved, setSaved] = useState([]);
   const [errors, setErrors] = useState([]);
   const [existingProducts, setExistingProducts] = useState([]);
-  const [enrichBatchSize, setEnrichBatchSize] = useState(50);
-  const [enrichBrand, setEnrichBrand] = useState("all");
   const [savingIdx, setSavingIdx] = useState(null);
   const abortRef = useRef(false);
   const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
@@ -1667,21 +1665,9 @@ function PIMScraper() {
   const loadExisting = useCallback(async () => {
     setLoading(true);
     try {
-      // PostgREST caps at 1000 per request — paginate to get all
-      let allData = [];
-      let offset = 0;
-      const pageSize = 1000;
-      while (true) {
-        const res = await supaFetch(`aiq_products?select=id,model,brand_name,category,width_inches,height_inches,depth_inches,msrp,finish,color,status&order=brand_name,model&limit=${pageSize}&offset=${offset}`, {
-          headers: { "Range": `${offset}-${offset + pageSize - 1}` }
-        });
-        const data = await res.json();
-        if (!data || !data.length) break;
-        allData = allData.concat(data);
-        if (data.length < pageSize) break;
-        offset += pageSize;
-      }
-      setExistingProducts(allData);
+      const res = await supaFetch("aiq_products?select=id,model,brand_name,category,width_inches,height_inches,depth_inches,msrp,finish,color,status&order=brand_name,model&limit=500");
+      const data = await res.json();
+      setExistingProducts(data || []);
     } catch (e) { setErrors((p) => [...p, e.message]); }
     setLoading(false);
   }, []);
@@ -2286,10 +2272,9 @@ function PIMScraper() {
 
   const handleEnrichExisting = async () => {
     if (!existingProducts.length) await loadExisting();
-    let incomplete = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
-    if (enrichBrand !== "all") incomplete = incomplete.filter((p) => p.brand_name === enrichBrand);
-    if (!incomplete.length) { setErrors((p) => [...p, "No incomplete products" + (enrichBrand !== "all" ? " for " + enrichBrand : "")]); return; }
-    const lines = incomplete.slice(0, enrichBatchSize).map((p) => `${p.brand_name} ${p.model}`);
+    const incomplete = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
+    if (!incomplete.length) { setErrors((p) => [...p, "All products already have specs"]); return; }
+    const lines = incomplete.slice(0, 20).map((p) => `${p.brand_name} ${p.model}`);
     setBulkText(lines.join("\n"));
     setMode("bulk");
   };
@@ -2435,10 +2420,7 @@ function PIMScraper() {
     }
   };
 
-  const incompleteAll = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
-  const enrichBrands = [...new Set(incompleteAll.map((p) => p.brand_name))].sort();
-  const incompleteFiltered = enrichBrand === "all" ? incompleteAll : incompleteAll.filter((p) => p.brand_name === enrichBrand);
-  const missCount = incompleteFiltered.length;
+  const missCount = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish).length;
 
   return (
     <div style={s.app}>
@@ -2886,30 +2868,12 @@ function PIMScraper() {
           <div style={{ ...s.card, marginBottom: 24 }}>
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Enrich Existing Products</div>
             <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>
-              {existingProducts.length} products in PIM{incompleteAll.length > 0 && <>, <span style={{ color: palette.yellow }}>{incompleteAll.length} missing specs</span></>}
-              {enrichBrand !== "all" && <> — showing <span style={{ color: palette.accent }}>{enrichBrand}</span> ({missCount})</>}
+              {existingProducts.length} products in PIM{missCount > 0 && <>, <span style={{ color: palette.yellow }}>{missCount} missing specs</span></>}
             </div>
-            {incompleteAll.length > 0 && (
-              <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 12 }}>
-                <select value={enrichBrand} onChange={(e) => setEnrichBrand(e.target.value)} style={{ ...s.input, flex: "none", width: 220, padding: "10px 8px" }}>
-                  <option value="all">All Brands ({incompleteAll.length})</option>
-                  {enrichBrands.map((b) => {
-                    const ct = incompleteAll.filter((p) => p.brand_name === b).length;
-                    const isFree = /^(lg|lgstudio|bosch|broan|broannutone|thermador)$/i.test(b.replace(/[^a-z]/gi, ""));
-                    return <option key={b} value={b}>{isFree ? "⚡ " : ""}{b} ({ct}){isFree ? " — FREE" : ""}</option>;
-                  })}
-                </select>
-                <select value={enrichBatchSize} onChange={(e) => setEnrichBatchSize(Number(e.target.value))} style={{ ...s.input, flex: "none", width: 80, padding: "10px 8px" }}>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={250}>250</option>
-                  <option value={500}>500</option>
-                </select>
-                <button style={s.btn} onClick={handleEnrichExisting}>
-                  Scrape {Math.min(enrichBatchSize, missCount)} products
-                </button>
-              </div>
+            {missCount > 0 && (
+              <button style={s.btn} onClick={handleEnrichExisting}>
+                Scrape top 20 incomplete products
+              </button>
             )}
             {existingProducts.length > 0 && (
               <div style={{ marginTop: 16, maxHeight: 300, overflow: "auto" }}>
@@ -2919,7 +2883,7 @@ function PIMScraper() {
                       <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: palette.textMuted, fontWeight: 500 }}>{h}</th>
                     ))}
                   </tr></thead>
-                  <tbody>{existingProducts.filter((p) => enrichBrand === "all" || p.brand_name === enrichBrand).map((p) => (
+                  <tbody>{existingProducts.map((p) => (
                     <tr key={p.id} style={{ borderBottom: `1px solid ${palette.border}20` }}>
                       <td style={{ padding: "6px 8px" }}>{p.brand_name}</td>
                       <td style={{ padding: "6px 8px", fontFamily: "monospace", fontSize: 11 }}>{p.model}</td>
