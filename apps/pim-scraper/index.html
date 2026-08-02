@@ -835,120 +835,21 @@ function extractJSON(text) {
 }
 
 // ── Free Data First Pass ──
-// Try extracting structured data from URL before burning AI tokens
+// Server-side extraction via Supabase Edge Function — no CORS, no proxy
 async function freeDataExtract(url) {
   if (!url || !url.match(/^https?:\/\//i)) return null;
   try {
-    const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
+    const res = await fetch(SUPABASE_URL + "/functions/v1/free-extract", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(30000),
+    });
     if (!res.ok) return null;
-    const html = await res.text();
-    if (!html || html.length < 200) return null;
-    const result = { _freeData: true, source_url: url };
-
-    // 1. JSON-LD Product schema
-    // Standard <script type="application/ld+json"> tags
-    const ldMatches = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
-    for (const tag of ldMatches) {
-      try {
-        const inner = tag.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim();
-        let ld = JSON.parse(inner);
-        if (ld["@graph"]) ld = ld["@graph"].find(g => g["@type"] === "Product" || g["@type"] === "product") || ld;
-        if (Array.isArray(ld)) ld = ld.find(g => g["@type"] === "Product" || g["@type"] === "product") || ld[0];
-        if (/^product$/i.test(ld["@type"]) || ld.sku || ld.mpn || ld.gtin13) {
-          result.brand_name = ld.brand?.name || ld.brand || "";
-          result.model = ld.sku || ld.mpn || ld.model || "";
-          result.short_description = ld.description || ld.name || "";
-          if (ld.image) result.images = (Array.isArray(ld.image) ? ld.image : [ld.image]).map(u => ({ url: typeof u === "string" ? u : u.url, type: "product" }));
-          const offer = ld.offers?.price || ld.offers?.[0]?.price;
-          if (offer) result.msrp = parseFloat(offer);
-          result._jsonld = true;
-        }
-      } catch(e) { /* malformed JSON-LD, skip */ }
-    }
-    // Next.js __next_s dehydrated JSON-LD (LG, Samsung, etc.)
-    if (!result._jsonld) {
-      const nextMatches = html.match(/"type"\s*:\s*"application\/ld\+json"[^}]*"children"\s*:\s*"((?:[^"\\]|\\.)*)"/g) || [];
-      for (const nm of nextMatches) {
-        try {
-          const jsonStr = (nm.match(/"children"\s*:\s*"((?:[^"\\]|\\.)*)"/) || [])[1];
-          if (!jsonStr) continue;
-          let ld = JSON.parse(jsonStr.replace(/\\"/g, '"').replace(/\\\\/g, '\\'));
-          if (/^product$/i.test(ld["@type"]) || ld.mpn || ld.sku) {
-            result.brand_name = ld.brand?.name || ld.brand || "";
-            result.model = ld.mpn || ld.sku || ld.model || "";
-            result.short_description = ld.name || ld.description || "";
-            if (ld.image) {
-              const imgs = Array.isArray(ld.image) ? ld.image : [ld.image];
-              result.images = imgs.map(u => ({ url: typeof u === "string" ? u : u.url, type: "product" }));
-            }
-            const offer = ld.offers?.price || ld.offers?.[0]?.price;
-            if (offer) result.msrp = parseFloat(offer);
-            if (ld.offers?.priceCurrency) result.currency = ld.offers.priceCurrency;
-            if (ld.offers?.availability) result.availability = ld.offers.availability.includes("InStock") ? "In Stock" : "Out of Stock";
-            result._jsonld = true;
-            break;
-          }
-        } catch(e) { /* parse error, skip */ }
-      }
-    }
-
-    // 2. Open Graph meta tags
-    const ogName = (html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) || [])[1];
-    const ogDesc = (html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) || [])[1];
-    const ogImg  = (html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || [])[1];
-    if (ogName && !result.short_description) result.short_description = ogName;
-    if (ogDesc) result.og_description = ogDesc;
-    if (ogImg && !result.images?.length) result.images = [{ url: ogImg, type: "product" }];
-
-    // 3. HTML spec tables — look for common patterns
-    const specs = {};
-    // Pattern: <th>Label</th><td>Value</td> or <dt>Label</dt><dd>Value</dd>
-    const rowPat = /<t[hd][^>]*>\s*(.*?)\s*<\/t[hd]>\s*<t[hd][^>]*>\s*(.*?)\s*<\/t[hd]>/gi;
-    let m;
-    while ((m = rowPat.exec(html)) !== null) {
-      const k = m[1].replace(/<[^>]+>/g, "").trim();
-      const v = m[2].replace(/<[^>]+>/g, "").trim();
-      if (k && v && k.length < 80 && v.length < 200) specs[k] = v;
-    }
-    // Also try <dt>/<dd> pairs
-    const dtPat = /<dt[^>]*>\s*(.*?)\s*<\/dt>\s*<dd[^>]*>\s*(.*?)\s*<\/dd>/gi;
-    while ((m = dtPat.exec(html)) !== null) {
-      const k = m[1].replace(/<[^>]+>/g, "").trim();
-      const v = m[2].replace(/<[^>]+>/g, "").trim();
-      if (k && v && k.length < 80 && v.length < 200) specs[k] = v;
-    }
-
-    if (Object.keys(specs).length > 0) {
-      result.specs = specs;
-      // Try to extract dimensions from specs
-      for (const [k, v] of Object.entries(specs)) {
-        const kl = k.toLowerCase();
-        if (kl.includes("width") && !result.width_inches) { const n = parseFloat(v); if (n > 0 && n < 100) result.width_inches = n; }
-        if (kl.includes("height") && !result.height_inches) { const n = parseFloat(v); if (n > 0 && n < 120) result.height_inches = n; }
-        if (kl.includes("depth") && !result.depth_inches) { const n = parseFloat(v); if (n > 0 && n < 100) result.depth_inches = n; }
-        if (kl.includes("weight") && !result.weight_lbs) { const n = parseFloat(v); if (n > 0) result.weight_lbs = n; }
-        if ((kl.includes("capacity") || kl.includes("cu")) && !result.capacity_cu_ft) { const n = parseFloat(v); if (n > 0 && n < 50) result.capacity_cu_ft = n; }
-      }
-      result._specTable = true;
-    }
-
-    // Determine if we got enough to skip AI
-    const hasSubstance = (result._jsonld && result.model) || (result._specTable && Object.keys(specs).length >= 5);
-    if (hasSubstance) {
-      result.found = true;
-      result._source = "free-extract";
-      result._specCount = Object.keys(specs).length;
-      return result;
-    }
-    // Got some data but not enough — return as supplement for AI
-    if (result._jsonld || result._specTable) {
-      result._partial = true;
-      return result;
-    }
-    return null;
+    const data = await res.json();
+    return data;
   } catch(e) {
-    return null; // CORS blocked, timeout, etc — just fall through to AI
+    return null; // timeout or network error — fall through to AI
   }
 }
 
@@ -1073,9 +974,8 @@ function callAI(systemPrompt, userMsg, retries = 3, model = "claude-haiku-4-5-20
 }
 
 async function scrapeProduct(query, model, market) {
-  // Free-data-first: if query looks like a URL, try extracting structured data before AI
+  // Free-data-first: if query looks like a URL, try server-side extraction (zero AI cost)
   const isUrl = /^https?:\/\//i.test(query.trim());
-  let rawHtmlSnippet = null;
   if (isUrl) {
     const freeResult = await freeDataExtract(query.trim());
     if (freeResult && freeResult.found && !freeResult._partial) {
@@ -1088,27 +988,18 @@ async function scrapeProduct(query, model, market) {
       let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + supplement, 3, model);
       if (result.found) { result._freeDataAssist = true; return result; }
     }
-    // For OpenAI models (no real web search), fetch page HTML and pass as context
-    const modelInfo = MODELS.find(m => m.id === model);
-    if (modelInfo && modelInfo.provider === "openai") {
-      try {
-        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(query.trim());
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
-        if (res.ok) {
-          let html = await res.text();
-          // Extract just the useful parts: meta tags, JSON-LD, title
-          const metaSection = (html.match(/<head[\s>][\s\S]*?<\/head>/i) || [""])[0].slice(0, 15000);
-          rawHtmlSnippet = metaSection;
-        }
-      } catch(e) { /* timeout or CORS, continue */ }
-    }
   }
-  const htmlContext = rawHtmlSnippet ? "\n\n[RAW HTML FROM PAGE — extract product data from this]:\n" + rawHtmlSnippet : "";
-  let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + htmlContext, 3, model);
+  let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query, 3, model);
   if (result.found) return result;
   const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
-  result = await callAI(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price" + htmlContext, 3, model);
+  result = await callAI(fallbackPrompt, query + " — search the manufacturer website for full specs, all images, all colors, and MSRP price", 3, model);
   if (result.found) return result;
+  // Auto-fallback: if OpenAI model failed (no real web search), retry with Haiku
+  const modelInfo = MODELS.find(m => m.id === model);
+  if (modelInfo && modelInfo.provider === "openai" && ANTHROPIC_API_KEY) {
+    const haikuResult = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query, 3, "claude-haiku-4-5-20251001");
+    if (haikuResult.found) { haikuResult._autoFallback = "Haiku (auto-fallback from " + modelInfo.short + ")"; return haikuResult; }
+  }
   return { found: false, query, error: result.error || "Product not found after multiple attempts" };
 }
 
