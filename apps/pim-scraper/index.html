@@ -771,25 +771,24 @@ function renderDiscover(){
 /* ═══ PRICE SYNC TAB ═══ */
 function renderPriceSync() {
   let h='';
-  if(!selectedBrand){h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div><div style="font-size:13px;margin-top:6px">Compare manufacturer MSRP against retailer pricing across CA &amp; US</div></div>';return h}
+
+  // Market toggle + retailer selector (always visible)
+  const retailers=psMarket==='CA'?PS_RETAILERS_CA:PS_RETAILERS_US;
+  h+='<div class="controls" style="flex-wrap:wrap;gap:10px">';
+  h+='<div class="mode-toggle"><button class="'+(psMarket==='CA'?'active':'')+'" onclick="window.S.psSetMarket(\'CA\')">🇨🇦 Canada</button><button class="'+(psMarket==='US'?'active':'')+'" onclick="window.S.psSetMarket(\'US\')">🇺🇸 USA</button></div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
+  for(const r of retailers){
+    const checked=psSelectedRetailers.has(r.key);
+    h+='<label style="font-size:11px;color:'+(checked?'var(--txt)':'var(--txt2)')+';display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--surface);padding:4px 8px;border-radius:6px;border:1px solid '+(checked?'var(--accent)':'var(--line)')+'">';
+    h+='<input type="checkbox" '+(checked?'checked':'')+' onchange="window.S.psToggleRetailer(\''+r.key+'\')" style="accent-color:var(--accent)"/> '+esc(r.name)+'</label>';
+  }
+  h+='</div></div>';
+
+  if(!selectedBrand){h+='<div style="text-align:center;padding:50px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div><div style="font-size:13px;margin-top:6px">Manufacturer MSRP = source of truth · Retailer prices for comparison</div></div>';return h}
   if(!brandIntel||brandIntel.brand!==selectedBrand){h+='<div style="padding:40px;text-align:center;color:var(--txt2)">Loading…</div>';return h}
 
   const src=brandSourceMap[selectedBrand];
   const hasDirect=src?.sells_direct;
-
-  // Market toggle + retailer selector
-  h+='<div class="controls" style="flex-wrap:wrap;gap:10px">';
-  h+='<div class="mode-toggle"><button class="'+(psMarket==='CA'?'active':'')+'" onclick="window.S.psSetMarket(\'CA\')">🇨🇦 Canada</button><button class="'+(psMarket==='US'?'active':'')+'" onclick="window.S.psSetMarket(\'US\')">🇺🇸 USA</button></div>';
-
-  // Retailer checkboxes
-  const retailers=psMarket==='CA'?PS_RETAILERS_CA:PS_RETAILERS_US;
-  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
-  for(const r of retailers){
-    const checked=psSelectedRetailers.has(r.key);
-    h+='<label style="font-size:11px;color:var(--txt2);display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--surface);padding:4px 8px;border-radius:6px;border:1px solid '+(checked?'var(--accent)':'var(--line)')+'">';
-    h+='<input type="checkbox" '+(checked?'checked':'')+' onchange="window.S.psToggleRetailer(\''+r.key+'\')" style="accent-color:var(--accent)"/> '+esc(r.name)+'</label>';
-  }
-  h+='</div></div>';
 
   // Action buttons
   h+='<div class="controls">';
