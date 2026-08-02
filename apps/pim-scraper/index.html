@@ -242,6 +242,29 @@ let discoverLoading = false;
 
 // Price Sync state
 let psResults = [];
+let psMarket = 'CA';
+let psSelectedRetailers = new Set(['homedepot','bestbuy','canadianappliance']);
+
+const PS_RETAILERS_CA = [
+  {key:'homedepot',name:'Home Depot',site:'homedepot.ca'},
+  {key:'bestbuy',name:'Best Buy',site:'bestbuy.ca'},
+  {key:'canadianappliance',name:'Canadian Appliance Source',site:'canadianappliance.ca'},
+  {key:'costco',name:'Costco',site:'costco.ca'},
+  {key:'leons',name:"Leon's",site:'leons.ca'},
+  {key:'thebrick',name:'The Brick',site:'thebrick.com'},
+  {key:'trail',name:'Trail Appliances',site:'trailappliances.com'},
+  {key:'appliancecanada',name:'Appliance Canada',site:'appliancecanada.com'},
+  {key:'tasco',name:'Tasco',site:'tasco.net'}
+];
+const PS_RETAILERS_US = [
+  {key:'homedepot',name:'Home Depot',site:'homedepot.com'},
+  {key:'lowes',name:"Lowe's",site:'lowes.com'},
+  {key:'bestbuy',name:'Best Buy',site:'bestbuy.com'},
+  {key:'costco',name:'Costco',site:'costco.com'},
+  {key:'ajmadison',name:'AJ Madison',site:'ajmadison.com'},
+  {key:'abt',name:'Abt Electronics',site:'abt.com'},
+  {key:'appliancesconnection',name:'AppliancesConnection',site:'appliancesconnection.com'}
+];
 
 // Verify & Audit state
 let vaResults = [];
@@ -748,36 +771,72 @@ function renderDiscover(){
 /* ═══ PRICE SYNC TAB ═══ */
 function renderPriceSync() {
   let h='';
-  if(!selectedBrand){h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div></div>';return h}
+  if(!selectedBrand){h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div><div style="font-size:13px;margin-top:6px">Compare manufacturer MSRP against retailer pricing across CA &amp; US</div></div>';return h}
   if(!brandIntel||brandIntel.brand!==selectedBrand){h+='<div style="padding:40px;text-align:center;color:var(--txt2)">Loading…</div>';return h}
 
-  const withPrice=brandIntel.products.filter(p=>p.msrp);
-  const changed=psResults.filter(r=>r.live_price!==null&&r.live_price!==r.product.msrp).length;
+  const src=brandSourceMap[selectedBrand];
+  const hasDirect=src?.sells_direct;
 
-  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.psCheckAll()" '+(isProcessing||withPrice.length===0?'disabled':'')+'>💲 Check Live Prices ('+withPrice.length+' with MSRP)</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Checking prices…':psResults.length>0?psResults.length+' checked, '+changed+' changed':'Select a brand to check prices against live data')+'</span></div>';
+  // Market toggle + retailer selector
+  h+='<div class="controls" style="flex-wrap:wrap;gap:10px">';
+  h+='<div class="mode-toggle"><button class="'+(psMarket==='CA'?'active':'')+'" onclick="window.S.psSetMarket(\'CA\')">🇨🇦 Canada</button><button class="'+(psMarket==='US'?'active':'')+'" onclick="window.S.psSetMarket(\'US\')">🇺🇸 USA</button></div>';
+
+  // Retailer checkboxes
+  const retailers=psMarket==='CA'?PS_RETAILERS_CA:PS_RETAILERS_US;
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
+  for(const r of retailers){
+    const checked=psSelectedRetailers.has(r.key);
+    h+='<label style="font-size:11px;color:var(--txt2);display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--surface);padding:4px 8px;border-radius:6px;border:1px solid '+(checked?'var(--accent)':'var(--line)')+'">';
+    h+='<input type="checkbox" '+(checked?'checked':'')+' onchange="window.S.psToggleRetailer(\''+r.key+'\')" style="accent-color:var(--accent)"/> '+esc(r.name)+'</label>';
+  }
+  h+='</div></div>';
+
+  // Action buttons
+  h+='<div class="controls">';
+  if(hasDirect)h+='<button class="btn btn-primary" onclick="window.S.psCheckMfr()" '+(isProcessing?'disabled':'')+'>🏭 Check Manufacturer MSRP ('+brandIntel.products.length+')</button>';
+  h+='<button class="btn btn-primary" onclick="window.S.psCheckRetailers()" '+(isProcessing||psSelectedRetailers.size===0?'disabled':'')+'>🏪 Check '+psSelectedRetailers.size+' Retailer'+(psSelectedRetailers.size!==1?'s':'')+'</button>';
+  h+='<span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Checking prices…':'Manufacturer MSRP = source of truth')+'</span>';
+  h+='</div>';
 
   h+='<div class="log-panel'+(psResults.length>0?' show':'')+'" id="scrapeLog"></div>';
 
+  // Results table
   if(psResults.length>0){
-    const changedResults=psResults.filter(r=>r.live_price!==null&&Number(r.live_price)!==Number(r.product.msrp));
+    // Gather unique sources
+    const sources=[...new Set(psResults.map(r=>r.source_name))].sort();
+    const changedCount=psResults.filter(r=>r.live_price!==null&&Number(r.live_price)!==Number(r.product.msrp)).length;
+
     h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">';
-    h+='<span style="font-size:13px;font-weight:600">'+psResults.length+' checked</span>';
-    if(changedResults.length>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.psUpdateAll()">💲 Update All '+changedResults.length+' Changed</button>';
+    h+='<span style="font-size:13px;font-weight:600">'+psResults.length+' price checks</span>';
+    if(changedCount>0)h+='<span class="tier-badge t2">'+changedCount+' differ from MSRP</span>';
     h+='</div>';
-    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Stored MSRP</th><th>Live Price</th><th>Δ</th><th>Tier</th><th>Action</th></tr></thead><tbody>';
+
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>MSRP</th><th>Source</th><th>Live Price</th><th>Δ vs MSRP</th><th>Tier</th></tr></thead><tbody>';
     for(let i=0;i<psResults.length;i++){
       const r=psResults[i];const p=r.product;
-      const stored=p.msrp?Number(p.msrp):null;const live=r.live_price!==null?Number(r.live_price):null;
+      const msrp=p.msrp?Number(p.msrp):null;
+      const live=r.live_price!==null?Number(r.live_price):null;
       let dh='<span class="price-same">—</span>';
-      if(stored&&live){const d=live-stored;if(d>0)dh='<span class="price-up">+$'+d.toFixed(0)+' ↑</span>';else if(d<0)dh='<span class="price-down">-$'+Math.abs(d).toFixed(0)+' ↓</span>';else dh='<span class="price-same">✓</span>'}
+      if(msrp&&live){
+        const d=live-msrp;const pct=Math.round((d/msrp)*100);
+        if(d>0)dh='<span class="price-up">+$'+d.toFixed(0)+' ('+pct+'%) ↑</span>';
+        else if(d<0)dh='<span class="price-down">-$'+Math.abs(d).toFixed(0)+' ('+Math.abs(pct)+'%) ↓</span>';
+        else dh='<span class="price-same">✓ match</span>';
+      }
       const tl=TL[r.tier_used]||TL[0];
-      h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td>'+(stored?'$'+stored.toLocaleString():'—')+'</td><td>'+(live!==null?'$'+live.toLocaleString():'<span style="color:var(--red)">—</span>')+'</td><td>'+dh+'</td><td><span class="tier-badge '+tl.cls+'">T'+r.tier_used+'</span></td><td>'+(live!==null&&live!==stored?'<button class="btn btn-sm btn-primary" onclick="window.S.psUpdate('+i+')">Update</button>':'')+'</td></tr>';
+      const srcIcon=r.source_name==='Manufacturer'?'🏭':'🏪';
+      h+='<tr><td class="model-cell">'+esc(p.model)+'</td>';
+      h+='<td>'+(msrp?'$'+msrp.toLocaleString():'—')+'</td>';
+      h+='<td style="font-size:12px">'+srcIcon+' '+esc(r.source_name)+'</td>';
+      h+='<td style="font-weight:600">'+(live!==null?'$'+live.toLocaleString():'<span style="color:var(--red)">not found</span>')+'</td>';
+      h+='<td>'+dh+'</td>';
+      h+='<td><span class="tier-badge '+tl.cls+'">T'+r.tier_used+'</span></td></tr>';
     }
     h+='</tbody></table></div>';
   } else {
-    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Last Checked</th></tr></thead><tbody>';
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Source</th></tr></thead><tbody>';
     for(const p of brandIntel.products.slice(0,50)){
-      h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td style="color:var(--txt2)">'+esc(p.category||'—')+'</td><td>'+(p.msrp?'$'+Number(p.msrp).toLocaleString():'—')+'</td><td style="font-size:11px;color:var(--txt2)">'+(p.source_extracted_at?new Date(p.source_extracted_at).toLocaleDateString():'—')+'</td></tr>';
+      h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td style="color:var(--txt2)">'+esc(p.category||'—')+'</td><td>'+(p.msrp?'$'+Number(p.msrp).toLocaleString():'<span style="color:var(--amber)">missing</span>')+'</td><td style="font-size:11px;color:var(--txt2)">'+esc(p.source_reference||'—')+'</td></tr>';
     }
     h+='</tbody></table></div>';
   }
@@ -986,31 +1045,55 @@ window.S = {
   },
 
   /* ── Price Sync ── */
-  async psCheckAll(){
-    if(!brandIntel||!brandIntel.products.length)return;
-    const withPrice=brandIntel.products.filter(p=>p.msrp);
-    isProcessing=true;psResults=[];renderTab();
-    for(let i=0;i<withPrice.length;i++){
-      const r=await priceSyncOne(withPrice[i]);
-      psResults.push(r);renderTab();
-      if(i<withPrice.length-1)await new Promise(r=>setTimeout(r,800));
+  psSetMarket(m){psMarket=m;psResults=[];renderTab()},
+  psToggleRetailer(key){
+    if(psSelectedRetailers.has(key))psSelectedRetailers.delete(key);else psSelectedRetailers.add(key);
+    renderTab();
+  },
+  async psCheckMfr(){
+    if(!brandIntel||isProcessing)return;
+    const src=brandSourceMap[selectedBrand];
+    const website=psMarket==='CA'?(src?.ca_website||src?.us_website):(src?.us_website||src?.ca_website);
+    isProcessing=true;renderTab();
+    for(const p of brandIntel.products.slice(0,50)){
+      logEntry('Checking manufacturer price: '+p.model+'…');
+      const query=selectedBrand+' '+p.model;
+      const t1=await callTier1(website?{query:query+' site:'+website,market:psMarket}:{query,market:psMarket});
+      const price=t1?.msrp||t1?.price||null;
+      psResults.push({product:p,live_price:price?Number(price):null,source_name:'Manufacturer',source_site:website,tier_used:1,cost:0});
+      renderTab();
+      await new Promise(r=>setTimeout(r,600));
+    }
+    isProcessing=false;renderTab();
+  },
+  async psCheckRetailers(){
+    if(!brandIntel||isProcessing||psSelectedRetailers.size===0)return;
+    const retailers=psMarket==='CA'?PS_RETAILERS_CA:PS_RETAILERS_US;
+    const selected=retailers.filter(r=>psSelectedRetailers.has(r.key));
+    isProcessing=true;renderTab();
+    for(const retailer of selected){
+      for(const p of brandIntel.products.slice(0,30)){
+        logEntry('Checking '+retailer.name+': '+p.model+'…');
+        const query=selectedBrand+' '+p.model+' site:'+retailer.site;
+        const t1=await callTier1({query,market:psMarket});
+        const price=t1?.msrp||t1?.price||null;
+        psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.name,source_site:retailer.site,tier_used:1,cost:0});
+        renderTab();
+        await new Promise(r=>setTimeout(r,600));
+      }
     }
     isProcessing=false;renderTab();
   },
   async psUpdate(i){
-    const r=psResults[i];if(!r||r.live_price===null)return;
-    logEntry('Updating '+r.product.brand_name+' '+r.product.model+' MSRP → $'+r.live_price);
+    const r=psResults[i];if(!r||r.live_price===null||r.source_name!=='Manufacturer')return;
+    logEntry('Updating MSRP for '+r.product.model+' → $'+r.live_price);
     const{error}=await sb.from('aiq_products').update({msrp:r.live_price,source_extracted_at:new Date().toISOString()}).eq('id',r.product.id);
     if(error){logEntry('Update err: '+error.message,'err');return}
-    r.product.msrp=r.live_price;
-    logEntry('Updated ✓','ok');renderTab();
+    r.product.msrp=r.live_price;logEntry('Updated ✓','ok');renderTab();
   },
   async psUpdateAll(){
-    const changed=psResults.filter(r=>r.live_price!==null&&Number(r.live_price)!==Number(r.product.msrp));
-    for(const r of changed){
-      const idx=psResults.indexOf(r);
-      await window.S.psUpdate(idx);
-    }
+    const mfrChanged=psResults.filter(r=>r.source_name==='Manufacturer'&&r.live_price!==null&&Number(r.live_price)!==Number(r.product.msrp));
+    for(const r of mfrChanged){await window.S.psUpdate(psResults.indexOf(r))}
   },
 
   /* ── Verify & Audit ── */
