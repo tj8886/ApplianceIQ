@@ -836,14 +836,17 @@ function extractJSON(text) {
 
 // ── Free Data First Pass ──
 // Server-side extraction via Supabase Edge Function — no CORS, no proxy
-async function freeDataExtract(url) {
-  if (!url || !url.match(/^https?:\/\//i)) return null;
+// Handles both direct URLs and model number searches
+async function freeDataExtract(input, market) {
+  if (!input) return null;
   try {
+    const isUrl = /^https?:\/\//i.test(input.trim());
+    const payload = isUrl ? { url: input.trim() } : { query: input.trim(), market: market || "CA" };
     const res = await fetch(SUPABASE_URL + "/functions/v1/free-extract", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(30000),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(35000),
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -974,21 +977,19 @@ function callAI(systemPrompt, userMsg, retries = 3, model = "claude-haiku-4-5-20
 }
 
 async function scrapeProduct(query, model, market) {
-  // Free-data-first: if query looks like a URL, try server-side extraction (zero AI cost)
-  const isUrl = /^https?:\/\//i.test(query.trim());
-  if (isUrl) {
-    const freeResult = await freeDataExtract(query.trim());
-    if (freeResult && freeResult.found && !freeResult._partial) {
-      freeResult._savedModel = model;
-      return freeResult;
-    }
-    // If partial free data, include it as context for the AI call
-    if (freeResult && freeResult._partial) {
-      const supplement = "\n\n[PRE-EXTRACTED DATA from page — use as starting point, verify and fill gaps]:\n" + JSON.stringify(freeResult, null, 2);
-      let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + supplement, 3, model);
-      if (result.found) { result._freeDataAssist = true; return result; }
-    }
+  // Free-data-first: try server-side search + extraction for ANY input (zero AI cost)
+  const freeResult = await freeDataExtract(query.trim(), market);
+  if (freeResult && freeResult.found && !freeResult._partial) {
+    freeResult._savedModel = model;
+    return freeResult;
   }
+  // If partial free data, include it as context for the AI call
+  if (freeResult && freeResult._partial) {
+    const supplement = "\n\n[PRE-EXTRACTED DATA from page — use as starting point, verify and fill gaps]:\n" + JSON.stringify(freeResult, null, 2);
+    let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + supplement, 3, model);
+    if (result.found) { result._freeDataAssist = true; return result; }
+  }
+  // Full AI fallback
   let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query, 3, model);
   if (result.found) return result;
   const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
