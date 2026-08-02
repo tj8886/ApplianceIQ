@@ -234,33 +234,20 @@ let selectedBrand = null;
 let scrapeResults = [];
 let sessionCostTotal = 0;
 let isProcessing = false;
-let discoverMode = 'single';
 let autoSave = false;
 let aiModel = 'gpt-4.1-mini';
-let brandFilter = '';
-let tierFilter = 0;
-let brandIntel = null; // { products:[], categories:{}, brand:'' }
+let brandIntel = null; // PIM products for selected brand
+let discoverResults = null; // from discover-brand edge function
+let discoverLoading = false;
 
 // Price Sync state
-let psProducts = [];
 let psResults = [];
-let psBrandFilter = '';
-let psProcessing = false;
-let psChecked = new Set();
 
 // Verify & Audit state
-let vaProducts = [];
 let vaResults = [];
-let vaBrandFilter = '';
-let vaProcessing = false;
-let vaChecked = new Set();
 
 // Enrich state
-let enProducts = [];
 let enResults = {};
-let enBrandFilter = '';
-let enProcessing = false;
-let enChecked = new Set();
 
 const TL = {
   1:{text:'FREE',cls:'t1',icon:'⚡'},
@@ -334,32 +321,46 @@ async function callTier3(query,brandInfo){
   }catch(e){logEntry('Tier 3 err: '+e.message,'err');return null}
 }
 
-/* ═══ BRAND INTEL ═══ */
+/* ═══ BRAND INTEL + DISCOVERY ═══ */
 async function loadBrandIntel(brandName) {
-  if (!brandName) { brandIntel = null; renderTab(); return; }
-  if (brandIntel && brandIntel.brand === brandName) return; // already loaded
+  if (!brandName) { brandIntel = null; discoverResults = null; renderTab(); return; }
 
-  const { data, error } = await sb.from('aiq_products')
-    .select('id,model,category,short_description,msrp,price_currency,color,finish,width_inches,height_inches,depth_inches,weight_lbs,capacity_cu_ft,specs_json,source_reference,source_extracted_at,source_confidence')
-    .ilike('brand_name', brandName)
-    .eq('status', 'active')
-    .order('category').order('model')
-    .limit(200);
+  const { data } = await sb.from('aiq_products')
+    .select('id,model,category,short_description,msrp,price_currency,color,finish,width_inches,height_inches,depth_inches,weight_lbs,capacity_cu_ft,specs_json,source_reference,source_extracted_at,source_confidence,voltage,energy_star')
+    .ilike('brand_name', brandName).eq('status','active')
+    .order('category').order('model').limit(500);
 
   const products = data || [];
   const categories = {};
-  let withPrice = 0, withSpecs = 0, withDims = 0;
+  let withPrice=0, withSpecs=0, withDims=0;
   for (const p of products) {
     const cat = p.category || 'Uncategorized';
     if (!categories[cat]) categories[cat] = [];
     categories[cat].push(p);
     if (p.msrp) withPrice++;
-    if (p.specs_json && Object.keys(typeof p.specs_json === 'string' ? JSON.parse(p.specs_json) : p.specs_json).length > 0) withSpecs++;
+    if (p.specs_json && Object.keys(typeof p.specs_json==='string'?JSON.parse(p.specs_json):p.specs_json).length>0) withSpecs++;
     if (p.width_inches && p.height_inches && p.depth_inches) withDims++;
   }
-
-  brandIntel = { brand: brandName, products, categories, withPrice, withSpecs, withDims };
+  brandIntel = { brand:brandName, products, categories, withPrice, withSpecs, withDims };
   renderTab();
+
+  // Auto-discover on Discover tab
+  if (currentTab === 'discover') discoverBrand(brandName);
+}
+
+async function discoverBrand(brandName) {
+  discoverLoading = true; discoverResults = null; renderTab();
+  logEntry('Discovering products for ' + brandName + '…');
+  try {
+    const r = await fetch(SB_URL + '/functions/v1/discover-brand', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ brand: brandName })
+    });
+    discoverResults = await r.json();
+    if (discoverResults.error) logEntry('Discovery error: ' + discoverResults.error, 'err');
+    else logEntry('Found ' + discoverResults.total + ' URLs (' + discoverResults.new_count + ' new, ' + discoverResults.existing_count + ' in PIM)', 'ok');
+  } catch (e) { logEntry('Discovery failed: ' + e.message, 'err'); }
+  discoverLoading = false; renderTab();
 }
 
 /* ═══ SMART SCRAPE ═══ */
@@ -431,14 +432,6 @@ function completeness(p) {
 
 function missingFields(p) {
   return COMPLETENESS_FIELDS.filter(f => p[f] === null || p[f] === undefined || p[f] === '');
-}
-
-async function loadProducts(brandFilter) {
-  let q = sb.from('aiq_products').select('id,brand_name,model,short_description,category,msrp,price_currency,color,finish,width_inches,height_inches,depth_inches,weight_lbs,capacity_cu_ft,voltage,energy_star,specs_json,source_reference,source_extracted_at,source_confidence,status,market').eq('status','active').order('brand_name').order('model');
-  if (brandFilter) q = q.ilike('brand_name', '%'+brandFilter+'%');
-  const { data, error } = await q.limit(500);
-  if (error) { console.error('loadProducts:', error); return []; }
-  return data || [];
 }
 
 /* ═══ PRICE SYNC LOGIC ═══ */
@@ -593,383 +586,250 @@ async function enrichOne(product) {
 
 function renderTab(){
   const el=document.getElementById('mainContent');
-  if(currentTab==='discover')return renderDiscover(el);
-  if(currentTab==='price-sync')return renderPriceSync(el);
-  if(currentTab==='verify')return renderVerify(el);
-  if(currentTab==='enrich')return renderEnrich(el);
-}
-
-/* ═══ PRICE SYNC TAB ═══ */
-function renderPriceSync(el) {
-  const brandOpts = [...new Set(psProducts.map(p=>p.brand_name))].sort().map(b=>'<option value="'+esc(b)+'" '+(psBrandFilter===b?'selected':'')+'>'+esc(b)+'</option>').join('');
-  const filtered = psBrandFilter ? psProducts.filter(p=>p.brand_name===psBrandFilter) : psProducts;
-  const withPrice = filtered.filter(p=>p.msrp);
-  const checked = psResults.length;
-  const changed = psResults.filter(r=>r.live_price!==null&&r.live_price!==r.product.msrp).length;
-
-  let h = '';
-
-  // Stats
-  h += '<div class="stats-row">';
-  h += '<div class="stat-card"><div class="label">Products</div><div class="value">'+psProducts.length+'</div></div>';
-  h += '<div class="stat-card"><div class="label">With MSRP</div><div class="value green">'+psProducts.filter(p=>p.msrp).length+'</div></div>';
-  h += '<div class="stat-card"><div class="label">Checked</div><div class="value amber">'+checked+'</div></div>';
-  h += '<div class="stat-card"><div class="label">Changed</div><div class="value red">'+changed+'</div></div>';
-  h += '</div>';
-
-  // Controls
-  h += '<div class="controls">';
-  h += '<div class="field"><label>Filter Brand</label><select onchange="window.S.psBrand(this.value)"><option value="">All Brands</option>'+brandOpts+'</select></div>';
-  h += '<button class="btn btn-primary" onclick="window.S.psLoadProducts()" '+(psProcessing?'disabled':'')+'>📥 Load Products</button>';
-  h += '<button class="btn btn-primary" onclick="window.S.psCheckAll()" '+(psProcessing||withPrice.length===0?'disabled':'')+'>💲 Check Prices ('+(withPrice.length)+')</button>';
-  h += '<span style="font-size:12px;color:var(--txt2)">'+(psProcessing?'⏳ Processing…':'')+'</span>';
-  h += '</div>';
-
-  h += '<div class="log-panel'+(psResults.length>0?' show':'')+'" id="scrapeLog"></div>';
-
-  if (psResults.length > 0) {
-    h += '<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Stored MSRP</th><th>Live Price</th><th>Δ</th><th>Tier</th><th>Actions</th></tr></thead><tbody>';
-    for (let i = 0; i < psResults.length; i++) {
-      const r = psResults[i];
-      const p = r.product;
-      const stored = p.msrp ? Number(p.msrp) : null;
-      const live = r.live_price !== null ? Number(r.live_price) : null;
-      let deltaHtml = '<span class="price-same">—</span>';
-      if (stored && live) {
-        const diff = live - stored;
-        if (diff > 0) deltaHtml = '<span class="price-up">+$' + diff.toFixed(0) + ' ↑</span>';
-        else if (diff < 0) deltaHtml = '<span class="price-down">-$' + Math.abs(diff).toFixed(0) + ' ↓</span>';
-        else deltaHtml = '<span class="price-same">✓ same</span>';
-      }
-      const tl = TL[r.tier_used] || TL[0];
-      h += '<tr><td class="brand-cell">' + esc(p.brand_name) + '</td><td class="model-cell">' + esc(p.model) + '</td>';
-      h += '<td>' + (stored ? '$' + stored.toLocaleString() : '—') + '</td>';
-      h += '<td>' + (live !== null ? '$' + live.toLocaleString() : '<span style="color:var(--red)">not found</span>') + '</td>';
-      h += '<td>' + deltaHtml + '</td>';
-      h += '<td><span class="tier-badge ' + tl.cls + '">' + tl.icon + ' T' + r.tier_used + '</span></td>';
-      h += '<td>' + (live !== null && live !== stored ? '<button class="btn btn-sm btn-primary" onclick="window.S.psUpdate(' + i + ')">Update</button>' : '') + '</td></tr>';
-    }
-    h += '</tbody></table></div>';
-  } else if (psProducts.length > 0) {
-    h += '<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>MSRP</th><th>Source</th><th>Last Scraped</th></tr></thead><tbody>';
-    for (const p of filtered.slice(0, 100)) {
-      h += '<tr><td class="brand-cell">' + esc(p.brand_name) + '</td><td class="model-cell">' + esc(p.model) + '</td>';
-      h += '<td>' + (p.msrp ? '$' + Number(p.msrp).toLocaleString() : '—') + '</td>';
-      h += '<td style="font-size:11px;color:var(--txt2);max-width:200px;overflow:hidden;text-overflow:ellipsis">' + esc(p.source_reference || '—') + '</td>';
-      h += '<td style="font-size:11px;color:var(--txt2)">' + (p.source_extracted_at ? new Date(p.source_extracted_at).toLocaleDateString() : '—') + '</td></tr>';
-    }
-    h += '</tbody></table></div>';
-    if (filtered.length > 100) h += '<div style="padding:12px;font-size:12px;color:var(--txt2)">Showing 100 of ' + filtered.length + '</div>';
-  } else {
-    h += '<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:36px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:14px;font-weight:600">No products loaded</div><div style="font-size:12px;margin-top:4px">Click "Load Products" to pull your PIM catalog</div></div>';
-  }
-
-  el.innerHTML = h;
-}
-
-/* ═══ VERIFY & AUDIT TAB ═══ */
-function renderVerify(el) {
-  const brandOpts = [...new Set(vaProducts.map(p=>p.brand_name))].sort().map(b=>'<option value="'+esc(b)+'" '+(vaBrandFilter===b?'selected':'')+'>'+esc(b)+'</option>').join('');
-  const filtered = vaBrandFilter ? vaProducts.filter(p=>p.brand_name===vaBrandFilter) : vaProducts;
-  const verified = vaResults.filter(r=>r.status==='verified').length;
-  const drifted = vaResults.filter(r=>r.status==='drifted').length;
-  const unreachable = vaResults.filter(r=>r.status==='unreachable').length;
-
-  let h = '';
-
-  h += '<div class="stats-row">';
-  h += '<div class="stat-card"><div class="label">Products</div><div class="value">'+vaProducts.length+'</div></div>';
-  h += '<div class="stat-card"><div class="label">Verified ✓</div><div class="value green">'+verified+'</div></div>';
-  h += '<div class="stat-card"><div class="label">Drifted</div><div class="value amber">'+drifted+'</div></div>';
-  h += '<div class="stat-card"><div class="label">Unreachable</div><div class="value red">'+unreachable+'</div></div>';
-  h += '</div>';
-
-  h += '<div class="controls">';
-  h += '<div class="field"><label>Filter Brand</label><select onchange="window.S.vaBrand(this.value)"><option value="">All Brands</option>'+brandOpts+'</select></div>';
-  h += '<button class="btn btn-primary" onclick="window.S.vaLoadProducts()" '+(vaProcessing?'disabled':'')+'>📥 Load Products</button>';
-  h += '<button class="btn btn-primary" onclick="window.S.vaVerifyAll()" '+(vaProcessing||filtered.length===0?'disabled':'')+'>🔍 Verify All ('+(filtered.length)+')</button>';
-  h += '<span style="font-size:12px;color:var(--txt2)">'+(vaProcessing?'⏳ Verifying…':'')+'</span>';
-  h += '</div>';
-
-  h += '<div class="log-panel'+(vaResults.length>0?' show':'')+'" id="scrapeLog"></div>';
-
-  if (vaResults.length > 0) {
-    h += '<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Status</th><th>Differences</th><th>Actions</th></tr></thead><tbody>';
-    for (let i = 0; i < vaResults.length; i++) {
-      const r = vaResults[i];
-      const p = r.product;
-      const stCls = r.status === 'verified' ? 'green' : r.status === 'drifted' ? 'amber' : 'red';
-      const stIcon = r.status === 'verified' ? '✓' : r.status === 'drifted' ? '⚠' : '✕';
-      h += '<tr><td class="brand-cell">' + esc(p.brand_name) + '</td><td class="model-cell">' + esc(p.model) + '</td>';
-      h += '<td><span class="completeness ' + (r.status==='verified'?'high':r.status==='drifted'?'med':'low') + '">' + stIcon + ' ' + r.status + '</span></td>';
-      h += '<td>';
-      if (r.diffs.length > 0) {
-        for (const d of r.diffs.slice(0, 3)) {
-          const cls = d.type === 'added' ? 'diff-added' : d.stored === null ? 'diff-added' : 'diff-changed';
-          h += '<span class="' + cls + '">' + esc(d.label) + '</span> ';
-        }
-        if (r.diffs.length > 3) h += '<span style="font-size:11px;color:var(--txt2)">+' + (r.diffs.length - 3) + ' more</span>';
-      } else if (r.status === 'verified') {
-        h += '<span style="font-size:11px;color:var(--accent)">All data matches</span>';
-      } else {
-        h += '<span style="font-size:11px;color:var(--red)">Source not accessible</span>';
-      }
-      h += '</td>';
-      h += '<td>';
-      if (r.diffs.length > 0) h += '<button class="btn btn-sm btn-secondary" onclick="window.S.vaViewDiff(' + i + ')">View Diff</button> ';
-      if (r.diffs.length > 0) h += '<button class="btn btn-sm btn-primary" onclick="window.S.vaAcceptAll(' + i + ')">Accept</button>';
-      h += '</td></tr>';
-    }
-    h += '</tbody></table></div>';
-  } else if (vaProducts.length > 0) {
-    h += '<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Source URL</th><th>Confidence</th><th>Last Scraped</th></tr></thead><tbody>';
-    for (const p of filtered.slice(0, 100)) {
-      h += '<tr><td class="brand-cell">' + esc(p.brand_name) + '</td><td class="model-cell">' + esc(p.model) + '</td>';
-      h += '<td style="font-size:11px;color:var(--txt2);max-width:250px;overflow:hidden;text-overflow:ellipsis">' + esc(p.source_reference || 'no source') + '</td>';
-      h += '<td>' + (p.source_confidence ? Math.round(p.source_confidence * 100) + '%' : '—') + '</td>';
-      h += '<td style="font-size:11px;color:var(--txt2)">' + (p.source_extracted_at ? new Date(p.source_extracted_at).toLocaleDateString() : '—') + '</td></tr>';
-    }
-    h += '</tbody></table></div>';
-  } else {
-    h += '<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:36px;margin-bottom:12px;opacity:.3">🔍</div><div style="font-size:14px;font-weight:600">No products loaded</div><div style="font-size:12px;margin-top:4px">Click "Load Products" to pull your PIM catalog for verification</div></div>';
-  }
-
-  el.innerHTML = h;
-}
-
-/* ═══ ENRICH & COMPLETE TAB ═══ */
-function renderEnrich(el) {
-  const brandOpts = [...new Set(enProducts.map(p=>p.brand_name))].sort().map(b=>'<option value="'+esc(b)+'" '+(enBrandFilter===b?'selected':'')+'>'+esc(b)+'</option>').join('');
-  const filtered = enBrandFilter ? enProducts.filter(p=>p.brand_name===enBrandFilter) : enProducts;
-  const enriched = Object.keys(enResults).length;
-  const totalFilled = Object.values(enResults).reduce((s, r) => s + (r.filled || 0), 0);
-
-  let h = '';
-
-  // Stats
-  const avgComp = filtered.length > 0 ? Math.round(filtered.reduce((s, p) => s + completeness(p), 0) / filtered.length) : 0;
-  const lowComp = filtered.filter(p => completeness(p) < 50).length;
-  h += '<div class="stats-row">';
-  h += '<div class="stat-card"><div class="label">Products</div><div class="value">' + enProducts.length + '</div></div>';
-  h += '<div class="stat-card"><div class="label">Avg Completeness</div><div class="value ' + (avgComp >= 70 ? 'green' : avgComp >= 40 ? 'amber' : 'red') + '">' + avgComp + '%</div></div>';
-  h += '<div class="stat-card"><div class="label">Needs Work (&lt;50%)</div><div class="value red">' + lowComp + '</div></div>';
-  h += '<div class="stat-card"><div class="label">Fields Filled</div><div class="value green">' + totalFilled + '</div></div>';
-  h += '</div>';
-
-  h += '<div class="controls">';
-  h += '<div class="field"><label>Filter Brand</label><select onchange="window.S.enBrand(this.value)"><option value="">All Brands</option>' + brandOpts + '</select></div>';
-  h += '<button class="btn btn-primary" onclick="window.S.enLoadProducts()" ' + (enProcessing ? 'disabled' : '') + '>📥 Load Products</button>';
-  h += '<button class="btn btn-primary" onclick="window.S.enEnrichLow()" ' + (enProcessing || lowComp === 0 ? 'disabled' : '') + '>🧩 Enrich Low (' + lowComp + ')</button>';
-  h += '<span style="font-size:12px;color:var(--txt2)">' + (enProcessing ? '⏳ Enriching…' : '') + '</span>';
-  h += '</div>';
-
-  h += '<div class="log-panel' + (enriched > 0 ? ' show' : '') + '" id="scrapeLog"></div>';
-
-  if (filtered.length > 0) {
-    // Sort by completeness ascending (worst first)
-    const sorted = [...filtered].sort((a, b) => completeness(a) - completeness(b));
-
-    h += '<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Completeness</th><th>Missing</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    for (const p of sorted.slice(0, 100)) {
-      const comp = completeness(p);
-      const miss = missingFields(p);
-      const cls = comp >= 70 ? 'high' : comp >= 40 ? 'med' : 'low';
-      const barCls = comp >= 70 ? 'green' : comp >= 40 ? 'amber' : 'red';
-      const result = enResults[p.id];
-
-      h += '<tr><td class="brand-cell">' + esc(p.brand_name) + '</td><td class="model-cell">' + esc(p.model) + '</td>';
-      h += '<td><div style="display:flex;align-items:center;gap:8px"><span class="completeness ' + cls + '">' + comp + '%</span><div class="pbar" style="width:80px"><div class="fill ' + barCls + '" style="width:' + comp + '%"></div></div></div></td>';
-      h += '<td style="font-size:11px;color:var(--txt2)">' + miss.slice(0, 4).map(f => f.replace(/_/g, ' ')).join(', ') + (miss.length > 4 ? ' +' + (miss.length - 4) : '') + '</td>';
-      h += '<td>';
-      if (result) {
-        if (result.filled > 0) h += '<span class="completeness high">+' + result.filled + ' filled</span>';
-        else h += '<span class="completeness low">no data found</span>';
-      } else {
-        h += '<span style="font-size:11px;color:var(--txt2)">not checked</span>';
-      }
-      h += '</td>';
-      h += '<td>';
-      if (result && result.filled > 0 && !result._saved) {
-        h += '<button class="btn btn-sm btn-secondary" onclick="window.S.enPreview(\'' + p.id + '\')">Preview</button> ';
-        h += '<button class="btn btn-sm btn-primary" onclick="window.S.enSave(\'' + p.id + '\')">Save</button>';
-      } else if (result && result._saved) {
-        h += '<span style="font-size:11px;color:var(--accent);font-weight:600">✓ Saved</span>';
-      } else if (!result) {
-        h += '<button class="btn btn-sm btn-secondary" onclick="window.S.enEnrichOne(\'' + p.id + '\')">Enrich</button>';
-      }
-      h += '</td></tr>';
-    }
-    h += '</tbody></table></div>';
-    if (sorted.length > 100) h += '<div style="padding:12px;font-size:12px;color:var(--txt2)">Showing 100 of ' + sorted.length + '</div>';
-  } else {
-    h += '<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:36px;margin-bottom:12px;opacity:.3">🧩</div><div style="font-size:14px;font-weight:600">No products loaded</div><div style="font-size:12px;margin-top:4px">Click "Load Products" to see completeness scores and fill gaps</div></div>';
-  }
-
-  el.innerHTML = h;
-}
-
-function renderDiscover(el){
   const sorted=[...allBrands].sort((a,b)=>{const ta=tier(a.brand_name)||99,tb=tier(b.brand_name)||99;return(ta-tb)||a.brand_name.localeCompare(b.brand_name)});
   const opts=sorted.map(b=>{const t=tier(b.brand_name);const tl=TL[t]||TL[0];return '<option value="'+esc(b.brand_name)+'" '+(selectedBrand===b.brand_name?'selected':'')+'>'+tl.icon+' '+esc(b.brand_name)+' (T'+t+')</option>'}).join('');
 
-  const total=scrapeResults.length,ok=scrapeResults.filter(r=>r.status==='ok').length;
-  const partial=scrapeResults.filter(r=>r.status==='partial').length,failed=scrapeResults.filter(r=>r.status==='fail').length;
-  const mapped=Object.keys(brandSourceMap).length;
+  // ── Global brand selector ──
+  let h='<div class="controls" style="margin-bottom:16px">';
+  h+='<div class="field"><label>Brand</label><select id="brandSelect" onchange="window.S.selectBrand(this.value)" style="min-width:260px"><option value="">— Select a brand ('+allBrands.length+') —</option>'+opts+'</select></div>';
+  if(selectedBrand){
+    const src=brandSourceMap[selectedBrand];const t=tier(selectedBrand);const tl=TL[t]||TL[0];
+    h+='<span class="tier-badge '+tl.cls+'" style="padding:6px 12px;font-size:12px">'+tl.icon+' Tier '+t+' '+tl.text+'</span>';
+    if(src){
+      h+='<span style="font-size:11px;color:var(--txt2);display:flex;gap:10px;align-items:center">';
+      h+=(src.server_fetchable?'<span style="color:var(--accent)">✓ Fetchable</span>':'<span style="color:var(--red)">✕ '+esc(src.bot_protection||'Blocked')+'</span>');
+      if(src.has_json_ld)h+='<span style="color:var(--accent)">✓ JSON-LD</span>';
+      if(src.sitemap_url)h+='<span style="color:var(--accent)">✓ Sitemap</span>';
+      if(src.sells_direct)h+='<span style="color:var(--blue)">💰 Direct</span>';
+      h+='</span>';
+    }
+  }
+  h+='<div style="margin-left:auto;display:flex;gap:8px;align-items:center">';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-save</label>';
+  h+='<button class="btn btn-sm btn-secondary" onclick="window.S.setKeys()">🔑 Keys</button>';
+  h+='</div></div>';
 
+  // ── Brand intel summary (all tabs) ──
+  if(selectedBrand && brandIntel && brandIntel.brand===selectedBrand && brandIntel.products.length>0){
+    h+='<div class="stats-row">';
+    h+='<div class="stat-card"><div class="label">In PIM</div><div class="value">'+brandIntel.products.length+'</div></div>';
+    h+='<div class="stat-card"><div class="label">Categories</div><div class="value">'+Object.keys(brandIntel.categories).length+'</div></div>';
+    h+='<div class="stat-card"><div class="label">Have MSRP</div><div class="value green">'+brandIntel.withPrice+'</div></div>';
+    h+='<div class="stat-card"><div class="label">Have Dims</div><div class="value '+(brandIntel.withDims>0?'green':'red')+'">'+brandIntel.withDims+'</div></div>';
+    h+='<div class="stat-card"><div class="label">Have Specs</div><div class="value '+(brandIntel.withSpecs>0?'green':'red')+'">'+brandIntel.withSpecs+'</div></div>';
+    h+='</div>';
+  }
+
+  // Tab-specific content
+  if(currentTab==='discover') h+=renderDiscover();
+  else if(currentTab==='price-sync') h+=renderPriceSync();
+  else if(currentTab==='verify') h+=renderVerify();
+  else if(currentTab==='enrich') h+=renderEnrich();
+
+  el.innerHTML=h;
+}
+
+/* ═══ DISCOVER TAB ═══ */
+function renderDiscover(){
   let h='';
 
-  if(total>0){
-    h+='<div class="stats-row">';
-    h+='<div class="stat-card"><div class="label">Scraped</div><div class="value">'+total+'</div></div>';
-    h+='<div class="stat-card"><div class="label">Complete</div><div class="value green">'+ok+'</div></div>';
-    h+='<div class="stat-card"><div class="label">Partial</div><div class="value amber">'+partial+'</div></div>';
-    h+='<div class="stat-card"><div class="label">Failed</div><div class="value red">'+failed+'</div></div>';
-    h+='<div class="stat-card"><div class="label">Cost</div><div class="value">$'+sessionCostTotal.toFixed(4)+'</div></div>';
-    h+='</div>';
+  if(!selectedBrand){
+    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">🔍</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to discover products</div><div style="font-size:13px;margin-top:6px">The scraper will search sitemaps and the web to find product pages</div></div>';
+    return h;
   }
 
-  h+='<div class="controls"><div class="mode-toggle">';
-  h+='<button class="'+(discoverMode==='single'?'active':'')+'" onclick="window.S.setMode(\'single\')">Single</button>';
-  h+='<button class="'+(discoverMode==='batch'?'active':'')+'" onclick="window.S.setMode(\'batch\')">Batch</button>';
-  h+='<button class="'+(discoverMode==='browse'?'active':'')+'" onclick="window.S.setMode(\'browse\')">Browse Brands</button>';
-  h+='</div><div style="margin-left:auto;font-size:12px;color:var(--txt2)">'+allBrands.length+' brands · '+mapped+' with scrape routes</div></div>';
-
-  if(discoverMode==='single'){
-    h+='<div class="controls">';
-    h+='<div class="field"><label>Brand</label><select id="brandSelect" onchange="window.S.selectBrand(this.value)"><option value="">— Select brand —</option>'+opts+'</select></div>';
-    h+='<div class="field"><label>Model Number</label><input type="text" id="modelInput" placeholder="e.g. LRMVS3006S" onkeydown="if(event.key===\'Enter\')window.S.doScrape()"/></div>';
-    h+='<button class="btn btn-primary" onclick="window.S.doScrape()" '+(isProcessing?'disabled':'')+'>'+(isProcessing?'⏳ Scraping…':'🔍 Scrape')+'</button>';
-    h+='</div>';
-    h+='<div class="controls" style="margin-top:-8px">';
-    h+='<div class="field"><label>Or paste a URL</label><input type="text" id="urlInput" placeholder="https://www.lg.com/ca_en/…" style="min-width:420px"/></div>';
-    h+='<button class="btn btn-secondary" onclick="window.S.doUrlScrape()" '+(isProcessing?'disabled':'')+'>Scrape URL</button>';
-    h+='</div>';
+  // Discovery results
+  if(discoverLoading){
+    h+='<div style="text-align:center;padding:40px;color:var(--txt2)"><div style="font-size:13px">🔍 Searching sitemaps and web for '+esc(selectedBrand)+' products…</div></div>';
   }
 
-  if(discoverMode==='batch'){
-    h+='<div class="controls">';
-    h+='<div class="field"><label>Brand</label><select id="brandSelect" onchange="window.S.selectBrand(this.value)"><option value="">— Select brand —</option>'+opts+'</select></div>';
-    h+='<div class="field" style="flex:1"><label>Models (one per line)</label><textarea id="batchInput" rows="5" style="resize:vertical;width:100%" placeholder="LRMVS3006S\nLRFXS2503S\nLRMVS2806S"></textarea></div>';
-    h+='</div><div class="controls"><button class="btn btn-primary" onclick="window.S.doBatch()" '+(isProcessing?'disabled':'')+'>🚀 Scrape Batch</button><span style="font-size:12px;color:var(--txt2)">Sequential, 1s delay</span></div>';
-  }
+  h+='<div class="log-panel'+(scrapeResults.length>0||discoverResults?' show':'')+'" id="scrapeLog"></div>';
 
-  if(discoverMode==='browse'){
-    const t1c=allBrands.filter(b=>tier(b.brand_name)===1).length;
-    const t2c=allBrands.filter(b=>tier(b.brand_name)===2).length;
-    const t3c=allBrands.filter(b=>tier(b.brand_name)===3).length;
-    const tuc=allBrands.filter(b=>tier(b.brand_name)===0).length;
+  if(discoverResults && discoverResults.results){
+    const dr=discoverResults;
+    const newOnes=dr.results.filter(r=>!r.in_pim);
+    const existing=dr.results.filter(r=>r.in_pim);
 
-    h+='<div class="brand-filter">';
-    h+='<div class="field"><input type="text" id="bfInput" placeholder="Filter brands…" value="'+esc(brandFilter)+'" oninput="window.S.filterBrands(this.value)" style="min-width:250px"/></div>';
-    h+='<div class="filter-pills">';
-    h+='<button class="'+(tierFilter===0?'active':'')+'" onclick="window.S.tierFilter(0)">All ('+allBrands.length+')</button>';
-    h+='<button class="'+(tierFilter===1?'active':'')+'" onclick="window.S.tierFilter(1)">⚡ Free ('+t1c+')</button>';
-    h+='<button class="'+(tierFilter===2?'active':'')+'" onclick="window.S.tierFilter(2)">💲 Cheap ('+t2c+')</button>';
-    h+='<button class="'+(tierFilter===3?'active':'')+'" onclick="window.S.tierFilter(3)">🤖 AI ('+t3c+')</button>';
-    h+='<button class="'+(tierFilter===-1?'active':'')+'" onclick="window.S.tierFilter(-1)">❓ Unmapped ('+tuc+')</button>';
-    h+='</div></div>';
-
-    let filtered=[...allBrands];
-    if(brandFilter){const q=brandFilter.toLowerCase();filtered=filtered.filter(b=>b.brand_name.toLowerCase().includes(q)||(b.parent_company||'').toLowerCase().includes(q))}
-    if(tierFilter>0)filtered=filtered.filter(b=>tier(b.brand_name)===tierFilter);
-    else if(tierFilter===-1)filtered=filtered.filter(b=>tier(b.brand_name)===0);
-    filtered.sort((a,b)=>{const ta=tier(a.brand_name)||99,tb=tier(b.brand_name)||99;return(ta-tb)||a.brand_name.localeCompare(b.brand_name)});
-
-    h+='<div class="brand-grid">';
-    for(const b of filtered){
-      const t=tier(b.brand_name);const tl=TL[t]||TL[0];
-      const src=brandSourceMap[b.brand_name];
-      const fetch_s=src?(src.server_fetchable?'<span style="font-size:10px;color:var(--accent)">✓ fetch</span>':'<span style="font-size:10px;color:var(--red)">✕ blocked</span>'):'';
-      h+='<div class="brand-card '+(selectedBrand===b.brand_name?'selected':'')+'" onclick="window.S.selectBrand(\''+esc(b.brand_name).replace(/'/g,"\\'")+'\')"><div><div class="name">'+esc(b.brand_name)+'</div><div style="font-size:11px;color:var(--txt2);margin-top:2px">'+esc(b.parent_company||'')+'</div></div><div class="meta"><span class="tier-badge '+tl.cls+'">'+tl.icon+' '+tl.text+'</span>'+fetch_s+'</div></div>';
-    }
-    h+='</div>';
-  }
-
-  // ── Brand Intel Panel ──
-  if (selectedBrand && brandIntel && brandIntel.brand === selectedBrand) {
-    const bi = brandIntel;
-    const src = brandSourceMap[selectedBrand];
-    const t = tier(selectedBrand);
-    const tl = TL[t] || TL[0];
-    const catKeys = Object.keys(bi.categories).sort();
-
-    h+='<div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:20px">';
-
-    // Brand header
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
-    h+='<div style="display:flex;align-items:center;gap:12px"><span style="font-size:16px;font-weight:800">'+esc(selectedBrand)+'</span><span class="tier-badge '+tl.cls+'">'+tl.icon+' Tier '+t+' '+tl.text+'</span></div>';
-    if(src){
-      h+='<div style="display:flex;gap:12px;font-size:11px;color:var(--txt2)">';
-      h+=(src.server_fetchable?'<span style="color:var(--accent)">✓ Server fetchable</span>':'<span style="color:var(--red)">✕ Bot protected'+(src.bot_protection?' ('+esc(src.bot_protection)+')':'')+'</span>');
-      if(src.has_json_ld)h+='<span style="color:var(--accent)">✓ JSON-LD</span>';
-      if(src.has_spec_tables)h+='<span style="color:var(--accent)">✓ Spec tables</span>';
-      if(src.sells_direct)h+='<span style="color:var(--blue)">💰 Sells direct</span>';
-      h+='</div>';
-    }
+    h+='<div style="display:flex;gap:12px;margin-bottom:16px;align-items:center">';
+    h+='<span style="font-size:14px;font-weight:700">Discovered '+dr.total+' URLs</span>';
+    h+='<span class="tier-badge t1">'+newOnes.length+' new</span>';
+    h+='<span class="tier-badge tu">'+existing.length+' in PIM</span>';
+    if(dr.has_sitemap)h+='<span style="font-size:11px;color:var(--txt2)">via sitemap</span>';
+    if(newOnes.length>0)h+='<button class="btn btn-sm btn-primary" style="margin-left:auto" onclick="window.S.scrapeDiscovered()" '+(isProcessing?'disabled':'')+'>🚀 Scrape All New ('+newOnes.length+')</button>';
     h+='</div>';
 
-    // Stats row
-    h+='<div style="display:flex;gap:12px;margin-bottom:14px">';
-    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800">'+bi.products.length+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Products</div></div>';
-    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800">'+catKeys.length+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Categories</div></div>';
-    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent)">'+bi.withPrice+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Have MSRP</div></div>';
-    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(bi.withDims>0?'var(--accent)':'var(--red)')+'">'+bi.withDims+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Have Dims</div></div>';
-    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(bi.withSpecs>0?'var(--accent)':'var(--red)')+'">'+bi.withSpecs+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Have Specs</div></div>';
-    h+='</div>';
-
-    if(bi.products.length > 0){
-      // Category breakdown with products
-      for(const cat of catKeys){
-        const prods=bi.categories[cat];
-        h+='<div style="margin-bottom:12px">';
-        h+='<div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-size:11px;font-weight:500;color:var(--txt2)">('+prods.length+')</span></div>';
-        h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-        for(const p of prods){
-          const comp=completeness(p);
-          const cls=comp>=70?'high':comp>=40?'med':'low';
-          h+='<div style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="window.S.viewPimProduct(\''+p.id+'\')">';
-          h+='<span style="font-weight:700">'+esc(p.model)+'</span>';
-          if(p.msrp)h+='<span style="color:var(--txt2)">$'+Number(p.msrp).toLocaleString()+'</span>';
-          h+='<span class="completeness '+cls+'" style="font-size:9px">'+comp+'%</span>';
-          h+='</div>';
+    if(newOnes.length>0){
+      h+='<div class="table-wrap" style="margin-bottom:16px"><table class="prod-table"><thead><tr><th>URL</th><th>Model</th><th>Source</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+      for(let i=0;i<newOnes.length;i++){
+        const r=newOnes[i];
+        const scraped=scrapeResults.find(sr=>sr.url===r.url);
+        const domain=r.url.match(/\/\/([^/]+)/)?.[1]||'';
+        h+='<tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="'+esc(r.url)+'" target="_blank" style="color:var(--blue);font-size:12px">'+esc(domain+'/…'+(r.url.split('/').pop()||''))+'</a></td>';
+        h+='<td class="model-cell">'+(r.model?esc(r.model):'<span style="color:var(--txt2)">—</span>')+'</td>';
+        h+='<td style="font-size:11px;color:var(--txt2)">'+r.source+'</td>';
+        h+='<td>';
+        if(scraped){
+          const sc=scraped.status==='ok'?'ok':scraped.status==='partial'?'partial':scraped.status==='fail'?'fail':'pending';
+          h+='<span class="completeness '+(sc==='ok'?'high':sc==='partial'?'med':'low')+'">'+(sc==='pending'?'⏳':sc==='ok'?'✓ done':sc==='partial'?'⚠ partial':'✕ fail')+'</span>';
+        } else {
+          h+='<span style="font-size:11px;color:var(--txt2)">ready</span>';
         }
-        h+='</div></div>';
+        h+='</td><td>';
+        if(!scraped){
+          h+='<button class="btn btn-sm btn-secondary" onclick="window.S.scrapeUrl(\''+esc(r.url).replace(/'/g,"\\'")+'\')">Scrape</button>';
+        } else if(scraped.data && !scraped._saved){
+          h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+scrapeResults.indexOf(scraped)+')">Save</button>';
+        } else if(scraped._saved){
+          h+='<span style="font-size:11px;color:var(--accent)">✓</span>';
+        }
+        h+='</td></tr>';
       }
-    } else {
-      h+='<div style="text-align:center;padding:20px;color:var(--txt2);font-size:13px">No products in PIM for this brand yet — use the scraper above to discover and add them.</div>';
+      h+='</tbody></table></div>';
     }
 
-    h+='</div>';
-  } else if (selectedBrand && !brandIntel) {
-    h+='<div style="text-align:center;padding:30px;color:var(--txt2)"><div style="font-size:13px">Loading brand data…</div></div>';
+    if(existing.length>0){
+      h+='<details style="margin-bottom:16px"><summary style="font-size:12px;color:var(--txt2);cursor:pointer;font-weight:600">'+existing.length+' already in PIM</summary><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px">';
+      for(const r of existing) h+='<span style="background:var(--surface);padding:3px 8px;border-radius:4px;font-size:11px;color:var(--txt2)">'+(r.model||new URL(r.url).pathname.split('/').pop())+'</span>';
+      h+='</div></details>';
+    }
   }
 
-  h+='<div class="settings-row">';
-  h+='<label><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()"/> Auto-save</label>';
-  h+='<label>Tier 2: <select onchange="window.S.setAiModel(this.value)"><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
-  h+='<button class="btn btn-sm btn-secondary" style="margin-left:auto" onclick="window.S.setKeys()">🔑 API Keys</button>';
+  // Manual entry section (collapsible)
+  h+='<details style="margin-top:8px"><summary style="font-size:12px;color:var(--txt2);cursor:pointer;font-weight:600">Manual model / URL entry</summary>';
+  h+='<div class="controls" style="margin-top:10px">';
+  h+='<div class="field"><label>Model Number</label><input type="text" id="modelInput" placeholder="e.g. LRMVS3006S" onkeydown="if(event.key===\'Enter\')window.S.doScrape()"/></div>';
+  h+='<button class="btn btn-primary" onclick="window.S.doScrape()" '+(isProcessing?'disabled':'')+'>🔍 Scrape</button>';
   h+='</div>';
+  h+='<div class="controls" style="margin-top:-8px">';
+  h+='<div class="field"><label>Or paste a URL</label><input type="text" id="urlInput" placeholder="https://…" style="min-width:420px"/></div>';
+  h+='<button class="btn btn-secondary" onclick="window.S.doUrlScrape()" '+(isProcessing?'disabled':'')+'>Scrape URL</button>';
+  h+='</div></details>';
 
-  h+='<div class="log-panel'+(scrapeResults.length>0?' show':'')+'" id="scrapeLog"></div>';
-
+  // Scrape results
   if(scrapeResults.length>0){
-    h+='<div class="results-panel"><div class="results-header"><h3>Results ('+scrapeResults.length+')</h3><div style="display:flex;gap:8px"><button class="btn btn-sm btn-secondary" onclick="window.S.exportJSON()">📋 Export</button><button class="btn btn-sm btn-danger" onclick="window.S.clearResults()">Clear</button></div></div><div class="results-body">';
+    h+='<div class="results-panel" style="margin-top:16px"><div class="results-header"><h3>Scrape Results ('+scrapeResults.length+')</h3><div style="display:flex;gap:8px"><button class="btn btn-sm btn-secondary" onclick="window.S.exportJSON()">📋 Export</button><button class="btn btn-sm btn-danger" onclick="window.S.clearResults()">Clear</button></div></div><div class="results-body">';
     for(let i=0;i<scrapeResults.length;i++){
       const r=scrapeResults[i];const tl=TL[r.tier_used]||TL[0];
       const sc=r.status==='ok'?'ok':r.status==='partial'?'partial':r.status==='fail'?'fail':'pending';
       const det=r.data?[r.data.product_name,r.data.short_description,r.data.category].filter(Boolean).join(' · '):(r.status==='pending'?'Extracting…':'No data');
       const specs=r.data?.specs?Object.keys(r.data.specs).length:0;
       const price=r.data?.msrp?'$'+Number(r.data.msrp).toLocaleString():'';
-      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(specs||price?'<div class="detail">'+(specs?specs+' specs':'')+(specs&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓ Saved</span>':'')+'</div></div>';
+      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(specs||price?'<div class="detail">'+(specs?specs+' specs':'')+(specs&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓</span>':'')+'</div></div>';
     }
     h+='</div></div>';
-  } else {
-    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:36px;margin-bottom:12px;opacity:.3">🔍</div><div style="font-size:14px;font-weight:600">No results yet</div><div style="font-size:12px;margin-top:4px">Select a brand and enter a model number to start</div></div>';
   }
 
-  el.innerHTML=h;
+  return h;
 }
 
+/* ═══ PRICE SYNC TAB ═══ */
+function renderPriceSync() {
+  let h='';
+  if(!selectedBrand){h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div></div>';return h}
+  if(!brandIntel||brandIntel.brand!==selectedBrand){h+='<div style="padding:40px;text-align:center;color:var(--txt2)">Loading…</div>';return h}
+
+  const withPrice=brandIntel.products.filter(p=>p.msrp);
+  const changed=psResults.filter(r=>r.live_price!==null&&r.live_price!==r.product.msrp).length;
+
+  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.psCheckAll()" '+(isProcessing||withPrice.length===0?'disabled':'')+'>💲 Check All Prices ('+withPrice.length+')</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Processing…':psResults.length>0?psResults.length+' checked, '+changed+' changed':'')+'</span></div>';
+
+  h+='<div class="log-panel'+(psResults.length>0?' show':'')+'" id="scrapeLog"></div>';
+
+  if(psResults.length>0){
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Stored MSRP</th><th>Live Price</th><th>Δ</th><th>Tier</th><th>Action</th></tr></thead><tbody>';
+    for(let i=0;i<psResults.length;i++){
+      const r=psResults[i];const p=r.product;
+      const stored=p.msrp?Number(p.msrp):null;const live=r.live_price!==null?Number(r.live_price):null;
+      let dh='<span class="price-same">—</span>';
+      if(stored&&live){const d=live-stored;if(d>0)dh='<span class="price-up">+$'+d.toFixed(0)+' ↑</span>';else if(d<0)dh='<span class="price-down">-$'+Math.abs(d).toFixed(0)+' ↓</span>';else dh='<span class="price-same">✓</span>'}
+      const tl=TL[r.tier_used]||TL[0];
+      h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td>'+(stored?'$'+stored.toLocaleString():'—')+'</td><td>'+(live!==null?'$'+live.toLocaleString():'<span style="color:var(--red)">—</span>')+'</td><td>'+dh+'</td><td><span class="tier-badge '+tl.cls+'">T'+r.tier_used+'</span></td><td>'+(live!==null&&live!==stored?'<button class="btn btn-sm btn-primary" onclick="window.S.psUpdate('+i+')">Update</button>':'')+'</td></tr>';
+    }
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Last Checked</th></tr></thead><tbody>';
+    for(const p of brandIntel.products.slice(0,50)){
+      h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td style="color:var(--txt2)">'+esc(p.category||'—')+'</td><td>'+(p.msrp?'$'+Number(p.msrp).toLocaleString():'—')+'</td><td style="font-size:11px;color:var(--txt2)">'+(p.source_extracted_at?new Date(p.source_extracted_at).toLocaleDateString():'—')+'</td></tr>';
+    }
+    h+='</tbody></table></div>';
+  }
+  return h;
+}
+
+/* ═══ VERIFY & AUDIT TAB ═══ */
+function renderVerify() {
+  let h='';
+  if(!selectedBrand){h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">🔍</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to verify</div></div>';return h}
+  if(!brandIntel||brandIntel.brand!==selectedBrand){h+='<div style="padding:40px;text-align:center;color:var(--txt2)">Loading…</div>';return h}
+
+  const verified=vaResults.filter(r=>r.status==='verified').length;
+  const drifted=vaResults.filter(r=>r.status==='drifted').length;
+
+  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.vaVerifyAll()" '+(isProcessing||brandIntel.products.length===0?'disabled':'')+'>🔍 Verify All ('+brandIntel.products.length+')</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Verifying…':vaResults.length>0?verified+' verified, '+drifted+' drifted':'')+'</span></div>';
+
+  h+='<div class="log-panel'+(vaResults.length>0?' show':'')+'" id="scrapeLog"></div>';
+
+  if(vaResults.length>0){
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Status</th><th>Differences</th><th>Actions</th></tr></thead><tbody>';
+    for(let i=0;i<vaResults.length;i++){
+      const r=vaResults[i];const p=r.product;
+      h+='<tr><td class="model-cell">'+esc(p.model)+'</td>';
+      h+='<td><span class="completeness '+(r.status==='verified'?'high':r.status==='drifted'?'med':'low')+'">'+(r.status==='verified'?'✓':r.status==='drifted'?'⚠':'✕')+' '+r.status+'</span></td>';
+      h+='<td>';
+      if(r.diffs.length>0){for(const d of r.diffs.slice(0,3))h+='<span class="diff-changed">'+esc(d.label)+'</span> ';if(r.diffs.length>3)h+='<span style="font-size:11px;color:var(--txt2)">+'+(r.diffs.length-3)+'</span>'}
+      else if(r.status==='verified')h+='<span style="font-size:11px;color:var(--accent)">matches</span>';
+      else h+='<span style="font-size:11px;color:var(--red)">unreachable</span>';
+      h+='</td><td>';
+      if(r.diffs.length>0)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.vaViewDiff('+i+')">Diff</button> <button class="btn btn-sm btn-primary" onclick="window.S.vaAcceptAll('+i+')">Accept</button>';
+      h+='</td></tr>';
+    }
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Category</th><th>Source</th><th>Confidence</th></tr></thead><tbody>';
+    for(const p of brandIntel.products.slice(0,50)){
+      h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td style="color:var(--txt2)">'+esc(p.category||'—')+'</td><td style="font-size:11px;color:var(--txt2);max-width:200px;overflow:hidden;text-overflow:ellipsis">'+esc(p.source_reference||'—')+'</td><td>'+(p.source_confidence?Math.round(p.source_confidence*100)+'%':'—')+'</td></tr>';
+    }
+    h+='</tbody></table></div>';
+  }
+  return h;
+}
+
+/* ═══ ENRICH & COMPLETE TAB ═══ */
+function renderEnrich() {
+  let h='';
+  if(!selectedBrand){h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">🧩</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to enrich</div></div>';return h}
+  if(!brandIntel||brandIntel.brand!==selectedBrand){h+='<div style="padding:40px;text-align:center;color:var(--txt2)">Loading…</div>';return h}
+
+  const products=brandIntel.products;
+  const lowComp=products.filter(p=>completeness(p)<50).length;
+  const filled=Object.values(enResults).reduce((s,r)=>s+(r.filled||0),0);
+  const avgComp=products.length>0?Math.round(products.reduce((s,p)=>s+completeness(p),0)/products.length):0;
+
+  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(isProcessing||lowComp===0?'disabled':'')+'>🧩 Enrich Low &lt;50% ('+lowComp+')</button><span style="font-size:12px;color:var(--txt2)">Avg: '+avgComp+'% · '+filled+' fields filled'+(isProcessing?' · ⏳ Processing…':'')+'</span></div>';
+
+  h+='<div class="log-panel'+(Object.keys(enResults).length>0?' show':'')+'" id="scrapeLog"></div>';
+
+  const sorted=[...products].sort((a,b)=>completeness(a)-completeness(b));
+  h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>Category</th><th>Completeness</th><th>Missing</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+  for(const p of sorted.slice(0,80)){
+    const comp=completeness(p);const miss=missingFields(p);const cls=comp>=70?'high':comp>=40?'med':'low';const barCls=comp>=70?'green':comp>=40?'amber':'red';
+    const result=enResults[p.id];
+    h+='<tr><td class="model-cell">'+esc(p.model)+'</td><td style="color:var(--txt2)">'+esc(p.category||'—')+'</td>';
+    h+='<td><div style="display:flex;align-items:center;gap:6px"><span class="completeness '+cls+'">'+comp+'%</span><div class="pbar" style="width:60px"><div class="fill '+barCls+'" style="width:'+comp+'%"></div></div></div></td>';
+    h+='<td style="font-size:11px;color:var(--txt2)">'+miss.slice(0,3).map(f=>f.replace(/_/g,' ')).join(', ')+(miss.length>3?' +' +(miss.length-3):'')+'</td>';
+    h+='<td>';
+    if(result&&result.filled>0)h+='<span class="completeness high">+'+result.filled+'</span>';
+    else if(result)h+='<span class="completeness low">—</span>';
+    h+='</td><td>';
+    if(result&&result.filled>0&&!result._saved)h+='<button class="btn btn-sm btn-primary" onclick="window.S.enSave(\''+p.id+'\')">Save</button>';
+    else if(result&&result._saved)h+='<span style="color:var(--accent);font-size:11px">✓</span>';
+    else if(!result)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.enEnrichOne(\''+p.id+'\')">Enrich</button>';
+    h+='</td></tr>';
+  }
+  h+='</tbody></table></div>';
+  if(sorted.length>80)h+='<div style="padding:8px;font-size:12px;color:var(--txt2)">Showing 80 of '+sorted.length+'</div>';
+  return h;
+}
 /* ═══ WINDOW API ═══ */
 window.S = {
   switchTab(tab){
@@ -977,16 +837,12 @@ window.S = {
     document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',['discover','price-sync','verify','enrich'][i]===tab)});
     renderTab();
   },
-  setMode(m){discoverMode=m;renderTab()},
-  selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;if(currentTab==='discover')loadBrandIntel(selectedBrand);else renderTab()},
+  selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;psResults=[];vaResults=[];enResults={};loadBrandIntel(selectedBrand)},
   toggleAuto(){autoSave=!autoSave},
-  setAiModel(v){aiModel=v},
-  filterBrands(v){brandFilter=v;renderTab()},
-  tierFilter(t){tierFilter=(tierFilter===t)?0:t;renderTab()},
   clearResults(){scrapeResults=[];sessionCostTotal=0;document.getElementById('sessionCost').textContent='$0.00';renderTab()},
 
   async doScrape(){
-    const brand=document.getElementById('brandSelect')?.value||selectedBrand;
+    const brand=selectedBrand;
     const model=document.getElementById('modelInput')?.value?.trim();
     if(!brand||!model){alert('Select a brand and enter a model');return}
     isProcessing=true;renderTab();
@@ -996,20 +852,24 @@ window.S = {
   async doUrlScrape(){
     const url=document.getElementById('urlInput')?.value?.trim();
     if(!url||!url.startsWith('http')){alert('Paste a valid URL');return}
-    const brand=document.getElementById('brandSelect')?.value||selectedBrand||'Unknown';
+    const brand=selectedBrand||'Unknown';
     isProcessing=true;renderTab();
     await smartScrape(brand,'',url);
     isProcessing=false;renderTab();
   },
-  async doBatch(){
-    const brand=document.getElementById('brandSelect')?.value||selectedBrand;
-    const raw=document.getElementById('batchInput')?.value?.trim();
-    if(!brand||!raw){alert('Select brand and enter models');return}
-    const models=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  async scrapeUrl(url){
+    if(isProcessing)return;
     isProcessing=true;renderTab();
-    for(let i=0;i<models.length;i++){
-      await smartScrape(brand,models[i],null);
-      if(i<models.length-1)await new Promise(r=>setTimeout(r,1000));
+    await smartScrape(selectedBrand||'Unknown','',url);
+    isProcessing=false;renderTab();
+  },
+  async scrapeDiscovered(){
+    if(!discoverResults||isProcessing)return;
+    const newOnes=discoverResults.results.filter(r=>!r.in_pim);
+    isProcessing=true;renderTab();
+    for(let i=0;i<newOnes.length;i++){
+      await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
+      if(i<newOnes.length-1)await new Promise(r=>setTimeout(r,1000));
     }
     isProcessing=false;renderTab();
   },
@@ -1085,22 +945,16 @@ window.S = {
   },
 
   /* ── Price Sync ── */
-  psBrand(v){psBrandFilter=v;renderTab()},
-  async psLoadProducts(){
-    psProcessing=true;renderTab();
-    psProducts=await loadProducts(psBrandFilter);
-    psProcessing=false;psResults=[];renderTab();
-  },
   async psCheckAll(){
-    const filtered=psBrandFilter?psProducts.filter(p=>p.brand_name===psBrandFilter):psProducts;
-    const withPrice=filtered.filter(p=>p.msrp);
-    psProcessing=true;psResults=[];renderTab();
+    if(!brandIntel||!brandIntel.products.length)return;
+    const withPrice=brandIntel.products.filter(p=>p.msrp);
+    isProcessing=true;psResults=[];renderTab();
     for(let i=0;i<withPrice.length;i++){
       const r=await priceSyncOne(withPrice[i]);
       psResults.push(r);renderTab();
       if(i<withPrice.length-1)await new Promise(r=>setTimeout(r,800));
     }
-    psProcessing=false;renderTab();
+    isProcessing=false;renderTab();
   },
   async psUpdate(i){
     const r=psResults[i];if(!r||r.live_price===null)return;
@@ -1112,21 +966,15 @@ window.S = {
   },
 
   /* ── Verify & Audit ── */
-  vaBrand(v){vaBrandFilter=v;renderTab()},
-  async vaLoadProducts(){
-    vaProcessing=true;renderTab();
-    vaProducts=await loadProducts(vaBrandFilter);
-    vaProcessing=false;vaResults=[];renderTab();
-  },
   async vaVerifyAll(){
-    const filtered=vaBrandFilter?vaProducts.filter(p=>p.brand_name===vaBrandFilter):vaProducts;
-    vaProcessing=true;vaResults=[];renderTab();
-    for(let i=0;i<filtered.length;i++){
-      const r=await verifyOne(filtered[i]);
+    if(!brandIntel||!brandIntel.products.length)return;
+    isProcessing=true;vaResults=[];renderTab();
+    for(let i=0;i<brandIntel.products.length;i++){
+      const r=await verifyOne(brandIntel.products[i]);
       vaResults.push(r);renderTab();
-      if(i<filtered.length-1)await new Promise(r=>setTimeout(r,800));
+      if(i<brandIntel.products.length-1)await new Promise(r=>setTimeout(r,800));
     }
-    vaProcessing=false;renderTab();
+    isProcessing=false;renderTab();
   },
   vaViewDiff(i){
     const r=vaResults[i];if(!r)return;
@@ -1164,29 +1012,23 @@ window.S = {
   },
 
   /* ── Enrich & Complete ── */
-  enBrand(v){enBrandFilter=v;renderTab()},
-  async enLoadProducts(){
-    enProcessing=true;renderTab();
-    enProducts=await loadProducts(enBrandFilter);
-    enProcessing=false;enResults={};renderTab();
-  },
   async enEnrichOne(pid){
-    const p=enProducts.find(x=>x.id===pid);if(!p)return;
-    enProcessing=true;renderTab();
+    const p=brandIntel?.products.find(x=>x.id===pid);if(!p)return;
+    isProcessing=true;renderTab();
     const r=await enrichOne(p);
     enResults[pid]=r;
-    enProcessing=false;renderTab();
+    isProcessing=false;renderTab();
   },
   async enEnrichLow(){
-    const filtered=enBrandFilter?enProducts.filter(p=>p.brand_name===enBrandFilter):enProducts;
-    const low=filtered.filter(p=>completeness(p)<50).slice(0,20);
-    enProcessing=true;renderTab();
+    if(!brandIntel)return;
+    const low=brandIntel.products.filter(p=>completeness(p)<50).slice(0,20);
+    isProcessing=true;renderTab();
     for(let i=0;i<low.length;i++){
       const r=await enrichOne(low[i]);
       enResults[low[i].id]=r;renderTab();
       if(i<low.length-1)await new Promise(r=>setTimeout(r,800));
     }
-    enProcessing=false;renderTab();
+    isProcessing=false;renderTab();
   },
   enPreview(pid){
     const r=enResults[pid];if(!r)return;
