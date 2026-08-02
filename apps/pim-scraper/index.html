@@ -670,7 +670,14 @@ function renderDiscover(){
         h+='<td>';
         if(scraped){
           const sc=scraped.status==='ok'?'ok':scraped.status==='partial'?'partial':scraped.status==='fail'?'fail':'pending';
-          h+='<span class="completeness '+(sc==='ok'?'high':sc==='partial'?'med':'low')+'">'+(sc==='pending'?'⏳':sc==='ok'?'✓ done':sc==='partial'?'⚠ partial':'✕ fail')+'</span>';
+          h+='<span class="completeness '+(sc==='ok'?'high':sc==='partial'?'med':'low')+'">';
+          if(sc==='pending')h+='⏳ scraping';
+          else if(sc==='ok')h+='✓ complete';
+          else if(sc==='partial'){
+            const fd=[];if(scraped.data?.model)fd.push('model');if(scraped.data?.product_name)fd.push('name');if(scraped.data?.msrp)fd.push('price');if(scraped.data?.specs)fd.push('specs');
+            h+='⚠ '+(fd.length?fd.join(', '):'basic data');
+          } else h+='✕ failed';
+          h+='</span>';
         } else {
           h+='<span style="font-size:11px;color:var(--txt2)">ready</span>';
         }
@@ -711,7 +718,7 @@ function renderDiscover(){
     for(let i=0;i<scrapeResults.length;i++){
       const r=scrapeResults[i];const tl=TL[r.tier_used]||TL[0];
       const sc=r.status==='ok'?'ok':r.status==='partial'?'partial':r.status==='fail'?'fail':'pending';
-      const det=r.data?[r.data.product_name,r.data.short_description,r.data.category].filter(Boolean).join(' · '):(r.status==='pending'?'Extracting…':'No data');
+      const det=r.data?[r.data.product_name,r.data.category,r.data.msrp?'$'+Number(r.data.msrp).toLocaleString():null].filter(Boolean).join(' · ')||(r.status==='partial'?'basic data extracted':'data extracted'):(r.status==='pending'?'Extracting…':'No data');
       const specs=r.data?.specs?Object.keys(r.data.specs).length:0;
       const price=r.data?.msrp?'$'+Number(r.data.msrp).toLocaleString():'';
       h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(specs||price?'<div class="detail">'+(specs?specs+' specs':'')+(specs&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓</span>':'')+'</div></div>';
