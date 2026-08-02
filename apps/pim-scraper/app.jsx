@@ -3,6 +3,14 @@ const { useState, useCallback, useRef } = React;
 const SUPABASE_URL = "https://fumwwhyozeouoqscolke.supabase.co";
 const SUPABASE_KEY = "sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
 
+// ── Model Configuration ──
+const MODEL_CONFIG = {
+  luna:   { name: "Luna",   provider: "openai",   model: "gpt-4.1-nano",              cost: "~0.1¢", color: "#74b9ff" },
+  terra:  { name: "Terra",  provider: "openai",   model: "gpt-4.1-mini",              cost: "~0.4¢", color: "#fdcb6e" },
+  haiku:  { name: "Haiku",  provider: "anthropic", model: "claude-haiku-4-5-20251001", cost: "~0.3¢", color: "#00b894" },
+  sonnet: { name: "Sonnet", provider: "anthropic", model: "claude-sonnet-4-6",         cost: "~1.5¢", color: "#6c5ce7" },
+};
+
 const CATEGORIES = [
   "refrigeration","cooking","dishwashers","laundry","ventilation",
   "wine_refrigeration","beverage_centers","ice_makers","outdoor","small_appliances"
@@ -155,12 +163,9 @@ function supaFetch(path, opts = {}) {
 }
 
 function extractJSON(text) {
-  // Try direct parse first
   try { return JSON.parse(text.trim()); } catch {}
-  // Strip markdown fences
   const stripped = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   try { return JSON.parse(stripped); } catch {}
-  // Find the first { ... } block
   const start = stripped.indexOf("{");
   const end = stripped.lastIndexOf("}");
   if (start !== -1 && end > start) {
@@ -169,14 +174,24 @@ function extractJSON(text) {
   return null;
 }
 
-async function callClaude(systemPrompt, userMsg, retries = 2) {
+// ── AI Call Router ──
+async function callAI(systemPrompt, userMsg, modelKey, retries = 2) {
+  const config = MODEL_CONFIG[modelKey] || MODEL_CONFIG.haiku;
+  if (config.provider === "openai") {
+    return callOpenAI(systemPrompt, userMsg, config.model, retries);
+  }
+  return callClaude(systemPrompt, userMsg, config.model, retries);
+}
+
+// ── Anthropic ──
+async function callClaude(systemPrompt, userMsg, model = "claude-sonnet-4-6", retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model,
           max_tokens: 8000,
           system: systemPrompt,
           messages: [{ role: "user", content: userMsg }],
@@ -198,11 +213,7 @@ async function callClaude(systemPrompt, userMsg, retries = 2) {
         parsed.found = true;
         return parsed;
       }
-      // If we got text but couldn't parse, retry with a stricter nudge
-      if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 1500));
-        continue;
-      }
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 1500)); continue; }
       return { found: false, error: "Could not parse product data from response", raw: allText.slice(0, 500) };
     } catch (e) {
       if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
@@ -211,20 +222,191 @@ async function callClaude(systemPrompt, userMsg, retries = 2) {
   }
 }
 
-async function scrapeProduct(query) {
-  // First attempt with the main prompt
-  let result = await callClaude(SCRAPE_PROMPT, `Find all product specifications for: ${query}`);
-  if (result.found) return result;
+// ── OpenAI ──
+async function callOpenAI(systemPrompt, userMsg, model = "gpt-4.1-nano", retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const body = {
+        model,
+        max_tokens: 8000,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMsg },
+        ],
+      };
+      // Luna/Terra support web search via tools
+      if (model.includes("4.1")) {
+        body.tools = [{ type: "web_search_preview" }];
+      }
+      const res = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        // Fallback to chat completions if responses endpoint fails
+        if (res.status === 404) {
+          const fallbackRes = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model,
+              max_tokens: 8000,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMsg },
+              ],
+            }),
+          });
+          if (!fallbackRes.ok) {
+            if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+            return { found: false, error: `OpenAI error ${fallbackRes.status}` };
+          }
+          const fbData = await fallbackRes.json();
+          const fbText = fbData.choices?.[0]?.message?.content || "";
+          const fbParsed = extractJSON(fbText);
+          if (fbParsed && (fbParsed.found === true || fbParsed.model || fbParsed.brand_name)) {
+            fbParsed.found = true;
+            return fbParsed;
+          }
+        }
+        if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+        return { found: false, error: `OpenAI error ${res.status}: ${errText.slice(0, 200)}` };
+      }
+      const data = await res.json();
+      // Handle responses API format
+      const allText = data.output
+        ? data.output.filter(b => b.type === "message").map(b => b.content?.map(c => c.text).join("")).join("\n")
+        : data.choices?.[0]?.message?.content || "";
+      const parsed = extractJSON(allText);
+      if (parsed && (parsed.found === true || parsed.model || parsed.brand_name)) {
+        parsed.found = true;
+        return parsed;
+      }
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 1500)); continue; }
+      return { found: false, error: "Could not parse product data from OpenAI response", raw: allText.slice(0, 500) };
+    } catch (e) {
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      return { found: false, error: e.message };
+    }
+  }
+}
+
+// ── Free Data Pass: Extract structured data from HTML without AI ──
+async function freeExtract(url) {
+  if (!url || !url.startsWith("http")) return null;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const result = { found: false, source_url: url, extraction_method: "free_parse" };
+
+    // Extract JSON-LD Product schema
+    const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+    if (jsonLdMatch) {
+      for (const match of jsonLdMatch) {
+        try {
+          const content = match.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim();
+          const ld = JSON.parse(content);
+          const product = ld["@type"] === "Product" ? ld : (Array.isArray(ld["@graph"]) ? ld["@graph"].find(g => g["@type"] === "Product") : null);
+          if (product) {
+            result.found = true;
+            result.brand_name = product.brand?.name || product.brand || null;
+            result.model = product.model || product.sku || null;
+            result.short_description = product.name || null;
+            result.long_description = product.description || null;
+            if (product.image) {
+              const imgs = Array.isArray(product.image) ? product.image : [product.image];
+              result.images = imgs.map((u, i) => ({ url: typeof u === "string" ? u : u.url, type: i === 0 ? "hero" : "product", alt: "" }));
+            }
+            if (product.offers) {
+              const offer = Array.isArray(product.offers) ? product.offers[0] : product.offers;
+              result.pricing = { msrp: offer.price || null, price_currency: offer.priceCurrency || "CAD" };
+              result.msrp = offer.price || null;
+            }
+            if (product.width) result.width_inches = parseFloat(product.width.value || product.width) || null;
+            if (product.height) result.height_inches = parseFloat(product.height.value || product.height) || null;
+            if (product.depth) result.depth_inches = parseFloat(product.depth.value || product.depth) || null;
+            if (product.weight) result.weight_lbs = parseFloat(product.weight.value || product.weight) || null;
+            if (product.color) result.color = product.color;
+            if (product.gtin13) result.ean = product.gtin13;
+            if (product.gtin12) result.upc = product.gtin12;
+          }
+        } catch {}
+      }
+    }
+
+    // Extract Open Graph meta tags
+    const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+    const ogDesc = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+    const ogImage = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i);
+    if (ogTitle && !result.short_description) result.short_description = ogTitle[1];
+    if (ogDesc && !result.long_description) result.long_description = ogDesc[1];
+    if (ogImage) {
+      if (!result.images) result.images = [];
+      const ogUrl = ogImage[1];
+      if (!result.images.some(i => i.url === ogUrl)) {
+        result.images.unshift({ url: ogUrl, type: "hero", alt: result.short_description || "" });
+      }
+    }
+
+    // Extract spec tables (label/value pairs in <table> or <dl>)
+    const specs = {};
+    // <tr><td>Label</td><td>Value</td></tr> pattern
+    const trMatches = html.matchAll(/<tr[^>]*>\s*<t[dh][^>]*>([^<]+)<\/t[dh]>\s*<t[dh][^>]*>([^<]+)<\/t[dh]>\s*<\/tr>/gi);
+    for (const m of trMatches) {
+      const key = m[1].trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+      const val = m[2].trim();
+      if (key && val && val.length < 200) specs[key] = val;
+    }
+    // <dt>/<dd> pattern
+    const dlMatches = html.matchAll(/<dt[^>]*>([^<]+)<\/dt>\s*<dd[^>]*>([^<]+)<\/dd>/gi);
+    for (const m of dlMatches) {
+      const key = m[1].trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+      const val = m[2].trim();
+      if (key && val && val.length < 200) specs[key] = val;
+    }
+    if (Object.keys(specs).length > 0) {
+      result.found = true;
+      result.specs = specs;
+      // Try to pull dimensions from specs
+      for (const [k, v] of Object.entries(specs)) {
+        if (!result.width_inches && (k.includes("width") || k.includes("w_in"))) result.width_inches = parseFloat(v) || null;
+        if (!result.height_inches && (k.includes("height") || k.includes("h_in"))) result.height_inches = parseFloat(v) || null;
+        if (!result.depth_inches && (k.includes("depth") || k.includes("d_in"))) result.depth_inches = parseFloat(v) || null;
+        if (!result.weight_lbs && k.includes("weight")) result.weight_lbs = parseFloat(v) || null;
+      }
+    }
+
+    return result.found ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+async function scrapeProduct(query, modelKey) {
+  // Pass 1: If it's a URL, try free extraction first (no AI cost)
+  if (query.startsWith("http")) {
+    const freeResult = await freeExtract(query);
+    if (freeResult && freeResult.found && freeResult.short_description) {
+      freeResult.extraction_method = "free_parse";
+      return freeResult;
+    }
+  }
+
+  // Pass 2: AI-powered extraction
+  let result = await callAI(SCRAPE_PROMPT, `Find all product specifications for: ${query}`, modelKey);
+  if (result.found) { result.extraction_method = "ai"; return result; }
   
-  // Retry with a simpler, more direct prompt
   const fallbackPrompt = `Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.
 
 The JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).
 
 Return ALL image URLs from the product gallery. Return ALL color/finish options.`;
   
-  result = await callClaude(fallbackPrompt, `${query} — search the manufacturer website for full specs, all images, all colors, and MSRP price`);
-  if (result.found) return result;
+  result = await callAI(fallbackPrompt, `${query} — search the manufacturer website for full specs, all images, all colors, and MSRP price`, modelKey);
+  if (result.found) { result.extraction_method = "ai_fallback"; return result; }
   
   return { found: false, query, error: result.error || "Product not found after multiple attempts" };
 }
@@ -285,6 +467,35 @@ function Field({ label, value, editable, onChange }) {
   );
 }
 
+// ── Model Selector Component ──
+function ModelSelector({ selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const config = MODEL_CONFIG[selected] || MODEL_CONFIG.haiku;
+  return (
+    <div style={{ position: "relative" }}>
+      <button onClick={() => setOpen(!open)}
+        style={{ ...s.btn, ...s.btnSm, background: config.color + "20", border: `1px solid ${config.color}40`, color: config.color, display: "flex", alignItems: "center", gap: 6, minWidth: 120 }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: config.color, display: "inline-block" }} />
+        {config.name} <span style={{ fontSize: 10, opacity: 0.7 }}>{config.cost}</span>
+        <span style={{ fontSize: 10, marginLeft: 4 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: palette.card, border: `1px solid ${palette.border}`, borderRadius: 8, padding: 4, zIndex: 100, minWidth: 180 }}>
+          {Object.entries(MODEL_CONFIG).map(([key, cfg]) => (
+            <button key={key} onClick={() => { onChange(key); setOpen(false); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", background: selected === key ? cfg.color + "15" : "transparent", border: "none", borderRadius: 6, color: palette.text, cursor: "pointer", fontSize: 13, textAlign: "left" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color }} />
+              <span style={{ flex: 1, fontWeight: selected === key ? 600 : 400 }}>{cfg.name}</span>
+              <span style={{ fontSize: 11, color: palette.textMuted }}>{cfg.cost}</span>
+              <span style={{ fontSize: 10, color: palette.textMuted }}>{cfg.provider}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultCard({ result, onSave, onDiscard, saving }) {
   const [editing, setEditing] = useState(false);
   const [data, setData] = useState(result);
@@ -308,9 +519,13 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
         <div>
           <div style={{ fontSize: 16, fontWeight: 600 }}>{data.brand_name} {data.model}</div>
           <div style={{ fontSize: 13, color: palette.textDim }}>{data.short_description}</div>
+          {data.extraction_method && (
+            <Badge color={data.extraction_method === "free_parse" ? "green" : "accent"}>
+              {data.extraction_method === "free_parse" ? "⚡ Free parse" : data.extraction_method === "ai" ? "🤖 AI" : "🤖 AI fallback"}
+            </Badge>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          {/* Condition badges */}
           <Badge color={(!data.condition?.is_discontinued && !data.condition?.is_clearance && !data.condition?.is_end_of_life) ? "green" : 
             data.condition?.is_discontinued ? "red" : "yellow"}>
             {data.condition?.status || data.status || "active"}
@@ -365,7 +580,6 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
         </div>
       )}
 
-      {/* Pricing row */}
       <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap", alignItems: "stretch" }}>
         {(data.pricing?.msrp || data.msrp) && (
           <div style={{ padding: "10px 20px", background: palette.card, border: `1px solid ${palette.border}`, borderRadius: 8, minWidth: 120 }}>
@@ -410,14 +624,12 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
         )}
       </div>
 
-      {/* Condition notes */}
       {data.condition?.notes && (
         <div style={{ marginTop: 8, padding: "6px 12px", background: palette.yellowSoft, borderRadius: 6, fontSize: 12, color: palette.yellow }}>
           ℹ️ {data.condition.notes}
         </div>
       )}
 
-      {/* Available Colors / Finishes */}
       {data.available_colors && data.available_colors.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ ...s.label, marginBottom: 8 }}>Available Colors & Finishes ({data.available_colors.length})</div>
@@ -436,7 +648,6 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
         </div>
       )}
 
-      {/* Product Images */}
       {data.images && data.images.filter((img) => (typeof img === "string" ? img : img?.url)).length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ ...s.label, marginBottom: 8 }}>Product Images ({data.images.filter((img) => (typeof img === "string" ? img : img?.url)).length})</div>
@@ -485,7 +696,7 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
 }
 
 function PIMScraper() {
-  const [mode, setMode] = useState("single"); // single | bulk | existing | discover
+  const [mode, setMode] = useState("single");
   const [query, setQuery] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [results, setResults] = useState([]);
@@ -496,18 +707,17 @@ function PIMScraper() {
   const [existingProducts, setExistingProducts] = useState([]);
   const [savingIdx, setSavingIdx] = useState(null);
   const abortRef = useRef(false);
+  const [selectedModel, setSelectedModel] = useState("haiku");
   
-  // Discovery state
   const [discoverBrand, setDiscoverBrand] = useState("");
   const [discoverCategory, setDiscoverCategory] = useState("");
   const [discoverUrl, setDiscoverUrl] = useState("");
-  const [discovered, setDiscovered] = useState([]); // discovered model list
-  const [discoverPhase, setDiscoverPhase] = useState("idle"); // idle | discovering | discovered | scraping
+  const [discovered, setDiscovered] = useState([]);
+  const [discoverPhase, setDiscoverPhase] = useState("idle");
   const [selectedModels, setSelectedModels] = useState(new Set());
   const [allBrands, setAllBrands] = useState([]);
   const [brandSearch, setBrandSearch] = useState("");
 
-  // Load brands from DB on mount
   const loadBrands = useCallback(async () => {
     try {
       const res = await supaFetch("brand_catalog?is_active=eq.true&select=brand_name,parent_company&order=brand_name&limit=500");
@@ -516,7 +726,6 @@ function PIMScraper() {
     } catch {}
   }, []);
 
-  // Load brands on first render
   const brandsLoaded = useRef(false);
   if (!brandsLoaded.current) { brandsLoaded.current = true; loadBrands(); }
 
@@ -531,11 +740,10 @@ function PIMScraper() {
   }, []);
 
   const [autoSave, setAutoSave] = useState(true);
-  const [saveQueue, setSaveQueue] = useState([]); // tracks auto-saved items
+  const [saveQueue, setSaveQueue] = useState([]);
   const saveCountRef = useRef({ saved: 0, failed: 0 });
 
   const doSave = async (data) => {
-    // Reuse handleSave logic but without UI index management
     try {
       const checkRes = await supaFetch(`aiq_products?model=eq.${encodeURIComponent(data.model)}&brand_name=eq.${encodeURIComponent(data.brand_name)}&select=id,organization_id`);
       const existing = await checkRes.json();
@@ -607,7 +815,6 @@ function PIMScraper() {
         productId = (await lookup.json())?.[0]?.id;
       }
       if (productId) {
-        // Images
         if (data.images) {
           await supaFetch(`pim_product_images?product_id=eq.${productId}&source=eq.web_scrape`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => {});
           const imgs = data.images.map(img => typeof img === "string" ? { url: img, type: "product" } : img).filter(img => img?.url);
@@ -620,7 +827,6 @@ function PIMScraper() {
             }), headers: { Prefer: "return=minimal" } }).catch(() => {});
           }
         }
-        // Documents
         if (data.documents) {
           for (const doc of data.documents.filter(d => d.url)) {
             const existDoc = await supaFetch(`pim_product_documents?product_id=eq.${productId}&doc_type=eq.${encodeURIComponent(doc.type)}&select=id`).then(r => r.json()).catch(() => []);
@@ -636,7 +842,6 @@ function PIMScraper() {
             }
           }
         }
-        // Features
         if (data.features?.length) {
           await supaFetch(`pim_product_features?product_id=eq.${productId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } }).catch(() => {});
           for (let i = 0; i < data.features.length; i++) {
@@ -646,7 +851,6 @@ function PIMScraper() {
             }), headers: { Prefer: "return=minimal" } }).catch(() => {});
           }
         }
-        // Dimensions
         if (data.width_inches || data.height_inches || data.depth_inches || specs.cutout_width) {
           const existDim = await supaFetch(`pim_product_dimensions?product_id=eq.${productId}&select=id`).then(r => r.json()).catch(() => []);
           const dimData = {
@@ -667,7 +871,6 @@ function PIMScraper() {
             await supaFetch("pim_product_dimensions", { method: "POST", body: JSON.stringify(dimData), headers: { Prefer: "return=minimal" } }).catch(() => {});
           }
         }
-        // Certifications
         if (data.energy_star || specs.annual_energy_kwh || specs.decibels) {
           const existCert = await supaFetch(`pim_product_certifications?product_id=eq.${productId}&cert_type=eq.energy&select=id`).then(r => r.json()).catch(() => []);
           const certData = {
@@ -682,7 +885,6 @@ function PIMScraper() {
             await supaFetch("pim_product_certifications", { method: "POST", body: JSON.stringify(certData), headers: { Prefer: "return=minimal" } }).catch(() => {});
           }
         }
-        // Price history
         if (pricing.msrp || pricing.sale_price || pricing.lowest_price) {
           await supaFetch("pim_price_history", { method: "POST", body: JSON.stringify({
             product_id: productId, msrp: pricing.msrp ? parseFloat(pricing.msrp) : null,
@@ -704,7 +906,7 @@ function PIMScraper() {
 
   const runScrape = async (q) => {
     try {
-      const r = await scrapeProduct(q);
+      const r = await scrapeProduct(q, selectedModel);
       r.query = q;
       return r;
     } catch (e) { return { found: false, query: q, error: e.message }; }
@@ -752,13 +954,12 @@ function PIMScraper() {
     setMode("bulk");
   };
 
-  // ── Site Discovery ──
   const REFRIG_SUBCATS = ["french door refrigerators", "side-by-side refrigerators", "top freezer refrigerators", "bottom freezer refrigerators", "counter-depth refrigerators", "compact refrigerators"];
   const COOKING_SUBCATS = ["gas ranges", "electric ranges", "induction ranges", "double oven ranges", "slide-in ranges"];
   const LAUNDRY_SUBCATS = ["front load washers", "top load washers", "dryers", "washer dryer combos"];
 
   const getSubcats = (category) => {
-    if (!category) return [""]; // search all
+    if (!category) return [""];
     const c = category.toLowerCase();
     if (c.includes("refrig")) return REFRIG_SUBCATS;
     if (c.includes("range")) return COOKING_SUBCATS;
@@ -780,12 +981,10 @@ function PIMScraper() {
     let allProducts = [];
 
     if (url) {
-      // Single URL discovery
       setProgress({ current: 1, total: 1, currentQuery: "Scanning page…" });
-      const result = await callClaude(DISCOVER_PROMPT, `Find all product model numbers listed on: ${url}`);
+      const result = await callAI(DISCOVER_PROMPT, `Find all product model numbers listed on: ${url}`, selectedModel);
       if (result.found && result.products) allProducts = result.products;
     } else {
-      // Break into subcategory chunks to avoid overload
       const subcats = getSubcats(category);
       for (let i = 0; i < subcats.length; i++) {
         if (abortRef.current) break;
@@ -796,7 +995,7 @@ function PIMScraper() {
           ? `Find ALL ${brand} ${subcat} currently available on the ${brand} Canadian website. List every model number.`
           : `Find ALL ${brand} ${category || "appliance"} products on the ${brand} Canadian website. List every model number. Search each subcategory.`;
         
-        const result = await callClaude(DISCOVER_PROMPT, searchQuery);
+        const result = await callAI(DISCOVER_PROMPT, searchQuery, selectedModel);
         if (result.found && result.products) {
           allProducts = [...allProducts, ...result.products];
         }
@@ -804,7 +1003,6 @@ function PIMScraper() {
       }
     }
 
-    // Deduplicate by model number
     const seen = new Set();
     const deduped = [];
     for (const p of allProducts) {
@@ -813,7 +1011,6 @@ function PIMScraper() {
     }
 
     if (deduped.length > 0) {
-      // Check which ones already exist in PIM
       if (!existingProducts.length) {
         try {
           const res = await supaFetch("aiq_products?select=model,brand_name&limit=1000");
@@ -821,10 +1018,10 @@ function PIMScraper() {
           setExistingProducts(ep || []);
         } catch {}
       }
-      const existingModels = new Set(existingProducts.map(p => p.model?.toUpperCase()));
+      const existingModels2 = new Set(existingProducts.map(p => p.model?.toUpperCase()));
       const products = deduped.map(p => ({
         ...p,
-        inPIM: existingModels.has(p.model?.toUpperCase()),
+        inPIM: existingModels2.has(p.model?.toUpperCase()),
       }));
       setDiscovered(products);
       setSelectedModels(new Set(products.filter(p => !p.inPIM).map(p => p.model)));
@@ -892,13 +1089,20 @@ function PIMScraper() {
       <style>{`@keyframes spin { to { transform: rotate(360deg) } } ::placeholder { color: ${palette.textMuted} } input:focus, textarea:focus { border-color: ${palette.accent} }`}</style>
 
       <div style={s.header}>
-        <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={s.logo}>PIM <span style={s.logoAccent}>Scraper</span></div>
           <div style={{ display: "flex", gap: 4 }}>
-            {[["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"], ["existing", "Enrich Existing"]].map(([m, label]) => (
+            {[
+              ["single", "Single"], ["bulk", "Bulk"], ["discover", "🌐 Site Scrape"],
+              ["price", "💰 Price Check"], ["retailer", "🏪 Retailer Prices"],
+              ["intel", "🔍 Intelligence"], ["media", "📸 Media"],
+              ["existing", "Enrich Existing"],
+            ].map(([m, label]) => (
               <button key={m} style={{ ...s.tab, ...(mode === m ? s.tabActive : {}) }} onClick={() => { setMode(m); if (m === "existing") loadExisting(); }}>{label}</button>
             ))}
           </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: autoSave ? palette.greenSoft : palette.card, border: `1px solid ${autoSave ? palette.green + "40" : palette.border}`, borderRadius: 8, cursor: "pointer" }}
             onClick={() => setAutoSave(!autoSave)}>
             <div style={{ width: 36, height: 20, borderRadius: 10, background: autoSave ? palette.green : palette.border, position: "relative", transition: "background 0.2s" }}>
@@ -906,11 +1110,11 @@ function PIMScraper() {
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: autoSave ? palette.green : palette.textMuted }}>Auto-save to PIM</span>
           </div>
+          <ModelSelector selected={selectedModel} onChange={setSelectedModel} />
         </div>
       </div>
 
       <div style={s.main}>
-        {/* Stats row */}
         {(saved.length > 0 || results.length > 0) && (
           <div style={{ display: "flex", gap: 32, marginBottom: 24, alignItems: "center" }}>
             <div style={s.stat}><div style={s.statNum}>{results.filter((r) => r.found).length}</div><div style={s.statLabel}>Pending review</div></div>
@@ -935,7 +1139,6 @@ function PIMScraper() {
           </div>
         )}
 
-        {/* Input area */}
         {mode === "single" && (
           <div style={s.inputRow}>
             <input style={s.input} placeholder="Brand + Model (e.g. Whirlpool WRF555SDFZ) or product page URL" value={query} onChange={(e) => setQuery(e.target.value)}
@@ -995,14 +1198,12 @@ function PIMScraper() {
           </div>
         )}
 
-        {/* Site Discovery mode */}
         {mode === "discover" && (
           <div style={{ marginBottom: 24 }}>
             <div style={s.card}>
               <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Discover Products from Manufacturer Site</div>
               <div style={{ fontSize: 13, color: palette.textDim, marginBottom: 16 }}>Pick a brand and category — or paste a URL — and the scraper will find every product listed.</div>
 
-              {/* Searchable brand picker */}
               <div style={{ ...s.label, marginBottom: 8 }}>Brand ({allBrands.length})</div>
               <input style={{ ...s.input, marginBottom: 8 }} placeholder="Search brands…" value={brandSearch}
                 onChange={e => setBrandSearch(e.target.value)} />
@@ -1017,7 +1218,6 @@ function PIMScraper() {
                 ))}
               </div>
 
-              {/* Category picker */}
               {discoverBrand && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ ...s.label, marginBottom: 8 }}>Category</div>
@@ -1036,7 +1236,6 @@ function PIMScraper() {
                 </div>
               )}
 
-              {/* Or paste URL */}
               <div style={{ ...s.label, marginBottom: 8 }}>Or paste a product listing URL</div>
               <div style={s.inputRow}>
                 <input style={s.input} placeholder="e.g. https://www.lg.com/ca/refrigerators/" value={discoverUrl} onChange={e => setDiscoverUrl(e.target.value)} />
@@ -1055,7 +1254,6 @@ function PIMScraper() {
               </div>
             </div>
 
-            {/* Discovery results */}
             {discovered.length > 0 && (
               <div style={s.card}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -1124,7 +1322,6 @@ function PIMScraper() {
           </div>
         )}
 
-        {/* Errors */}
         {errors.length > 0 && (
           <div style={{ ...s.card, borderColor: palette.red, marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1135,7 +1332,6 @@ function PIMScraper() {
           </div>
         )}
 
-        {/* Saved log */}
         {saved.length > 0 && (
           <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
             {saved.map((s2, i) => (
@@ -1146,7 +1342,6 @@ function PIMScraper() {
           </div>
         )}
 
-        {/* Results */}
         {results.map((r, i) => (
           <ResultCard key={`${r.model || r.query}-${i}`} result={r} saving={savingIdx === i}
             onSave={async (d) => { setSavingIdx(i); await doSave(d); setResults(p => p.filter((_, j) => j !== i)); setSavingIdx(null); }}
