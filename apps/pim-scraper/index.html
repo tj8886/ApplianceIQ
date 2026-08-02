@@ -11,21 +11,16 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script type="text/babel">
 const { useState, useCallback, useRef } = React;
 
 const SUPABASE_URL = "https://fumwwhyozeouoqscolke.supabase.co";
 const SUPABASE_KEY = "sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
-const supabaseAuth = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-let AUTH_TOKEN = null; // Set after login, used for all writes
 
-let ANTHROPIC_API_KEY = ""; // Legacy fallback — prefer proxy
+let ANTHROPIC_API_KEY = "";
 let OPENAI_API_KEY = "";
-let SCRAPER_PROXY_KEY = ""; // Server-side proxy key (no raw AI keys in browser)
-const SCRAPER_PROXY_URL = SUPABASE_URL + "/functions/v1/scraper-proxy";
 
-// Key profiles: { name, anthropic, openai, proxyKey }
+// Key profiles: { name, anthropic, openai }
 let KEY_PROFILES = [];
 let ACTIVE_PROFILE_IDX = 0;
 try {
@@ -36,14 +31,13 @@ try {
     const oldA = localStorage.getItem("aiq_anthropic_key") || "";
     const oldO = localStorage.getItem("aiq_openai_key") || "";
     if (oldA || oldO) {
-      KEY_PROFILES = [{ name: "My Keys", anthropic: oldA, openai: oldO, proxyKey: "" }];
+      KEY_PROFILES = [{ name: "My Keys", anthropic: oldA, openai: oldO }];
       localStorage.setItem("aiq_key_profiles", JSON.stringify(KEY_PROFILES));
     }
   }
   if (KEY_PROFILES.length > 0) {
     const p = KEY_PROFILES[ACTIVE_PROFILE_IDX] || KEY_PROFILES[0];
-    SCRAPER_PROXY_KEY = p.proxyKey || "";
-    ANTHROPIC_API_KEY = p.anthropic || ""; // Legacy fallback
+    ANTHROPIC_API_KEY = p.anthropic || "";
     OPENAI_API_KEY = p.openai || "";
   }
 } catch(e) {}
@@ -84,8 +78,6 @@ const MODE_DEFAULT_MODELS = {
 
 let SAVED_MODEL = "";
 try { SAVED_MODEL = localStorage.getItem("aiq_scraper_model") || ""; } catch(e) {}
-let SAVED_REQUIRE_APPROVAL = false;
-try { SAVED_REQUIRE_APPROVAL = localStorage.getItem("aiq_scraper_require_approval") === "true"; } catch(e) {}
 
 const CATEGORIES = [
   "refrigeration","cooking","dishwashers","laundry","ventilation",
@@ -778,7 +770,7 @@ function supaFetch(path, opts = {}) {
     ...opts,
     headers: {
       apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${AUTH_TOKEN || SUPABASE_KEY}`,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
       Prefer: opts.prefer || "return=representation",
       ...opts.headers,
@@ -867,18 +859,13 @@ async function freeDataExtract(input, market) {
 async function callClaude(systemPrompt, userMsg, retries = 3, modelOverride = null) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      // Prefer server-side proxy (no AI keys in browser)
-      const useProxy = !!SCRAPER_PROXY_KEY;
-      const url = useProxy ? SCRAPER_PROXY_URL : "https://api.anthropic.com/v1/messages";
       const headers = { "Content-Type": "application/json" };
-      if (useProxy) {
-        headers["x-proxy-key"] = SCRAPER_PROXY_KEY;
-      } else if (ANTHROPIC_API_KEY) {
+      if (ANTHROPIC_API_KEY) {
         headers["x-api-key"] = ANTHROPIC_API_KEY;
         headers["anthropic-version"] = "2023-06-01";
         headers["anthropic-dangerous-direct-browser-access"] = "true";
       }
-      const res = await fetch(url, {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -1415,57 +1402,6 @@ function ResultCard({ result, onSave, onDiscard, saving }) {
   );
 }
 
-function PIMScraperAuth() {
-  const { useState, useEffect } = React;
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    supabaseAuth.auth.getSession().then(({ data: { session: s } }) => {
-      if (s) { AUTH_TOKEN = s.access_token; setSession(s); }
-      setLoading(false);
-    });
-    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((_e, s) => {
-      AUTH_TOKEN = s?.access_token || null;
-      setSession(s);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleLogin = async (e) => {
-    e.preventDefault(); setError("");
-    const { error: err } = await supabaseAuth.auth.signInWithPassword({ email, password });
-    if (err) setError(err.message);
-  };
-
-  if (loading) return React.createElement("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0a0a14", color: "#8892b0" } }, "Loading...");
-
-  if (!session) {
-    const s = { input: { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid #2a2d3e", background: "#12121e", color: "#e6e8f0", fontSize: 14, outline: "none", boxSizing: "border-box" } };
-    return React.createElement("div", { style: { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#0a0a14" } },
-      React.createElement("form", { onSubmit: handleLogin, style: { background: "#12121e", border: "1px solid #2a2d3e", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 8px 32px rgba(0,0,0,0.5)" } },
-        React.createElement("div", { style: { fontSize: 22, fontWeight: 700, color: "#e6e8f0", marginBottom: 4 } }, "PIM Scraper"),
-        React.createElement("div", { style: { fontSize: 13, color: "#8892b0", marginBottom: 24 } }, "Sign in to access the catalogue"),
-        error && React.createElement("div", { style: { background: "#ff6b6b20", border: "1px solid #ff6b6b40", borderRadius: 8, padding: "8px 12px", marginBottom: 16, fontSize: 12, color: "#ff6b6b" } }, error),
-        React.createElement("div", { style: { marginBottom: 12 } },
-          React.createElement("div", { style: { fontSize: 11, color: "#8892b0", marginBottom: 4 } }, "Email"),
-          React.createElement("input", { type: "email", style: s.input, value: email, onChange: e => setEmail(e.target.value), autoFocus: true, required: true })
-        ),
-        React.createElement("div", { style: { marginBottom: 20 } },
-          React.createElement("div", { style: { fontSize: 11, color: "#8892b0", marginBottom: 4 } }, "Password"),
-          React.createElement("input", { type: "password", style: s.input, value: password, onChange: e => setPassword(e.target.value), required: true })
-        ),
-        React.createElement("button", { type: "submit", style: { width: "100%", padding: "10px 0", borderRadius: 8, border: "none", background: "#7c5cfc", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" } }, "Sign In")
-      )
-    );
-  }
-
-  return React.createElement(PIMScraper, { session });
-}
-
 function PIMScraper() {
   const [mode, setMode] = useState("single"); // single | bulk | existing | discover
   const [query, setQuery] = useState("");
@@ -1487,7 +1423,6 @@ function PIMScraper() {
   const [activeProfileIdx, setActiveProfileIdx] = useState(ACTIVE_PROFILE_IDX);
   const [editingProfile, setEditingProfile] = useState(null); // null or index
   const [editName, setEditName] = useState("");
-  const [editProxyKey, setEditProxyKey] = useState("");
   const [editAnthropic, setEditAnthropic] = useState("");
   const [editOpenai, setEditOpenai] = useState("");
 
@@ -1497,7 +1432,6 @@ function PIMScraper() {
     setActiveProfileIdx(idx);
     setApiKey(p.anthropic || "");
     setOpenaiKey(p.openai || "");
-    SCRAPER_PROXY_KEY = p.proxyKey || "";
     ANTHROPIC_API_KEY = p.anthropic || "";
     OPENAI_API_KEY = p.openai || "";
     try {
@@ -1516,7 +1450,6 @@ function PIMScraper() {
   const startAddProfile = () => {
     setEditingProfile(-1);
     setEditName("");
-    setEditProxyKey("");
     setEditAnthropic("");
     setEditOpenai("");
   };
@@ -1525,14 +1458,13 @@ function PIMScraper() {
     const p = profiles[idx];
     setEditingProfile(idx);
     setEditName(p.name);
-    setEditProxyKey(p.proxyKey || "");
     setEditAnthropic(p.anthropic || "");
     setEditOpenai(p.openai || "");
   };
 
   const saveEditingProfile = () => {
     if (!editName.trim()) return;
-    const entry = { name: editName.trim(), proxyKey: editProxyKey.trim(), anthropic: editAnthropic.trim(), openai: editOpenai.trim() };
+    const entry = { name: editName.trim(), anthropic: editAnthropic.trim(), openai: editOpenai.trim() };
     let updated;
     if (editingProfile === -1) {
       updated = [...profiles, entry];
@@ -1557,7 +1489,6 @@ function PIMScraper() {
     setEditingProfile(null);
   };
   const [selectedModel, setSelectedModel] = useState(SAVED_MODEL || "");
-  const [requireApproval, setRequireApproval] = useState(SAVED_REQUIRE_APPROVAL);
   const [showModelPicker, setShowModelPicker] = useState(false);
 
   const [priceMode, setPriceMode] = useState("pc-single");
@@ -1736,7 +1667,7 @@ function PIMScraper() {
   const loadExisting = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await supaFetch("aiq_products?select=id,model,brand_name,category,width_inches,height_inches,depth_inches,msrp,finish,color,status&order=brand_name,model&limit=500");
+      const res = await supaFetch("aiq_products?select=id,model,brand_name,category,width_inches,height_inches,depth_inches,msrp,finish,color,status&order=brand_name,model&limit=5000");
       const data = await res.json();
       setExistingProducts(data || []);
     } catch (e) { setErrors((p) => [...p, e.message]); }
@@ -2014,8 +1945,8 @@ function PIMScraper() {
         replacement_model: cond.replacement_model || null, condition_notes: cond.notes || null,
         made_in: data.made_in || null, country_availability: data.country_availability || ["CA", "US"],
         source_type: "web_scrape", source_reference: data.source_url || null,
-        source_confidence: 85, source_extracted_at: new Date().toISOString(),
-        source_review_status: requireApproval ? "pending_review" : "accepted", updated_at: new Date().toISOString(),
+        source_confidence: 0.85, source_extracted_at: new Date().toISOString(),
+        source_review_status: "accepted", updated_at: new Date().toISOString(),
       };
 
       // Final sanitization — strip unknown columns and coerce types
@@ -2032,8 +1963,8 @@ function PIMScraper() {
         const orgs = await orgRes.json();
         if (!orgs.length) throw new Error("No organization found");
         safeProductData.organization_id = orgs[0].id;
-        safeProductData.approval_status = requireApproval ? "pending" : "approved";
-        safeProductData.public_visible = !requireApproval;
+        safeProductData.approval_status = "approved";
+        safeProductData.public_visible = true;
         safeProductData.version_number = 1;
         const res = await supaFetch("aiq_products", { method: "POST", body: JSON.stringify(safeProductData) });
         if (!res.ok) throw new Error(await res.text());
@@ -2055,7 +1986,7 @@ function PIMScraper() {
               product_id: productId, image_type: imgs[i].type || (i === 0 ? "hero" : "product"),
               file_url: imgs[i].url, alt_text: imgs[i].alt || `${data.brand_name} ${data.model}`,
               is_primary: i === 0, display_order: i + 1, source: "web_scrape",
-              approved: !requireApproval, audience_tiers: requireApproval ? [] : ["public"], embargoed: false,
+              approved: true, audience_tiers: ["public"], embargoed: false,
             }), headers: { Prefer: "return=minimal" } }).catch(() => {});
           }
         }
@@ -2070,7 +2001,7 @@ function PIMScraper() {
                 file_url: doc.url, file_name: doc.url.split("/").pop() || `${doc.type}.pdf`,
                 mime_type: doc.url.endsWith(".pdf") ? "application/pdf" : "text/html",
                 language: "en", locale: "en-CA", is_current: true, source: "web_scrape",
-                approved: !requireApproval, audience_tiers: requireApproval ? [] : ["public"], embargoed: false,
+                approved: true, audience_tiers: ["public"], embargoed: false,
               }), headers: { Prefer: "return=minimal" } }).catch(() => {});
             }
           }
@@ -2261,21 +2192,6 @@ function PIMScraper() {
           price_currency: country === "US" ? "USD" : "CAD",
           country: country,
         }), headers: { Prefer: "return=minimal" } }).catch(() => {});
-        // Append-only price observation log
-        if (productId && r.price) {
-          await supaFetch("pim_price_observations", { method: "POST", body: JSON.stringify({
-            product_id: productId,
-            retailer_name: r.retailer,
-            country: country,
-            currency: country === "US" ? "USD" : "CAD",
-            observed_price: parseFloat(r.price),
-            sale_price: r.regular_price && r.on_sale ? parseFloat(r.price) : null,
-            was_on_sale: r.on_sale || false,
-            in_stock: r.in_stock,
-            source_url: r.url || null,
-            source_confidence: 85,
-          }), headers: { Prefer: "return=minimal" } }).catch(() => {});
-        }
       }
 
       // Update aiq_products with lowest price if we have a product_id
@@ -2563,13 +2479,6 @@ function PIMScraper() {
             </div>
             <span style={{ fontSize: 12, fontWeight: 600, color: autoSave ? palette.green : palette.textMuted }}>Auto-save to PIM</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: requireApproval ? palette.accentSoft || "#2a2045" : palette.card, border: `1px solid ${requireApproval ? palette.accent + "40" : palette.border}`, borderRadius: 8, cursor: "pointer" }}
-            onClick={() => { const v = !requireApproval; setRequireApproval(v); try { localStorage.setItem("aiq_scraper_require_approval", String(v)); } catch(e) {} }}>
-            <div style={{ width: 36, height: 20, borderRadius: 10, background: requireApproval ? palette.accent : palette.border, position: "relative", transition: "background 0.2s" }}>
-              <div style={{ width: 16, height: 16, borderRadius: 8, background: "#fff", position: "absolute", top: 2, left: requireApproval ? 18 : 2, transition: "left 0.2s" }} />
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: requireApproval ? palette.accent : palette.textMuted }}>Require Approval</span>
-          </div>
           {/* Model Switcher */}
           <div style={{ position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", background: palette.card, border: "1px solid " + palette.border, borderRadius: 8, cursor: "pointer", userSelect: "none" }}
@@ -2674,7 +2583,7 @@ function PIMScraper() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: palette.text }}>{p.name}</div>
                           <div style={{ display: "flex", gap: 8, fontSize: 10, color: palette.textMuted }}>
-                            {p.proxyKey ? <span style={{ color: palette.accent }}>Proxy ✓</span> : <span style={{ color: p.anthropic ? palette.green : palette.red }}>Claude {p.anthropic ? "✓" : "✗"}</span>}
+                            <span style={{ color: p.anthropic ? palette.green : palette.red }}>Claude {p.anthropic ? "✓" : "✗"}</span>
                             <span style={{ color: p.openai ? "#10a37f" : palette.red }}>GPT {p.openai ? "✓" : "✗"}</span>
                           </div>
                         </div>
@@ -2706,17 +2615,8 @@ function PIMScraper() {
                     </div>
                     <div style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: 3, background: editProxyKey ? palette.accent : palette.textMuted }} />
-                        <span style={{ fontSize: 11, color: palette.textDim }}>Proxy Key <span style={{ fontSize: 9, color: palette.accent }}>(recommended)</span></span>
-                      </div>
-                      <input style={{ ...s.input, padding: "6px 10px", fontSize: 11 }} type="password"
-                        placeholder="Server-side proxy key — no AI keys in browser"
-                        value={editProxyKey} onChange={e => setEditProxyKey(e.target.value)} />
-                    </div>
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
                         <div style={{ width: 6, height: 6, borderRadius: 3, background: editAnthropic ? palette.green : palette.red }} />
-                        <span style={{ fontSize: 11, color: palette.textDim }}>Anthropic Key <span style={{ fontSize: 9, color: palette.textMuted }}>(legacy fallback)</span></span>
+                        <span style={{ fontSize: 11, color: palette.textDim }}>Anthropic Key</span>
                       </div>
                       <input style={{ ...s.input, padding: "6px 10px", fontSize: 11 }} type="password"
                         placeholder="sk-ant-..." value={editAnthropic}
@@ -2746,9 +2646,6 @@ function PIMScraper() {
               </div>
             )}
           </div>
-        </div>
-        <div style={{ marginLeft: "auto", paddingLeft: 8 }}>
-          <button onClick={() => supabaseAuth.auth.signOut()} style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid " + palette.border, background: "transparent", color: palette.textMuted, fontSize: 11, cursor: "pointer" }}>Sign Out</button>
         </div>
       </div>
 
@@ -3671,5 +3568,5 @@ function PIMScraper() {
     </div>
   );
 }
-const root = ReactDOM.createRoot(document.getElementById("root")); root.render(React.createElement(PIMScraperAuth));
+const root = ReactDOM.createRoot(document.getElementById("root")); root.render(React.createElement(PIMScraper));
 </script></body></html>
