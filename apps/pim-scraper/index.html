@@ -1667,9 +1667,21 @@ function PIMScraper() {
   const loadExisting = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await supaFetch("aiq_products?select=id,model,brand_name,category,width_inches,height_inches,depth_inches,msrp,finish,color,status&order=brand_name,model&limit=5000");
-      const data = await res.json();
-      setExistingProducts(data || []);
+      // PostgREST caps at 1000 per request — paginate to get all
+      let allData = [];
+      let offset = 0;
+      const pageSize = 1000;
+      while (true) {
+        const res = await supaFetch(`aiq_products?select=id,model,brand_name,category,width_inches,height_inches,depth_inches,msrp,finish,color,status&order=brand_name,model&limit=${pageSize}&offset=${offset}`, {
+          headers: { "Range": `${offset}-${offset + pageSize - 1}` }
+        });
+        const data = await res.json();
+        if (!data || !data.length) break;
+        allData = allData.concat(data);
+        if (data.length < pageSize) break;
+        offset += pageSize;
+      }
+      setExistingProducts(allData);
     } catch (e) { setErrors((p) => [...p, e.message]); }
     setLoading(false);
   }, []);
