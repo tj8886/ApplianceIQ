@@ -51,6 +51,8 @@ const MODELS = [
   { id: "gpt-4o-mini", label: "GPT-4o Mini", short: "4oM", cost: "~0.2¢", color: "#0fa37f", desc: "Model discovery, finding model #s", provider: "openai" },
   { id: "gpt-4o", label: "GPT-4o", short: "4o", cost: "~1.5¢", color: "#1a7f64", desc: "Balanced OpenAI alternative", provider: "openai" },
   { id: "gpt-5", label: "GPT-5", short: "GPT5", cost: "~5¢", color: "#0d5e3f", desc: "High accuracy — retailer conditions", provider: "openai" },
+  { id: "gpt-5.6-luna", label: "GPT-5.6 Luna", short: "Luna", cost: "~0.2¢", color: "#5b8c5a", desc: "Fast + cheap — bulk extraction", provider: "openai" },
+  { id: "gpt-5.6-terra", label: "GPT-5.6 Terra", short: "Terra", cost: "~2¢", color: "#2d6a4f", desc: "Deep reasoning — complex specs", provider: "openai" },
 ];
 
 // Defaults per mode+submode — key format: "mode" or "mode.submode"
@@ -832,6 +834,98 @@ function extractJSON(text) {
   return null;
 }
 
+// ── Free Data First Pass ──
+// Try extracting structured data from URL before burning AI tokens
+async function freeDataExtract(url) {
+  if (!url || !url.match(/^https?:\/\//i)) return null;
+  try {
+    const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) return null;
+    const html = await res.text();
+    if (!html || html.length < 200) return null;
+    const result = { _freeData: true, source_url: url };
+
+    // 1. JSON-LD Product schema
+    const ldMatches = html.match(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+    for (const tag of ldMatches) {
+      try {
+        const inner = tag.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim();
+        let ld = JSON.parse(inner);
+        // Handle @graph arrays
+        if (ld["@graph"]) ld = ld["@graph"].find(g => g["@type"] === "Product") || ld;
+        if (Array.isArray(ld)) ld = ld.find(g => g["@type"] === "Product") || ld[0];
+        if (ld["@type"] === "Product" || ld.sku || ld.mpn || ld.gtin13) {
+          result.brand_name = ld.brand?.name || ld.brand || "";
+          result.model = ld.sku || ld.mpn || ld.model || "";
+          result.short_description = ld.description || ld.name || "";
+          if (ld.image) result.images = (Array.isArray(ld.image) ? ld.image : [ld.image]).map(u => ({ url: typeof u === "string" ? u : u.url, type: "product" }));
+          const offer = ld.offers?.price || ld.offers?.[0]?.price;
+          if (offer) result.msrp = parseFloat(offer);
+          result._jsonld = true;
+        }
+      } catch(e) { /* malformed JSON-LD, skip */ }
+    }
+
+    // 2. Open Graph meta tags
+    const ogName = (html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) || [])[1];
+    const ogDesc = (html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) || [])[1];
+    const ogImg  = (html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) || [])[1];
+    if (ogName && !result.short_description) result.short_description = ogName;
+    if (ogDesc) result.og_description = ogDesc;
+    if (ogImg && !result.images?.length) result.images = [{ url: ogImg, type: "product" }];
+
+    // 3. HTML spec tables — look for common patterns
+    const specs = {};
+    // Pattern: <th>Label</th><td>Value</td> or <dt>Label</dt><dd>Value</dd>
+    const rowPat = /<t[hd][^>]*>\s*(.*?)\s*<\/t[hd]>\s*<t[hd][^>]*>\s*(.*?)\s*<\/t[hd]>/gi;
+    let m;
+    while ((m = rowPat.exec(html)) !== null) {
+      const k = m[1].replace(/<[^>]+>/g, "").trim();
+      const v = m[2].replace(/<[^>]+>/g, "").trim();
+      if (k && v && k.length < 80 && v.length < 200) specs[k] = v;
+    }
+    // Also try <dt>/<dd> pairs
+    const dtPat = /<dt[^>]*>\s*(.*?)\s*<\/dt>\s*<dd[^>]*>\s*(.*?)\s*<\/dd>/gi;
+    while ((m = dtPat.exec(html)) !== null) {
+      const k = m[1].replace(/<[^>]+>/g, "").trim();
+      const v = m[2].replace(/<[^>]+>/g, "").trim();
+      if (k && v && k.length < 80 && v.length < 200) specs[k] = v;
+    }
+
+    if (Object.keys(specs).length > 0) {
+      result.specs = specs;
+      // Try to extract dimensions from specs
+      for (const [k, v] of Object.entries(specs)) {
+        const kl = k.toLowerCase();
+        if (kl.includes("width") && !result.width_inches) { const n = parseFloat(v); if (n > 0 && n < 100) result.width_inches = n; }
+        if (kl.includes("height") && !result.height_inches) { const n = parseFloat(v); if (n > 0 && n < 120) result.height_inches = n; }
+        if (kl.includes("depth") && !result.depth_inches) { const n = parseFloat(v); if (n > 0 && n < 100) result.depth_inches = n; }
+        if (kl.includes("weight") && !result.weight_lbs) { const n = parseFloat(v); if (n > 0) result.weight_lbs = n; }
+        if ((kl.includes("capacity") || kl.includes("cu")) && !result.capacity_cu_ft) { const n = parseFloat(v); if (n > 0 && n < 50) result.capacity_cu_ft = n; }
+      }
+      result._specTable = true;
+    }
+
+    // Determine if we got enough to skip AI
+    const hasSubstance = (result._jsonld && result.model) || (result._specTable && Object.keys(specs).length >= 5);
+    if (hasSubstance) {
+      result.found = true;
+      result._source = "free-extract";
+      result._specCount = Object.keys(specs).length;
+      return result;
+    }
+    // Got some data but not enough — return as supplement for AI
+    if (result._jsonld || result._specTable) {
+      result._partial = true;
+      return result;
+    }
+    return null;
+  } catch(e) {
+    return null; // CORS blocked, timeout, etc — just fall through to AI
+  }
+}
+
 async function callClaude(systemPrompt, userMsg, retries = 3, modelOverride = null) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -952,6 +1046,21 @@ function callAI(systemPrompt, userMsg, retries = 3, model = "claude-haiku-4-5-20
 }
 
 async function scrapeProduct(query, model, market) {
+  // Free-data-first: if query looks like a URL, try extracting structured data before AI
+  const isUrl = /^https?:\/\//i.test(query.trim());
+  if (isUrl) {
+    const freeResult = await freeDataExtract(query.trim());
+    if (freeResult && freeResult.found && !freeResult._partial) {
+      freeResult._savedModel = model;
+      return freeResult;
+    }
+    // If partial free data, include it as context for the AI call
+    if (freeResult && freeResult._partial) {
+      const supplement = "\n\n[PRE-EXTRACTED DATA from page — use as starting point, verify and fill gaps]:\n" + JSON.stringify(freeResult, null, 2);
+      let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query + supplement, 3, model);
+      if (result.found) { result._freeDataAssist = true; return result; }
+    }
+  }
   let result = await callAI(getScrapePrompt(market), "Find all product specifications for: " + query, 3, model);
   if (result.found) return result;
   const fallbackPrompt = "Search the web for this appliance product and return a JSON object with the product data. Search for the manufacturer's website specifically. Return ONLY valid JSON, no other text.\n\nThe JSON must have: found (true/false), source_url, manufacturer_name, brand_name, model, category, short_description, msrp, finish, color, available_colors (array of {color, finish, model_number, msrp}), width_inches, height_inches, depth_inches, weight_lbs, energy_star, features (array of strings), images (array of {url, type, alt}), specs (object with capacity_cu_ft, voltage, amperage, installation_type etc).\n\nReturn ALL image URLs from the product gallery. Return ALL color/finish options.";
