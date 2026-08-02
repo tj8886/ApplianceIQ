@@ -1412,6 +1412,7 @@ function PIMScraper() {
   const [saved, setSaved] = useState([]);
   const [errors, setErrors] = useState([]);
   const [existingProducts, setExistingProducts] = useState([]);
+  const [enrichBatchSize, setEnrichBatchSize] = useState(50);
   const [savingIdx, setSavingIdx] = useState(null);
   const abortRef = useRef(false);
   const [apiKey, setApiKey] = useState(ANTHROPIC_API_KEY);
@@ -2274,7 +2275,7 @@ function PIMScraper() {
     if (!existingProducts.length) await loadExisting();
     const incomplete = existingProducts.filter((p) => !p.width_inches || !p.msrp || !p.finish);
     if (!incomplete.length) { setErrors((p) => [...p, "All products already have specs"]); return; }
-    const lines = incomplete.slice(0, 20).map((p) => `${p.brand_name} ${p.model}`);
+    const lines = incomplete.slice(0, enrichBatchSize).map((p) => `${p.brand_name} ${p.model}`);
     setBulkText(lines.join("\n"));
     setMode("bulk");
   };
@@ -2871,9 +2872,18 @@ function PIMScraper() {
               {existingProducts.length} products in PIM{missCount > 0 && <>, <span style={{ color: palette.yellow }}>{missCount} missing specs</span></>}
             </div>
             {missCount > 0 && (
-              <button style={s.btn} onClick={handleEnrichExisting}>
-                Scrape top 20 incomplete products
-              </button>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <button style={s.btn} onClick={handleEnrichExisting}>
+                  Scrape {Math.min(enrichBatchSize, missCount)} incomplete products
+                </button>
+                <select value={enrichBatchSize} onChange={(e) => setEnrichBatchSize(Number(e.target.value))} style={{ ...s.input, flex: "none", width: 80, padding: "10px 8px" }}>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={250}>250</option>
+                  <option value={500}>500</option>
+                </select>
+              </div>
             )}
             {existingProducts.length > 0 && (
               <div style={{ marginTop: 16, maxHeight: 300, overflow: "auto" }}>
