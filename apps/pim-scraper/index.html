@@ -243,28 +243,8 @@ let discoverLoading = false;
 // Price Sync state
 let psResults = [];
 let psMarket = 'CA';
-let psSelectedRetailers = new Set(['homedepot','bestbuy','canadianappliance']);
-
-const PS_RETAILERS_CA = [
-  {key:'homedepot',name:'Home Depot',site:'homedepot.ca'},
-  {key:'bestbuy',name:'Best Buy',site:'bestbuy.ca'},
-  {key:'canadianappliance',name:'Canadian Appliance Source',site:'canadianappliance.ca'},
-  {key:'costco',name:'Costco',site:'costco.ca'},
-  {key:'leons',name:"Leon's",site:'leons.ca'},
-  {key:'thebrick',name:'The Brick',site:'thebrick.com'},
-  {key:'trail',name:'Trail Appliances',site:'trailappliances.com'},
-  {key:'appliancecanada',name:'Appliance Canada',site:'appliancecanada.com'},
-  {key:'tasco',name:'Tasco',site:'tasco.net'}
-];
-const PS_RETAILERS_US = [
-  {key:'homedepot',name:'Home Depot',site:'homedepot.com'},
-  {key:'lowes',name:"Lowe's",site:'lowes.com'},
-  {key:'bestbuy',name:'Best Buy',site:'bestbuy.com'},
-  {key:'costco',name:'Costco',site:'costco.com'},
-  {key:'ajmadison',name:'AJ Madison',site:'ajmadison.com'},
-  {key:'abt',name:'Abt Electronics',site:'abt.com'},
-  {key:'appliancesconnection',name:'AppliancesConnection',site:'appliancesconnection.com'}
-];
+let psSelectedRetailers = new Set();
+let psRetailers = []; // loaded from scraper_retailer_sources
 
 // Verify & Audit state
 let vaResults = [];
@@ -773,16 +753,32 @@ function renderPriceSync() {
   let h='';
 
   // Market toggle + retailer selector (always visible)
-  const retailers=psMarket==='CA'?PS_RETAILERS_CA:PS_RETAILERS_US;
+  const retailers=psRetailers.filter(r=>r.country===psMarket);
+  const t1r=retailers.filter(r=>r.scrape_tier===1);
+  const t2r=retailers.filter(r=>r.scrape_tier===2);
+  const t3r=retailers.filter(r=>r.scrape_tier===3);
+
   h+='<div class="controls" style="flex-wrap:wrap;gap:10px">';
-  h+='<div class="mode-toggle"><button class="'+(psMarket==='CA'?'active':'')+'" onclick="window.S.psSetMarket(\'CA\')">🇨🇦 Canada</button><button class="'+(psMarket==='US'?'active':'')+'" onclick="window.S.psSetMarket(\'US\')">🇺🇸 USA</button></div>';
-  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
-  for(const r of retailers){
-    const checked=psSelectedRetailers.has(r.key);
-    h+='<label style="font-size:11px;color:'+(checked?'var(--txt)':'var(--txt2)')+';display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--surface);padding:4px 8px;border-radius:6px;border:1px solid '+(checked?'var(--accent)':'var(--line)')+'">';
-    h+='<input type="checkbox" '+(checked?'checked':'')+' onchange="window.S.psToggleRetailer(\''+r.key+'\')" style="accent-color:var(--accent)"/> '+esc(r.name)+'</label>';
+  h+='<div class="mode-toggle"><button class="'+(psMarket==='CA'?'active':'')+'" onclick="window.S.psSetMarket(\'CA\')">🇨🇦 Canada ('+retailers.length+')</button><button class="'+(psMarket==='US'?'active':'')+'" onclick="window.S.psSetMarket(\'US\')">🇺🇸 USA</button></div>';
+  h+='</div>';
+
+  // Tier grouped retailer checkboxes
+  function renderRetailerGroup(label,icon,list,cls){
+    if(!list.length)return '';
+    let g='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:6px">'+icon+' '+label+' ('+list.length+')</div><div style="display:flex;gap:6px;flex-wrap:wrap">';
+    for(const r of list){
+      const checked=psSelectedRetailers.has(r.website);
+      g+='<label style="font-size:11px;color:'+(checked?'var(--txt)':'var(--txt2)')+';display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--surface);padding:4px 8px;border-radius:6px;border:1px solid '+(checked?'var(--accent)':'var(--line)')+'">';
+      g+='<input type="checkbox" '+(checked?'checked':'')+' onchange="window.S.psToggleRetailer(\''+esc(r.website)+'\')" style="accent-color:var(--accent)"/> '+esc(r.retailer_name);
+      if(r.region&&r.region!=='national')g+=' <span style="font-size:9px;color:var(--txt2)">('+esc(r.region)+')</span>';
+      g+='</label>';
+    }
+    g+='</div></div>';
+    return g;
   }
-  h+='</div></div>';
+  h+=renderRetailerGroup('Free — Tier 1','⚡',t1r,'t1');
+  h+=renderRetailerGroup('Cheap — Tier 2','💲',t2r,'t2');
+  h+=renderRetailerGroup('AI Required — Tier 3','🤖',t3r,'t3');
 
   if(!selectedBrand){h+='<div style="text-align:center;padding:50px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div><div style="font-size:13px;margin-top:6px">Manufacturer MSRP = source of truth · Retailer prices for comparison</div></div>';return h}
   if(!brandIntel||brandIntel.brand!==selectedBrand){h+='<div style="padding:40px;text-align:center;color:var(--txt2)">Loading…</div>';return h}
@@ -1045,8 +1041,8 @@ window.S = {
 
   /* ── Price Sync ── */
   psSetMarket(m){psMarket=m;psResults=[];renderTab()},
-  psToggleRetailer(key){
-    if(psSelectedRetailers.has(key))psSelectedRetailers.delete(key);else psSelectedRetailers.add(key);
+  psToggleRetailer(website){
+    if(psSelectedRetailers.has(website))psSelectedRetailers.delete(website);else psSelectedRetailers.add(website);
     renderTab();
   },
   async psCheckMfr(){
@@ -1083,33 +1079,29 @@ window.S = {
   },
   async psCheckRetailers(){
     if(!brandIntel||isProcessing||psSelectedRetailers.size===0)return;
-    const retailers=psMarket==='CA'?PS_RETAILERS_CA:PS_RETAILERS_US;
-    const selected=retailers.filter(r=>psSelectedRetailers.has(r.key));
+    const selected=psRetailers.filter(r=>r.country===psMarket&&psSelectedRetailers.has(r.website));
     isProcessing=true;renderTab();
     for(const retailer of selected){
       for(const p of brandIntel.products.slice(0,30)){
-        logEntry('Checking '+retailer.name+': '+p.model+'…');
+        logEntry('Checking '+retailer.retailer_name+': '+p.model+'…');
         const query=selectedBrand+' '+p.model;
-        const siteQuery=query+' site:'+retailer.site;
+        const siteQuery=query+' site:'+retailer.website;
 
-        // Tier 1: free DuckDuckGo search
         let price=null;let tierUsed=1;let cost=0;
         const t1=await callTier1({query:siteQuery,market:psMarket});
         if(t1){price=t1.msrp||t1.price||null}
 
-        // Tier 2: GPT if T1 missed and key available
-        if(price===null&&localStorage.getItem('aiq_openai_key')){
-          const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.name,retailer_site:retailer.site},'Find the current retail price for '+selectedBrand+' '+p.model+' at '+retailer.name+' ('+retailer.site+'). Return JSON with msrp field.');
+        if(price===null&&retailer.scrape_tier<=2&&localStorage.getItem('aiq_openai_key')){
+          const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+'). Return JSON with msrp field.');
           if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
         }
 
-        // Tier 3: Haiku web search if still no price and key available
         if(price===null&&localStorage.getItem('aiq_anthropic_key')){
-          const t3=await callTier3(selectedBrand+' '+p.model+' price '+retailer.name+' '+retailer.site,brandSourceMap[selectedBrand]);
+          const t3=await callTier3(query+' price '+retailer.retailer_name+' '+retailer.website,brandSourceMap[selectedBrand]);
           if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
         }
 
-        psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.name,source_site:retailer.site,tier_used:tierUsed,cost});
+        psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.retailer_name,source_site:retailer.website,tier_used:tierUsed,cost});
         renderTab();
         await new Promise(r=>setTimeout(r,500));
       }
@@ -1234,6 +1226,11 @@ async function init(){
     if(e2)console.error('scraper_brand_sources:',e2);
     brandSourceMap={};
     for(const row of(sbs||[]))brandSourceMap[row.brand_name]=row;
+
+    // Load retailer scrape sources
+    const{data:rs,error:e3}=await sb.from('scraper_retailer_sources').select('retailer_name,website,country,region,scrape_tier,server_fetchable,has_json_ld,is_shopify,bot_protection,retailer_type').order('scrape_tier').order('retailer_name');
+    if(e3)console.error('retailer_sources:',e3);
+    psRetailers=rs||[];
 
     document.getElementById('brandCount').textContent=allBrands.length;
     renderTab();
