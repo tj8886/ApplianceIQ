@@ -1055,13 +1055,29 @@ window.S = {
     const website=psMarket==='CA'?(src?.ca_website||src?.us_website):(src?.us_website||src?.ca_website);
     isProcessing=true;renderTab();
     for(const p of brandIntel.products.slice(0,50)){
-      logEntry('Checking manufacturer price: '+p.model+'…');
+      logEntry('Manufacturer price: '+p.model+'…');
       const query=selectedBrand+' '+p.model;
+      let price=null;let tierUsed=1;let cost=0;
+
+      // T1
       const t1=await callTier1(website?{query:query+' site:'+website,market:psMarket}:{query,market:psMarket});
-      const price=t1?.msrp||t1?.price||null;
-      psResults.push({product:p,live_price:price?Number(price):null,source_name:'Manufacturer',source_site:website,tier_used:1,cost:0});
+      if(t1){price=t1.msrp||t1.price||null}
+
+      // T2 fallback
+      if(price===null&&localStorage.getItem('aiq_openai_key')){
+        const t2=await callTier2({brand_name:selectedBrand,model:p.model},'Find the manufacturer MSRP for '+query+'. Return JSON with msrp field.');
+        if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
+      }
+
+      // T3 fallback
+      if(price===null&&localStorage.getItem('aiq_anthropic_key')){
+        const t3=await callTier3(query+' MSRP price'+(website?' '+website:''),src);
+        if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
+      }
+
+      psResults.push({product:p,live_price:price?Number(price):null,source_name:'Manufacturer',source_site:website,tier_used:tierUsed,cost});
       renderTab();
-      await new Promise(r=>setTimeout(r,600));
+      await new Promise(r=>setTimeout(r,500));
     }
     isProcessing=false;renderTab();
   },
@@ -1073,12 +1089,29 @@ window.S = {
     for(const retailer of selected){
       for(const p of brandIntel.products.slice(0,30)){
         logEntry('Checking '+retailer.name+': '+p.model+'…');
-        const query=selectedBrand+' '+p.model+' site:'+retailer.site;
-        const t1=await callTier1({query,market:psMarket});
-        const price=t1?.msrp||t1?.price||null;
-        psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.name,source_site:retailer.site,tier_used:1,cost:0});
+        const query=selectedBrand+' '+p.model;
+        const siteQuery=query+' site:'+retailer.site;
+
+        // Tier 1: free DuckDuckGo search
+        let price=null;let tierUsed=1;let cost=0;
+        const t1=await callTier1({query:siteQuery,market:psMarket});
+        if(t1){price=t1.msrp||t1.price||null}
+
+        // Tier 2: GPT if T1 missed and key available
+        if(price===null&&localStorage.getItem('aiq_openai_key')){
+          const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.name,retailer_site:retailer.site},'Find the current retail price for '+selectedBrand+' '+p.model+' at '+retailer.name+' ('+retailer.site+'). Return JSON with msrp field.');
+          if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
+        }
+
+        // Tier 3: Haiku web search if still no price and key available
+        if(price===null&&localStorage.getItem('aiq_anthropic_key')){
+          const t3=await callTier3(selectedBrand+' '+p.model+' price '+retailer.name+' '+retailer.site,brandSourceMap[selectedBrand]);
+          if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
+        }
+
+        psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.name,source_site:retailer.site,tier_used:tierUsed,cost});
         renderTab();
-        await new Promise(r=>setTimeout(r,600));
+        await new Promise(r=>setTimeout(r,500));
       }
     }
     isProcessing=false;renderTab();
