@@ -239,6 +239,7 @@ let autoSave = false;
 let aiModel = 'gpt-4.1-mini';
 let brandFilter = '';
 let tierFilter = 0;
+let brandIntel = null; // { products:[], categories:{}, brand:'' }
 
 // Price Sync state
 let psProducts = [];
@@ -331,6 +332,34 @@ async function callTier3(query,brandInfo){
     if(jm){const p=JSON.parse(jm[0]);addCost(0.30);logEntry('Tier 3 ✓ $0.30','cost');p._tier=3;p._cost=0.30;return p}
     logEntry('Tier 3: no JSON','err');return null;
   }catch(e){logEntry('Tier 3 err: '+e.message,'err');return null}
+}
+
+/* ═══ BRAND INTEL ═══ */
+async function loadBrandIntel(brandName) {
+  if (!brandName) { brandIntel = null; renderTab(); return; }
+  if (brandIntel && brandIntel.brand === brandName) return; // already loaded
+
+  const { data, error } = await sb.from('aiq_products')
+    .select('id,model,category,short_description,msrp,price_currency,color,finish,width_inches,height_inches,depth_inches,weight_lbs,capacity_cu_ft,specs_json,source_reference,source_extracted_at,source_confidence')
+    .ilike('brand_name', brandName)
+    .eq('status', 'active')
+    .order('category').order('model')
+    .limit(200);
+
+  const products = data || [];
+  const categories = {};
+  let withPrice = 0, withSpecs = 0, withDims = 0;
+  for (const p of products) {
+    const cat = p.category || 'Uncategorized';
+    if (!categories[cat]) categories[cat] = [];
+    categories[cat].push(p);
+    if (p.msrp) withPrice++;
+    if (p.specs_json && Object.keys(typeof p.specs_json === 'string' ? JSON.parse(p.specs_json) : p.specs_json).length > 0) withSpecs++;
+    if (p.width_inches && p.height_inches && p.depth_inches) withDims++;
+  }
+
+  brandIntel = { brand: brandName, products, categories, withPrice, withSpecs, withDims };
+  renderTab();
 }
 
 /* ═══ SMART SCRAPE ═══ */
@@ -856,6 +885,65 @@ function renderDiscover(el){
     h+='</div>';
   }
 
+  // ── Brand Intel Panel ──
+  if (selectedBrand && brandIntel && brandIntel.brand === selectedBrand) {
+    const bi = brandIntel;
+    const src = brandSourceMap[selectedBrand];
+    const t = tier(selectedBrand);
+    const tl = TL[t] || TL[0];
+    const catKeys = Object.keys(bi.categories).sort();
+
+    h+='<div style="background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:20px">';
+
+    // Brand header
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+    h+='<div style="display:flex;align-items:center;gap:12px"><span style="font-size:16px;font-weight:800">'+esc(selectedBrand)+'</span><span class="tier-badge '+tl.cls+'">'+tl.icon+' Tier '+t+' '+tl.text+'</span></div>';
+    if(src){
+      h+='<div style="display:flex;gap:12px;font-size:11px;color:var(--txt2)">';
+      h+=(src.server_fetchable?'<span style="color:var(--accent)">✓ Server fetchable</span>':'<span style="color:var(--red)">✕ Bot protected'+(src.bot_protection?' ('+esc(src.bot_protection)+')':'')+'</span>');
+      if(src.has_json_ld)h+='<span style="color:var(--accent)">✓ JSON-LD</span>';
+      if(src.has_spec_tables)h+='<span style="color:var(--accent)">✓ Spec tables</span>';
+      if(src.sells_direct)h+='<span style="color:var(--blue)">💰 Sells direct</span>';
+      h+='</div>';
+    }
+    h+='</div>';
+
+    // Stats row
+    h+='<div style="display:flex;gap:12px;margin-bottom:14px">';
+    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800">'+bi.products.length+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Products</div></div>';
+    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800">'+catKeys.length+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Categories</div></div>';
+    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--accent)">'+bi.withPrice+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Have MSRP</div></div>';
+    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(bi.withDims>0?'var(--accent)':'var(--red)')+'">'+bi.withDims+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Have Dims</div></div>';
+    h+='<div style="background:var(--surface);padding:10px 14px;border-radius:8px;flex:1;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(bi.withSpecs>0?'var(--accent)':'var(--red)')+'">'+bi.withSpecs+'</div><div style="font-size:10px;color:var(--txt2);text-transform:uppercase">Have Specs</div></div>';
+    h+='</div>';
+
+    if(bi.products.length > 0){
+      // Category breakdown with products
+      for(const cat of catKeys){
+        const prods=bi.categories[cat];
+        h+='<div style="margin-bottom:12px">';
+        h+='<div style="font-size:12px;font-weight:700;color:var(--txt);margin-bottom:6px;display:flex;align-items:center;gap:8px">'+esc(cat)+' <span style="font-size:11px;font-weight:500;color:var(--txt2)">('+prods.length+')</span></div>';
+        h+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
+        for(const p of prods){
+          const comp=completeness(p);
+          const cls=comp>=70?'high':comp>=40?'med':'low';
+          h+='<div style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="window.S.viewPimProduct(\''+p.id+'\')">';
+          h+='<span style="font-weight:700">'+esc(p.model)+'</span>';
+          if(p.msrp)h+='<span style="color:var(--txt2)">$'+Number(p.msrp).toLocaleString()+'</span>';
+          h+='<span class="completeness '+cls+'" style="font-size:9px">'+comp+'%</span>';
+          h+='</div>';
+        }
+        h+='</div></div>';
+      }
+    } else {
+      h+='<div style="text-align:center;padding:20px;color:var(--txt2);font-size:13px">No products in PIM for this brand yet — use the scraper above to discover and add them.</div>';
+    }
+
+    h+='</div>';
+  } else if (selectedBrand && !brandIntel) {
+    h+='<div style="text-align:center;padding:30px;color:var(--txt2)"><div style="font-size:13px">Loading brand data…</div></div>';
+  }
+
   h+='<div class="settings-row">';
   h+='<label><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()"/> Auto-save</label>';
   h+='<label>Tier 2: <select onchange="window.S.setAiModel(this.value)"><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
@@ -890,7 +978,7 @@ window.S = {
     renderTab();
   },
   setMode(m){discoverMode=m;renderTab()},
-  selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;renderTab()},
+  selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;if(currentTab==='discover')loadBrandIntel(selectedBrand);else renderTab()},
   toggleAuto(){autoSave=!autoSave},
   setAiModel(v){aiModel=v},
   filterBrands(v){brandFilter=v;renderTab()},
@@ -954,6 +1042,36 @@ window.S = {
   },
 
   saveResult(i){saveToPim(i)},
+  viewPimProduct(pid){
+    if(!brandIntel)return;
+    const p=brandIntel.products.find(x=>x.id===pid);if(!p)return;
+    document.getElementById('modalTitle').textContent=p.model+' — PIM Record';
+    const comp=completeness(p);const miss=missingFields(p);
+    let h='<div class="spec-grid" style="margin-bottom:16px">';
+    const fs=[['Model',p.model],['Category',p.category],['MSRP',p.msrp?'$'+Number(p.msrp).toLocaleString():null],['Color',p.color],['Finish',p.finish],['Width',p.width_inches?p.width_inches+'"':null],['Height',p.height_inches?p.height_inches+'"':null],['Depth',p.depth_inches?p.depth_inches+'"':null],['Weight',p.weight_lbs?p.weight_lbs+' lbs':null],['Capacity',p.capacity_cu_ft?p.capacity_cu_ft+' cu.ft.':null],['Completeness',comp+'%'],['Confidence',p.source_confidence?Math.round(p.source_confidence*100)+'%':null]].filter(f=>f[1]);
+    for(const f of fs)h+='<div class="spec-item"><span class="k">'+f[0]+'</span><span class="v">'+esc(String(f[1]))+'</span></div>';
+    h+='</div>';
+    if(p.short_description)h+='<div style="margin-bottom:14px;font-size:13px;line-height:1.5">'+esc(p.short_description)+'</div>';
+    if(p.specs_json){
+      const specs=typeof p.specs_json==='string'?JSON.parse(p.specs_json):p.specs_json;
+      const keys=Object.keys(specs);
+      if(keys.length){
+        h+='<div style="font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;margin-bottom:8px">Specs ('+keys.length+')</div><div class="spec-grid">';
+        for(const k of keys)h+='<div class="spec-item"><span class="k">'+esc(k)+'</span><span class="v">'+esc(String(specs[k]))+'</span></div>';
+        h+='</div>';
+      }
+    }
+    if(miss.length>0){
+      h+='<div style="font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;margin:14px 0 8px">Missing Fields ('+miss.length+')</div>';
+      h+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      for(const f of miss)h+='<span style="background:rgba(245,158,11,.1);color:var(--amber);padding:3px 8px;border-radius:4px;font-size:11px">'+esc(f.replace(/_/g,' '))+'</span>';
+      h+='</div>';
+    }
+    if(p.source_reference)h+='<div style="margin-top:14px;font-size:11px;color:var(--txt2)">Source: <a href="'+esc(p.source_reference)+'" target="_blank" style="color:var(--blue)">'+esc(p.source_reference)+'</a></div>';
+    document.getElementById('modalBody').innerHTML=h;
+    document.getElementById('modalFoot').innerHTML='<button class="btn btn-secondary" onclick="document.getElementById(\'modalOverlay\').classList.remove(\'open\')">Close</button>';
+    document.getElementById('modalOverlay').classList.add('open');
+  },
   exportJSON(){
     const data=scrapeResults.filter(r=>r.data).map(r=>r.data);
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
