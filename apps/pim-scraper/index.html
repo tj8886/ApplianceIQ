@@ -428,8 +428,27 @@ async function saveToPim(idx){
   const{data:saved,error}=await sb.from('aiq_products').upsert(rec,{onConflict:'brand_name,model,market',ignoreDuplicates:false}).select('id').maybeSingle();
   if(error){logEntry('Save err: '+error.message,'err');return}
   const productId=saved?.id;
+  let assetLog=[];
 
-  // Save documents if found
+  // Save images
+  if(d.images&&d.images.length>0&&productId){
+    let imgCount=0;
+    for(let i=0;i<d.images.length;i++){
+      const img=d.images[i];
+      const imgRec={
+        product_id:productId,brand_id:br?.id||null,
+        image_type:img.type||'product',file_url:img.url,
+        alt_text:(d.product_name||d.model||'')+' - '+(img.type||'image'),
+        is_primary:i===0,display_order:i,source:'scraper_v2',
+        mime_type:img.url.includes('.png')?'image/png':img.url.includes('.webp')?'image/webp':'image/jpeg'
+      };
+      const{error:ie}=await sb.from('pim_product_images').upsert(imgRec,{onConflict:'product_id,file_url',ignoreDuplicates:true});
+      if(!ie)imgCount++;
+    }
+    if(imgCount>0)assetLog.push(imgCount+' images');
+  }
+
+  // Save documents
   if(d.documents&&d.documents.length>0&&productId){
     let docCount=0;
     for(const doc of d.documents){
@@ -444,11 +463,30 @@ async function saveToPim(idx){
       const{error:de}=await sb.from('pim_product_documents').upsert(docRec,{onConflict:'product_id,file_url',ignoreDuplicates:true});
       if(!de)docCount++;
     }
-    if(docCount>0)logEntry('  + '+docCount+' documents saved','ok');
+    if(docCount>0)assetLog.push(docCount+' docs');
   }
 
-  r._saved=true;r._docCount=d.documents?.length||0;
-  logEntry('Saved ✓'+(d.documents?.length?' ('+d.documents.length+' docs)':''),'ok');renderTab();
+  // Save videos
+  if(d.videos&&d.videos.length>0&&productId){
+    let vidCount=0;
+    for(let i=0;i<d.videos.length;i++){
+      const vid=d.videos[i];
+      const vidRec={
+        product_id:productId,brand_id:br?.id||null,
+        video_type:vid.type||'product_overview',title:vid.title||(d.product_name||d.model||'')+ ' video',
+        video_url:vid.url,embed_url:vid.embed_url||null,
+        thumbnail_url:vid.thumbnail||null,
+        platform:vid.platform||'unknown',external_video_id:vid.video_id||null,
+        source:'scraper_v2',display_order:i,is_current:true
+      };
+      const{error:ve}=await sb.from('pim_product_videos').upsert(vidRec,{onConflict:'product_id,video_url',ignoreDuplicates:true});
+      if(!ve)vidCount++;
+    }
+    if(vidCount>0)assetLog.push(vidCount+' videos');
+  }
+
+  r._saved=true;r._assetLog=assetLog;
+  logEntry('Saved ✓'+(assetLog.length?' + '+assetLog.join(', '):''),'ok');renderTab();
 }
 
 /* ═══ PRODUCT DATA ═══ */
@@ -762,7 +800,12 @@ function renderDiscover(){
       const specs=r.data?.specs?Object.keys(r.data.specs).length:0;
       const price=r.data?.msrp?'$'+Number(r.data.msrp).toLocaleString():'';
       const docs=r.data?.documents?.length||0;
-      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(specs||price||docs?'<div class="detail">'+(specs?specs+' specs':'')+(specs&&(price||docs)?' · ':'')+(price||'')+(docs?(specs||price?' · ':'')+docs+' docs':'')+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓'+(r._docCount?' +'+r._docCount+' docs':'')+'</span>':'')+'</div></div>';
+      const imgs=r.data?.images?.length||0;
+      const vids=r.data?.videos?.length||0;
+      const feats=r.data?.features?.length||0;
+      const assetBits=[];if(specs)assetBits.push(specs+' specs');if(imgs)assetBits.push(imgs+' imgs');if(docs)assetBits.push(docs+' docs');if(vids)assetBits.push(vids+' vids');if(feats)assetBits.push(feats+' features');
+      const savedLabel=r._saved?'✓'+(r._assetLog?.length?' +'+r._assetLog.join(', '):''):'';
+      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(assetBits.length||price?'<div class="detail">'+assetBits.join(' · ')+(assetBits.length&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">'+savedLabel+'</span>':'')+'</div></div>';
     }
     h+='</div></div>';
   }
