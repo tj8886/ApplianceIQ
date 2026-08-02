@@ -425,9 +425,30 @@ async function saveToPim(idx){
     source_extracted_at:new Date().toISOString(),source_review_status:'pending',
     market:'CA',status:'active',brand_id:br?.id||null
   };
-  const{error}=await sb.from('aiq_products').upsert(rec,{onConflict:'brand_name,model,market',ignoreDuplicates:false});
+  const{data:saved,error}=await sb.from('aiq_products').upsert(rec,{onConflict:'brand_name,model,market',ignoreDuplicates:false}).select('id').maybeSingle();
   if(error){logEntry('Save err: '+error.message,'err');return}
-  r._saved=true;logEntry('Saved ✓','ok');renderTab();
+  const productId=saved?.id;
+
+  // Save documents if found
+  if(d.documents&&d.documents.length>0&&productId){
+    let docCount=0;
+    for(const doc of d.documents){
+      const docRec={
+        product_id:productId,brand_id:br?.id||null,
+        doc_type:doc.doc_type||'other',title:doc.title||doc.file_name||'Document',
+        file_url:doc.url,file_name:doc.file_name||null,
+        mime_type:'application/pdf',source:'scraper_v2',
+        language:'en',locale:rec.market==='CA'?'en-CA':'en-US',
+        is_current:true
+      };
+      const{error:de}=await sb.from('pim_product_documents').upsert(docRec,{onConflict:'product_id,file_url',ignoreDuplicates:true});
+      if(!de)docCount++;
+    }
+    if(docCount>0)logEntry('  + '+docCount+' documents saved','ok');
+  }
+
+  r._saved=true;r._docCount=d.documents?.length||0;
+  logEntry('Saved ✓'+(d.documents?.length?' ('+d.documents.length+' docs)':''),'ok');renderTab();
 }
 
 /* ═══ PRODUCT DATA ═══ */
@@ -740,7 +761,8 @@ function renderDiscover(){
       const det=r.data?[r.data.product_name,r.data.category,r.data.msrp?'$'+Number(r.data.msrp).toLocaleString():null].filter(Boolean).join(' · ')||(r.status==='partial'?'basic data extracted':'data extracted'):(r.status==='pending'?'Extracting…':'No data');
       const specs=r.data?.specs?Object.keys(r.data.specs).length:0;
       const price=r.data?.msrp?'$'+Number(r.data.msrp).toLocaleString():'';
-      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(specs||price?'<div class="detail">'+(specs?specs+' specs':'')+(specs&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓</span>':'')+'</div></div>';
+      const docs=r.data?.documents?.length||0;
+      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(specs||price||docs?'<div class="detail">'+(specs?specs+' specs':'')+(specs&&(price||docs)?' · ':'')+(price||'')+(docs?(specs||price?' · ':'')+docs+' docs':'')+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">✓'+(r._docCount?' +'+r._docCount+' docs':'')+'</span>':'')+'</div></div>';
     }
     h+='</div></div>';
   }
