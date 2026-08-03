@@ -788,10 +788,11 @@ async function pimProductSearch(query){
   const terms=q.split(/[\s,]+/).filter(w=>w.length>2);
   if(!terms.length)return[];
   // Build an OR search across brand, model, series, category, short_description
-  let query_str='';
-  const filters=terms.slice(0,6).map(t=>'brand_name.ilike.%'+t+'%,model.ilike.%'+t+'%,series.ilike.%'+t+'%,category.ilike.%'+t+'%,short_description.ilike.%'+t+'%');
-  const{data}=await sb.from('aiq_products').select('brand_name,model,category,series,product_line,msrp,sale_price,short_description,finish,color,capacity_cu_ft,width_inches,height_inches,depth_inches,depth_with_handles,energy_star,ada_compliant,installation_type,voltage,wattage,amperage,weight_lbs,specs_json,is_discontinued,made_in').or(filters.join(',')).limit(20);
-  return data??[];
+  // Use direct PostgREST fetch — supabase-js .or() with ilike causes 406 in this project
+  const cols='brand_name,model,category,series,product_line,msrp,sale_price,short_description,finish,color,capacity_cu_ft,width_inches,height_inches,depth_inches,depth_with_handles,energy_star,ada_compliant,installation_type,voltage,wattage,amperage,weight_lbs,specs_json,is_discontinued,made_in';
+  const orParts=terms.slice(0,6).flatMap(t=>['brand_name','model','series','category','short_description'].map(c=>c+'.ilike.*'+t+'*'));
+  const url=SUPABASE_URL+'/rest/v1/aiq_products?select='+cols+'&or=('+orParts.join(',')+')&limit=20';
+  try{const resp=await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});const data=await resp.json();return Array.isArray(data)?data:[];}catch{return [];}
 }
 function renderProductTable(products){
   if(!products.length)return'';
@@ -1128,7 +1129,7 @@ function renderContacts(){
     +(overdue?'<button class="tc-tab '+(contactFilter==='overdue'?'active':'')+'" data-cf="overdue">⚠️ Overdue <span class="tc-count">'+overdue+'</span></button>':'')
     +'</div>'
     +'<table><thead><tr><th>Name</th><th>Temp</th><th>Company</th><th>Role</th><th>Phone</th><th>Days Since</th><th>Follow-up</th></tr></thead><tbody>'
-    +filtered.map(c=>{
+    +(filtered.map(c=>{
       const temp=c.temperature||'warm';
       const dsc=c.days_since_contact!=null?c.days_since_contact:c.last_communication_at?Math.floor((Date.now()-new Date(c.last_communication_at).getTime())/864e5):null;
       const dscClass=dsc!=null?(dsc>10?'danger':dsc>5?'warn':''):'';
@@ -1140,7 +1141,7 @@ function renderContacts(){
       +'<td class="num" style="font-size:12px">'+esc(c.phone||c.mobile_phone||'—')+'</td>'
       +'<td><span class="days-badge '+dscClass+'">'+(dsc!=null?dsc+'d':'—')+'</span></td>'
       +'<td><span class="sla-badge '+fu+'">'+fu.replace(/_/g,' ')+'</span></td></tr>';
-    }).join('')||'<tr><td colspan="7" class="empty">No contacts yet. Add your first contact to get started.</td></tr>'
+    }).join('')||'<tr><td colspan="7" class="empty">No contacts yet. Add your first contact to get started.</td></tr>')
     +'</tbody></table>';
   $('#ncBtn').onclick=()=>openContactModal(null);
   $$('[data-ct]').forEach(r=>{r.onclick=()=>{const ct=cache.contacts.find(c=>c.id===r.dataset.ct);openContactDetail(ct);};});
@@ -1190,8 +1191,8 @@ function renderBuyingGroups(){
   mainEl.innerHTML='<div class="page-head"><div><h1>👥 Buying Groups</h1><div class="sub num">'+cache.buyingGroups.length+' groups</div></div><div class="head-actions"><button class="btn btn-primary" id="nbgBtn">+ New group</button></div></div>'
     +searchBar('Search buying groups…')
     +'<table><thead><tr><th>Group</th><th>Type</th><th>Members</th><th>Primary</th><th>Deals</th></tr></thead><tbody>'
-    +filtered.map(bg=>{const m=bg.crm_buying_group_members||[];const p=m.find(x=>x.is_primary);const dc=cache.deals.filter(d=>d.buying_group_id===bg.id).length;
-      return '<tr class="rowbtn" data-bg="'+bg.id+'"><td><b>'+esc(bg.name)+'</b></td><td><span class="chip n">'+esc(bg.group_type)+'</span></td><td class="num">'+m.length+'</td><td>'+(p?.contacts?esc(p.contacts.first_name+' '+(p.contacts.last_name??'')):'—')+'</td><td class="num">'+dc+'</td></tr>';}).join('')||'<tr><td colspan="5" class="empty">No buying groups yet. Create one to link contacts to deals as a team.</td></tr>'
+    +(filtered.map(bg=>{const m=bg.crm_buying_group_members||[];const p=m.find(x=>x.is_primary);const dc=cache.deals.filter(d=>d.buying_group_id===bg.id).length;
+      return '<tr class="rowbtn" data-bg="'+bg.id+'"><td><b>'+esc(bg.name)+'</b></td><td><span class="chip n">'+esc(bg.group_type)+'</span></td><td class="num">'+m.length+'</td><td>'+(p?.contacts?esc(p.contacts.first_name+' '+(p.contacts.last_name??'')):'—')+'</td><td class="num">'+dc+'</td></tr>';}).join('')||'<tr><td colspan="5" class="empty">No buying groups yet. Create one to link contacts to deals as a team.</td></tr>')
     +'</tbody></table>';
   $('#nbgBtn').onclick=()=>openBGModal(null);
   $$('[data-bg]').forEach(r=>{r.onclick=()=>openBGModal(cache.buyingGroups.find(bg=>bg.id===r.dataset.bg));});
@@ -1227,8 +1228,8 @@ function renderCompanies(){
   mainEl.innerHTML='<div class="page-head"><div><h1>🏢 Business Accounts</h1><div class="sub num">'+cache.companies.length+' accounts</div></div><div class="head-actions"><button class="btn btn-primary" id="ncoBtn">+ New business</button></div></div>'
     +searchBar('Search by name or industry…')
     +'<table><thead><tr><th>Business</th><th>Type</th><th>Industry</th><th>Contacts</th><th>Deals</th><th>Class</th></tr></thead><tbody>'
-    +filtered.map(co=>{const cc=cache.contacts.filter(c=>c.company_id===co.id).length;const dc=cache.deals.filter(d=>d.company_id===co.id&&!d.closed_at).length;
-      return '<tr class="rowbtn" data-co="'+co.id+'"><td><b>'+esc(co.display_name||co.name)+'</b></td><td>'+esc(co.business_type??'—')+'</td><td>'+esc(co.industry??'—')+'</td><td class="num">'+cc+'</td><td class="num">'+dc+'</td><td><span class="chip '+(co.account_classification==='premium'?'g':co.account_classification==='key'?'a':'n')+'">'+esc(co.account_classification??'standard')+'</span></td></tr>';}).join('')||'<tr><td colspan="6" class="empty">No business accounts yet. Add one for property managers, builders, or contractors.</td></tr>'
+    +(filtered.map(co=>{const cc=cache.contacts.filter(c=>c.company_id===co.id).length;const dc=cache.deals.filter(d=>d.company_id===co.id&&!d.closed_at).length;
+      return '<tr class="rowbtn" data-co="'+co.id+'"><td><b>'+esc(co.display_name||co.name)+'</b></td><td>'+esc(co.business_type??'—')+'</td><td>'+esc(co.industry??'—')+'</td><td class="num">'+cc+'</td><td class="num">'+dc+'</td><td><span class="chip '+(co.account_classification==='premium'?'g':co.account_classification==='key'?'a':'n')+'">'+esc(co.account_classification??'standard')+'</span></td></tr>';}).join('')||'<tr><td colspan="6" class="empty">No business accounts yet. Add one for property managers, builders, or contractors.</td></tr>')
     +'</tbody></table>';
   $('#ncoBtn').onclick=()=>openCompanyModal(null);
   $$('[data-co]').forEach(r=>{r.onclick=()=>openCompanyModal(cache.companies.find(co=>co.id===r.dataset.co));});
@@ -1261,13 +1262,13 @@ async function renderProducts(){
   const rows=data??[];
   mainEl.innerHTML='<div class="page-head"><div><h1>📦 Products</h1><div class="sub num">'+rows.length+' models — '+rows.filter(p=>p.aiq_product_id).length+' linked to Product IQ PIM</div></div></div>'
   +'<div class="dash-panel" style="background:#fef3c7;border:1px solid #d97706;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e">⚠ Cost, margin, and stock status here are this store\'s business data. Model specs and warranty details come from Product IQ PIM once linked.</div>'
-  +'<table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Stock</th><th>PIM Link</th><th></th></tr></thead><tbody>'+rows.map(p=>{
+  +'<table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Stock</th><th>PIM Link</th><th></th></tr></thead><tbody>'+(rows.map(p=>{
     const linked=p.aiq_products;
     const linkCell=linked
       ?'<span class="chip g">✓ Linked</span>'+(linked.is_discontinued?'<div class="sub" style="color:#dc2626">Discontinued'+(linked.replacement_model?' → '+esc(linked.replacement_model):'')+'</div>':'')+(linked.is_clearance?'<div class="sub" style="color:#d97706">Clearance</div>':'')+(linked.sale_price?'<div class="sub">PIM sale: '+money(linked.sale_price)+'</div>':'')
       :'<span class="chip a">⚠ Not linked</span>';
     return '<tr><td><b>'+esc(p.brand)+' '+esc(p.model)+'</b><div class="sub">'+esc(p.name)+'</div></td><td>'+esc(p.category??'—')+'</td><td class="num">'+money(p.msrp)+'</td><td class="num">'+(p.margin_pct?p.margin_pct+'%':'—')+'</td><td>'+(p.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Order</span>')+'</td><td>'+linkCell+'</td><td>'+(linked?'<button class="btn btn-ghost btn-sm" data-unlink="'+p.id+'">Unlink</button>':'<button class="btn btn-ghost btn-sm" data-link="'+p.id+'" data-brand="'+esc(p.brand)+'" data-model="'+esc(p.model)+'">Link to PIM</button>')+'</td></tr>';
-  }).join('')||'<tr><td colspan="7" class="empty">No products yet. Products are added here when included in deals.</td></tr>'+'</tbody></table>';
+  }).join('')||'<tr><td colspan="7" class="empty">No products yet. Products are added here when included in deals.</td></tr>')+'</tbody></table>';
   $$('[data-link]').forEach(b=>{b.onclick=()=>openPimLinkModal(b.dataset.link,b.dataset.brand,b.dataset.model);});
   $$('[data-unlink]').forEach(b=>{b.onclick=async()=>{if(!confirm('Unlink this product from Product IQ PIM?'))return;await sb.from('products').update({aiq_product_id:null}).eq('id',b.dataset.unlink);renderProducts();};});
 }
@@ -1275,12 +1276,13 @@ async function openPimLinkModal(productId,brand,model){
   const{data:matches}=await sb.from('aiq_products').select('id,brand_name,model,category,msrp,market').ilike('brand_name','%'+brand+'%').limit(20);
   openModal('<h2>Link to Product IQ PIM</h2><p class="sub" style="margin-bottom:12px">Searching for "'+esc(brand)+'" — pick the matching model, or search again.</p>'
     +'<input id="pim-link-search" placeholder="Search brand or model…" value="'+esc(brand)+' '+esc(model)+'" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px">'
-    +'<div id="pim-link-results" style="max-height:320px;overflow-y:auto">'+(matches??[]).map(m=>'<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="'+m.id+'"><b>'+esc(m.brand_name)+' '+esc(m.model)+'</b><div class="sub">'+esc(m.category??'')+' · '+esc(m.market)+' · '+money(m.msrp)+'</div></div>').join('')||'<div class="empty">No matches found.</div>'+'</div>'
+    +'<div id="pim-link-results" style="max-height:320px;overflow-y:auto">'+((matches??[]).map(m=>'<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="'+m.id+'"><b>'+esc(m.brand_name)+' '+esc(m.model)+'</b><div class="sub">'+esc(m.category??'')+' · '+esc(m.market)+' · '+money(m.msrp)+'</div></div>').join('')||'<div class="empty">No matches found.</div>')+'</div>'
     +'<div class="sheet-actions"><button class="btn btn-ghost" id="plm_cancel">Cancel</button></div>');
   $('#plm_cancel').onclick=closeModal;
   const doSearch=async()=>{
     const q2=$('#pim-link-search').value.trim();
-    const{data:res}=await sb.from('aiq_products').select('id,brand_name,model,category,msrp,market').or('brand_name.ilike.%'+q2+'%,model.ilike.%'+q2+'%').limit(20);
+    const pimUrl=SUPABASE_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,market&or=(brand_name.ilike.*'+encodeURIComponent(q2)+'*,model.ilike.*'+encodeURIComponent(q2)+'*)&limit=20';
+    const pimResp=await fetch(pimUrl,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});const res=await pimResp.json();
     $('#pim-link-results').innerHTML=(res??[]).map(m=>'<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="'+m.id+'"><b>'+esc(m.brand_name)+' '+esc(m.model)+'</b><div class="sub">'+esc(m.category??'')+' · '+esc(m.market)+' · '+money(m.msrp)+'</div></div>').join('')||'<div class="empty">No matches found.</div>';
     attachPimResultHandlers(productId);
   };
@@ -1292,7 +1294,7 @@ function attachPimResultHandlers(productId){
 }
 
 // ===== TASKS =====
-function renderTasks(){sb.from('crm_tasks').select('*,crm_deals(title)').eq('organization_id',currentOrg.id).is('completed_at',null).order('due_at').then(({data})=>{mainEl.innerHTML='<div class="page-head"><h1>✓ Tasks</h1><div class="sub num">'+(data??[]).length+' open</div></div><table><thead><tr><th>Task</th><th>Deal</th><th>Due</th><th>Priority</th><th></th></tr></thead><tbody>'+(data??[]).map(t=>'<tr><td><b>'+esc(t.title)+'</b></td><td>'+esc(t.crm_deals?.title??'—')+'</td><td class="num">'+(t.due_at?new Date(t.due_at).toLocaleDateString():'—')+'</td><td><span class="chip '+(t.priority==='urgent'?'a':'n')+'">'+esc(t.priority)+'</span></td><td><button class="btn btn-ghost btn-sm" data-done="'+t.id+'">Done</button></td></tr>').join('')||'<tr><td colspan="5" class="empty">All tasks completed. Nice work!</td></tr>'+'</tbody></table>';$$('[data-done]').forEach(b=>{b.onclick=async()=>{await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done);render();};});});}
+function renderTasks(){sb.from('crm_tasks').select('*,crm_deals(title)').eq('organization_id',currentOrg.id).is('completed_at',null).order('due_at').then(({data})=>{mainEl.innerHTML='<div class="page-head"><h1>✓ Tasks</h1><div class="sub num">'+(data??[]).length+' open</div></div><table><thead><tr><th>Task</th><th>Deal</th><th>Due</th><th>Priority</th><th></th></tr></thead><tbody>'+((data??[]).map(t=>'<tr><td><b>'+esc(t.title)+'</b></td><td>'+esc(t.crm_deals?.title??'—')+'</td><td class="num">'+(t.due_at?new Date(t.due_at).toLocaleDateString():'—')+'</td><td><span class="chip '+(t.priority==='urgent'?'a':'n')+'">'+esc(t.priority)+'</span></td><td><button class="btn btn-ghost btn-sm" data-done="'+t.id+'">Done</button></td></tr>').join('')||'<tr><td colspan="5" class="empty">All tasks completed. Nice work!</td></tr>')+'</tbody></table>';$$('[data-done]').forEach(b=>{b.onclick=async()=>{await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done);render();};});});}
 
 // ===== RECORDINGS =====
 const REC_MAX=10800;function fmtTime(s){if(s>=3600){const h=Math.floor(s/3600);return h+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
@@ -1303,7 +1305,7 @@ async function renderRecordings(){
   if(rids.length){const{data:rv}=await sb.from('ai_coaching_reviews').select('id,overall_score').in('id',rids);(rv??[]).forEach(r=>rvs[r.id]=r);}
   mainEl.innerHTML='<div class="page-head"><div><h1>🎙 Recordings</h1><div class="sub num">'+(recs??[]).length+' recordings</div></div><div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 New Recording</button></div></div>'
     +'<table><thead><tr><th>Recording</th><th>Deal</th><th>Duration</th><th>Status</th><th>Score</th><th></th></tr></thead><tbody>'
-    +(recs??[]).map(r=>{
+    +((recs??[]).map(r=>{
       const sc=r.coaching_review_id&&rvs[r.coaching_review_id]?.overall_score!=null?Number(rvs[r.coaching_review_id].overall_score).toFixed(1)+'/10':'—';
       const dealName=r.crm_deals?.title||'—';
       return '<tr><td><b>'+esc(r.file_name??'Recording')+'</b><div class="sub num">'+new Date(r.created_at).toLocaleDateString()+'</div></td>'
@@ -1312,7 +1314,7 @@ async function renderRecordings(){
         +'<td><span class="chip '+(r.status==='complete'?'g':r.status==='failed'?'r':'n')+'">'+esc(r.status)+'</span></td>'
         +'<td class="num">'+sc+'</td>'
         +'<td><button class="btn btn-ghost btn-sm" data-play="'+r.id+'">Play</button></td></tr>';
-    }).join('')||'<tr><td colspan="6" class="empty">No recordings yet. Record a pitch to get AI coaching feedback.</td></tr>'
+    }).join('')||'<tr><td colspan="6" class="empty">No recordings yet. Record a pitch to get AI coaching feedback.</td></tr>')
     +'</tbody></table><div id="recP"></div>';
   $('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
   $$('[data-play]').forEach(b=>{b.onclick=async()=>{
@@ -1385,7 +1387,7 @@ function openRecorderModal(dealId){
             const resp=await fetch('https://api.anthropic.com/v1/messages',{
               method:'POST',headers:{'Content-Type':'application/json'},
               body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
-                system:'You are an expert appliance retail sales coach analyzing a recorded sales interaction. Return ONLY valid JSON with no markdown fences. Use this exact structure:\n{\n"transcript_summary": "2-3 sentence summary of what was discussed",\n"coaching_score": 7.5,\n"coaching_strengths": ["strength 1","strength 2"],\n"coaching_improvements": ["improvement 1","improvement 2"],\n"selling_steps_used": ["greeting","discovery","presentation"],\n"crm_notes": "Key info for the CRM: what the customer wants, products discussed, objections raised, decisions made",\n"customer_needs": ["need 1","need 2"],\n"products_discussed": ["product 1","product 2"],\n"action_items": [{"task":"Follow up with pricing on Bosch 800","priority":"high","due_days":2},{"task":"Send comparison sheet","priority":"medium","due_days":1}],\n"follow_up_recommended": true,\n"follow_up_reason": "Customer showed strong interest but needs pricing confirmation"\n}',
+                system:'You are an expert appliance retail sales coach analyzing a recorded sales interaction. Return ONLY valid JSON with no markdown fences. Use this exact structure:\n{\n"transcript_summary": "2-3 sentence summary of what was discussed",\n"coaching_score": 7.5,\n"coaching_strengths": ["strength 1","strength 2"],\n"coaching_improvements": ["improvement 1","improvement 2"],\n"selling_steps_used": ["greeting","discovery","presentation"],\n"crm_notes": "Key info for the CRM: what the customer wants, products discussed, objections raised, decisions made",\n"customer_needs": ["need 1","need 2"],\n"products_discussed": ["product 1","product 2"],\n"action_items": [{"task":"Follow up with pricing on Bosch 800","priority":"high","due_days":2},{"task":"Send comparison sheet","priority":"normal","due_days":1}],\n"follow_up_recommended": true,\n"follow_up_reason": "Customer showed strong interest but needs pricing confirmation"\n}',
                 messages:[{role:'user',content:[
                   {type:'document',source:{type:'base64',media_type:mediaType,data:b64}},
                   {type:'text',text:'Analyze this sales recording. Context: '+dealContext+'. Return ONLY the JSON object, no other text.'}
@@ -1710,9 +1712,9 @@ async function renderCommunications(){
       const actTypes={};myActs.forEach(a=>{actTypes[a.activity_type]=(actTypes[a.activity_type]||0)+1;});
 
       return {uid,name,email:prof?.email,role:m.role,won:won.length,lost:lost.length,active:active.length,pipeline,revenue,
-        overdueTasks:overdueTasks.length,completedTasks:completedTasks.length,totalTasks:myTasks.length,
+        overdueTaskCount:overdueTasks.length,completedTasks:completedTasks.length,totalTasks:myTasks.length,
         emailsSent:myEmails.length,totalActs:myActs.length,lastActivity,actTypes,
-        myDeals,myTasks,myEmails,myActs,overdueTasks:overdueTasks};
+        myDeals,myTasks,myEmails,myActs,overdueTasks};
     });
 
     if(!selectedRep){
@@ -1753,7 +1755,7 @@ async function renderCommunications(){
         +'<div class="stat-card"><div class="lbl">Pipeline</div><div class="val num">'+money(r.pipeline)+'</div></div>'
         +'<div class="stat-card"><div class="lbl">Revenue</div><div class="val num" style="color:var(--verified)">'+money(r.revenue)+'</div></div>'
         +'<div class="stat-card"><div class="lbl">Emails Sent</div><div class="val num" style="color:var(--focus)">'+r.emailsSent+'</div></div>'
-        +'<div class="stat-card'+(r.overdueTasks.length?' " style="border-color:var(--danger)':'')+'""><div class="lbl">Overdue Tasks</div><div class="val num" style="color:var(--danger)">'+r.overdueTasks.length+'</div></div>'
+        +'<div class="stat-card'+(r.overdueTasks.length?'" style="border-color:var(--danger)':'')+'"><div class="lbl">Overdue Tasks</div><div class="val num" style="color:var(--danger)">'+r.overdueTasks.length+'</div></div>'
         +'<div class="stat-card"><div class="lbl">Tasks Done</div><div class="val num">'+r.completedTasks+'/'+r.totalTasks+'</div></div>'
         +'</div>'
 
@@ -1841,7 +1843,7 @@ function openComposeModal(contact,deal,templates,seqStep){
     +'<div class="merge-hint">Merge fields: <span class="merge-tags">'
     +['contact_first_name','product_name','salesperson_name','quote_number','quote_total'].map(f=>'<button class="merge-tag" data-mf="'+f+'">{{'+f+'}}</button>').join('')
     +'</span></div></div>'
-    +'<div class="form-err" id="ce_err"></div>'
+    +'<div class="form-err" id="formErr"></div>'
     +'</div>'
     +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="ce_send">Send Email</button></div>');
 
@@ -1985,13 +1987,13 @@ function openTemplateModal(t,allTemplates){
   openModal('<h2>'+(isNew?'New Template':'Edit Template')+'</h2>'
     +'<div class="field"><label>Name</label><input id="tm_n" value="'+esc(t?.name||'')+'"></div>'
     +'<div class="field-row"><div class="field"><label>Channel</label><select id="tm_ch"><option value="email" '+(t?.channel==='email'||!t?'selected':'')+'>Email</option><option value="sms" '+(t?.channel==='sms'?'selected':'')+'>SMS</option></select></div>'
-    +'<div class="field"><label>Category</label><select id="tm_cat"><option value="general">General</option><option value="post_visit" '+(t?.category==='post_visit'?'selected':'')+'>Post Visit</option><option value="quote_followup" '+(t?.category==='quote_followup'?'selected':'')+'>Quote Follow-up</option><option value="delivery" '+(t?.category==='delivery'?'selected':'')+'>Delivery</option><option value="post_sale" '+(t?.category==='post_sale'?'selected':'')+'>Post Sale</option><option value="re_engagement" '+(t?.category==='re_engagement'?'selected':'')+'>Re-engagement</option></select></div></div>'
+    +'<div class="field"><label>Category</label><select id="tm_cat"><option value="general">General</option><option value="post_visit" '+(t?.category==='post_visit'?'selected':'')+'>Post Visit</option><option value="quote_followup" '+(t?.category==='quote_followup'?'selected':'')+'>Quote Follow-up</option><option value="delivery" '+(t?.category==='delivery'?'selected':'')+'>Delivery</option><option value="post_sale" '+(t?.category==='post_sale'?'selected':'')+'>Post Sale</option><option value="re_engagement" '+(t?.category==='re_engagement'?'selected':'')+'>Re-engagement</option><option value="price_alert" '+(t?.category==='price_alert'?'selected':'')+'>Price Alert</option></select></div></div>'
     +'<div class="field"><label>Subject</label><input id="tm_s" value="'+esc(t?.subject_template||'')+'"></div>'
     +'<div class="field"><label>Body</label><textarea id="tm_b" rows="8">'+esc(t?.body_template||'')+'</textarea>'
     +'<div class="merge-hint">Available: <span class="merge-tags">'
     +['contact_first_name','product_name','salesperson_name','quote_number','delivery_date'].map(f=>'<button class="merge-tag" data-mtf="'+f+'">{{'+f+'}}</button>').join('')
     +'</span></div></div>'
-    +'<div class="form-err" id="tm_err"></div>'
+    +'<div class="form-err" id="formErr"></div>'
     +'<div class="sheet-actions">'+(isNew?'':'<button class="btn btn-danger btn-sm" id="tm_del">Delete</button>')+'<button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="tm_save">Save</button></div>');
 
   $$('[data-mtf]').forEach(b=>{b.onclick=()=>{const ta=$('#tm_b');const tag='{{'+b.dataset.mtf+'}}';const pos=ta.selectionStart;ta.value=ta.value.slice(0,pos)+tag+ta.value.slice(pos);ta.focus();};});
@@ -2220,7 +2222,7 @@ async function renderTaskCentre(){
       +'<button class="tc-tab '+(tcTab==='upcoming'?'active':'')+'" data-tc="upcoming">Upcoming <span class="tc-count">'+upcoming.length+'</span></button>'
       +'<button class="tc-tab '+(tcTab==='completed'?'active':'')+'" data-tc="completed">Completed <span class="tc-count">'+completed.length+'</span></button>'
     +'</div>'
-    +'<div>'+current.map(t=>{
+    +'<div>'+(current.map(t=>{
       const isOd=!t.completed_at&&t.due_at&&new Date(t.due_at)<now;
       return '<div class="tc-item '+(isOd?'overdue':t.due_at?.slice(0,10)===today?'today':'')+'">'
         +'<div class="tc-check '+(t.completed_at?'done':'')+'" data-tid="'+t.id+'" title="Complete">✓</div>'
@@ -2229,7 +2231,7 @@ async function renderTaskCentre(){
           +(t.ai_recommended?'<div class="tc-reason">AI recommended</div>':'')
           +(t.escalation_level>0?'<div style="font-size:11px;color:var(--danger);font-weight:600">⚠️ Escalated (Level '+t.escalation_level+')</div>':'')
         +'</div>'
-      +'</div>';}).join('')||'<div class="empty">No tasks in this category.</div>'+'</div>';
+      +'</div>';}).join('')||'<div class="empty">No tasks in this category.</div>')+'</div>';
   $$('[data-tc]').forEach(b=>{b.onclick=()=>{tcTab=b.dataset.tc;renderTaskCentre();};});
   $$('[data-tid]').forEach(c=>{c.onclick=async()=>{
     const tid=c.dataset.tid;const done=c.classList.contains('done');
@@ -2245,7 +2247,7 @@ function openNewTaskModal(){
     +'<div class="field"><label>Title *</label><input id="nt_title"></div>'
     +'<div class="field"><label>Description</label><textarea id="nt_desc" rows="2"></textarea></div>'
     +'<div class="field-row"><div class="field"><label>Due date</label><input type="datetime-local" id="nt_due"></div>'
-    +'<div class="field"><label>Priority</label><select id="nt_pri"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></div></div>'
+    +'<div class="field"><label>Priority</label><select id="nt_pri"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option><option value="urgent">Urgent</option></select></div></div>'
     +'<div class="field"><label>Contact</label><select id="nt_ct"><option value="">—</option>'+cache.contacts.map(c=>'<option value="'+c.id+'">'+esc(c.first_name)+' '+esc(c.last_name??'')+'</option>').join('')+'</select></div>'
     +'<div class="field"><label>Deal</label><select id="nt_deal"><option value="">—</option>'+cache.deals.filter(d=>!d.closed_at).map(d=>'<option value="'+d.id+'">'+esc(d.title)+'</option>').join('')+'</select></div>'
     +'<div class="form-err" id="formErr"></div>'
@@ -2499,7 +2501,7 @@ async function createDeliveryWorkflow(dealId,contactId){
   ];
   for(const tmpl of taskTemplates){
     const due=new Date(Date.now()+tmpl.days*864e5).toISOString();
-    await sb.from('crm_tasks').insert({organization_id:currentOrg.id,deal_id:dealId,contact_id:contactId||null,assignee_user_id:currentUser.id,title:tmpl.title,due_at:due,priority:tmpl.days<3?'high':'medium',task_type:tmpl.cat,task_category:tmpl.cat,source:'delivery_workflow',metadata:{}});
+    await sb.from('crm_tasks').insert({organization_id:currentOrg.id,deal_id:dealId,contact_id:contactId||null,assignee_user_id:currentUser.id,title:tmpl.title,due_at:due,priority:tmpl.days<3?'high':'normal',task_type:tmpl.cat,task_category:tmpl.cat,source:'delivery_workflow',metadata:{}});
   }
 }
 
