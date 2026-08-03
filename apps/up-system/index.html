@@ -344,6 +344,41 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .tv-wait-card .tvw-time{font-size:12px;font-weight:700;color:#f97316;margin-top:2px}
 .tv-insight{background:linear-gradient(135deg,rgba(14,165,233,.12),rgba(99,102,241,.12));border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:13px}
 @media(max-width:860px){.tv-body{grid-template-columns:1fr}.tv-sidebar{display:none}.tv-metrics{grid-template-columns:repeat(3,1fr)}}
+
+/* ===== SHIFT ANALYSIS INTELLIGENCE DASHBOARD ===== */
+.sa-tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:2px solid var(--line);padding-bottom:0}
+.sa-tab{padding:10px 18px;font-weight:600;font-size:13px;color:var(--steel);border:0;background:0 0;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.sa-tab:hover{color:var(--ink)}.sa-tab.active{color:var(--teal);border-bottom-color:var(--teal)}
+.sa-hour-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.sa-hour-table th{background:#f0f3f9;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);padding:8px 6px}
+.sa-hour-table th:first-child{text-align:left;padding-left:14px}
+.sa-hour-table td{padding:8px 6px;border-top:1px solid var(--line);text-align:center;font-size:13px;font-variant-numeric:tabular-nums}
+.sa-hour-table td:first-child{text-align:left;padding-left:14px;font-weight:700;color:var(--ink)}
+.sa-hour-table tr.sa-now{background:var(--teal-tint);font-weight:700}
+.sa-hour-table tr.sa-now td:first-child{color:var(--teal)}
+.sa-cov{display:inline-block;width:60px;height:6px;border-radius:3px;background:var(--line);position:relative;vertical-align:middle}
+.sa-cov-fill{height:100%;border-radius:3px;position:absolute;left:0;top:0}
+.sa-cov-fill.good{background:var(--verified)}.sa-cov-fill.warn{background:var(--amber)}.sa-cov-fill.bad{background:var(--danger)}
+.sa-heatmap{display:grid;grid-template-columns:60px repeat(7,1fr);gap:2px;margin-bottom:16px}
+.sa-hm-head{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--steel);text-align:center;padding:6px 0}
+.sa-hm-hour{font-size:11px;font-weight:600;color:var(--steel);display:flex;align-items:center;padding:0 6px}
+.sa-hm-cell{border-radius:4px;text-align:center;font-size:11px;font-weight:700;padding:6px 2px;min-height:28px;display:flex;align-items:center;justify-content:center;color:#fff;transition:opacity .15s}
+.sa-hm-cell:hover{opacity:.85}
+.sa-ai-panel{background:linear-gradient(135deg,#eef2ff,#e0f2fe);border:1px solid #c7d2fe;border-radius:14px;padding:20px;margin-bottom:16px}
+.sa-ai-panel h3{margin:0 0 6px;font-size:16px;color:var(--navy)}
+.sa-ai-panel p{font-size:13px;color:var(--steel);margin-bottom:14px}
+.sa-ai-result{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px;font-size:13px;line-height:1.65;white-space:pre-wrap}
+.sa-ai-loading{display:flex;align-items:center;gap:10px;padding:16px;color:var(--teal);font-weight:600}
+.sa-ai-loading .spinner{width:20px;height:20px;border:3px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sa-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.sa-summary-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+.sa-summary-card .ssv{font-size:24px;font-weight:800;color:var(--navy)}.sa-summary-card .ssl{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em;margin-top:2px}
+.sa-schedule-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.sa-sched-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+.sa-sched-card .ssc-name{font-weight:700;font-size:14px;margin-bottom:4px}
+.sa-sched-card .ssc-time{font-size:13px;color:var(--teal);font-weight:600}
+.sa-sched-card .ssc-reason{font-size:12px;color:var(--steel);margin-top:4px}
 </style>
 </head>
 <body>
@@ -1235,11 +1270,30 @@ async function syncAfterSaleToCRM(waitingId,closed,reasonNotPurchased,followUpDa
 async function syncFloorMetricsToCommandCenter(storeId){
   try{
     const todayStr=new Date().toISOString().split('T')[0];
-    const[{data:waiting},{data:interactions}]=await Promise.all([
+    const nowHour=new Date().getHours();
+    const bucketStart=todayStr+'T'+String(nowHour).padStart(2,'0')+':00:00';
+    const[{data:waiting},{data:interactions},{data:hourWaiting}]=await Promise.all([
       sb.from('iq_customer_waiting_queue').select('id,status,arrival_time').eq('store_id',storeId).gte('arrival_time',todayStr+'T00:00:00'),
-      sb.from('iq_customer_interactions').select('started_at,accepted_at,outcome').eq('store_id',storeId).gte('started_at',todayStr+'T00:00:00')
+      sb.from('iq_customer_interactions').select('started_at,accepted_at,outcome').eq('store_id',storeId).gte('started_at',todayStr+'T00:00:00'),
+      sb.from('iq_customer_waiting_queue').select('id,status').eq('store_id',storeId).gte('arrival_time',bucketStart).lt('arrival_time',todayStr+'T'+String(nowHour+1).padStart(2,'0')+':00:00')
     ]);
-    const w=waiting??[],ix=interactions??[];
+    const w=waiting??[],ix=interactions??[],hw=hourWaiting??[];
+
+    // --- Auto-populate iq_hourly_traffic_summaries for this hour ---
+    const hourTraffic=hw.length;
+    const hourServed=hw.filter(c=>c.status==='with_salesperson').length;
+    const hourUps=ix.filter(i=>{const h=new Date(i.started_at).getHours();return h===nowHour;}).length;
+    const hourWaits=ix.filter(i=>{const h=new Date(i.started_at).getHours();return h===nowHour&&i.accepted_at;}).map(i=>Math.abs((new Date(i.accepted_at)-new Date(i.started_at))/1000)).filter(w=>w<3600);
+    const avgWaitSec=hourWaits.length?Math.round(hourWaits.reduce((a,b)=>a+b,0)/hourWaits.length):0;
+    const recStaff=Math.max(1,Math.ceil(hourTraffic/2));
+    const{data:existingBucket}=await sb.from('iq_hourly_traffic_summaries').select('id').eq('store_id',storeId).eq('bucket_start',bucketStart).maybeSingle();
+    if(existingBucket){
+      await sb.from('iq_hourly_traffic_summaries').update({raw_traffic:hourTraffic,adjusted_traffic:hourTraffic,customer_groups:hourTraffic,ups_created:hourUps,customers_served:hourServed,avg_wait_seconds:avgWaitSec,staffing_recommended:recStaff,updated_at:new Date().toISOString()}).eq('id',existingBucket.id);
+    }else{
+      await sb.from('iq_hourly_traffic_summaries').insert({organization_id:currentOrg.id,store_id:storeId,bucket_start:bucketStart,raw_traffic:hourTraffic,adjusted_traffic:hourTraffic,customer_groups:hourTraffic,ups_created:hourUps,customers_served:hourServed,avg_wait_seconds:avgWaitSec,staffing_minimum:Math.max(1,Math.ceil(hourTraffic/3)),staffing_recommended:recStaff});
+    }
+
+    // --- Command Center metric snapshots ---
     const walkIns=w.length;
     const served=w.filter(c=>['with_salesperson'].includes(c.status)).length+ix.filter(i=>i.outcome==='sale').length;
     const conversion=walkIns?Math.min(100,Math.round((ix.filter(i=>i.outcome==='sale').length/walkIns)*100)):0;
@@ -1650,45 +1704,283 @@ async function renderAnalytics(){
 }
 
 // ===== SHIFT ANALYSIS =====
+let saTab='today'; // 'today','trends','ai'
 async function renderStaffing(){
   if(!currentStore){mainEl.innerHTML='<div class="empty">No store yet — add one in Settings.</div>';return;}
   const sid=currentStore.id;
-  const todayStr=new Date().toISOString().split('T')[0];
-  const[{data:shifts},{data:waiting},{data:hourly},{data:predictions}]=await Promise.all([
-    sb.from('iq_shift_records').select('*').eq('store_id',sid).eq('is_active',true),
-    sb.from('iq_customer_waiting_queue').select('id').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee','with_salesperson']),
-    sb.from('iq_hourly_traffic_summaries').select('*').eq('store_id',sid).gte('bucket_start',todayStr+'T00:00:00').order('bucket_start'),
-    sb.from('iq_staffing_predictions').select('*').eq('store_id',sid).gte('bucket_start',todayStr+'T00:00:00').order('bucket_start')
-  ]);
-  const staffCount=(shifts??[]).length;
-  const custCount=(waiting??[]).length;
-  const gap=custCount>staffCount;
-  const hourlyData=hourly??[];
-  const maxTraffic=Math.max(1,...hourlyData.map(h=>h.adjusted_traffic||0));
-  const predData=(predictions??[]).filter(p=>new Date(p.bucket_end)>new Date());
 
-  mainEl.innerHTML=`<div class="page-head"><h1>📊 Shift Analysis</h1><div class="sub">${esc(currentStore.name)} — hour-by-hour staffing intelligence</div></div>
+  mainEl.innerHTML=`<div class="page-head"><h1>📊 Shift Analysis</h1><div class="sub">${esc(currentStore.name)} — floor intelligence & AI scheduling</div></div>
+    <div class="sa-tabs">
+      <button class="sa-tab ${saTab==='today'?'active':''}" data-satab="today">Today's Floor</button>
+      <button class="sa-tab ${saTab==='trends'?'active':''}" data-satab="trends">Weekly Trends</button>
+      <button class="sa-tab ${saTab==='ai'?'active':''}" data-satab="ai">AI Scheduling</button>
+    </div>
+    <div id="saContent"></div>`;
+
+  $$('.sa-tab').forEach(t=>{t.onclick=()=>{saTab=t.dataset.satab;renderStaffing();};});
+
+  if(saTab==='today') await renderSAToday(sid);
+  else if(saTab==='trends') await renderSATrends(sid);
+  else await renderSAAI(sid);
+}
+
+async function renderSAToday(sid){
+  const todayStr=new Date().toISOString().split('T')[0];
+  const nowHr=new Date().getHours();
+  const[{data:hourly},{data:shifts},{data:waiting}]=await Promise.all([
+    sb.from('iq_hourly_traffic_summaries').select('*').eq('store_id',sid).gte('bucket_start',todayStr+'T00:00:00').lte('bucket_start',todayStr+'T23:59:59').order('bucket_start'),
+    sb.from('iq_shift_records').select('*').eq('store_id',sid).eq('is_active',true),
+    sb.from('iq_customer_waiting_queue').select('id').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee','with_salesperson'])
+  ]);
+  const h=hourly??[],sh=shifts??[],w=waiting??[];
+  const staffNow=sh.length,custNow=w.length;
+  const gap=custNow>staffNow;
+  const totalTraffic=h.reduce((s,r)=>s+(r.adjusted_traffic||0),0);
+  const totalServed=h.reduce((s,r)=>s+(r.customers_served||0),0);
+  const totalUps=h.reduce((s,r)=>s+(r.ups_created||0),0);
+  const avgWait=h.length?Math.round(h.reduce((s,r)=>s+(r.avg_wait_seconds||0),0)/h.length):0;
+  const peakHour=h.length?h.reduce((a,b)=>(b.adjusted_traffic||0)>(a.adjusted_traffic||0)?b:a,h[0]):null;
+  const peakLabel=peakHour?fmtHourLabel(new Date(peakHour.bucket_start).getHours()):'—';
+
+  const el=$('#saContent');
+  el.innerHTML=`
     <div class="staff-vs-cust">
-      <div class="svc-card ${gap?'gap-warn':''}"><div class="svc-val num">${staffCount}</div><div class="svc-lbl">Staff Available Now</div></div>
-      <div class="svc-card ${gap?'gap-warn':''}"><div class="svc-val num">${custCount}</div><div class="svc-lbl">Customers In Store</div></div>
+      <div class="svc-card ${gap?'gap-warn':''}"><div class="svc-val num">${staffNow}</div><div class="svc-lbl">Staff On Floor Now</div></div>
+      <div class="svc-card ${gap?'gap-warn':''}"><div class="svc-val num">${custNow}</div><div class="svc-lbl">Customers In Store</div></div>
     </div>
-    ${gap?`<div class="ai-insight"><div class="ai-icon">⚠️</div><div class="ai-text"><b>More customers than staff right now.</b> Consider open rotation or calling in backup.</div></div>`:''}
-    <div class="chart-wrap"><h3>Traffic by Hour — Today</h3><p class="sub" style="margin-bottom:4px">Bar height = customer groups · dot = recommended staff</p>
-      <div class="chart-bars">${hourlyData.length?hourlyData.map(h=>{
-        const pct=Math.max(6,Math.round((h.adjusted_traffic||0)/maxTraffic*100));
-        const hr=new Date(h.bucket_start).getHours();
-        const label=hr===0?'12am':hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm';
-        return`<div class="chart-bar-col"><span class="cb-val">${h.adjusted_traffic||0}</span><div class="chart-bar" style="height:${pct}%"><div class="chart-bar staff-bar" style="height:${Math.min(100,(h.staffing_recommended||0)*18)}%"></div></div><span class="cb-lbl">${label}</span></div>`;
-      }).join(''):'<div class="empty">No traffic data yet today.</div>'}</div>
+    ${gap?`<div class="ai-insight"><div class="ai-icon">⚠️</div><div class="ai-text"><b>More customers than staff.</b> Consider open rotation or calling in backup.</div></div>`:''}
+    <div class="sa-summary-grid">
+      <div class="sa-summary-card"><div class="ssv num">${totalTraffic}</div><div class="ssl">Walk-Ins Today</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${totalUps}</div><div class="ssl">Ups Created</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${totalServed}</div><div class="ssl">Served</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${fmtTime(avgWait)}</div><div class="ssl">Avg Wait</div></div>
+      <div class="sa-summary-card"><div class="ssv">${peakLabel}</div><div class="ssl">Peak Hour</div></div>
+    </div>
+    <div class="dash-panel" style="padding:0;overflow:hidden">
+      <table class="sa-hour-table">
+        <thead><tr><th style="width:70px">Hour</th><th>Walk-Ins</th><th>Ups</th><th>Served</th><th>Rec. Staff</th><th>Avg Wait</th><th>Coverage</th></tr></thead>
+        <tbody>${buildHourlyRows(h,nowHr)}</tbody>
+      </table>
+    </div>
+    <div class="chart-wrap"><h3>Hourly Traffic & Staffing</h3>
+      <div class="chart-bars">${h.length?h.map(row=>{
+        const maxT=Math.max(1,...h.map(r=>r.adjusted_traffic||0));
+        const pct=Math.max(6,Math.round((row.adjusted_traffic||0)/maxT*100));
+        const hr=new Date(row.bucket_start).getHours();
+        return`<div class="chart-bar-col"><span class="cb-val">${row.adjusted_traffic||0}</span><div class="chart-bar" style="height:${pct}%"><div class="chart-bar staff-bar" style="height:${Math.min(100,(row.staffing_recommended||0)*18)}%"></div></div><span class="cb-lbl">${fmtHourLabel(hr)}</span></div>`;
+      }).join(''):'<div class="empty">No traffic data yet today. Walk-ins will populate this automatically.</div>'}</div>
       <div class="chart-legend"><span><span class="dot" style="background:var(--teal)"></span>Customer groups</span><span><span class="dot" style="background:var(--accent)"></span>Recommended staff</span></div>
-    </div>
-    <div class="dash-panel"><h3>Upcoming Hours — Staffing Prediction</h3><p class="sub" style="margin-bottom:10px">Based on today's traffic pattern and historical trends</p>
-      <div class="predict-grid">${predData.length?predData.map(p=>{
-        const hr=new Date(p.bucket_start).getHours();
-        const label=hr===0?'12–1am':hr<12?hr+'–'+(hr+1)+'am':hr===12?'12–1pm':(hr-12)+'–'+(hr-11)+'pm';
-        return`<div class="predict-card ${p.recommended_manager_cover?'needs-cover':''}"><div class="pc-hour">${label}</div><div class="pc-staff">${p.recommended_sales_staff} staff</div><div class="pc-detail">${p.predicted_customer_groups||'—'} groups expected${p.recommended_manager_cover?' · Mgr cover recommended':''}</div><div class="pc-detail">Confidence ${Math.round((p.confidence||0)*100)}%</div></div>`;
-      }).join(''):'<div class="empty">No predictions available for the rest of today.</div>'}</div>
     </div>`;
+}
+
+function fmtHourLabel(hr){return hr===0?'12am':hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm';}
+
+function buildHourlyRows(hourly,nowHr){
+  if(!hourly.length){
+    return Array.from({length:12},(_, i)=>{
+      const hr=9+i;
+      return`<tr ${hr===nowHr?'class="sa-now"':''}><td>${fmtHourLabel(hr)}</td><td colspan="6" style="color:var(--steel);font-size:12px">—</td></tr>`;
+    }).join('');
+  }
+  return hourly.map(row=>{
+    const hr=new Date(row.bucket_start).getHours();
+    const t=row.adjusted_traffic||0;
+    const rec=row.staffing_recommended||1;
+    const ratio=Math.min(100,Math.round((rec/Math.max(1,t))*100));
+    const covCls=ratio>=80?'good':ratio>=50?'warn':'bad';
+    return`<tr ${hr===nowHr?'class="sa-now"':''}>
+      <td>${fmtHourLabel(hr)}</td>
+      <td><b>${t}</b></td>
+      <td>${row.ups_created||0}</td>
+      <td>${row.customers_served||0}</td>
+      <td><b>${rec}</b></td>
+      <td>${row.avg_wait_seconds?fmtTime(row.avg_wait_seconds):'—'}</td>
+      <td><div class="sa-cov"><div class="sa-cov-fill ${covCls}" style="width:${Math.min(100,ratio)}%"></div></div></td>
+    </tr>`;
+  }).join('');
+}
+
+async function renderSATrends(sid){
+  // Pull last 4 weeks of hourly data
+  const fourWeeksAgo=new Date(Date.now()-28*86400000).toISOString().split('T')[0];
+  const{data:hourly}=await sb.from('iq_hourly_traffic_summaries').select('bucket_start,adjusted_traffic,customers_served,ups_created,staffing_recommended,avg_wait_seconds').eq('store_id',sid).gte('bucket_start',fourWeeksAgo+'T00:00:00').order('bucket_start');
+  const h=hourly??[];
+
+  // Build day-of-week × hour heatmap
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const heatmap={};// key: "dow-hour" => {total,count}
+  let maxAvg=1;
+  h.forEach(row=>{
+    const d=new Date(row.bucket_start);
+    const dow=d.getDay();const hr=d.getHours();
+    const key=dow+'-'+hr;
+    if(!heatmap[key])heatmap[key]={total:0,count:0,served:0,ups:0,wait:0};
+    heatmap[key].total+=(row.adjusted_traffic||0);
+    heatmap[key].served+=(row.customers_served||0);
+    heatmap[key].ups+=(row.ups_created||0);
+    heatmap[key].wait+=(row.avg_wait_seconds||0);
+    heatmap[key].count++;
+  });
+  Object.values(heatmap).forEach(v=>{const avg=v.total/v.count;if(avg>maxAvg)maxAvg=avg;});
+
+  // Summary stats
+  const totalDays=new Set(h.map(r=>new Date(r.bucket_start).toISOString().split('T')[0])).size;
+  const totalTraffic=h.reduce((s,r)=>s+(r.adjusted_traffic||0),0);
+  const avgDaily=totalDays?Math.round(totalTraffic/totalDays):0;
+  // Busiest day of week
+  const dowTotals=Array(7).fill(0),dowCounts=Array(7).fill(0);
+  h.forEach(r=>{const dow=new Date(r.bucket_start).getDay();dowTotals[dow]+=(r.adjusted_traffic||0);dowCounts[dow]++;});
+  const dowAvg=dowTotals.map((t,i)=>dowCounts[i]?t/dowCounts[i]:0);
+  const busiestDow=days[dowAvg.indexOf(Math.max(...dowAvg))];
+
+  const el=$('#saContent');
+  el.innerHTML=`
+    <div class="sa-summary-grid">
+      <div class="sa-summary-card"><div class="ssv num">${totalDays}</div><div class="ssl">Days Tracked</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${totalTraffic}</div><div class="ssl">Total Walk-Ins</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${avgDaily}</div><div class="ssl">Avg Daily</div></div>
+      <div class="sa-summary-card"><div class="ssv">${busiestDow}</div><div class="ssl">Busiest Day</div></div>
+    </div>
+    <div class="dash-panel"><h3>Traffic Heatmap — Last 4 Weeks</h3>
+      <p class="sub" style="margin-bottom:12px">Average walk-ins per hour by day of week. Darker = busier.</p>
+      <div class="sa-heatmap">
+        <div class="sa-hm-head"></div>${days.map(d=>`<div class="sa-hm-head">${d}</div>`).join('')}
+        ${Array.from({length:12},(_, i)=>{
+          const hr=9+i;
+          return`<div class="sa-hm-hour">${fmtHourLabel(hr)}</div>${Array.from({length:7},(_, dow)=>{
+            const key=dow+'-'+hr;const cell=heatmap[key];
+            if(!cell)return`<div class="sa-hm-cell" style="background:var(--line);color:var(--steel)">—</div>`;
+            const avg=Math.round(cell.total/cell.count*10)/10;
+            const intensity=Math.max(0.15,avg/maxAvg);
+            const r=Math.round(47*(1-intensity)+220*intensity);
+            const g=Math.round(125*(1-intensity)+60*intensity);
+            const b=Math.round(114*(1-intensity)+50*intensity);
+            return`<div class="sa-hm-cell" style="background:rgba(${r>150?'220,90,50':'47,125,114'},${intensity.toFixed(2)});color:${intensity>0.5?'#fff':'var(--ink)'}" title="${days[dow]} ${fmtHourLabel(hr)}: avg ${avg} walk-ins">${avg.toFixed(1)}</div>`;
+          }).join('')}`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="dash-panel"><h3>Day-of-Week Comparison</h3>
+      <div class="chart-bars" style="height:140px">${days.map((d,i)=>{
+        const avg=dowAvg[i];const pct=Math.max(6,Math.round(avg/Math.max(1,...dowAvg)*100));
+        return`<div class="chart-bar-col"><span class="cb-val">${avg.toFixed(1)}</span><div class="chart-bar" style="height:${pct}%;${i===new Date().getDay()?'background:var(--accent)':''}"></div><span class="cb-lbl">${d}</span></div>`;
+      }).join('')}</div>
+      <div class="chart-legend"><span><span class="dot" style="background:var(--teal)"></span>Avg walk-ins per hour</span><span><span class="dot" style="background:var(--accent)"></span>Today</span></div>
+    </div>`;
+}
+
+async function renderSAAI(sid){
+  // Pull historical data for AI context
+  const fourWeeksAgo=new Date(Date.now()-28*86400000).toISOString().split('T')[0];
+  const[{data:hourly},{data:shifts}]=await Promise.all([
+    sb.from('iq_hourly_traffic_summaries').select('bucket_start,adjusted_traffic,customers_served,ups_created,staffing_recommended,avg_wait_seconds').eq('store_id',sid).gte('bucket_start',fourWeeksAgo+'T00:00:00').order('bucket_start'),
+    sb.from('iq_shift_records').select('user_id,login_at,logout_at,role_name,ups_accepted,ups_missed,closed_sales,customers_served').eq('store_id',sid).gte('login_at',fourWeeksAgo+'T00:00:00').order('login_at')
+  ]);
+  const h=hourly??[],sh=shifts??[];
+
+  // Build pattern summaries for AI
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dowPatterns={};
+  h.forEach(row=>{
+    const d=new Date(row.bucket_start);const dow=d.getDay();const hr=d.getHours();
+    if(!dowPatterns[dow])dowPatterns[dow]={};
+    if(!dowPatterns[dow][hr])dowPatterns[dow][hr]={traffic:[],served:[],wait:[]};
+    dowPatterns[dow][hr].traffic.push(row.adjusted_traffic||0);
+    dowPatterns[dow][hr].served.push(row.customers_served||0);
+    dowPatterns[dow][hr].wait.push(row.avg_wait_seconds||0);
+  });
+
+  // Summary for display
+  const totalDays=new Set(h.map(r=>new Date(r.bucket_start).toISOString().split('T')[0])).size;
+  const uniqueReps=new Set(sh.map(s=>s.user_id)).size;
+  const totalTraffic=h.reduce((s,r)=>s+(r.adjusted_traffic||0),0);
+  const avgDaily=totalDays?Math.round(totalTraffic/totalDays):0;
+
+  // Build compact pattern string for AI
+  const patternStr=Object.entries(dowPatterns).map(([dow,hours])=>{
+    const hourSummaries=Object.entries(hours).map(([hr,data])=>{
+      const avgT=Math.round(data.traffic.reduce((a,b)=>a+b,0)/data.traffic.length*10)/10;
+      return`${fmtHourLabel(Number(hr))}:${avgT}`;
+    }).join(', ');
+    return`${days[dow]}: ${hourSummaries}`;
+  }).join('\n');
+
+  const repNames=Object.values(profiles);
+
+  const el=$('#saContent');
+  el.innerHTML=`
+    <div class="sa-summary-grid">
+      <div class="sa-summary-card"><div class="ssv num">${totalDays}</div><div class="ssl">Days of Data</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${uniqueReps}</div><div class="ssl">Team Members</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${avgDaily}</div><div class="ssl">Avg Daily Traffic</div></div>
+      <div class="sa-summary-card"><div class="ssv num">${h.length}</div><div class="ssl">Hourly Records</div></div>
+    </div>
+    <div class="sa-ai-panel">
+      <h3>🤖 AI Schedule Builder</h3>
+      <p>Analyzes your 4-week traffic patterns to recommend optimal shift schedules, coverage windows, and staffing levels for each day of the week.</p>
+      <div class="field"><label>Anthropic API Key</label><input id="sa_apikey" type="password" placeholder="sk-ant-..." value="${localStorage.getItem('aiq_anthropic_key')||''}" style="font-size:13px"></div>
+      <div class="field"><label>Store hours</label><div class="field-row"><input id="sa_open" type="number" value="9" min="0" max="23" style="font-size:13px"><input id="sa_close" type="number" value="21" min="0" max="23" style="font-size:13px"></div></div>
+      <button class="btn btn-primary" id="sa_generate" ${h.length<20?'disabled title="Need more data — at least 1 week of traffic"':''}>Generate AI Schedule Recommendations</button>
+      ${h.length<20?`<p style="font-size:12px;color:var(--amber);margin-top:8px">Need at least 1 week of traffic data for accurate recommendations. Currently have ${totalDays} day${totalDays!==1?'s':''} of data.</p>`:''}
+      <div id="sa_aiResult"></div>
+    </div>
+    <div class="dash-panel"><h3>📋 Traffic Pattern Summary (sent to AI)</h3>
+      <p class="sub" style="margin-bottom:8px">Average walk-ins per hour by day of week — what the AI uses to build its recommendations.</p>
+      <pre style="font-size:11px;color:var(--steel);white-space:pre-wrap;background:#f8fafd;padding:12px;border-radius:8px;border:1px solid var(--line);max-height:200px;overflow-y:auto">${esc(patternStr)}</pre>
+    </div>`;
+
+  $('#sa_generate')?.addEventListener('click',async()=>{
+    const apiKey=$('#sa_apikey').value.trim();
+    if(!apiKey)return alert('Enter your Anthropic API key.');
+    localStorage.setItem('aiq_anthropic_key',apiKey);
+    const openHr=Number($('#sa_open').value)||9;
+    const closeHr=Number($('#sa_close').value)||21;
+    const resultEl=$('#sa_aiResult');
+    resultEl.innerHTML=`<div class="sa-ai-loading"><div class="spinner"></div>Analyzing ${totalDays} days of traffic data across ${h.length} hourly records…</div>`;
+
+    const prompt=`You are a retail floor scheduling expert for an appliance store called "${currentStore?.name||'Store'}".
+
+TRAFFIC DATA (average walk-ins per hour, by day of week, last 4 weeks):
+${patternStr}
+
+TEAM: ${repNames.length} reps: ${repNames.join(', ')}
+STORE HOURS: ${fmtHourLabel(openHr)} – ${fmtHourLabel(closeHr)}
+CURRENT DATE: ${new Date().toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+
+RULES:
+- Each rep should work 7-9 hour shifts with a 30-min lunch
+- Minimum 2 reps on floor at all times during store hours
+- Coverage ratio: 1 rep per 3 expected customer groups is ideal
+- Stagger shifts so you're not short during transitions
+- Saturday is busiest — needs full coverage
+- Sunday is slowest — can run lean
+
+Based on these traffic patterns, provide:
+
+1. WEEKLY SCHEDULE: For each day (Mon-Sun), recommend which reps should work and their shift times (start-end). Format each as: "RepName: 9am-5pm"
+
+2. COVERAGE ALERTS: Hours where historical traffic exceeds what the scheduled staff can handle. Note the gap and what to do about it.
+
+3. KEY INSIGHTS: 2-3 data-driven observations about this store's traffic patterns that should inform scheduling decisions.
+
+4. PREDICTED NEXT WEEK: Based on trends, predict if next week will be busier or slower than average and why.
+
+Be specific with times and names. This is actionable — the manager will use this to build next week's schedule.`;
+
+    try{
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]})
+      });
+      if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(err.error?.message||'API error '+resp.status);}
+      const data=await resp.json();
+      const text=data.content?.map(c=>c.text||'').join('\n')||'No response received.';
+      resultEl.innerHTML=`<div class="sa-ai-result">${esc(text)}</div>`;
+    }catch(e){
+      resultEl.innerHTML=`<div class="sa-ai-result" style="border-color:var(--danger);color:var(--danger)">Error: ${esc(e.message)}</div>`;
+    }
+  });
 }
 
 // ===== SETTINGS =====
