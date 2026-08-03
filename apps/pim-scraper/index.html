@@ -376,7 +376,23 @@ function classifyRelevance(data) {
   const name = ((data.product_name||'') + ' ' + (data.short_description||'') + ' ' + (data.category||'')).toLowerCase();
   for (const term of EXCLUDE_TERMS) { if (name.includes(term)) return { relevant: false, reason: term }; }
   for (const term of INCLUDE_TERMS) { if (name.includes(term)) return { relevant: true }; }
-  return { relevant: true }; // can't determine = let through
+  return { relevant: true };
+}
+
+function classifySegment(data) {
+  const name = ((data.product_name||'') + ' ' + (data.short_description||'') + ' ' + (data.category||'')).toLowerCase();
+  // Parts & accessories
+  if (/replacement|spare part|handle kit|knob kit|trim kit|filler panel|stacking kit|door panel|grate set|drip pan|filter pack|bracket|gasket|element kit|wok ring|touch-up|cleaner|descaler/.test(name)) return 'parts_accessories';
+  // Vacuums
+  if (/vacuum|roomba|floor care|robot cleaner/.test(name)) return 'vacuum_floor_care';
+  // Outdoor
+  if (/\bgrill\b|bbq|barbecue|smoker|pizza oven|outdoor kitchen|outdoor fridge/.test(name)) return 'outdoor';
+  // Not relevant
+  if (/water cooler|water dispenser|bathroom fan|bath fan|ceiling fan|furnace|air condition|humidifier|dehumidifier|air purifier|water heater/.test(name)) return 'not_relevant';
+  // Small appliance
+  if (/\btoaster\b|blender|kettle|food processor|stand mixer|coffee maker|slow cooker|waffle|bread maker|juicer/.test(name)) return 'small_appliance';
+  // Default
+  return 'major_appliance';
 }
 
 /* ═══ SMART SCRAPE ═══ */
@@ -442,7 +458,8 @@ async function saveToPim(idx){
     source_type:'scraper_v2',source_reference:d.source_url||r.url||null,
     source_confidence:r.tier_used===1?0.95:r.tier_used===2?0.80:0.65,
     source_extracted_at:new Date().toISOString(),source_review_status:'pending',
-    market:'CA',status:'active',brand_id:br?.id||null
+    market:'CA',status:'active',brand_id:br?.id||null,
+    product_segment: classifySegment(d)
   };
   const{data:saved,error}=await sb.from('aiq_products').upsert(rec,{onConflict:'brand_name,model,market',ignoreDuplicates:false}).select('id').maybeSingle();
   if(error){logEntry('Save err: '+error.message,'err');return}
