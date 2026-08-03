@@ -572,7 +572,8 @@ async function boot(){
   }catch(e){console.warn('Invite check:',e);}
 
   // Get orgs — query role separately to avoid join issues
-  const{data:memberships}=await sb.from('organization_members').select('organization_id,role').eq('user_id',currentUser.id).eq('status','active');
+  const{data:memberships,error:memErr}=await sb.from('organization_members').select('organization_id,role').eq('user_id',currentUser.id).eq('status','active');
+  console.log('Memberships:',memberships,'Error:',memErr);
   const memberRoles={};(memberships||[]).forEach(m=>{memberRoles[m.organization_id]=m.role;});
   const orgIds=(memberships||[]).map(m=>m.organization_id);
   const{data:orgData}=orgIds.length?await sb.from('organizations').select('id,name,slug').in('id',orgIds):{data:[]};
@@ -587,6 +588,18 @@ async function boot(){
 
   currentOrg=orgs[0];
   userRole=orgs[0]._role||'member';
+
+  // Direct role check — fallback if the two-query join missed it
+  if(userRole==='member'){
+    try{
+      const{data:directRole}=await sb.from('organization_members').select('role').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).eq('status','active').maybeSingle();
+      if(directRole?.role&&directRole.role!=='member'){
+        console.log('Direct role check upgraded:',directRole.role);
+        userRole=directRole.role;
+        orgs[0]._role=directRole.role;
+      }
+    }catch(e){console.warn('Direct role check failed:',e);}
+  }
 
   // Org switcher (only show if user has multiple orgs)
   const orgSel=$('#orgSelect');
