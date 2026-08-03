@@ -591,15 +591,12 @@ async function boot(){
   currentOrg=orgs[0];
   userRole=orgs[0]._role||'member';
 
-  // Direct role check — always run, don't trust the two-query join
+  // Direct role check via RPC — bypasses RLS column masking
   try{
-    const{data:directRole,error:drErr}=await sb.from('organization_members').select('role').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).eq('status','active').maybeSingle();
-    console.log('Direct role check:',JSON.stringify(directRole),'Error:',drErr);
-    if(directRole?.role){
-      userRole=directRole.role;
-      orgs[0]._role=directRole.role;
-    }
-  }catch(e){console.warn('Direct role check failed:',e);}
+    const{data:rpcRole}=await sb.rpc('get_my_org_role',{p_org_id:currentOrg.id});
+    console.log('RPC role:',rpcRole);
+    if(rpcRole){userRole=rpcRole;orgs[0]._role=rpcRole;}
+  }catch(e){console.warn('RPC role check failed:',e);}
 
   // Org switcher (only show if user has multiple orgs)
   const orgSel=$('#orgSelect');
@@ -609,7 +606,9 @@ async function boot(){
     orgSel.value=currentOrg.id;
     orgSel.onchange=async()=>{
       const picked=orgs.find(o=>o.id===orgSel.value);
-      if(picked){currentOrg=picked;userRole=picked._role||'member';profiles={};
+      if(picked){currentOrg=picked;
+        try{const{data:rr}=await sb.rpc('get_my_org_role',{p_org_id:picked.id});userRole=rr||'member';}catch{userRole=picked._role||'member';}
+        profiles={};
         const{data:locs}=await sb.from('org_locations').select('*').eq('organization_id',currentOrg.id).eq('location_type','store').order('name');
         stores=locs||[];currentStore=stores[0]||null;
         const sel=$('#storeSelect');sel.innerHTML=stores.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')||'<option>No stores</option>';
