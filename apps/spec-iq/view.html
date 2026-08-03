@@ -310,9 +310,48 @@ function render(pkg,products,services,warranties,retailer){
   // Show content
   el('loading').style.display='none';
   el('content').style.display='block';
+  initTracking(pkg.id);
 }
 
 loadPackage();
+
+/* ==================== ENGAGEMENT TRACKING ==================== */
+var _pkgId=null,_tracked={},_startTime=Date.now();
+function trackEvent(type,data){
+  if(!_pkgId)return;
+  try{sb.from('speciq_package_events').insert({package_id:_pkgId,event_type:type,event_data:data||{},user_agent:navigator.userAgent}).then(()=>{})}catch(e){}
+}
+function initTracking(pkgId){
+  _pkgId=pkgId;
+  // Track section views via IntersectionObserver
+  var sections=['products-list','install-section','warranty-section','pricing-section'];
+  if('IntersectionObserver' in window){
+    var obs=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting&&!_tracked[e.target.id]){
+          _tracked[e.target.id]=true;
+          trackEvent('section_viewed',{section:e.target.id,time_ms:Date.now()-_startTime});
+        }
+      });
+    },{threshold:0.3});
+    sections.forEach(function(id){var s=document.getElementById(id);if(s)obs.observe(s)});
+  }
+  // Track time on page when leaving
+  window.addEventListener('beforeunload',function(){
+    var duration=Math.round((Date.now()-_startTime)/1000);
+    if(navigator.sendBeacon){
+      navigator.sendBeacon('https://fumwwhyozeouoqscolke.supabase.co/rest/v1/speciq_package_events',
+        JSON.stringify({package_id:_pkgId,event_type:'page_duration',event_data:{seconds:duration},user_agent:navigator.userAgent}));
+    }
+  });
+  // Track link clicks on spec sheets / install guides
+  document.addEventListener('click',function(e){
+    var link=e.target.closest('a[href]');
+    if(link&&(link.href.includes('spec')||link.href.includes('install')||link.href.includes('guide'))){
+      trackEvent('link_clicked',{url:link.href,text:link.textContent.trim()});
+    }
+  });
+}
 </script>
 </body>
 </html>

@@ -330,7 +330,11 @@ label{display:block;font-size:13px;font-weight:600;color:var(--steel);margin-bot
       <p style="font-size:17px;color:var(--steel);max-width:500px;margin:0 auto">14-day free trial on every plan. No credit card required.</p>
     </div>
     <div class="grid3" style="gap:20px;margin-bottom:32px" id="pricing-cards-full"></div>
-    <div class="grid2" style="gap:20px" id="pricing-cards-extra"></div>
+    <div class="grid2" style="gap:20px;max-width:760px;margin:0 auto 40px" id="pricing-cards-extra"></div>
+    <div style="text-align:center;margin-top:40px;padding:32px;background:var(--paper);border-radius:var(--radius);border:1px solid var(--line)">
+      <p style="font-size:15px;color:var(--steel);margin-bottom:8px">Spec IQ is also available as part of the <strong style="color:var(--navy)">ApplianceIQ Intelligence Group</strong> platform bundles.</p>
+      <p style="font-size:14px;color:var(--steel)">Standalone: <strong style="color:var(--navy)">$199/mo</strong> · Included in Growth ($1,299/mo) and Complete ($2,499/mo) plans.</p>
+    </div>
   </div>
 </div>
 
@@ -1116,7 +1120,16 @@ function renderSummary(){
   rows+='<tr style="border-top:2px solid var(--navy);font-weight:700"><td colspan="5">Product MSRP</td><td class="r num" style="font-family:Sora">$'+prodTotal.toLocaleString()+'</td></tr>';
   if(warTotal>0)rows+='<tr style="font-weight:600"><td colspan="5">Protection Plans</td><td class="r num" style="font-family:Sora;color:var(--verified)">$'+warTotal.toLocaleString()+'</td></tr>';
   if(svcTotal>0)rows+='<tr style="font-weight:600"><td colspan="5">Services</td><td class="r num" style="font-family:Sora">$'+svcTotal.toLocaleString()+'</td></tr>';
-  if(warTotal>0||svcTotal>0)rows+='<tr style="border-top:2px solid var(--navy);font-weight:700;font-size:16px"><td colspan="5">Grand Total</td><td class="r num" style="font-family:Sora">$'+grandTotal.toLocaleString()+'</td></tr>';
+  if(warTotal>0||svcTotal>0)rows+='<tr style="border-top:2px solid var(--navy);font-weight:700;font-size:16px"><td colspan="5">Subtotal</td><td class="r num" style="font-family:Sora">$'+grandTotal.toLocaleString()+'</td></tr>';
+  // Tax estimate
+  var tax=calcTax(grandTotal);
+  if(tax.total>0){
+    tax.breakdown.forEach(function(t){rows+='<tr style="font-size:13px;color:var(--steel)"><td colspan="5">'+t.label+'</td><td class="r num" style="font-family:Sora">$'+t.amount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td></tr>'});
+    rows+='<tr style="border-top:2px solid var(--focus);font-weight:700;font-size:16px;color:var(--focus)"><td colspan="5">Estimated Total (incl. tax)</td><td class="r num" style="font-family:Sora;color:var(--focus)">$'+tax.grand.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+'</td></tr>';
+    rows+='<tr><td colspan="6" style="font-size:11px;color:var(--steel);font-style:italic;border-bottom:none;padding-top:0">Tax estimate based on '+(activeTaxRule?.jurisdiction_name||'default')+' rates. Final tax calculated at point of sale.</td></tr>';
+  }else if(grandTotal>0){
+    rows+='<tr><td colspan="6" style="font-size:11px;color:var(--steel);font-style:italic;border-bottom:none;padding-top:4px">Applicable taxes will be calculated at point of sale.</td></tr>';
+  }
   el('sum-table').innerHTML=rows;
 }
 
@@ -1125,7 +1138,8 @@ function statusBadge(s){var map={draft:'y',generated:'b',pending_approval:'p',su
 function approvalBadge(s){var map={not_required:'',pending:'p',approved:'g',approved_with_conditions:'g',changes_requested:'y',rejected:'r'};if(!s||s==='not_required')return'';return'<span class="badge badge-'+(map[s]||'y')+'">'+s.replace(/_/g,' ')+'</span>'}
 
 /* ==================== PRICING PLANS ==================== */
-var PLANS=[{name:'Starter',price:'$99',unit:'/user/month',desc:'For individual salespeople',features:['Product search','Product Passport access','Spec package builder','PDF generation','Customer sharing links','Basic CRM connection']},{name:'Professional',price:'$199',unit:'/user/month',desc:'For teams that sell',featured:true,features:['Everything in Starter','Pricing pages with approval','Package versioning','Installation summaries','Automated CRM follow-up','Custom branding','Customer engagement tracking']},{name:'Retail Location',price:'$599',unit:'/location/month',desc:'For a store team',features:['Up to 10 users','Retailer branding','Full CRM integration','Shared templates','Manager controls','Pricing approvals','Store analytics']},{name:'Multi-Location',price:'$1,500+',unit:'/month',desc:'For multi-store operations',features:['Multiple stores','Central administration','Shared catalog','Location-specific pricing','Enterprise reporting','SSO','API access']},{name:'Builder & Designer',price:'$149',unit:'/user/month',desc:'For trade professionals',features:['Project management','Spec books','CAD/BIM access','Collaboration tools','Client presentation tools']}];
+var PLANS=[{name:'Starter',price:'$99',unit:'/user/month',desc:'For individual salespeople',features:['88-product database search','Specification package builder','PDF generation & print','Customer share links','Quote validity tracking','Basic CRM connection']},{name:'Professional',price:'$199',unit:'/user/month',desc:'For teams that close deals',featured:true,features:['Everything in Starter','Customer-facing quote portal','Pricing pages with approval workflow','Warranty & protection plan integration','Installation requirement summaries','Custom store branding','Engagement tracking (opens & views)']},{name:'Retail Location',price:'$599',unit:'/location/month',desc:'For a store sales team',features:['Up to 10 users included','Full CRM integration & deal sync','Manager approval controls','Shared templates & store settings','Team management & roles','Store analytics dashboard','Priority support']}];
+var PLANS_EXTRA=[{name:'Multi-Location',price:'Custom',unit:'',desc:'For multi-store operations',features:['Unlimited locations & users','Central administration','Cross-location reporting','Location-specific pricing rules','SSO & API access','Dedicated account manager']},{name:'Builder & Designer',price:'$149',unit:'/user/month',desc:'For trade professionals',features:['Project-based spec management','Spec books & packages','CAD/BIM asset access','Client presentation tools','Collaboration with retailers']}];
 function planCard(p){return'<div class="card price-card'+(p.featured?' featured':'')+'">'+(p.featured?'<div class="badge badge-b" style="position:absolute;top:-10px;left:20px">Most popular</div>':'')+'<h3 style="font-size:20px;margin-bottom:2px">'+p.name+'</h3><p style="font-size:13px;color:var(--steel);margin-bottom:16px">'+p.desc+'</p><div style="display:flex;align-items:baseline;gap:4px;margin-bottom:24px"><span class="num" style="font-size:36px;font-weight:700;font-family:Sora">'+p.price+'</span><span style="color:var(--steel);font-size:14px">'+p.unit+'</span></div><div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">'+p.features.map(function(f){return'<div style="display:flex;gap:8px;font-size:14px;color:var(--steel)"><svg class="icon" style="width:16px;height:16px;color:var(--verified);flex-shrink:0;margin-top:2px"><use href="#i-check"/></svg>'+f+'</div>'}).join('')+'</div><button class="btn btn-p" style="width:100%;justify-content:center" onclick="showAuth(\'signup\')">Start free trial</button></div>'}
 function filterPackages(status,btn){currentPkgFilter=status;document.querySelectorAll('#view-packages .status-filter button').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderPackagesList()}
 function filterApprovals(status,btn){currentApprovalFilter=status;document.querySelectorAll('#view-approvals .status-filter button').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');renderApprovalsList()}
@@ -1133,8 +1147,8 @@ function filterApprovals(status,btn){currentApprovalFilter=status;document.query
 /* ==================== INIT DOM ==================== */
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('#sidebar-nav a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();navigate(a.dataset.view);closeMobileMenu()})});
-  var t=PLANS.slice(0,3).map(planCard).join(''),x=PLANS.slice(3).map(planCard).join('');
-  if(el('plan-cards'))el('plan-cards').innerHTML=t;
+  var t=PLANS.map(planCard).join(''),x=PLANS_EXTRA.map(planCard).join('');
+  if(el('plan-cards'))el('plan-cards').innerHTML=PLANS.map(planCard).join('');
   if(el('pricing-cards-full'))el('pricing-cards-full').innerHTML=t;
   if(el('pricing-cards-extra'))el('pricing-cards-extra').innerHTML=x;
   el('s-color1').addEventListener('input',function(){el('s-color1-hex').value=this.value});
@@ -1160,8 +1174,23 @@ async function resolveOrg(){
   await sb.from('profiles').upsert({user_id:currentUser.id,full_name:name,email:currentUser.email},{onConflict:'user_id'});
 }
 function isManager(){return['sales_manager','store_manager','admin','owner'].includes(userRole)}
-function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';var userName=currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there';el('welcome-msg').textContent='Welcome back, '+userName;if(el('mob-user'))el('mob-user').textContent=userName;resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings();loadPendingCount();loadWarrantyCatalog()})}
+function showApp(){el('landing').style.display='none';hide('auth-page','pricing-page');show('app');el('user-email').textContent=currentUser?.email||'';var userName=currentUser?.user_metadata?.full_name||currentUser?.email?.split('@')[0]||'there';el('welcome-msg').textContent='Welcome back, '+userName;if(el('mob-user'))el('mob-user').textContent=userName;resolveOrg().then(()=>{loadDashboardStats();loadProjects();loadRetailerSettings();loadPendingCount();loadWarrantyCatalog();loadTaxRules()})}
 async function loadWarrantyCatalog(){try{const{data}=await sb.from('speciq_warranty_catalog').select('*').eq('active',true).order('sort_order');warrantyCatalog=data||[]}catch(e){warrantyCatalog=[]}}
+let taxRules=[],activeTaxRule=null;
+async function loadTaxRules(){try{const{data}=await sb.from('speciq_tax_rules').select('*').order('is_default',{ascending:false}).order('jurisdiction_name');taxRules=data||[];activeTaxRule=taxRules.find(t=>t.is_default)||taxRules[0]||null}catch(e){taxRules=[];activeTaxRule=null}}
+function calcTax(subtotal){
+  if(!activeTaxRule)return{total:0,breakdown:[],grand:subtotal};
+  var lines=[];var total=0;
+  var hst=parseFloat(activeTaxRule.hst_rate)||0;
+  var gst=parseFloat(activeTaxRule.gst_rate)||0;
+  var pst=parseFloat(activeTaxRule.pst_rate)||0;
+  var qst=parseFloat(activeTaxRule.qst_rate)||0;
+  if(hst>0){var amt=Math.round(subtotal*hst)/100;lines.push({label:'HST ('+hst+'%)',amount:amt});total+=amt}
+  if(gst>0){var amt=Math.round(subtotal*gst)/100;lines.push({label:'GST ('+gst+'%)',amount:amt});total+=amt}
+  if(pst>0){var amt=Math.round(subtotal*pst)/100;lines.push({label:'PST ('+pst+'%)',amount:amt});total+=amt}
+  if(qst>0){var amt=Math.round(subtotal*qst*100)/(100*100);lines.push({label:'QST ('+qst+'%)',amount:amt});total+=amt}
+  return{total:Math.round(total*100)/100,breakdown:lines,grand:Math.round((subtotal+total)*100)/100}
+}
 
 /* ==================== AUTH ==================== */
 window.handleAuth=async(e)=>{e.preventDefault();el('auth-error').classList.add('hidden');el('auth-submit').textContent=authMode==='login'?'Signing in...':'Creating account...';const email=el('auth-email').value,pass=el('auth-pass').value;if(authMode==='signup'){const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:el('auth-name').value,app:'speciq'}}});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Create account';return}el('auth-form').classList.add('hidden');el('auth-success').classList.remove('hidden')}else{const{data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error){el('auth-error').textContent=error.message;el('auth-error').classList.remove('hidden');el('auth-submit').textContent='Sign in';return}currentUser=data.user;showApp()}};
@@ -1250,7 +1279,10 @@ window.searchCrmContacts=async(q)=>{
 window.createProject=async(e)=>{e.preventDefault();const{error}=await sb.from('speciq_projects').insert({project_name:el('pj-name').value,customer_name:el('pj-customer').value,customer_email:el('pj-email').value||null,property_address:el('pj-address').value||null,room_name:el('pj-room').value||null,builder_name:el('pj-builder').value||null,designer_name:el('pj-designer').value||null,expected_purchase_date:el('pj-date').value||null,created_by:currentUser.id,organization_id:userOrgId});if(error){alert('Error: '+error.message);return}el('new-project-form').classList.add('hidden');['pj-name','pj-customer','pj-email','pj-address','pj-room','pj-builder','pj-designer','pj-date'].forEach(function(id){el(id).value=''});loadProjects()};
 
 /* ==================== SAVE PACKAGE ==================== */
+var _savingPackage=false;
 window.savePackage=async(status)=>{
+  if(_savingPackage)return;
+  _savingPackage=true;
   const btn=event?.target?.closest?.('button');
   const origText=btn?.innerHTML;
   try{
@@ -1312,6 +1344,10 @@ window.savePackage=async(status)=>{
       // Fall through to product/service insert logic below
       // Skip project+package insert
       await sb.from('speciq_package_events').insert({package_id:editId,event_type:'edited',event_data:{status:pkgStatus}});
+      // Save version snapshot
+      var newVersion=(existingPkg?.quote_version||1)+1;
+      await sb.from('speciq_packages').update({quote_version:newVersion}).eq('id',editId);
+      await sb.from('speciq_package_versions').insert({package_id:editId,version_number:newVersion,snapshot:{products:builderProducts.map(p=>({name:p.product_name,brand:p.brand,model:p.model_number,msrp:p.msrp})),services:builderServices,total:total,status:pkgStatus},created_by:currentUser.id}).catch(()=>{});
       // Continue to product insert section...
     } else {
     /* ── NEW MODE: insert project + package ── */
@@ -1340,6 +1376,8 @@ window.savePackage=async(status)=>{
     if(ke)throw new Error('Package: '+ke.message);
     pkg=newPkg;
     await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'created',event_data:{status:pkgStatus}});
+    // Save initial version snapshot
+    await sb.from('speciq_package_versions').insert({package_id:pkg.id,version_number:1,snapshot:{products:builderProducts.map(p=>({name:p.product_name,brand:p.brand,model:p.model_number,msrp:p.msrp})),services:builderServices,total:total,status:pkgStatus},created_by:currentUser.id}).catch(()=>{});
     } /* end else (new mode) */
 
     if(builderProducts.length){
@@ -1402,7 +1440,9 @@ window.savePackage=async(status)=>{
     navigate('packages');
     loadDashboardStats();loadPendingCount();
     openPackageDetail(pkg.id);
+    _savingPackage=false;
   }catch(err){
+    _savingPackage=false;
     console.error('savePackage:',err);alert('Error: '+err.message);
     if(btn){btn.disabled=false;btn.innerHTML=origText}
   }
@@ -1697,6 +1737,49 @@ window.openPackageDetail=async function(pkgId){
   }
   html+='</div>';
 
+  // Follow-up timeline (for sent/viewed packages)
+  if(pkg.status==='sent'||pkg.status==='viewed'){
+    const sentDate=pkg.sent_at?new Date(pkg.sent_at):new Date(pkg.created_at);
+    const{data:events}=await sb.from('speciq_package_events').select('event_type,event_data,created_at').eq('package_id',pkgId).order('created_at',{ascending:false}).limit(50);
+    const evts=events||[];
+    const viewCount=evts.filter(e=>e.event_type==='viewed').length;
+    const sectionsViewed=[...new Set(evts.filter(e=>e.event_type==='section_viewed').map(e=>e.event_data?.section).filter(Boolean))];
+    const linkClicks=evts.filter(e=>e.event_type==='link_clicked');
+    const lastView=evts.find(e=>e.event_type==='viewed');
+    const duration=evts.find(e=>e.event_type==='page_duration');
+
+    if(viewCount>0){
+      html+='<div style="padding:12px 24px;background:var(--verified-soft);border-bottom:1px solid var(--line);display:flex;gap:24px;flex-wrap:wrap;align-items:center">';
+      html+='<div style="font-weight:600;font-size:13px;color:var(--verified)">📊 Customer Engagement</div>';
+      html+='<div style="font-size:13px"><strong>'+viewCount+'</strong> view'+(viewCount!==1?'s':'')+'</div>';
+      if(lastView)html+='<div style="font-size:13px">Last: <strong>'+fmtDateTime(lastView.created_at)+'</strong></div>';
+      if(duration)html+='<div style="font-size:13px">Time: <strong>'+duration.event_data.seconds+'s</strong></div>';
+      if(sectionsViewed.length)html+='<div style="font-size:13px">Sections: <strong>'+sectionsViewed.length+'</strong></div>';
+      if(linkClicks.length)html+='<div style="font-size:13px">Doc clicks: <strong>'+linkClicks.length+'</strong></div>';
+      html+='</div>';
+    }
+
+    const{data:seq}=await sb.from('speciq_followup_sequences').select('*').eq('is_active',true).order('step_order');
+    if(seq&&seq.length>1){
+      html+='<div style="padding:12px 24px;border-bottom:1px solid var(--line)">';
+      html+='<div style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:8px">Follow-Up Timeline</div>';
+      html+='<div style="display:flex;gap:0;align-items:center;overflow-x:auto;padding-bottom:4px">';
+      seq.forEach(function(s,i){
+        var stepDate=new Date(sentDate);stepDate.setDate(stepDate.getDate()+s.delay_days);
+        var isPast=new Date()>stepDate;
+        var isToday=Math.abs(new Date()-stepDate)<86400000;
+        var col=isToday?'var(--focus)':isPast?'var(--verified)':'var(--steel)';
+        var bg=isToday?'var(--focus-soft)':isPast?'var(--verified-soft)':'var(--paper)';
+        html+='<div style="padding:6px 12px;border-radius:6px;font-size:12px;background:'+bg+';border:1px solid '+col+';color:'+col+';white-space:nowrap;flex-shrink:0">';
+        html+='<div style="font-weight:700">Day '+s.delay_days+(isToday?' (Today)':'')+'</div>';
+        html+='<div>'+esc(s.action_label)+'</div>';
+        html+='</div>';
+        if(i<seq.length-1)html+='<div style="width:16px;height:2px;background:var(--line);flex-shrink:0"></div>';
+      });
+      html+='</div></div>';
+    }
+  }
+
   // Preview
   html+='<div style="padding:24px;background:#e8ecf1;max-height:65vh;overflow-y:auto"><div style="background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);overflow:hidden;max-width:800px;margin:0 auto"><div style="padding:40px 48px;font-size:11pt;color:#000;line-height:1.5">'+previewHTML+'</div></div></div>';
 
@@ -1953,7 +2036,24 @@ window.addEventListener('afterprint',function(){el('print-package').innerHTML=''
 /* ==================== RETAILER SETTINGS ==================== */
 async function loadRetailerSettings(){
   if(!userOrgId)return;
-  const{data}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();
+  var{data}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',userOrgId).single();
+  if(!data){
+    // Seed defaults for this org
+    var{data:seeded}=await sb.from('speciq_retailer_settings').upsert({
+      organization_id:userOrgId,
+      default_validity_days:14,
+      max_rep_validity_days:14,
+      max_manager_validity_days:30,
+      max_store_manager_validity_days:60,
+      primary_color:'#0f1f3d',
+      secondary_color:'#2f6fed',
+      validity_disclaimer:'Pricing and promotional availability are valid for the stated period, subject to product availability and manufacturer program terms.',
+      default_disclaimer:'All prices shown are Manufacturer Suggested Retail Prices (MSRP). Final pricing may vary. Specifications are subject to manufacturer changes without notice.',
+      default_welcome_message:'Thank you for the opportunity to prepare this specification package for you.',
+      updated_at:new Date().toISOString()
+    },{onConflict:'organization_id'}).select().single();
+    data=seeded;
+  }
   retailerSettings=data;
   if(data){
     el('s-name').value=data.store_name||'';
