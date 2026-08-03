@@ -491,6 +491,31 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .btn.loading{opacity:.7;pointer-events:none;position:relative}
 .btn.loading::after{content:'';display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:8px;vertical-align:middle}
 .btn-ghost.loading::after{border-color:rgba(15,31,61,.2);border-top-color:var(--navy)}
+/* === SETTINGS === */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:768px){.settings-grid{grid-template-columns:1fr}}
+.setting-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px}
+.setting-card h3{margin:0 0 4px;font-size:15px}
+.setting-card .sub{font-size:12px;color:var(--steel);margin-bottom:14px;line-height:1.5}
+.setting-card .setting-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.setting-card .setting-row:first-of-type{border:none}
+.setting-row .setting-val{color:var(--steel);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* === CSV IMPORT === */
+.csv-drop{border:2px dashed var(--line);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s}
+.csv-drop:hover,.csv-drop.dragover{border-color:var(--verified);background:rgba(16,185,129,.05)}
+.csv-drop .csv-icon{font-size:36px;margin-bottom:8px}
+.csv-drop p{margin:0;color:var(--steel);font-size:13px}
+.csv-map-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.csv-map-row label{width:140px;font-weight:600;flex-shrink:0}
+.csv-map-row select{flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px}
+.csv-preview{max-height:200px;overflow-y:auto;font-size:11px;margin-top:12px;border:1px solid var(--line);border-radius:8px}
+.csv-preview table{width:100%;border-collapse:collapse}
+.csv-preview th,.csv-preview td{padding:4px 8px;border-bottom:1px solid var(--line);text-align:left}
+.csv-preview th{background:var(--ice);position:sticky;top:0;font-weight:600}
+.csv-progress{margin-top:12px;font-size:13px}
+.csv-progress .bar{height:6px;background:var(--ice);border-radius:3px;overflow:hidden;margin:6px 0}
+.csv-progress .fill{height:100%;background:var(--verified);border-radius:3px;transition:width .3s}
+.export-btns{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -605,6 +630,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="assistant">🤖 AI Assistant</button>
 <button class="nav-btn" data-view="team_coach">🏆 Ask the Team</button>
 <button class="nav-btn" data-view="team">👥 Team</button>
+<button class="nav-btn" data-view="settings">⚙️ Settings</button>
 <div class="spacer"></div>
 <button class="signout" id="signoutBtn">Sign out</button>
 </aside>
@@ -765,7 +791,7 @@ async function render(){
   showLoading();
   if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
-  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam};
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
   (views[currentView]||renderPipeline)();
 }
 
@@ -1150,7 +1176,7 @@ function renderContacts(){
   else if(contactFilter==='cold')filtered=filtered.filter(c=>c.temperature==='cold');
   else if(contactFilter==='overdue')filtered=filtered.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical');
   if(q)filtered=filtered.filter(c=>(c.first_name+' '+(c.last_name??'')).toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.phone||'').toLowerCase().includes(q)||(c.companies?.name||'').toLowerCase().includes(q));
-  mainEl.innerHTML='<div class="page-head"><div><h1>Contacts</h1><div class="sub num">'+cache.contacts.length+' people</div></div><div class="head-actions"><button class="btn btn-primary" id="ncBtn">+ Add contact</button></div></div>'
+  mainEl.innerHTML='<div class="page-head"><div><h1>Contacts</h1><div class="sub num">'+cache.contacts.length+' people</div></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="impCsvBtn">📁 Import</button><button class="btn btn-ghost btn-sm" id="expCtBtn">📤 Export</button><button class="btn btn-primary" id="ncBtn">+ Add contact</button></div></div>'
     +searchBar('Search by name, email, phone, or company…')
     +'<div class="tc-tabs">'
     +'<button class="tc-tab '+(contactFilter==='all'?'active':'')+'" data-cf="all">All <span class="tc-count">'+cache.contacts.length+'</span></button>'
@@ -1175,6 +1201,8 @@ function renderContacts(){
     }).join('')||'<tr><td colspan="7" class="empty">No contacts yet. Add your first contact to get started.</td></tr>')
     +'</tbody></table>';
   $('#ncBtn').onclick=()=>openContactModal(null);
+  $('#impCsvBtn')?.addEventListener('click',openCSVImport);
+  $('#expCtBtn')?.addEventListener('click',exportContacts);
   $$('[data-ct]').forEach(r=>{r.onclick=()=>{const ct=cache.contacts.find(c=>c.id===r.dataset.ct);openContactDetail(ct);};});
   $$('[data-cf]').forEach(b=>{b.onclick=()=>{contactFilter=b.dataset.cf;renderContacts();};});
   bindSearch(renderContacts);
@@ -2493,7 +2521,7 @@ async function renderReporting(){
   }).sort((a,b)=>b.rev-a.rev);
   const maxRev=Math.max(1,...rows.map(r=>r.rev));
 
-  mainEl.innerHTML='<div class="page-head"><div><h1>📈 Reporting</h1><div class="sub">'+esc(currentOrg.name)+' · '+now.toLocaleDateString('en-CA',{month:'long',year:'numeric'})+'</div></div></div>'
+  mainEl.innerHTML='<div class="page-head"><div><h1>📈 Reporting</h1><div class="sub">'+esc(currentOrg.name)+' · '+now.toLocaleDateString('en-CA',{month:'long',year:'numeric'})+'</div></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="rptExpBtn">📤 Export</button></div></div>'
     +'<div class="dash-panel"><h3>Leaderboard</h3>'
     +'<table class="rpt-table"><thead><tr><th>#</th><th>Salesperson</th><th>Revenue</th><th>Pipeline</th><th>Won</th><th>Close %</th><th>Avg Deal</th><th>Hot</th></tr></thead><tbody>'
     +rows.map((r,i)=>'<tr><td><b>'+(i+1)+'</b></td><td><b>'+esc(r.name)+'</b></td><td class="num"><div class="bar-cell"><div class="bar-fill" style="width:'+Math.max(4,r.rev/maxRev*100)+'%"></div>'+money(r.rev)+'</div></td><td class="num">'+money(r.pipe)+'</td><td class="num">'+r.won+'</td><td class="num">'+r.closeRate+'%</td><td class="num">'+money(r.avgDeal)+'</td><td class="num">'+(r.hot?'<span class="temp-badge hot">'+r.hot+'</span>':'-')+'</td></tr>').join('')
@@ -2504,6 +2532,9 @@ async function renderReporting(){
       +'<div class="cc-card"><div class="cc-lbl">Total Deals Won</div><div class="cc-val num">'+rows.reduce((s,r)=>s+r.won,0)+'</div></div>'
       +'<div class="cc-card"><div class="cc-lbl">Avg Close Rate</div><div class="cc-val num">'+(rows.length?Math.round(rows.reduce((s,r)=>s+r.closeRate,0)/rows.length):0)+'%</div></div>'
     +'</div>';
+  $('#rptExpBtn')?.addEventListener('click',()=>{
+    exportCSV(rows.map((r,i)=>({rank:i+1,salesperson:r.name,revenue:r.rev,pipeline:r.pipe,deals_won:r.won,close_rate:r.closeRate+'%',avg_deal:r.avgDeal,hot_deals:r.hot,active_deals:r.active})),'leaderboard_'+new Date().toISOString().slice(0,10)+'.csv');
+  });
 }
 
 // ===== NOTIFICATIONS =====
@@ -2534,6 +2565,188 @@ function setupMobile(){
   const bell=$('#notifBellTop');const panel=$('#notifPanel');
   if(bell){bell.onclick=()=>{panel.classList.toggle('open');if(panel.classList.contains('open'))loadNotifications();};}
   const notifClose=$('#notifClose');if(notifClose){notifClose.onclick=()=>panel.classList.remove('open');}
+}
+
+// ===== CSV / EXCEL EXPORT =====
+function exportCSV(data,filename){
+  if(!data?.length){toast('Nothing to export','err');return;}
+  const keys=Object.keys(data[0]);
+  const escape=v=>{const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;};
+  const csv=[keys.join(','),...data.map(r=>keys.map(k=>escape(r[k])).join(','))].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();URL.revokeObjectURL(url);
+  toast('Exported '+data.length+' rows','ok');
+}
+function exportContacts(){
+  const rows=cache.contacts.map(c=>({first_name:c.first_name,last_name:c.last_name??'',email:c.email??'',phone:c.phone??'',mobile_phone:c.mobile_phone??'',company:c.companies?.name??'',title:c.title??'',temperature:c.temperature??'',decision_role:c.decision_making_role??'',followup_status:c.followup_status??'',source:c.source??'',preferred_contact:c.preferred_contact_method??'',notes:c.notes??'',created:c.created_at?.slice(0,10)??''}));
+  exportCSV(rows,'contacts_export_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportDeals(){
+  const rows=cache.deals.map(d=>({title:d.title,stage:d.stage,value:d.value_amount??'',margin_pct:d.margin_pct??'',temperature:d.temperature??'',contact:d.contacts?(d.contacts.first_name+' '+(d.contacts.last_name??'')):'',company:d.companies?.name??'',source:d.source??'',priority:d.priority??'',next_action:d.next_action??'',expected_close:d.expected_close_date??'',closed_at:d.closed_at??'',created:d.created_at?.slice(0,10)??''}));
+  exportCSV(rows,'deals_export_'+new Date().toISOString().slice(0,10)+'.csv');
+}
+function exportTasks(){
+  sb.from('crm_tasks').select('title,due_at,priority,task_type,completed_at,created_at').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).then(({data})=>{
+    exportCSV((data??[]).map(t=>({title:t.title,due:t.due_at?.slice(0,10)??'',priority:t.priority,type:t.task_type??'',completed:t.completed_at?.slice(0,10)??'',created:t.created_at?.slice(0,10)??''})),'tasks_export_'+new Date().toISOString().slice(0,10)+'.csv');
+  });
+}
+
+// ===== CSV IMPORT =====
+function openCSVImport(){
+  const fields=['first_name','last_name','email','phone','mobile_phone','title','company','temperature','notes','source','preferred_contact_method','decision_making_role'];
+  openModal('<h2>📁 Import Contacts from CSV</h2>'
+    +'<div class="csv-drop" id="csvDrop"><div class="csv-icon">📄</div><p>Drag & drop a CSV file here, or click to browse</p><input type="file" id="csvFile" accept=".csv,.tsv,.txt" style="display:none"></div>'
+    +'<div id="csvMapArea" style="display:none"><h3 style="margin:16px 0 8px;font-size:14px">Map your columns</h3><div id="csvMappings"></div>'
+    +'<div id="csvPreviewArea"></div>'
+    +'<div class="field" style="margin-top:12px"><label><input type="checkbox" id="csvDedup" checked> Skip duplicates (match by email)</label></div>'
+    +'<div class="csv-progress" id="csvProg" style="display:none"><div class="bar"><div class="fill" id="csvFill" style="width:0%"></div></div><div id="csvStatus">Importing…</div></div>'
+    +'<div class="form-err" id="formErr"></div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="csvImportBtn" disabled>Import</button></div></div>');
+  let csvData=[],csvHeaders=[];
+  const drop=$('#csvDrop'),fileIn=$('#csvFile');
+  drop.onclick=()=>fileIn.click();
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('dragover');};
+  drop.ondragleave=()=>drop.classList.remove('dragover');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('dragover');if(e.dataTransfer.files.length)parseCSV(e.dataTransfer.files[0]);};
+  fileIn.onchange=()=>{if(fileIn.files.length)parseCSV(fileIn.files[0]);};
+  function parseCSV(file){
+    const reader=new FileReader();reader.onload=e=>{
+      const text=e.target.result;const sep=text.includes('\t')?'\t':',';
+      const lines=text.split(/\r?\n/).filter(l=>l.trim());
+      if(lines.length<2)return formErr('CSV must have at least a header + 1 row.');
+      csvHeaders=lines[0].split(sep).map(h=>h.replace(/^"|"$/g,'').trim());
+      csvData=lines.slice(1).map(l=>{const vals=[];let cur='',inQ=false;
+        for(let i=0;i<l.length;i++){const c=l[i];if(c==='"')inQ=!inQ;else if(c===sep&&!inQ){vals.push(cur.trim());cur='';}else cur+=c;}
+        vals.push(cur.trim());return vals.map(v=>v.replace(/^"|"$/g,''));
+      }).filter(r=>r.some(v=>v));
+      drop.style.display='none';$('#csvMapArea').style.display='block';
+      // Auto-map
+      const mapHTML=fields.map(f=>{
+        const best=csvHeaders.findIndex(h=>h.toLowerCase().replace(/[^a-z]/g,'')===f.replace(/_/g,''));
+        return '<div class="csv-map-row"><label>'+f.replace(/_/g,' ')+'</label><select data-csvf="'+f+'"><option value="">— skip —</option>'+csvHeaders.map((h,i)=>'<option value="'+i+'"'+(i===best?' selected':'')+'>'+esc(h)+'</option>').join('')+'</select></div>';
+      }).join('');
+      $('#csvMappings').innerHTML=mapHTML;
+      // Preview first 5 rows
+      const prev='<div class="csv-preview"><table><thead><tr>'+csvHeaders.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+csvData.slice(0,5).map(r=>'<tr>'+r.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div><div class="sub" style="margin-top:4px">'+csvData.length+' rows found</div>';
+      $('#csvPreviewArea').innerHTML=prev;
+      $('#csvImportBtn').disabled=false;
+    };reader.readAsText(file);
+  }
+  $('#csvImportBtn').onclick=async()=>{
+    if(!csvData.length)return formErr('No data to import.');
+    const mapping={};$$('[data-csvf]').forEach(sel=>{if(sel.value!=='')mapping[sel.dataset.csvf]=Number(sel.value);});
+    if(!('first_name' in mapping))return formErr('First Name column is required.');
+    const btn=$('#csvImportBtn');btnLoad(btn,'Importing…');
+    const prog=$('#csvProg');prog.style.display='block';
+    const dedup=$('#csvDedup').checked;
+    let imported=0,skipped=0,errors=0;
+    // Pre-load existing emails for dedup
+    let existingEmails=new Set();
+    if(dedup&&'email' in mapping){const{data:ex}=await sb.from('contacts').select('email').eq('organization_id',currentOrg.id).not('email','is',null);(ex??[]).forEach(c=>{if(c.email)existingEmails.add(c.email.toLowerCase());});}
+    // Pre-load companies for matching
+    let companyMap={};const{data:cos}=await sb.from('companies').select('id,name').eq('organization_id',currentOrg.id);
+    (cos??[]).forEach(c=>{companyMap[c.name.toLowerCase()]=c.id;});
+    for(let i=0;i<csvData.length;i++){
+      const r=csvData[i];
+      const row={organization_id:currentOrg.id,source:'csv_import'};
+      for(const[field,idx] of Object.entries(mapping)){
+        if(field==='company')continue;
+        const val=r[idx]?.trim();if(val)row[field]=val;
+      }
+      if(!row.first_name){skipped++;continue;}
+      // Dedup by email
+      if(dedup&&row.email&&existingEmails.has(row.email.toLowerCase())){skipped++;continue;}
+      // Company matching
+      if('company' in mapping){
+        const coName=r[mapping.company]?.trim();
+        if(coName){
+          let coId=companyMap[coName.toLowerCase()];
+          if(!coId){const{data:nc}=await sb.from('companies').insert({organization_id:currentOrg.id,name:coName,display_name:coName,source:'csv_import'}).select('id').single();if(nc){coId=nc.id;companyMap[coName.toLowerCase()]=coId;}}
+          if(coId)row.company_id=coId;
+        }
+      }
+      // Validate temperature
+      if(row.temperature&&!['hot','warm','cold'].includes(row.temperature.toLowerCase())){row.temperature='warm';}else if(row.temperature)row.temperature=row.temperature.toLowerCase();
+      const{error}=await sb.from('contacts').insert(row);
+      if(error){errors++;} else{imported++;if(row.email)existingEmails.add(row.email.toLowerCase());}
+      const pct=Math.round((i+1)/csvData.length*100);
+      $('#csvFill').style.width=pct+'%';
+      $('#csvStatus').textContent=imported+' imported, '+skipped+' skipped'+(errors?', '+errors+' errors':'')+'  ('+pct+'%)';
+    }
+    btnDone(btn,'Import');
+    $('#csvStatus').textContent='Done — '+imported+' imported, '+skipped+' skipped'+(errors?', '+errors+' errors':'');
+    toast(imported+' contacts imported','ok');
+    setTimeout(()=>{closeModal();render();},1500);
+  };
+}
+
+// ===== SETTINGS PAGE =====
+async function renderSettings(){
+  const isAdmin=await checkAdmin();
+  const{data:members}=await sb.from('organization_members').select('id,role').eq('organization_id',currentOrg.id);
+  const memberCount=(members??[]).length;
+  const{data:orgData}=await sb.from('organizations').select('id,name,slug,created_at,settings').eq('id',currentOrg.id).single();
+  const plan=orgData?.settings?.plan||'free';
+  const trialEnd=orgData?.created_at?new Date(new Date(orgData.created_at).getTime()+14*864e5):null;
+  const trialDays=trialEnd?Math.max(0,Math.ceil((trialEnd-Date.now())/864e5)):0;
+  const trialActive=plan==='free'&&trialDays>0;
+  mainEl.innerHTML='<div class="page-head"><h1>⚙️ Settings</h1></div>'
+    +'<div class="settings-grid">'
+    // Org details
+    +'<div class="setting-card"><h3>Organization</h3><div class="sub">Manage your store details</div>'
+      +'<div class="setting-row"><span>Name</span><span class="setting-val">'+esc(orgData?.name??'')+'</span></div>'
+      +'<div class="setting-row"><span>Slug</span><span class="setting-val">'+esc(orgData?.slug??'')+'</span></div>'
+      +'<div class="setting-row"><span>Members</span><span class="setting-val">'+memberCount+'</span></div>'
+      +'<div class="setting-row"><span>Created</span><span class="setting-val">'+(orgData?.created_at?new Date(orgData.created_at).toLocaleDateString():'—')+'</span></div>'
+      +(isAdmin?'<button class="btn btn-ghost btn-sm" style="margin-top:12px" id="setEditOrg">Edit Name</button>':'')
+    +'</div>'
+    // Plan & billing
+    +'<div class="setting-card"><h3>Plan & Billing</h3><div class="sub">Manage your subscription</div>'
+      +'<div class="setting-row"><span>Current plan</span><span class="setting-val" style="text-transform:capitalize">'+esc(plan)+'</span></div>'
+      +(trialActive?'<div class="setting-row"><span>Trial remaining</span><span class="setting-val" style="color:var(--amber)">'+trialDays+' days</span></div>':'')
+      +'<div style="margin-top:12px;padding:12px;background:var(--ice);border-radius:8px;font-size:12px;line-height:1.6">'
+        +'<b>Pro Plan — $499/mo</b><br>Unlimited contacts, AI coaching, recording analysis, outreach sequences, priority support.'
+        +'<br><button class="btn btn-primary btn-sm" style="margin-top:8px" id="setUpgrade" disabled>Upgrade (Coming Soon)</button>'
+      +'</div>'
+    +'</div>'
+    // Pipeline stages
+    +'<div class="setting-card"><h3>Pipeline Stages</h3><div class="sub">Customize your sales pipeline</div>'
+      +cache.stages.map((s,i)=>'<div class="setting-row"><span>'+esc(s.name)+(s.is_terminal?' <span class="chip n" style="font-size:9px;margin-left:4px">Terminal</span>':'')+'</span><span class="setting-val">#'+(i+1)+'</span></div>').join('')
+      +(isAdmin?'<button class="btn btn-ghost btn-sm" style="margin-top:12px" id="setEditStages">Edit Stages</button>':'')
+    +'</div>'
+    // Data management
+    +'<div class="setting-card"><h3>Data Management</h3><div class="sub">Import and export your CRM data</div>'
+      +'<div class="export-btns">'
+        +'<button class="btn btn-ghost btn-sm" id="setImpCSV">📁 Import Contacts (CSV)</button>'
+        +'<button class="btn btn-ghost btn-sm" id="setExpContacts">📤 Export Contacts</button>'
+        +'<button class="btn btn-ghost btn-sm" id="setExpDeals">📤 Export Deals</button>'
+        +'<button class="btn btn-ghost btn-sm" id="setExpTasks">📤 Export Tasks</button>'
+      +'</div>'
+    +'</div>'
+    // Notifications
+    +'<div class="setting-card"><h3>Notifications</h3><div class="sub">Configure alert preferences</div>'
+      +'<div class="setting-row"><span>Email alerts</span><span class="setting-val">Coming soon</span></div>'
+      +'<div class="setting-row"><span>Push notifications</span><span class="setting-val">Coming soon</span></div>'
+      +'<div class="setting-row"><span>SLA thresholds</span><span class="setting-val">Coming soon</span></div>'
+    +'</div>'
+    // Email integration
+    +'<div class="setting-card"><h3>Email Integration</h3><div class="sub">Connect email for automated sending</div>'
+      +'<div style="padding:12px;background:var(--ice);border-radius:8px;font-size:12px;line-height:1.6">'
+        +'Emails are currently logged but not sent. Full sending via Resend/SendGrid is coming soon — requires domain verification (SPF/DKIM) and API key configuration.'
+        +'<br><button class="btn btn-ghost btn-sm" style="margin-top:8px" disabled>Configure Email (Coming Soon)</button>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+  // Bind buttons
+  $('#setEditOrg')?.addEventListener('click',()=>{
+    openModal('<h2>Edit Organization</h2><div class="field"><label>Organization Name</label><input id="orgNameEdit" value="'+esc(orgData?.name??'')+'"></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="orgNameSave">Save</button></div>');
+    $('#orgNameSave').onclick=async()=>{const name=$('#orgNameEdit').value.trim();if(!name)return formErr('Name required.');const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');const btn=$('#orgNameSave');btnLoad(btn,'Saving…');try{await sb.from('organizations').update({name,slug}).eq('id',currentOrg.id);currentOrg.name=name;closeModal();toast('Organization updated','ok');renderSettings();}catch(err){btnDone(btn,'Save');toast(err.message,'err');}};
+  });
+  $('#setEditStages')?.addEventListener('click',openStagesEditor);
+  $('#setImpCSV')?.addEventListener('click',openCSVImport);
+  $('#setExpContacts')?.addEventListener('click',exportContacts);
+  $('#setExpDeals')?.addEventListener('click',exportDeals);
+  $('#setExpTasks')?.addEventListener('click',exportTasks);
 }
 
 // ===== DEAL WON → DELIVERY WORKFLOW =====
