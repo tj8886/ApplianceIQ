@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <meta name="description" content="ApplianceIQ CRM — AI-powered sales platform for appliance retail. Manage contacts, buying groups, pipeline, deliveries, and coaching."/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AIQ CRM">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f1f3d'/><text x='16' y='22' font-size='16' font-weight='800' fill='white' text-anchor='middle' font-family='system-ui'>IQ</text></svg>">
 <title>ApplianceIQ CRM — AI-Powered Sales Platform for Appliance Retail</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -354,6 +357,11 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .notif-bell{position:relative;background:none;border:none;font-size:18px;padding:4px 8px}
 .notif-bell .notif-dot{position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
 
+/* === TOAST === */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.err{background:var(--danger)}.toast.ok{background:var(--verified)}
+
 /* === REPORTING === */
 .rpt-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
 .rpt-table th{background:#f0f3f9;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--steel);padding:10px 12px}
@@ -543,11 +551,23 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 
 <div id="auth"><div class="auth-card">
 <div class="mark"><span class="iq">IQ</span><span class="wordmark">ApplianceIQ<small>CRM</small></span></div>
-<p class="tagline">AI-powered sales platform for appliance retail</p>
+<p class="tagline" id="authTagline">AI-powered sales platform for appliance retail</p>
+<div id="authFields">
 <div class="field"><label for="email">Email</label><input id="email" type="email" placeholder="you@company.com"></div>
-<div class="field"><label for="password">Password</label><input id="password" type="password" placeholder="Enter password"></div>
+<div class="field" id="passwordField"><label for="password">Password</label><input id="password" type="password" placeholder="Enter password"></div>
+<div class="field" id="confirmField" style="display:none"><label for="confirmPassword">Confirm Password</label><input id="confirmPassword" type="password" placeholder="Confirm password"></div>
+<div class="field" id="nameField" style="display:none"><label for="fullName">Full Name</label><input id="fullName" type="text" placeholder="Your name"></div>
 <button class="btn btn-primary btn-block" id="signinBtn">Sign In</button>
-<div class="auth-alt">New here? <a id="signupLink">Create an account</a></div>
+<div style="display:flex;justify-content:space-between;margin-top:10px">
+<div class="auth-alt"><a id="signupLink">Create an account</a></div>
+<div class="auth-alt"><a id="forgotLink" style="font-size:12px;color:var(--steel)">Forgot password?</a></div>
+</div>
+</div>
+<div id="resetFields" style="display:none">
+<div class="field"><label for="resetEmail">Email</label><input id="resetEmail" type="email" placeholder="you@company.com"></div>
+<button class="btn btn-primary btn-block" id="resetBtn">Send Reset Link</button>
+<div class="auth-alt"><a id="backToLogin">← Back to sign in</a></div>
+</div>
 <div class="notice" id="authNotice"></div>
 </div></div>
 
@@ -590,6 +610,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 </div>
 </div></div>
 <div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
 
 <script type="module">
 import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
@@ -601,13 +622,14 @@ const landingEl=$('#landing'),authEl=$('#auth'),appEl=$('#app'),mainEl=$('#main'
 const money=n=>n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ago=d=>{if(!d)return'—';const days=Math.floor((Date.now()-new Date(d).getTime())/864e5);return days===0?'Today':days===1?'Yesterday':days+'d ago';};
+function toast(msg,type=''){const t=$('#toast');t.textContent=msg;t.className='toast show '+(type||'');setTimeout(()=>t.classList.remove('show'),3000);}
 const BUYING_ROLES=['Primary buyer','Co-buyer','Decision-maker','Influencer','Product user','Designer','Contractor','Builder','Installer','Property manager','Financial approver','Admin contact','Delivery contact','Other'];
 const RECORD_TYPES={individual:'👤 Individual',household:'👥 Household / Buying Group',business:'🏢 Business Account'};
 
 function showLoading(msg='Loading'){mainEl.innerHTML='<div class="loading-wrap"><div class="loading-spin"></div><div class="loading-text">'+esc(msg)+'</div></div>';}
 
-function showLogin(){landingEl.style.display='none';authEl.style.display='flex';appEl.style.display='none';$('#email')?.focus();}
-function showSignup(){showLogin();setTimeout(()=>note('Enter your email and password to create an account.',true),100);}
+function showLogin(){landingEl.style.display='none';authEl.style.display='flex';appEl.style.display='none';setAuthMode('login');}
+function showSignup(){showLogin();setTimeout(()=>setAuthMode('signup'),50);}
 function showLanding(){landingEl.style.display='block';authEl.style.display='none';appEl.style.display='none';}
 function showApp(){landingEl.style.display='none';authEl.style.display='none';appEl.style.display='block';}
 window.showLogin=showLogin;window.showSignup=showSignup;
@@ -617,9 +639,62 @@ let chatLog=[],coachLog=[],coachPersona=null,assistants=[],currentAssistant=null
 let cache={stages:[],deals:[],contacts:[],companies:[],buyingGroups:[],participants:[],recordings:[]};
 let searchTerm='';
 
+let authMode='login'; // login | signup | reset
 function note(msg,ok=false){const n=$('#authNotice');n.textContent=msg;n.className='notice '+(ok?'ok':'err');}
-$('#signinBtn').onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#password').value});if(error)return note(error.message);boot();};
-$('#signupLink').onclick=async()=>{const email=$('#email').value.trim(),pw=$('#password').value;if(!email||!pw)return note('Enter email and password.');const{error}=await sb.auth.signUp({email,password:pw});if(error)return note(error.message);note('Signing you in…',true);const{error:e2}=await sb.auth.signInWithPassword({email,password:pw});if(e2)return note('Check your email to confirm your account.',true);boot();};
+function setAuthMode(mode){
+  authMode=mode;const n=$('#authNotice');n.className='notice';n.textContent='';
+  $('#authFields').style.display=mode==='reset'?'none':'block';
+  $('#resetFields').style.display=mode==='reset'?'block':'none';
+  $('#confirmField').style.display=mode==='signup'?'block':'none';
+  $('#nameField').style.display=mode==='signup'?'block':'none';
+  $('#signinBtn').textContent=mode==='signup'?'Create Account':'Sign In';
+  $('#signupLink').textContent=mode==='signup'?'Already have an account? Sign in':'Create an account';
+  $('#authTagline').textContent=mode==='signup'?'Start your free trial — no credit card required':'AI-powered sales platform for appliance retail';
+  if(mode==='login')$('#email')?.focus();
+  if(mode==='signup')$('#fullName')?.focus();
+  if(mode==='reset')$('#resetEmail')?.focus();
+}
+$('#signinBtn').onclick=async()=>{
+  const email=$('#email').value.trim(),pw=$('#password').value;
+  if(!email||!pw)return note('Enter email and password.');
+  const btn=$('#signinBtn');btn.disabled=true;btn.textContent=authMode==='signup'?'Creating…':'Signing in…';
+  if(authMode==='signup'){
+    const cpw=$('#confirmPassword').value;
+    if(pw!==cpw){btn.disabled=false;btn.textContent='Create Account';return note('Passwords do not match.');}
+    if(pw.length<6){btn.disabled=false;btn.textContent='Create Account';return note('Password must be at least 6 characters.');}
+    const name=$('#fullName').value.trim();
+    const{data:su,error}=await sb.auth.signUp({email,password:pw,options:{data:{full_name:name||email.split('@')[0]}}});
+    if(error){btn.disabled=false;btn.textContent='Create Account';return note(error.message);}
+    // Try immediate sign-in (works if email confirmation is disabled)
+    const{error:e2}=await sb.auth.signInWithPassword({email,password:pw});
+    if(e2){btn.disabled=false;btn.textContent='Create Account';return note('Account created! Check your email to confirm, then sign in.',true);}
+    // Create profile
+    if(name){await sb.from('profiles').upsert({user_id:su.user.id,full_name:name,email},{onConflict:'user_id'});}
+    boot();
+  } else {
+    const{error}=await sb.auth.signInWithPassword({email,password:pw});
+    btn.disabled=false;btn.textContent='Sign In';
+    if(error)return note(error.message);
+    boot();
+  }
+};
+$('#signupLink').onclick=()=>setAuthMode(authMode==='signup'?'login':'signup');
+$('#forgotLink').onclick=()=>setAuthMode('reset');
+$('#backToLogin').onclick=()=>setAuthMode('login');
+$('#resetBtn').onclick=async()=>{
+  const email=$('#resetEmail').value.trim();
+  if(!email)return note('Enter your email address.');
+  const btn=$('#resetBtn');btn.disabled=true;btn.textContent='Sending…';
+  const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin});
+  btn.disabled=false;btn.textContent='Send Reset Link';
+  if(error)return note(error.message);
+  note('Password reset link sent! Check your email.',true);
+};
+// Enter key support
+$('#email').onkeydown=e=>{if(e.key==='Enter')$('#password')?.focus();};
+$('#password').onkeydown=e=>{if(e.key==='Enter'){if(authMode==='signup')$('#confirmPassword')?.focus();else $('#signinBtn')?.click();}};
+$('#confirmPassword')&&($('#confirmPassword').onkeydown=e=>{if(e.key==='Enter')$('#signinBtn')?.click();});
+$('#resetEmail')&&($('#resetEmail').onkeydown=e=>{if(e.key==='Enter')$('#resetBtn')?.click();});
 $('#signoutBtn').onclick=async()=>{await sb.auth.signOut();showLanding();};
 
 async function boot(){
@@ -628,7 +703,7 @@ async function boot(){
   const{data:memberships}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('status','active');
   orgs=(memberships??[]).map(m=>m.organizations).filter(Boolean);
   if(!orgs.length){await sb.rpc('join_demo_org');const{data:m2}=await sb.from('organization_members').select('organizations(id,name,slug)').eq('status','active');orgs=(m2??[]).map(m=>m.organizations).filter(Boolean);}
-  if(!orgs.length){mainEl.innerHTML='<div class="empty">You are not part of an organization yet. Ask your admin for an invite link.</div>';return;}
+  if(!orgs.length){mainEl.innerHTML='<div class="empty" style="max-width:400px;margin:60px auto;text-align:center"><h2 style="margin:0 0 8px">Welcome to ApplianceIQ CRM</h2><p style="color:var(--steel);margin-bottom:20px">You\'re not part of an organization yet. Create one to get started, or ask your admin for an invite link.</p><button class="btn btn-primary" id="createOrgBtn">Create Organization</button></div>';$('#createOrgBtn').onclick=()=>{openModal('<h2>Create Organization</h2><div class="field"><label>Organization name</label><input id="org_name" placeholder="Your Store Name"></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="org_save">Create</button></div>');$('#org_save').onclick=async()=>{const name=$('#org_name').value.trim();if(!name)return formErr("Name required.");const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");const{data:org,error}=await sb.from("organizations").insert({name,slug}).select("id").single();if(error)return formErr(error.message);await sb.from("organization_members").insert({organization_id:org.id,user_id:currentUser.id,role:"owner",status:"active"});const defaultStages=[{name:"Lead",sort_order:1},{name:"Qualified",sort_order:2},{name:"Quote Sent",sort_order:3},{name:"Floor Visit / Demo",sort_order:4},{name:"Negotiation",sort_order:5},{name:"Closed Won",sort_order:6,is_terminal:true},{name:"Delivery Scheduled",sort_order:7},{name:"Warranty Follow-up",sort_order:8},{name:"Closed Lost",sort_order:9,is_terminal:true}];for(const s of defaultStages){await sb.from("pipeline_stages").insert({organization_id:org.id,...s});}closeModal();boot();};};return;}
   currentOrg=orgs[0];const sel=$('#orgSelect');
   sel.innerHTML=orgs.map(o=>'<option value="'+o.id+'">'+esc(o.name)+'</option>').join('');
   sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);chatLog=[];render();};
@@ -1348,7 +1423,8 @@ function openRecorderModal(dealId){
             // Create tasks from action items
             for(const item of (analysis.action_items||[])){
               const dueDate=new Date(Date.now()+(item.due_days||3)*864e5).toISOString();
-              await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title:item.task,assignee_user_id:currentUser.id,deal_id:linkedDeal?.id||null,contact_id:linkedDeal?.contact_id||null,due_at:dueDate,priority:item.priority||'medium',task_type:'follow_up',source:'ai_analysis',metadata:{from_recording:recId}});
+              const taskPri={'high':'high','urgent':'urgent','low':'low'}[item.priority]||'normal';
+                              await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title:item.task,assignee_user_id:currentUser.id,deal_id:linkedDeal?.id||null,contact_id:linkedDeal?.contact_id||null,due_at:dueDate,priority:taskPri,task_type:'follow_up',source:'ai_analysis',metadata:{from_recording:recId}});
             }
           }catch(err){
             sec.innerHTML='<div style="color:var(--danger)">Analysis failed: '+esc(err.message||String(err))+'</div><div style="font-size:11px;color:var(--steel);margin-top:4px">You can still find this recording on the Recordings page and try again later.</div>';
