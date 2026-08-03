@@ -1011,8 +1011,13 @@ window.S = {
   async scrapeUrl(url){
     if(isProcessing)return;
     isProcessing=true;renderTab();
-    const result=await smartScrape(selectedBrand||'Unknown','',url);
-    await autoSaveIfEnabled(result);
+    try{
+      const result=await Promise.race([
+        smartScrape(selectedBrand||'Unknown','',url),
+        new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout after 30s'))},30000)})
+      ]);
+      if(result)await autoSaveIfEnabled(result);
+    }catch(e){logEntry('Scrape failed: '+(e.message||'error'),'err')}
     isProcessing=false;renderTab();
   },
   async scrapeDiscovered(){
@@ -1020,11 +1025,21 @@ window.S = {
     const newOnes=discoverResults.results.filter(r=>!r.in_pim && !scrapeResults.find(sr=>sr.url===r.url));
     if(newOnes.length===0){alert('All URLs already scraped');return}
     isProcessing=true;renderTab();
+    let ok=0,fail=0;
     for(let i=0;i<newOnes.length;i++){
-      const result=await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
-      await autoSaveIfEnabled(result);
-      if(i<newOnes.length-1)await new Promise(r=>setTimeout(r,1000));
+      logEntry('Scraping '+(i+1)+'/'+newOnes.length+': '+(newOnes[i].model||newOnes[i].url.split('/').pop()||'…'));
+      try{
+        const result=await Promise.race([
+          smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url),
+          new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout after 30s'))},30000)})
+        ]);
+        if(result&&result.data){ok++;await autoSaveIfEnabled(result)}
+        else{fail++;logEntry('No data returned','err')}
+      }catch(e){fail++;logEntry('Skipped: '+(e.message||'error'),'err')}
+      renderTab();
+      if(i<newOnes.length-1)await new Promise(function(r){setTimeout(r,800)});
     }
+    logEntry('Done: '+ok+' scraped, '+fail+' skipped','ok');
     isProcessing=false;renderTab();
   },
 
