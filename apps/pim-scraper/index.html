@@ -238,7 +238,24 @@ let isProcessing = false;
 let autoSave = false;
 let aiModel = 'gpt-4.1-mini';
 let brandIntel = null; // PIM products for selected brand
-let discoverResults = null; // from discover-brand edge function
+let discoverResults = null;
+let categoryMap = {};
+(async()=>{
+  const{data}=await sb.from('pim_category_map').select('raw_category,canonical,is_parts_accessory');
+  if(data)for(const r of data)categoryMap[r.raw_category.toLowerCase()]={canonical:r.canonical,parts:r.is_parts_accessory};
+})();
+function normalizeCategory(raw){
+  if(!raw)return null;
+  const look=categoryMap[raw.toLowerCase()];
+  if(look)return look.canonical;
+  const map={'refrigerator':'Refrigerators','fridge':'Refrigerators','french door refrigerator':'Refrigerators','range':'Ranges','stove':'Ranges','gas range':'Ranges','electric range':'Ranges','induction range':'Ranges','dishwasher':'Dishwashers','cooktop':'Cooktops','wall oven':'Wall Ovens','oven':'Wall Ovens','microwave':'Microwaves','microwave oven':'Microwaves','washer':'Washers','washing machine':'Washers','dryer':'Dryers','range hood':'Ventilation','vent hood':'Ventilation','hood':'Ventilation','freezer':'Freezers','ice maker':'Ice Makers','wine cooler':'Wine & Beverage','beverage center':'Wine & Beverage','wine refrigerator':'Wine & Beverage','compact refrigerator':'Compact Refrigerators','mini fridge':'Compact Refrigerators','bathroom fan':'Bathroom Fans','exhaust fan':'Bathroom Fans','ventilation fan':'Bathroom Fans','air exchanger':'Air Exchangers','hrv':'Air Exchangers','erv':'Air Exchangers','grill':'Outdoor Grills','bbq':'Outdoor Grills','vacuum':'Vacuums','vacuum cleaner':'Vacuums','water dispenser':'Water Dispensers','water cooler':'Water Dispensers','laundry center':'Laundry Centers','washer dryer combo':'Laundry Centers','air conditioner':'Air Conditioners','dehumidifier':'Dehumidifiers','air purifier':'Air Purifiers'};
+  const low=raw.toLowerCase().trim();
+  if(map[low])return map[low];
+  for(const[k,v] of Object.entries(map)){if(low.includes(k))return v}
+  const known=['Ranges','Refrigerators','Dishwashers','Washers','Dryers','Cooktops','Wall Ovens','Microwaves','Ventilation','Freezers','Ice Makers','Wine & Beverage','Compact Refrigerators','Outdoor Grills','Outdoor Kitchens','Bathroom Fans','Air Exchangers','Vacuums','Water Dispensers','Small Appliances','Laundry Centers','Air Conditioners','Dehumidifiers','Air Purifiers','Doorbells & Intercoms','Safes','Garage & Utility','Compact Kitchen','Cooking Accessories','Parts & Add-ons','Kitchen Accessories','Laundry Accessories','Refrigerator Accessories','Ventilation Accessories','Grill Accessories','Grill Parts','Dishwasher Accessories','Air Exchanger Accessories','Installation Kits','Commercial Appliances','Garment Care','Heaters','Outdoor Refrigeration'];
+  for(const c of known){if(low===c.toLowerCase())return c}
+  return raw;
+} // from discover-brand edge function
 let discoverLoading = false;
 
 // Price Sync state
@@ -451,7 +468,7 @@ async function saveToPim(idx){
   const rec={
     organization_id:'00000000-0000-0000-0000-000000000002',
     brand_name:d.brand_name||r.brand,manufacturer_name:d.manufacturer_name||d.brand_name||r.brand,
-    model:d.model||r.model,category:d.category||null,short_description:d.short_description||d.product_name||null,
+    model:d.model||r.model,category:normalizeCategory(d.category),short_description:d.short_description||d.product_name||null,
     msrp:d.msrp||null,price_currency:d.currency||'CAD',color:d.color||null,finish:d.finish||null,
     width_inches:d.width_inches||null,height_inches:d.height_inches||null,depth_inches:d.depth_inches||null,
     weight_lbs:d.weight_lbs||null,capacity_cu_ft:d.capacity_cu_ft||null,voltage:d.voltage||null,
