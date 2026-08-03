@@ -483,6 +483,14 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .ai-coach-bar input::placeholder{color:rgba(255,255,255,.4)}
 .ai-coach-bar .btn-ai{background:#fff;color:var(--navy);font-weight:700;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px}
 .ai-coach-bar .btn-ai:hover{background:#e9ecf3}
+/* === MOBILE MOVE DROPDOWN === */
+.move-stage{display:none;width:100%;margin-top:6px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;font-weight:600;background:#fff;color:var(--navy);cursor:pointer}
+@media(max-width:768px){.move-stage{display:block}.deal{cursor:pointer!important}}
+
+/* === LOADING BUTTON STATE === */
+.btn.loading{opacity:.7;pointer-events:none;position:relative}
+.btn.loading::after{content:'';display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-left:8px;vertical-align:middle}
+.btn-ghost.loading::after{border-color:rgba(15,31,61,.2);border-top-color:var(--navy)}
 </style>
 </head>
 <body>
@@ -623,6 +631,8 @@ const money=n=>n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',cur
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const ago=d=>{if(!d)return'—';const days=Math.floor((Date.now()-new Date(d).getTime())/864e5);return days===0?'Today':days===1?'Yesterday':days+'d ago';};
 function toast(msg,type=''){const t=$('#toast');t.textContent=msg;t.className='toast show '+(type||'');setTimeout(()=>t.classList.remove('show'),3000);}
+function btnLoad(el,text){if(!el)return;el.classList.add('loading');el.disabled=true;if(text)el.textContent=text;}
+function btnDone(el,text){if(!el)return;el.classList.remove('loading');el.disabled=false;if(text)el.textContent=text;}
 const BUYING_ROLES=['Primary buyer','Co-buyer','Decision-maker','Influencer','Product user','Designer','Contractor','Builder','Installer','Property manager','Financial approver','Admin contact','Delivery contact','Other'];
 const RECORD_TYPES={individual:'👤 Individual',household:'👥 Household / Buying Group',business:'🏢 Business Account'};
 
@@ -920,7 +930,9 @@ function renderPipeline(){
       return '<button class="deal" draggable="true" data-deal="'+d.id+'"><div class="t" style="display:flex;align-items:center;justify-content:space-between">'+esc(d.title)+'<span class="rec-ind '+(hasRec?'has':'')+'" data-rec="'+d.id+'" title="'+(hasRec?'Has recording — tap to record another':'Tap to record')+'" style="cursor:pointer">'+(hasRec?'🎙':'🎤')+'</span></div>'
         +'<div class="v num">'+money(d.value_amount)+(d.margin_pct?' <span style="font-size:11px;color:var(--steel)">'+d.margin_pct+'%</span>':'')+'</div>'
         +'<div class="m">'+esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')+(parts.length>1?' +'+(parts.length-1):'')+(d.next_action?' · '+esc(d.next_action):'')+'</div>'
-        +(tags?'<div class="dm">'+tags+'</div>':'')+'</button>';
+        +(tags?'<div class="dm">'+tags+'</div>':'')
+        +'<select class="move-stage" data-move="'+d.id+'" onclick="event.stopPropagation()"><option value="">Move to…</option>'+cache.stages.filter(s2=>s2.name!==st.name).map(s2=>'<option value="'+esc(s2.name)+'">'+esc(s2.name)+'</option>').join('')+'</select>'
+        +'</button>';
     }).join('')||'<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>')+'</div>';
   }).join('');
   mainEl.innerHTML='<div class="page-head"><div><h1>Pipeline</h1><div class="sub">'+esc(currentOrg.name)+' · <b class="num">'+money(total)+'</b> open</div></div>'
@@ -936,6 +948,14 @@ function renderPipeline(){
   $('#editStagesBtn').onclick=openStagesEditor;
   $$('[data-deal]').forEach(b=>{b.onclick=e=>{if(e.target.closest('[data-rec]'))return;openDealModal(cache.deals.find(d=>d.id===b.dataset.deal));};});
   $$('[data-rec]').forEach(b=>{b.onclick=e=>{e.stopPropagation();openRecorderModal(b.dataset.rec);};});
+  // Mobile move-to-stage dropdown
+  $$('[data-move]').forEach(sel=>{sel.onchange=async()=>{
+    const newStage=sel.value;if(!newStage)return;
+    const deal=cache.deals.find(d=>d.id===sel.dataset.move);if(!deal)return;
+    if(newStage.toLowerCase().includes('won')){openCloseWonModal(deal,newStage);sel.value='';return;}
+    if(newStage.toLowerCase().includes('lost')){openCloseLostModal(deal,newStage);sel.value='';return;}
+    await moveStage(deal,newStage);
+  };});
   // Drag & drop
   $$('.deal[draggable]').forEach(c=>{
     c.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',c.dataset.deal);c.classList.add('dragging');});
@@ -956,10 +976,12 @@ function renderPipeline(){
 }
 
 async function moveStage(deal,newStage){
+  try{
   const now=new Date().toISOString();const terminal=cache.stages.find(s=>s.name===newStage)?.is_terminal;
   await sb.from('crm_deals').update({stage:newStage,stage_entered_at:now,closed_at:terminal?now:null}).eq('id',deal.id);
   await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id,changed_at:now,duration_seconds:deal.stage_entered_at?Math.floor((Date.now()-new Date(deal.stage_entered_at).getTime())/1000):null});
-  render();
+  toast('Moved to '+newStage,'ok');render();
+  }catch(err){toast(err.message||'Move failed','err');}
 }
 
 function openCloseWonModal(deal,newStage){
@@ -974,11 +996,14 @@ function openCloseWonModal(deal,newStage){
   $('#cw_cancel').onclick=closeModal;
   $('#cw_save').onclick=async()=>{
     const price=$('#cw_price').value;if(!price)return formErr('Final price required.');
+    const btn=$('#cw_save');btnLoad(btn,'Closing…');
+    try{
     const now=new Date().toISOString();const mpct=$('#cw_margin').value?Number($('#cw_margin').value):null;
     await sb.from('crm_deals').update({stage:newStage,closed_at:now,stage_entered_at:now,value_amount:Number(price),margin_pct:mpct,margin_amount:mpct?Number(price)*mpct/100:null,order_number:$('#cw_order').value.trim()||null,purchase_date:$('#cw_pdate').value||null,delivery_date:$('#cw_ddate').value||null,warranty_status:$('#cw_warranty').value||null,won_products:$('#cw_prod').value.trim()?[$('#cw_prod').value.trim()]:[]}).eq('id',deal.id);
     await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id});
     await createDeliveryWorkflow(deal.id,deal.contact_id);
-    closeModal();setTimeout(()=>openPostMortem(deal.id,'won'),300);render();
+    closeModal();toast('Deal closed — delivery workflow created','ok');setTimeout(()=>openPostMortem(deal.id,'won'),300);render();
+    }catch(err){btnDone(btn,'Close as Won');toast(err.message||'Close failed','err');}
   };
 }
 
@@ -993,10 +1018,13 @@ function openCloseLostModal(deal,newStage){
   $('#cl_cancel').onclick=closeModal;
   $('#cl_save').onclick=async()=>{
     if(!$('#cl_reason').value)return formErr('Select a reason.');
+    const btn=$('#cl_save');btnLoad(btn,'Closing…');
+    try{
     const now=new Date().toISOString();
     await sb.from('crm_deals').update({stage:newStage,closed_at:now,stage_entered_at:now,lost_reason:$('#cl_reason').value,lost_competitor:$('#cl_comp').value.trim()||null,lost_objection:$('#cl_obj').value.trim()||null,future_followup_permitted:$('#cl_fu').value==='true'}).eq('id',deal.id);
     await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id});
-    closeModal();setTimeout(()=>openPostMortem(deal.id,'lost'),300);render();
+    closeModal();toast('Deal closed as lost','');setTimeout(()=>openPostMortem(deal.id,'lost'),300);render();
+    }catch(err){btnDone(btn,'Close as Lost');toast(err.message||'Close failed','err');}
   };
 }
 
@@ -1052,6 +1080,8 @@ function openDealModal(deal){
   }
   $('#f_save').onclick=async()=>{
     const title=$('#f_title').value.trim();if(!title)return formErr('Title required.');
+    const btn=$('#f_save');btnLoad(btn,isNew?'Creating…':'Saving…');
+    try{
     const rt=$('#f_type').value,stage=$('#f_stage').value,terminal=cache.stages.find(s=>s.name===stage)?.is_terminal;
     let companyId=deal?.company_id??null,bgId=deal?.buying_group_id??null,contactId=null;
     if(rt==='individual')contactId=$('#f_contact').value||null;
@@ -1076,7 +1106,8 @@ function openDealModal(deal){
         }
       }
     }
-    closeModal();render();
+    closeModal();toast(isNew?'Deal created':'Deal saved','ok');render();
+    }catch(err){btnDone($('#f_save'),isNew?'Create':'Save');formErr(err.message||'Save failed');toast(err.message||'Save failed','err');}
   };
 }
 
@@ -1173,13 +1204,17 @@ function openContactModal(ct){
   $('#c_cancel').onclick=closeModal;
   $('#c_save').onclick=async()=>{
     const first=$('#c_first').value.trim();if(!first)return formErr('First name required.');
-    let coId=$('#c_co').value||null;if(coId==='__new__'){const n=$('#c_nco').value.trim();if(!n)return formErr('Company name required.');const{data,error}=await sb.from('companies').insert({organization_id:currentOrg.id,name:n,display_name:n,source:'crm'}).select('id').single();if(error)return formErr(error.message);coId=data.id;}
+    const btn=$('#c_save');btnLoad(btn,'Saving…');
+    try{
+    let coId=$('#c_co').value||null;if(coId==='__new__'){const n=$('#c_nco').value.trim();if(!n){btnDone(btn,isNew?'Add':'Save');return formErr('Company name required.');}const{data,error}=await sb.from('companies').insert({organization_id:currentOrg.id,name:n,display_name:n,source:'crm'}).select('id').single();if(error){btnDone(btn,isNew?'Add':'Save');return formErr(error.message);}coId=data.id;}
     const newTemp=$('#c_temp').value;
     const row={organization_id:currentOrg.id,first_name:first,last_name:$('#c_last').value.trim()||null,preferred_name:$('#c_pref').value.trim()||null,title:$('#c_title').value.trim()||null,company_id:coId,email:$('#c_email').value.trim()||null,phone:$('#c_mob').value.trim()||null,mobile_phone:$('#c_mob').value.trim()||null,alternate_phone:$('#c_alt').value.trim()||null,preferred_contact_method:$('#c_pm').value,preferred_language:$('#c_lang').value,decision_making_role:$('#c_role').value||null,purchasing_authority:$('#c_auth').value||null,contact_consent:$('#c_consent').checked,notes:$('#c_note').value.trim()||null,source:ct?.source??'crm',temperature:newTemp,next_followup_date:$('#c_nfu').value||null};
     if(!isNew&&ct.temperature!==newTemp){row.temperature_changed_at=new Date().toISOString();row.temperature_changed_by=currentUser.id;row.temperature_reason='Manual update';
       sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'contact',entity_id:ct.id,from_temperature:ct.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
     const{error}=isNew?await sb.from('contacts').insert(row):await sb.from('contacts').update(row).eq('id',ct.id);
-    if(error)return formErr(error.message);closeModal();render();
+    if(error){btnDone(btn,isNew?'Add':'Save');return formErr(error.message);}
+    closeModal();toast(isNew?'Contact added':'Contact saved','ok');render();
+    }catch(err){btnDone(btn,isNew?'Add':'Save');toast(err.message||'Save failed','err');}
   };
 }
 
@@ -1217,7 +1252,7 @@ function openBGModal(bg){
     $('#bg_am')?.addEventListener('click',async()=>{const cid=$('#bg_ac').value;if(!cid)return formErr('Select contact.');const{error}=await sb.from('crm_buying_group_members').insert({buying_group_id:bg.id,contact_id:cid,buying_role:$('#bg_ar').value,is_primary:!members.length});if(error)return formErr(error.message);closeModal();await loadCore();openBGModal(cache.buyingGroups.find(g=>g.id===bg.id));});
     $('#bg_del')?.addEventListener('click',async()=>{if(!confirm('Delete this buying group?'))return;await sb.from('crm_buying_groups').delete().eq('id',bg.id);closeModal();render();});
   }
-  $('#bg_save').onclick=async()=>{const name=$('#bg_n').value.trim();if(!name)return formErr('Name required.');const row={organization_id:currentOrg.id,name,group_type:$('#bg_t').value,communication_default:$('#bg_cm').value,notes:$('#bg_notes').value.trim()||null};const{error}=isNew?await sb.from('crm_buying_groups').insert(row):await sb.from('crm_buying_groups').update(row).eq('id',bg.id);if(error)return formErr(error.message);closeModal();render();};
+  $('#bg_save').onclick=async()=>{const name=$('#bg_n').value.trim();if(!name)return formErr('Name required.');const btn=$('#bg_save');btnLoad(btn,'Saving…');try{const row={organization_id:currentOrg.id,name,group_type:$('#bg_t').value,communication_default:$('#bg_cm').value,notes:$('#bg_notes').value.trim()||null};const{error}=isNew?await sb.from('crm_buying_groups').insert(row):await sb.from('crm_buying_groups').update(row).eq('id',bg.id);if(error){btnDone(btn,isNew?'Create':'Save');return formErr(error.message);}closeModal();toast(isNew?'Group created':'Group saved','ok');render();}catch(err){btnDone(btn,isNew?'Create':'Save');toast(err.message||'Save failed','err');}};
 }
 
 // ===== BUSINESS ACCOUNTS =====
@@ -1252,8 +1287,11 @@ function openCompanyModal(co){
     +'<div class="sheet-actions"><button class="btn btn-ghost" id="co_cancel">Cancel</button><button class="btn btn-primary" id="co_save">'+(isNew?'Create':'Save')+'</button></div>');
   $('#co_cancel').onclick=closeModal;
   $('#co_save').onclick=async()=>{const n=$('#co_n').value.trim();if(!n)return formErr('Name required.');
-    const row={organization_id:currentOrg.id,name:n,display_name:n,legal_name:$('#co_ln').value.trim()||null,business_type:$('#co_t').value||null,industry:$('#co_ind').value.trim()||null,main_phone:$('#co_ph').value.trim()||null,general_email:$('#co_em').value.trim()||null,website:$('#co_web').value.trim()||null,account_classification:$('#co_cl').value,annual_revenue_potential:$('#co_rev').value?Number($('#co_rev').value):null,credit_status:$('#co_cr').value,account_terms:$('#co_trm').value.trim()||null,notes:$('#co_notes').value.trim()||null,source:co?.source??'crm'};
-    const{error}=isNew?await sb.from('companies').insert(row):await sb.from('companies').update(row).eq('id',co.id);if(error)return formErr(error.message);closeModal();render();};
+    const btn=$('#co_save');btnLoad(btn,'Saving…');
+    try{const row={organization_id:currentOrg.id,name:n,display_name:n,legal_name:$('#co_ln').value.trim()||null,business_type:$('#co_t').value||null,industry:$('#co_ind').value.trim()||null,main_phone:$('#co_ph').value.trim()||null,general_email:$('#co_em').value.trim()||null,website:$('#co_web').value.trim()||null,account_classification:$('#co_cl').value,annual_revenue_potential:$('#co_rev').value?Number($('#co_rev').value):null,credit_status:$('#co_cr').value,account_terms:$('#co_trm').value.trim()||null,notes:$('#co_notes').value.trim()||null,source:co?.source??'crm'};
+    const{error}=isNew?await sb.from('companies').insert(row):await sb.from('companies').update(row).eq('id',co.id);if(error){btnDone(btn,isNew?'Create':'Save');return formErr(error.message);}
+    closeModal();toast(isNew?'Business created':'Business saved','ok');render();
+    }catch(err){btnDone(btn,isNew?'Create':'Save');toast(err.message||'Save failed','err');}};
 }
 
 // ===== PRODUCTS =====
@@ -1946,7 +1984,7 @@ function openComposeModal(contact,deal,templates,seqStep){
       finalBody+='\n\n'+senderName;
     }
 
-    $('#ce_send').disabled=true;$('#ce_send').textContent='Sending…';
+    $('#ce_send').disabled=true;$('#ce_send').textContent='Sending…';$('#ce_send').classList.add('loading');
 
     try{
       const{data:{session}}=await sb.auth.getSession();
@@ -2043,6 +2081,7 @@ mainEl.innerHTML='<div class="page-head"><h1>📉 Coaching Dashboard</h1></div><
 
 // ===== AI ASSISTANT =====
 async function renderAssistant(){if(!assistants.length){const{data}=await sb.from('ai_assistants').select('*').or('organization_id.eq.'+currentOrg.id+',organization_id.is.null').eq('status','active').order('label');assistants=data??[];if(assistants.length&&!currentAssistant)currentAssistant=assistants[0];}
+if(!assistants.length){mainEl.innerHTML='<div class="page-head"><h1>🤖 AI Assistant</h1></div><div class="dash-panel" style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">🤖</div><h3 style="margin:0 0 8px">AI Assistant Not Configured</h3><p style="color:var(--steel);max-width:400px;margin:0 auto 16px">The AI Assistant requires an edge function (<code>ai-assistant</code>) deployed to Supabase and at least one assistant record in the <code>ai_assistants</code> table.</p><p style="color:var(--steel);font-size:13px">In the meantime, use the <b>AI Sales Coach</b> bar on the Pipeline view — it works with the Anthropic API directly for product comparisons and coaching.</p></div>';return;}
 mainEl.innerHTML='<div class="page-head"><h1>🤖 AI Assistant</h1></div><div class="assistant-wrap"><div>'+assistants.map(a=>'<button class="assist-card '+(a.id===currentAssistant?.id?'active':'')+'" data-aid="'+a.id+'"><div class="t">'+esc(a.label)+'</div><div class="d">'+esc(a.description??'')+'</div></button>').join('')+'</div><div class="chat"><div class="msgs" id="msgs">'+(chatLog.length?chatLog.map(m=>'<div class="msg '+(m.role==='user'?'user':'ai')+'">'+esc(m.text)+'</div>').join(''):'<div class="empty">Ask about your pipeline, customers, or products.</div>')+'</div><div class="composer"><textarea id="prompt" placeholder="Ask a question…" rows="1"></textarea><button class="btn btn-primary" id="sendBtn">Send</button></div></div></div>';
 $$('[data-aid]').forEach(b=>{b.onclick=()=>{currentAssistant=assistants.find(a=>a.id===b.dataset.aid);chatLog=[];renderAssistant();};});
 $('#sendBtn').onclick=sendPrompt;$('#prompt')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendPrompt();}});}
@@ -2052,6 +2091,7 @@ function paintMsgs(){const el=$('#msgs');if(!el)return;el.innerHTML=chatLog.map(
 
 // ===== TEAM COACH =====
 async function renderTeamCoach(){const{data:personas}=await sb.from('ai_personas').select('*').eq('organization_id',currentOrg.id).eq('active',true).order('persona_name');if(!coachPersona&&personas?.length)coachPersona=personas[0];
+if(!personas?.length){mainEl.innerHTML='<div class="page-head"><h1>🏆 Ask the Team</h1></div><div class="dash-panel" style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">🏆</div><h3 style="margin:0 0 8px">Coaching Team Not Configured</h3><p style="color:var(--steel);max-width:400px;margin:0 auto 16px">Ask the Team requires AI persona records in the <code>ai_personas</code> table and the <code>ai-team-coach</code> edge function deployed to Supabase.</p><p style="color:var(--steel);font-size:13px">Use the <b>AI Sales Coach</b> bar on the Pipeline view for product intelligence and coaching — it works directly with the Anthropic API.</p></div>';return;}
 mainEl.innerHTML='<div class="page-head"><h1>🏆 Ask the Team</h1></div><div class="coach-wrap"><div>'+(personas??[]).map(p=>'<button class="persona-card '+(p.id===coachPersona?.id?'active':'')+'" data-pid="'+p.id+'"><div class="pe">'+esc(p.avatar_emoji??'🤖')+'</div><div class="pn">'+esc(p.persona_name)+'</div><div class="prr">'+esc(p.persona_role??'')+'</div></button>').join('')+'</div>'
 +'<div style="display:flex;flex-direction:column"><div class="coach-msgs" id="cM">'+(coachLog.length?coachLog.map(m=>'<div class="coach-msg '+(m.role==='user'?'user':'ai')+'">'+(m.persona?'<div class="pb">'+esc(m.persona)+'</div>':'')+esc(m.text)+'</div>').join(''):'<div class="empty">Pick a persona and ask a question about sales, products, or installation.</div>')+'</div><div class="coach-composer"><textarea id="cI" placeholder="Ask the team…" rows="1"></textarea><button class="btn btn-primary" id="cS">Send</button></div></div></div>';
 $$('[data-pid]').forEach(b=>{b.onclick=()=>{coachPersona=(personas??[]).find(p=>p.id===b.dataset.pid);coachLog=[];renderTeamCoach();};});
@@ -2160,11 +2200,14 @@ function openQuickLogModal(type,contactId){
   $('#ql_note').focus();
   $('#ql_save').onclick=async()=>{
     const summary=$('#ql_note').value.trim();if(!summary)return formErr('Add a note.');
+    const btn=$('#ql_save');btnLoad(btn,'Saving…');
+    try{
     await sb.from('activities').insert({organization_id:currentOrg.id,actor_user_id:currentUser.id,entity_type:'contact',entity_id:contactId,activity_type:type,summary,source:'crm',metadata:{}});
     await sb.from('contacts').update({last_communication_at:new Date().toISOString(),last_contact_method:type,last_contacted_by:currentUser.id,days_since_contact:0,followup_status:'on_track'}).eq('id',contactId);
-    closeModal();
+    closeModal();toast(typeLabel+' logged','ok');
     const ct=cache.contacts.find(c=>c.id===contactId);
     if(ct)openContactDetail({...ct,last_communication_at:new Date().toISOString(),last_contact_method:type,days_since_contact:0,followup_status:'on_track'});
+    }catch(err){btnDone(btn,'Save');toast(err.message||'Log failed','err');}
   };
 }
 // Keep window.quickLog for backward compat but route to modal
@@ -2255,8 +2298,11 @@ function openNewTaskModal(){
   $('#nt_cancel').onclick=closeModal;
   $('#nt_save').onclick=async()=>{
     const title=$('#nt_title').value.trim();if(!title)return formErr('Title required.');
+    const btn=$('#nt_save');btnLoad(btn,'Creating…');
+    try{
     await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title,description:$('#nt_desc').value.trim()||null,due_at:$('#nt_due').value?new Date($('#nt_due').value).toISOString():null,priority:$('#nt_pri').value,contact_id:$('#nt_ct').value||null,deal_id:$('#nt_deal').value||null,assignee_user_id:currentUser.id,metadata:{}});
-    closeModal();renderTaskCentre();
+    closeModal();toast('Task created','ok');renderTaskCentre();
+    }catch(err){btnDone(btn,'Create');toast(err.message||'Create failed','err');}
   };
 }
 
@@ -2411,8 +2457,11 @@ async function renderDeliveries(){
     if(next==='delivered')upd.delivered_at=new Date().toISOString();
     if(next==='installed')upd.installed_at=new Date().toISOString();
     if(next==='warranty_registered')upd.warranty_registered_at=new Date().toISOString();
-    await sb.from('crm_delivery_workflows').update(upd).eq('id',wf.id);
-    renderDeliveries();
+    btnLoad(b,'Advancing…');
+    try{
+      await sb.from('crm_delivery_workflows').update(upd).eq('id',wf.id);
+      toast('Advanced to '+SHORT[si+1],'ok');renderDeliveries();
+    }catch(err){btnDone(b,'Advance →');toast(err.message||'Update failed','err');}
   };});
 }
 
