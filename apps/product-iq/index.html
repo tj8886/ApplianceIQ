@@ -19,22 +19,27 @@ html{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 body{min-height:100vh}
 a{color:var(--accent);text-decoration:none}
 
-/* Layout */
-.shell{max-width:1400px;margin:0 auto;padding:20px 24px 40px}
+.shell{max-width:1440px;margin:0 auto;padding:20px 24px 40px}
 header{display:flex;align-items:center;justify-content:space-between;padding:12px 0 20px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:12px}
 header h1{font-size:22px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
 header h1 span{color:var(--accent)}
 .live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite;flex-shrink:0}
 @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
-.header-right{display:flex;align-items:center;gap:12px}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .last-update{font-size:12px;color:var(--text3)}
 .btn{background:var(--surface3);border:1px solid var(--border2);color:var(--text);padding:7px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:500;transition:.15s}
 .btn:hover{background:var(--border);border-color:var(--text3)}
 .btn-accent{background:var(--accent2);border-color:var(--accent);color:#fff}
 .btn-accent:hover{background:var(--accent)}
+.btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 
-/* Stat Cards Row */
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+/* Toggle */
+.toggle-bar{display:flex;gap:2px;background:var(--surface3);border-radius:var(--radius-sm);padding:2px;border:1px solid var(--border)}
+.toggle-bar .btn{border:none;background:transparent;padding:6px 14px;border-radius:4px;font-size:12px}
+.toggle-bar .btn.active{background:var(--accent);color:#fff}
+
+/* Stats Row */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px}
 .stat-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:6px}
 .stat-card .value{font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
@@ -45,48 +50,64 @@ header h1 span{color:var(--accent)}
 .stat-card.purple .value{color:var(--purple)}
 .stat-card.pink .value{color:var(--pink)}
 .stat-card.orange .value{color:var(--orange)}
+.stat-card.red .value{color:var(--red)}
 
-/* Grid layouts */
+/* Grids */
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:24px}
-@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+@media(max-width:1000px){.grid-2,.grid-3{grid-template-columns:1fr}}
 
 /* Panels */
 .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-.panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .panel-head h3{font-size:14px;font-weight:600}
 .panel-head .badge{font-size:11px;background:var(--surface3);border:1px solid var(--border2);padding:2px 8px;border-radius:12px;color:var(--text2)}
+.panel-head .badge.red{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:var(--red)}
 .panel-body{padding:16px}
 
 /* Progress bars */
 .prog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .prog-row:last-child{margin-bottom:0}
-.prog-label{width:120px;font-size:12px;color:var(--text2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog-label{width:130px;font-size:12px;color:var(--text2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .prog-track{flex:1;height:8px;background:var(--surface3);border-radius:4px;overflow:hidden}
 .prog-fill{height:100%;border-radius:4px;transition:width .6s ease}
-.prog-pct{width:44px;text-align:right;font-size:12px;font-weight:600;flex-shrink:0}
+.prog-pct{width:48px;text-align:right;font-size:12px;font-weight:600;flex-shrink:0}
+
+/* Category cards */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.cat-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:default;transition:.15s}
+.cat-card:hover{border-color:var(--accent);background:var(--accent-glow)}
+.cat-card .cat-name{font-weight:600;font-size:13px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.cat-card .cat-count{color:var(--accent);font-size:20px;font-weight:700}
+.cat-card .cat-meta{font-size:11px;color:var(--text3);margin-top:6px;display:flex;gap:10px}
+.cat-card .cat-meta span{display:flex;align-items:center;gap:3px}
+.cat-card .cat-bar{margin-top:8px;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.cat-card .cat-bar-fill{height:100%;border-radius:2px}
+.cat-card.parts{opacity:.5;border-style:dashed}
+.cat-card.parts:hover{opacity:.8}
 
 /* Table */
-.tbl-wrap{overflow-x:auto}
+.tbl-wrap{overflow-x:auto;max-height:420px;overflow-y:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border2);color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+thead th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border2);color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;position:sticky;top:0;background:var(--surface);z-index:1}
 tbody td{padding:9px 12px;border-bottom:1px solid var(--border)}
 tbody tr:hover{background:var(--accent-glow)}
 tbody tr:last-child td{border-bottom:none}
 .model-name{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brand-tag{font-size:11px;color:var(--accent);background:var(--accent-glow);padding:2px 7px;border-radius:3px;white-space:nowrap}
+.cat-tag{font-size:11px;color:var(--text2);white-space:nowrap}
 .completeness-bar{display:inline-flex;align-items:center;gap:6px}
 .completeness-bar .mini-bar{width:60px;height:5px;background:var(--surface3);border-radius:3px;overflow:hidden}
 .completeness-bar .mini-fill{height:100%;border-radius:3px}
 
-/* Asset breakdown */
-.asset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+/* Asset grid */
+.asset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
 .asset-item{text-align:center;padding:12px 8px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)}
 .asset-item .count{font-size:22px;font-weight:700;color:var(--accent)}
-.asset-item .type{font-size:11px;color:var(--text2);margin-top:2px;text-transform:capitalize}
+.asset-item .type{font-size:11px;color:var(--text2);margin-top:2px}
 
-/* Realtime feed */
-.feed{max-height:280px;overflow-y:auto}
+/* Feed */
+.feed{max-height:380px;overflow-y:auto}
 .feed-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
 .feed-item:last-child{border-bottom:none}
 .feed-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
@@ -97,14 +118,13 @@ tbody tr:last-child td{border-bottom:none}
 .feed-text{flex:1;color:var(--text2)}
 .feed-text strong{color:var(--text);font-weight:500}
 .feed-time{color:var(--text3);font-size:11px;flex-shrink:0}
-.feed-empty{padding:20px;text-align:center;color:var(--text3);font-size:13px}
+.feed-empty{padding:24px;text-align:center;color:var(--text3);font-size:13px}
 
 /* Loading */
 .loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3)}
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin-right:10px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* Scrollbar */
 ::-webkit-scrollbar{width:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
@@ -120,6 +140,11 @@ tbody tr:last-child td{border-bottom:none}
       <div class="live-dot" title="Realtime connected"></div>
     </h1>
     <div class="header-right">
+      <div class="toggle-bar" id="viewToggle">
+        <button class="btn active" data-view="products" onclick="setView('products')">Products Only</button>
+        <button class="btn" data-view="all" onclick="setView('all')">All Items</button>
+        <button class="btn" data-view="parts" onclick="setView('parts')">Parts Only</button>
+      </div>
       <span class="last-update" id="lastUpdate"></span>
       <button class="btn btn-accent" onclick="refreshAll()">↻ Refresh</button>
     </div>
@@ -127,18 +152,24 @@ tbody tr:last-child td{border-bottom:none}
 
   <!-- KPI Row -->
   <div class="stats-row" id="kpiRow">
-    <div class="stat-card accent"><div class="label">Total Products</div><div class="value" id="kpiProducts">—</div><div class="sub" id="kpiProductsSub"></div></div>
+    <div class="stat-card accent"><div class="label">Products</div><div class="value" id="kpiProducts">—</div><div class="sub" id="kpiProductsSub"></div></div>
+    <div class="stat-card red"><div class="label">Parts / Accessories</div><div class="value" id="kpiParts">—</div><div class="sub" id="kpiPartsSub">excluded from scraper</div></div>
     <div class="stat-card green"><div class="label">Avg Completeness</div><div class="value" id="kpiComplete">—</div><div class="sub" id="kpiCompleteSub"></div></div>
-    <div class="stat-card purple"><div class="label">Total Images</div><div class="value" id="kpiImages">—</div><div class="sub" id="kpiImagesSub"></div></div>
-    <div class="stat-card pink"><div class="label">Total Documents</div><div class="value" id="kpiDocs">—</div><div class="sub" id="kpiDocsSub"></div></div>
-    <div class="stat-card orange"><div class="label">Total Videos</div><div class="value" id="kpiVids">—</div><div class="sub" id="kpiVidsSub"></div></div>
+    <div class="stat-card purple"><div class="label">Images</div><div class="value" id="kpiImages">—</div><div class="sub" id="kpiImagesSub"></div></div>
+    <div class="stat-card pink"><div class="label">Documents</div><div class="value" id="kpiDocs">—</div><div class="sub" id="kpiDocsSub"></div></div>
     <div class="stat-card yellow"><div class="label">Brands</div><div class="value" id="kpiBrands">—</div><div class="sub" id="kpiBrandsSub"></div></div>
   </div>
 
-  <!-- Coverage + Asset Breakdown -->
+  <!-- Category Breakdown -->
+  <div class="panel" style="margin-bottom:24px">
+    <div class="panel-head"><h3>Product Categories</h3><span class="badge" id="catCount"></span></div>
+    <div class="panel-body" id="catGrid"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+  </div>
+
+  <!-- Coverage + Assets -->
   <div class="grid-2">
     <div class="panel">
-      <div class="panel-head"><h3>Data Coverage</h3></div>
+      <div class="panel-head"><h3>Data Coverage</h3><span class="badge" id="coverageBadge"></span></div>
       <div class="panel-body" id="coveragePanel"><div class="loading"><div class="spinner"></div>Loading…</div></div>
     </div>
     <div class="panel">
@@ -150,7 +181,7 @@ tbody tr:last-child td{border-bottom:none}
   <!-- Needs Fixing + Realtime Feed -->
   <div class="grid-2">
     <div class="panel">
-      <div class="panel-head"><h3>Needs Fixing</h3><span class="badge" id="fixCount">—</span></div>
+      <div class="panel-head"><h3>Needs Fixing</h3><span class="badge red" id="fixCount">—</span></div>
       <div class="panel-body" style="padding:0">
         <div class="tbl-wrap" id="fixTable"><div class="loading"><div class="spinner"></div>Loading…</div></div>
       </div>
@@ -165,7 +196,7 @@ tbody tr:last-child td{border-bottom:none}
     </div>
   </div>
 
-  <!-- Document Type + Image Type breakdowns -->
+  <!-- Doc + Img type breakdowns -->
   <div class="grid-2" style="margin-top:24px">
     <div class="panel">
       <div class="panel-head"><h3>Document Types</h3></div>
@@ -186,287 +217,296 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = createClient(SB_URL, SB_KEY);
 
 // ── Completeness fields ──
-const COMPLETENESS_FIELDS = [
+const COMP_FIELDS = [
   'short_description','category','msrp','color',
   'width_inches','height_inches','depth_inches','weight_lbs',
   'capacity_cu_ft','voltage','specs_json','finish','energy_star'
 ];
-const TOTAL_FIELDS = COMPLETENESS_FIELDS.length; // 13
+const TOTAL_F = COMP_FIELDS.length;
 
-function calcCompleteness(p) {
-  let filled = 0;
-  for (const f of COMPLETENESS_FIELDS) {
+function calcComp(p) {
+  let n = 0;
+  for (const f of COMP_FIELDS) {
     const v = p[f];
-    if (v !== null && v !== undefined && v !== '') filled++;
+    if (v !== null && v !== undefined && v !== '') n++;
   }
-  return Math.round((filled / TOTAL_FIELDS) * 100);
+  return Math.round((n / TOTAL_F) * 100);
 }
 
-function commaFmt(n) {
-  return (n || 0).toLocaleString();
-}
-
-function pctColor(pct) {
-  if (pct >= 80) return 'var(--green)';
-  if (pct >= 50) return 'var(--yellow)';
-  return 'var(--red)';
-}
-
-function prettyLabel(s) {
-  return (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
+const fmt = n => (n||0).toLocaleString();
+function pctCol(p) { return p >= 80 ? 'var(--green)' : p >= 50 ? 'var(--yellow)' : 'var(--red)'; }
+function prettyLabel(s) { return (s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
 function timeAgo(ts) {
-  const d = new Date(ts);
-  const s = Math.floor((Date.now() - d) / 1000);
+  const s = Math.floor((Date.now() - new Date(ts)) / 1000);
   if (s < 60) return 'just now';
-  if (s < 3600) return Math.floor(s / 60) + 'm ago';
-  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-  return d.toLocaleDateString();
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return new Date(ts).toLocaleDateString();
 }
 
 // ── State ──
-let products = [];
-let imgCounts = {};   // product_id → count
+let allProducts = [];
+let catMap = {};          // raw → {canonical, is_parts_accessory, display_order}
+let imgCounts = {};       // product_id → count
 let docCounts = {};
 let vidCounts = {};
 let imgTotals = 0, docTotals = 0, vidTotals = 0;
 let imgByType = {}, docByType = {};
-let productsWithImages = 0, productsWithDocs = 0, productsWithVids = 0;
+let prodsWithImgs = 0, prodsWithDocs = 0, prodsWithVids = 0;
+let currentView = 'products'; // 'products' | 'all' | 'parts'
+
+function filtered() {
+  if (currentView === 'products') return allProducts.filter(p => !p.is_parts_accessory);
+  if (currentView === 'parts') return allProducts.filter(p => p.is_parts_accessory);
+  return allProducts;
+}
 
 // ── Data loading ──
-async function loadProducts() {
-  // Fetch all active products with completeness-relevant fields
-  const cols = 'id,model,brand_name,category,' + COMPLETENESS_FIELDS.join(',');
-  let all = [];
-  let from = 0;
-  const PAGE = 1000;
+async function paginate(table, cols) {
+  let all = [], from = 0;
+  const PG = 1000;
   while (true) {
-    const { data, error } = await sb.from('aiq_products').select(cols)
-      .eq('status', 'active').range(from, from + PAGE - 1);
-    if (error) { console.error('products fetch', error); break; }
+    const { data, error } = await sb.from(table).select(cols).range(from, from + PG - 1);
+    if (error) { console.error(table, error); break; }
     all = all.concat(data);
-    if (data.length < PAGE) break;
-    from += PAGE;
+    if (data.length < PG) break;
+    from += PG;
   }
-  products = all;
+  return all;
+}
+
+async function loadProducts() {
+  const cols = 'id,model,brand_name,category,is_parts_accessory,status,' + COMP_FIELDS.join(',');
+  const raw = await paginate('aiq_products', cols);
+  allProducts = raw.filter(p => p.status === 'active');
+}
+
+async function loadCatMap() {
+  const { data } = await sb.from('pim_category_map').select('*');
+  catMap = {};
+  for (const r of (data || [])) catMap[r.raw_category] = r;
 }
 
 async function loadImageCounts() {
-  // Use PostgREST RPC or manual aggregation
-  // We need: per-product count, total count, per-type count, distinct products
-  const { data, error } = await sb.rpc('', {}).catch(() => null);
-  // Fallback: fetch product_id and image_type from pim_product_images
-  let all = [];
-  let from = 0;
-  const PAGE = 1000;
-  while (true) {
-    const { data, error } = await sb.from('pim_product_images').select('product_id,image_type').range(from, from + PAGE - 1);
-    if (error) { console.error('images fetch', error); break; }
-    all = all.concat(data);
-    if (data.length < PAGE) break;
-    from += PAGE;
-  }
-  imgCounts = {};
-  imgByType = {};
-  const prodSet = new Set();
+  const all = await paginate('pim_product_images', 'product_id,image_type');
+  imgCounts = {}; imgByType = {};
+  const s = new Set();
   for (const r of all) {
-    imgCounts[r.product_id] = (imgCounts[r.product_id] || 0) + 1;
-    prodSet.add(r.product_id);
+    imgCounts[r.product_id] = (imgCounts[r.product_id]||0) + 1;
+    s.add(r.product_id);
     const t = r.image_type || 'unknown';
-    imgByType[t] = (imgByType[t] || 0) + 1;
+    imgByType[t] = (imgByType[t]||0) + 1;
   }
   imgTotals = all.length;
-  productsWithImages = prodSet.size;
+  prodsWithImgs = s.size;
 }
 
 async function loadDocCounts() {
-  let all = [];
-  let from = 0;
-  const PAGE = 1000;
-  while (true) {
-    const { data, error } = await sb.from('pim_product_documents').select('product_id,doc_type').range(from, from + PAGE - 1);
-    if (error) { console.error('docs fetch', error); break; }
-    all = all.concat(data);
-    if (data.length < PAGE) break;
-    from += PAGE;
-  }
-  docCounts = {};
-  docByType = {};
-  const prodSet = new Set();
+  const all = await paginate('pim_product_documents', 'product_id,doc_type');
+  docCounts = {}; docByType = {};
+  const s = new Set();
   for (const r of all) {
-    docCounts[r.product_id] = (docCounts[r.product_id] || 0) + 1;
-    prodSet.add(r.product_id);
+    docCounts[r.product_id] = (docCounts[r.product_id]||0) + 1;
+    s.add(r.product_id);
     const t = r.doc_type || 'unknown';
-    docByType[t] = (docByType[t] || 0) + 1;
+    docByType[t] = (docByType[t]||0) + 1;
   }
   docTotals = all.length;
-  productsWithDocs = prodSet.size;
+  prodsWithDocs = s.size;
 }
 
 async function loadVidCounts() {
-  const { data, error } = await sb.from('pim_product_videos').select('product_id,video_type');
-  if (error) { console.error('vids fetch', error); return; }
+  const { data } = await sb.from('pim_product_videos').select('product_id,video_type');
   vidCounts = {};
-  const prodSet = new Set();
-  for (const r of (data || [])) {
-    vidCounts[r.product_id] = (vidCounts[r.product_id] || 0) + 1;
-    prodSet.add(r.product_id);
+  const s = new Set();
+  for (const r of (data||[])) {
+    vidCounts[r.product_id] = (vidCounts[r.product_id]||0) + 1;
+    s.add(r.product_id);
   }
-  vidTotals = (data || []).length;
-  productsWithVids = prodSet.size;
+  vidTotals = (data||[]).length;
+  prodsWithVids = s.size;
 }
 
 // ── Rendering ──
 function renderKPIs() {
-  const total = products.length;
-  const avgComp = total > 0
-    ? Math.round(products.reduce((s, p) => s + calcCompleteness(p), 0) / total)
-    : 0;
-  const brands = new Set(products.map(p => p.brand_name).filter(Boolean));
-  const cats = new Set(products.map(p => p.category).filter(Boolean));
+  const prods = allProducts.filter(p => !p.is_parts_accessory);
+  const parts = allProducts.filter(p => p.is_parts_accessory);
+  const view = filtered();
+  const avg = view.length > 0 ? Math.round(view.reduce((s,p) => s + calcComp(p), 0) / view.length) : 0;
+  const brands = new Set(view.map(p => p.brand_name).filter(Boolean));
 
-  document.getElementById('kpiProducts').textContent = commaFmt(total);
-  document.getElementById('kpiProductsSub').textContent = `${cats.size} categories`;
-  document.getElementById('kpiComplete').textContent = avgComp + '%';
-  document.getElementById('kpiCompleteSub').textContent = `${TOTAL_FIELDS} fields tracked`;
-  document.getElementById('kpiImages').textContent = commaFmt(imgTotals);
-  document.getElementById('kpiImagesSub').textContent = `across ${commaFmt(productsWithImages)} products`;
-  document.getElementById('kpiDocs').textContent = commaFmt(docTotals);
-  document.getElementById('kpiDocsSub').textContent = `across ${commaFmt(productsWithDocs)} products`;
-  document.getElementById('kpiVids').textContent = commaFmt(vidTotals);
-  document.getElementById('kpiVidsSub').textContent = `across ${commaFmt(productsWithVids)} products`;
+  document.getElementById('kpiProducts').textContent = fmt(prods.length);
+  document.getElementById('kpiProductsSub').textContent = new Set(prods.map(p=>p.category).filter(Boolean)).size + ' categories';
+  document.getElementById('kpiParts').textContent = fmt(parts.length);
+  document.getElementById('kpiPartsSub').textContent = 'excluded from scraper';
+  document.getElementById('kpiComplete').textContent = avg + '%';
+  document.getElementById('kpiCompleteSub').textContent = TOTAL_F + ' fields · ' + currentView + ' view';
+  document.getElementById('kpiImages').textContent = fmt(imgTotals);
+  document.getElementById('kpiImagesSub').textContent = fmt(prodsWithImgs) + ' products w/ images';
+  document.getElementById('kpiDocs').textContent = fmt(docTotals);
+  document.getElementById('kpiDocsSub').textContent = fmt(prodsWithDocs) + ' products w/ docs';
   document.getElementById('kpiBrands').textContent = brands.size;
-  document.getElementById('kpiBrandsSub').textContent = 'active brands';
+  document.getElementById('kpiBrandsSub').textContent = 'in current view';
   document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
 
+function renderCategories() {
+  const view = filtered();
+  // Group by category
+  const groups = {};
+  for (const p of view) {
+    const cat = p.category || 'Uncategorized';
+    if (!groups[cat]) groups[cat] = { products: [], isParts: !!p.is_parts_accessory };
+    groups[cat].products.push(p);
+  }
+
+  const sorted = Object.entries(groups).sort((a,b) => {
+    // Products first, then by count
+    if (a[1].isParts !== b[1].isParts) return a[1].isParts ? 1 : -1;
+    return b[1].products.length - a[1].products.length;
+  });
+
+  document.getElementById('catCount').textContent = sorted.length + ' categories';
+
+  const el = document.getElementById('catGrid');
+  el.innerHTML = `<div class="cat-grid">${sorted.map(([cat, g]) => {
+    const cnt = g.products.length;
+    const avg = Math.round(g.products.reduce((s,p) => s + calcComp(p), 0) / cnt);
+    const withImgs = g.products.filter(p => imgCounts[p.id]).length;
+    const withDocs = g.products.filter(p => docCounts[p.id]).length;
+    const col = pctCol(avg);
+    return `<div class="cat-card${g.isParts ? ' parts' : ''}">
+      <div class="cat-name">${cat} <span class="cat-count">${cnt}</span></div>
+      <div class="cat-meta">
+        <span>🖼 ${withImgs}</span>
+        <span>📄 ${withDocs}</span>
+        <span style="color:${col}">◉ ${avg}%</span>
+      </div>
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${avg}%;background:${col}"></div></div>
+      ${g.isParts ? '<div style="font-size:10px;color:var(--red);margin-top:4px">⛔ Excluded from scraper</div>' : ''}
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function renderCoverage() {
-  const total = products.length || 1;
+  const view = filtered();
+  const total = view.length || 1;
+  const viewProdIds = new Set(view.map(p => p.id));
+
+  // Count assets only for products in current view
+  const viewImgs = [...viewProdIds].filter(id => imgCounts[id]).length;
+  const viewDocs = [...viewProdIds].filter(id => docCounts[id]).length;
+  const viewVids = [...viewProdIds].filter(id => vidCounts[id]).length;
+
   const fields = [
-    { label: 'Has Images', count: productsWithImages },
-    { label: 'Has Documents', count: productsWithDocs },
-    { label: 'Has Videos', count: productsWithVids },
-    { label: 'Has MSRP', count: products.filter(p => p.msrp != null).length },
-    { label: 'Has Specs JSON', count: products.filter(p => p.specs_json != null).length },
-    { label: 'Has Description', count: products.filter(p => p.short_description).length },
-    { label: 'Has Dimensions', count: products.filter(p => p.width_inches != null && p.height_inches != null && p.depth_inches != null).length },
-    { label: 'Has Category', count: products.filter(p => p.category).length },
-    { label: 'Has Color', count: products.filter(p => p.color).length },
-    { label: 'Has Finish', count: products.filter(p => p.finish).length },
-    { label: 'Has Energy Star', count: products.filter(p => p.energy_star != null).length },
-    { label: 'Has Weight', count: products.filter(p => p.weight_lbs != null).length },
-    { label: 'Has Voltage', count: products.filter(p => p.voltage).length },
+    { label: 'Has Images', count: viewImgs },
+    { label: 'Has Documents', count: viewDocs },
+    { label: 'Has Videos', count: viewVids },
+    { label: 'Has MSRP', count: view.filter(p => p.msrp != null).length },
+    { label: 'Has Specs JSON', count: view.filter(p => p.specs_json != null).length },
+    { label: 'Has Description', count: view.filter(p => p.short_description).length },
+    { label: 'Has Dimensions', count: view.filter(p => p.width_inches != null && p.height_inches != null && p.depth_inches != null).length },
+    { label: 'Has Category', count: view.filter(p => p.category).length },
+    { label: 'Has Color', count: view.filter(p => p.color).length },
+    { label: 'Has Finish', count: view.filter(p => p.finish).length },
+    { label: 'Has Energy Star', count: view.filter(p => p.energy_star != null).length },
+    { label: 'Has Weight', count: view.filter(p => p.weight_lbs != null).length },
+    { label: 'Has Voltage', count: view.filter(p => p.voltage).length },
   ];
 
   const el = document.getElementById('coveragePanel');
+  document.getElementById('coverageBadge').textContent = currentView + ' view';
   el.innerHTML = fields.map(f => {
     const pct = Math.round((f.count / total) * 100);
     return `<div class="prog-row">
       <span class="prog-label">${f.label}</span>
-      <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${pctColor(pct)}"></div></div>
-      <span class="prog-pct" style="color:${pctColor(pct)}">${pct}%</span>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${pctCol(pct)}"></div></div>
+      <span class="prog-pct" style="color:${pctCol(pct)}">${pct}%</span>
     </div>`;
   }).join('');
 }
 
 function renderAssets() {
   const el = document.getElementById('assetPanel');
-  // Merge image types + doc types + videos into asset grid
   const items = [];
-
-  // Top image types
-  const imgSorted = Object.entries(imgByType).sort((a,b) => b[1] - a[1]).slice(0, 4);
-  for (const [t, c] of imgSorted) {
-    items.push({ count: c, type: prettyLabel(t) + ' imgs' });
-  }
-
-  // Top doc types
-  const docSorted = Object.entries(docByType).sort((a,b) => b[1] - a[1]).slice(0, 4);
-  for (const [t, c] of docSorted) {
-    items.push({ count: c, type: prettyLabel(t) });
-  }
-
-  if (vidTotals > 0) {
-    items.push({ count: vidTotals, type: 'Videos' });
-  }
+  const imgSorted = Object.entries(imgByType).sort((a,b) => b[1]-a[1]).slice(0,5);
+  for (const [t,c] of imgSorted) items.push({count:c, type: prettyLabel(t) + ' imgs'});
+  const docSorted = Object.entries(docByType).sort((a,b) => b[1]-a[1]).slice(0,5);
+  for (const [t,c] of docSorted) items.push({count:c, type: prettyLabel(t)});
+  if (vidTotals > 0) items.push({count:vidTotals, type:'Videos'});
 
   el.innerHTML = `<div class="asset-grid">${items.map(i =>
-    `<div class="asset-item"><div class="count">${commaFmt(i.count)}</div><div class="type">${i.type}</div></div>`
+    `<div class="asset-item"><div class="count">${fmt(i.count)}</div><div class="type">${i.type}</div></div>`
   ).join('')}</div>`;
 }
 
 function renderNeedsFix() {
-  // Sort products by completeness ascending, show worst 30
-  const scored = products.map(p => ({
+  // Only show products (not parts) sorted by completeness ascending
+  const prods = allProducts.filter(p => !p.is_parts_accessory).map(p => ({
     ...p,
-    completeness: calcCompleteness(p),
+    completeness: calcComp(p),
     images: imgCounts[p.id] || 0,
     docs: docCounts[p.id] || 0
-  })).sort((a, b) => a.completeness - b.completeness);
+  })).sort((a,b) => a.completeness - b.completeness);
 
-  const worst = scored.slice(0, 30);
-  const needsFix = scored.filter(p => p.completeness < 50).length;
-  document.getElementById('fixCount').textContent = commaFmt(needsFix) + ' < 50%';
+  const worst = prods.slice(0, 40);
+  const under50 = prods.filter(p => p.completeness < 50).length;
+  document.getElementById('fixCount').textContent = fmt(under50) + ' products < 50%';
 
   const el = document.getElementById('fixTable');
   if (worst.length === 0) {
     el.innerHTML = '<div class="feed-empty">All products look good!</div>';
     return;
   }
-
   el.innerHTML = `<table>
-    <thead><tr>
-      <th>Model</th><th>Brand</th><th>Category</th><th>Imgs</th><th>Docs</th><th>Completeness</th>
-    </tr></thead>
+    <thead><tr><th>Model</th><th>Brand</th><th>Category</th><th>🖼</th><th>📄</th><th>Completeness</th></tr></thead>
     <tbody>${worst.map(p => {
       const c = p.completeness;
-      const col = pctColor(c);
+      const col = pctCol(c);
       return `<tr>
-        <td class="model-name" title="${(p.model||'').replace(/"/g,'&quot;')}">${p.model || '—'}</td>
-        <td><span class="brand-tag">${p.brand_name || '—'}</span></td>
-        <td style="color:var(--text2)">${prettyLabel(p.category) || '—'}</td>
-        <td>${p.images}</td>
-        <td>${p.docs}</td>
+        <td class="model-name" title="${(p.model||'').replace(/"/g,'&quot;')}">${p.model||'—'}</td>
+        <td><span class="brand-tag">${p.brand_name||'—'}</span></td>
+        <td class="cat-tag">${p.category||'—'}</td>
+        <td>${p.images}</td><td>${p.docs}</td>
         <td><div class="completeness-bar">
           <div class="mini-bar"><div class="mini-fill" style="width:${c}%;background:${col}"></div></div>
           <span style="color:${col};font-weight:600">${c}%</span>
         </div></td>
       </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+    }).join('')}</tbody></table>`;
 }
 
 function renderDocTypes() {
   const el = document.getElementById('docTypePanel');
-  const sorted = Object.entries(docByType).sort((a,b) => b[1] - a[1]);
-  const max = sorted[0]?.[1] || 1;
-  el.innerHTML = sorted.map(([t, c]) => {
-    const pct = Math.round((c / max) * 100);
+  const sorted = Object.entries(docByType).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  el.innerHTML = sorted.map(([t,c])=>{
+    const pct = Math.round((c/max)*100);
     return `<div class="prog-row">
       <span class="prog-label">${prettyLabel(t)}</span>
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:var(--purple)"></div></div>
-      <span class="prog-pct" style="color:var(--purple)">${commaFmt(c)}</span>
+      <span class="prog-pct" style="color:var(--purple)">${fmt(c)}</span>
     </div>`;
   }).join('');
 }
 
 function renderImgTypes() {
   const el = document.getElementById('imgTypePanel');
-  const sorted = Object.entries(imgByType).sort((a,b) => b[1] - a[1]);
-  const max = sorted[0]?.[1] || 1;
-  el.innerHTML = sorted.map(([t, c]) => {
-    const pct = Math.round((c / max) * 100);
+  const sorted = Object.entries(imgByType).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  el.innerHTML = sorted.map(([t,c])=>{
+    const pct = Math.round((c/max)*100);
     return `<div class="prog-row">
       <span class="prog-label">${prettyLabel(t)}</span>
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:var(--accent)"></div></div>
-      <span class="prog-pct" style="color:var(--accent)">${commaFmt(c)}</span>
+      <span class="prog-pct" style="color:var(--accent)">${fmt(c)}</span>
     </div>`;
   }).join('');
 }
 
 function renderAll() {
   renderKPIs();
+  renderCategories();
   renderCoverage();
   renderAssets();
   renderNeedsFix();
@@ -474,25 +514,28 @@ function renderAll() {
   renderImgTypes();
 }
 
+// ── View toggle ──
+window.setView = function(v) {
+  currentView = v;
+  document.querySelectorAll('#viewToggle .btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === v);
+  });
+  renderAll();
+};
+
 // ── Realtime feed ──
 const feedItems = [];
-const MAX_FEED = 50;
-
-function addFeedItem(type, icon, text) {
-  feedItems.unshift({ type, icon, text, time: new Date() });
-  if (feedItems.length > MAX_FEED) feedItems.pop();
+function addFeed(icon, text) {
+  feedItems.unshift({icon, text, time: new Date()});
+  if (feedItems.length > 50) feedItems.pop();
   renderFeed();
 }
-
 function renderFeed() {
   const el = document.getElementById('feedList');
-  if (feedItems.length === 0) {
-    el.innerHTML = '<div class="feed-empty">Waiting for changes…</div>';
-    return;
-  }
+  if (!feedItems.length) { el.innerHTML = '<div class="feed-empty">Waiting for changes…</div>'; return; }
   el.innerHTML = feedItems.map(f =>
     `<div class="feed-item">
-      <div class="feed-icon ${f.icon}">${f.icon === 'img' ? '🖼' : f.icon === 'doc' ? '📄' : f.icon === 'vid' ? '🎬' : '📦'}</div>
+      <div class="feed-icon ${f.icon}">${f.icon==='img'?'🖼':f.icon==='doc'?'📄':f.icon==='vid'?'🎬':'📦'}</div>
       <div class="feed-text">${f.text}</div>
       <span class="feed-time">${timeAgo(f.time)}</span>
     </div>`
@@ -501,82 +544,51 @@ function renderFeed() {
 
 // ── Realtime subscriptions ──
 function setupRealtime() {
-  const channel = sb.channel('pim-dashboard');
+  const ch = sb.channel('pim-dash');
 
-  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'aiq_products' }, (payload) => {
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'aiq_products'}, payload => {
     const ev = payload.eventType;
-    const rec = payload.new || payload.old || {};
-    const model = rec.model || rec.id?.slice(0, 8) || 'Unknown';
-    const brand = rec.brand_name || '';
-    if (ev === 'INSERT') {
-      addFeedItem('product', 'prod', `New product <strong>${model}</strong>${brand ? ' (' + brand + ')' : ''}`);
-    } else if (ev === 'UPDATE') {
-      addFeedItem('product', 'prod', `Updated <strong>${model}</strong>${brand ? ' (' + brand + ')' : ''}`);
-    } else if (ev === 'DELETE') {
-      addFeedItem('product', 'prod', `Deleted product <strong>${model}</strong>`);
-    }
-    // Debounced refresh
+    const r = payload.new || payload.old || {};
+    const m = r.model || r.id?.slice(0,8) || '?';
+    const b = r.brand_name ? ' ('+r.brand_name+')' : '';
+    if (ev==='INSERT') addFeed('prod',`New product <strong>${m}</strong>${b}`);
+    else if (ev==='UPDATE') addFeed('prod',`Updated <strong>${m}</strong>${b}`);
+    else addFeed('prod',`Deleted <strong>${m}</strong>`);
     scheduleRefresh();
   });
 
-  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'pim_product_images' }, (payload) => {
-    const ev = payload.eventType;
-    const rec = payload.new || {};
-    const itype = rec.image_type || 'image';
-    if (ev === 'INSERT') {
-      addFeedItem('image', 'img', `New <strong>${prettyLabel(itype)}</strong> image added`);
-    } else if (ev === 'DELETE') {
-      addFeedItem('image', 'img', `Image removed`);
-    }
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'pim_product_images'}, payload => {
+    const t = (payload.new||{}).image_type||'image';
+    if (payload.eventType==='INSERT') addFeed('img',`New <strong>${prettyLabel(t)}</strong> image`);
+    else addFeed('img',`Image removed`);
     scheduleRefresh();
   });
 
-  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'pim_product_documents' }, (payload) => {
-    const ev = payload.eventType;
-    const rec = payload.new || {};
-    const dtype = rec.doc_type || 'document';
-    if (ev === 'INSERT') {
-      addFeedItem('document', 'doc', `New <strong>${prettyLabel(dtype)}</strong> added`);
-    }
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'pim_product_documents'}, payload => {
+    const t = (payload.new||{}).doc_type||'document';
+    if (payload.eventType==='INSERT') addFeed('doc',`New <strong>${prettyLabel(t)}</strong>`);
+    else addFeed('doc',`Document removed`);
     scheduleRefresh();
   });
 
-  channel.on('postgres_changes', { event: '*', schema: 'public', table: 'pim_product_videos' }, (payload) => {
-    const ev = payload.eventType;
-    if (ev === 'INSERT') {
-      addFeedItem('video', 'vid', `New <strong>video</strong> added`);
-    }
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'pim_product_videos'}, payload => {
+    if (payload.eventType==='INSERT') addFeed('vid',`New <strong>video</strong> added`);
     scheduleRefresh();
   });
 
-  channel.subscribe((status) => {
-    console.log('Realtime status:', status);
-  });
+  ch.subscribe(status => console.log('Realtime:', status));
 }
 
-let refreshTimer = null;
-function scheduleRefresh() {
-  if (refreshTimer) clearTimeout(refreshTimer);
-  refreshTimer = setTimeout(() => refreshAll(), 2000);
-}
+let _rt = null;
+function scheduleRefresh() { if (_rt) clearTimeout(_rt); _rt = setTimeout(()=>refreshAll(), 2000); }
 
 // ── Init ──
 window.refreshAll = async function() {
-  await Promise.all([
-    loadProducts(),
-    loadImageCounts(),
-    loadDocCounts(),
-    loadVidCounts()
-  ]);
+  await Promise.all([loadProducts(), loadCatMap(), loadImageCounts(), loadDocCounts(), loadVidCounts()]);
   renderAll();
 };
 
-async function init() {
-  await window.refreshAll();
-  setupRealtime();
-}
-
-init();
+(async () => { await window.refreshAll(); setupRealtime(); })();
 </script>
 </body>
 </html>
