@@ -3,25 +3,25 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="theme-color" content="#0c1222"/>
+<meta name="theme-color" content="#f6f8fb"/>
 <title>PIM Scraper v2 — ApplianceIQ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0c1222;--bg2:#111b2e;--surface:#182338;--card:#1e2d47;
-  --accent:#00c896;--accent2:#00e6ac;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
-  --txt:#e8edf4;--txt2:#7e8fa6;--line:#283a55;
+  --bg:#f6f8fb;--bg2:#ffffff;--surface:#f0f3f7;--card:#ffffff;
+  --accent:#1a9e56;--accent2:#178a4d;--amber:#d97706;--red:#c02d1e;--blue:#2f6fed;
+  --txt:#0f1f3d;--txt2:#5b6b85;--line:#e3e8f0;
   --radius:10px;
-  --t1:#00c896;--t2:#f59e0b;--t3:#ef4444;
+  --t1:#1a9e56;--t2:#d97706;--t3:#c02d1e;
 }
 html,body{height:100%;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh}
 
 /* Header */
 header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--bg2);border-bottom:1px solid var(--line);flex-shrink:0}
-header .logo{font-size:15px;font-weight:800;letter-spacing:-.3px}
+header .logo{font-family:Sora,sans-serif;font-size:15px;font-weight:800;letter-spacing:-.3px}
 header .logo span{color:var(--accent)}
 header .right{display:flex;align-items:center;gap:12px}
 .cost-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;color:var(--txt2)}
@@ -46,37 +46,37 @@ header .right{display:flex;align-items:center;gap:12px}
 .field input{min-width:280px}
 
 .tier-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
-.tier-badge.t1{background:rgba(0,200,150,.15);color:var(--t1)}
-.tier-badge.t2{background:rgba(245,158,11,.15);color:var(--t2)}
-.tier-badge.t3{background:rgba(239,68,68,.15);color:var(--t3)}
+.tier-badge.t1{background:rgba(26,158,86,.15);color:var(--t1)}
+.tier-badge.t2{background:rgba(217,119,6,.15);color:var(--t2)}
+.tier-badge.t3{background:rgba(192,45,30,.15);color:var(--t3)}
 .tier-badge.tu{background:rgba(126,143,166,.15);color:var(--txt2)}
 
 /* Buttons */
 .btn{padding:9px 18px;border-radius:var(--radius);border:1px solid transparent;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:var(--accent);color:#0a1628;border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn-primary:hover{background:var(--accent2)}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed}
 .btn-secondary{background:var(--surface);color:var(--txt);border-color:var(--line)}
 .btn-secondary:hover{border-color:var(--txt2)}
 .btn-sm{padding:6px 12px;font-size:12px}
-.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border-color:var(--red)}
-.btn-danger:hover{background:rgba(239,68,68,.25)}
+.btn-danger{background:rgba(192,45,30,.15);color:var(--red);border-color:var(--red)}
+.btn-danger:hover{background:rgba(192,45,30,.25)}
 
 /* Mode toggle */
 .mode-toggle{display:flex;background:var(--surface);border-radius:var(--radius);border:1px solid var(--line);overflow:hidden}
 .mode-toggle button{padding:8px 16px;font-size:12px;font-weight:600;font-family:inherit;border:none;background:none;color:var(--txt2);cursor:pointer;transition:all .15s}
-.mode-toggle button.active{background:var(--accent);color:#0a1628}
+.mode-toggle button.active{background:var(--accent);color:#fff}
 
 /* Brand grid */
 .brand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:20px}
 .brand-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:space-between}
 .brand-card:hover{border-color:var(--accent);background:var(--surface)}
-.brand-card.selected{border-color:var(--accent);background:rgba(0,200,150,.08)}
+.brand-card.selected{border-color:var(--accent);background:rgba(26,158,86,.08)}
 .brand-card .name{font-size:13px;font-weight:600}
 .brand-card .meta{display:flex;align-items:center;gap:6px}
 
 /* Results */
-.results-panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.results-panel{background:var(--card);box-shadow:0 1px 3px rgba(15,31,61,.04);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .results-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
 .results-header h3{font-size:14px;font-weight:700}
 .results-body{max-height:500px;overflow-y:auto}
@@ -144,7 +144,7 @@ header .right{display:flex;align-items:center;gap:12px}
 .brand-filter{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
 .filter-pills{display:flex;gap:4px;flex-wrap:wrap}
 .filter-pills button{padding:4px 10px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--txt2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
-.filter-pills button.active{background:var(--accent);color:#0a1628;border-color:var(--accent)}
+.filter-pills button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* Product table */
 .prod-table{width:100%;border-collapse:collapse;font-size:12px}
@@ -155,9 +155,9 @@ header .right{display:flex;align-items:center;gap:12px}
 .prod-table .brand-cell{color:var(--txt2)}
 
 /* Diff styling */
-.diff-added{background:rgba(0,200,150,.1);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px}
-.diff-changed{background:rgba(245,158,11,.1);color:var(--amber);padding:2px 6px;border-radius:4px;font-size:11px}
-.diff-removed{background:rgba(239,68,68,.1);color:var(--red);padding:2px 6px;border-radius:4px;font-size:11px;text-decoration:line-through}
+.diff-added{background:rgba(26,158,86,.1);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px}
+.diff-changed{background:rgba(217,119,6,.1);color:var(--amber);padding:2px 6px;border-radius:4px;font-size:11px}
+.diff-removed{background:rgba(192,45,30,.1);color:var(--red);padding:2px 6px;border-radius:4px;font-size:11px;text-decoration:line-through}
 
 /* Progress bar */
 .pbar{height:6px;background:var(--surface);border-radius:3px;overflow:hidden;width:100%}
@@ -178,9 +178,9 @@ header .right{display:flex;align-items:center;gap:12px}
 
 /* Completeness chip */
 .completeness{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
-.completeness.high{background:rgba(0,200,150,.15);color:var(--accent)}
-.completeness.med{background:rgba(245,158,11,.15);color:var(--amber)}
-.completeness.low{background:rgba(239,68,68,.15);color:var(--red)}
+.completeness.high{background:rgba(26,158,86,.15);color:var(--accent)}
+.completeness.med{background:rgba(217,119,6,.15);color:var(--amber)}
+.completeness.low{background:rgba(192,45,30,.15);color:var(--red)}
 
 /* Scrollable table wrapper */
 .table-wrap{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:55vh}
@@ -1084,7 +1084,7 @@ window.S = {
     if(miss.length>0){
       h+='<div style="font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;margin:14px 0 8px">Missing Fields ('+miss.length+')</div>';
       h+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
-      for(const f of miss)h+='<span style="background:rgba(245,158,11,.1);color:var(--amber);padding:3px 8px;border-radius:4px;font-size:11px">'+esc(f.replace(/_/g,' '))+'</span>';
+      for(const f of miss)h+='<span style="background:rgba(217,119,6,.1);color:var(--amber);padding:3px 8px;border-radius:4px;font-size:11px">'+esc(f.replace(/_/g,' '))+'</span>';
       h+='</div>';
     }
     if(p.source_reference)h+='<div style="margin-top:14px;font-size:11px;color:var(--txt2)">Source: <a href="'+esc(p.source_reference)+'" target="_blank" style="color:var(--blue)">'+esc(p.source_reference)+'</a></div>';
