@@ -240,6 +240,110 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .role-badge.member{background:#f0f3f9;color:var(--steel)}
 .nav-btn.admin-only{}
 .rep-card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:16px;position:relative}
+
+/* Greeter duty badge on rep cards + quickbar */
+.greeter-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:6px;background:#fef3cd;color:#856404;margin-left:6px}
+.qb-greeter{border-color:var(--teal);color:var(--teal)}.qb-greeter:hover{background:var(--teal);color:#fff}
+.qb-greeter.active-greeter{background:var(--teal);color:#fff}
+
+/* Role picker in clock-in modal */
+.role-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.role-opt{border:2px solid var(--line);border-radius:10px;padding:12px 10px;text-align:center;cursor:pointer;transition:all .15s}
+.role-opt:hover{border-color:var(--teal);background:var(--teal-tint)}
+.role-opt.selected{border-color:var(--teal);background:var(--teal-tint);box-shadow:0 0 0 2px var(--teal-tint)}
+.role-opt .ro-icon{font-size:24px;margin-bottom:4px}
+.role-opt .ro-title{font-weight:700;font-size:13px;color:var(--ink)}
+.role-opt .ro-desc{font-size:11px;color:var(--steel);margin-top:2px}
+
+/* ===== KIOSK MODE ===== */
+.kiosk-shell{position:fixed;inset:0;background:linear-gradient(160deg,#0a1628,#0f2840);color:#fff;display:flex;flex-direction:column;z-index:300;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.kiosk-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;background:rgba(0,0,0,.25);flex-shrink:0}
+.kiosk-header .kh-left{display:flex;align-items:center;gap:10px}
+.kiosk-header .kh-logo{background:var(--teal);width:36px;height:36px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:12px}
+.kiosk-header .kh-store{font-weight:800;font-size:18px}
+.kiosk-header .kh-date{font-size:12px;color:#8fa3c8}
+.kiosk-header .kh-exit{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#8fa3c8;width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-size:16px;cursor:pointer}
+.kiosk-header .kh-exit:hover{background:rgba(255,255,255,.2);color:#fff}
+.kiosk-body{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px 24px 40px;gap:20px;max-width:700px;margin:0 auto;width:100%}
+.kiosk-nextup{background:rgba(47,125,114,.18);border:2px solid var(--teal);border-radius:18px;padding:28px 24px;text-align:center;width:100%}
+.kiosk-nextup .kn-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#8fa3c8;font-weight:700;margin-bottom:6px}
+.kiosk-nextup .kn-name{font-size:42px;font-weight:800;letter-spacing:-1px;margin-bottom:4px}
+.kiosk-nextup .kn-pos{font-size:13px;color:#8fa3c8}
+.kiosk-btn-walkin{width:100%;padding:22px;border:0;border-radius:14px;background:var(--teal);color:#fff;font-family:'Sora',sans-serif;font-size:20px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s}
+.kiosk-btn-walkin:hover{background:var(--teal-dark)}
+.kiosk-btn-walkin:active{transform:scale(.98)}
+.kiosk-quick-assign{width:100%;padding:16px;border:2px solid var(--teal);border-radius:14px;background:rgba(47,125,114,.1);color:#fff;font-family:'Sora',sans-serif;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.kiosk-quick-assign:hover{background:rgba(47,125,114,.25)}
+.kiosk-stats{display:flex;gap:16px;width:100%}
+.kiosk-stat{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center}
+.kiosk-stat .ks-val{font-size:28px;font-weight:800}
+.kiosk-stat .ks-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8fa3c8;margin-top:2px}
+.kiosk-waiting{width:100%;display:flex;flex-direction:column;gap:8px}
+.kiosk-waiting h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8fa3c8;font-weight:700}
+.kiosk-wait-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between}
+.kiosk-wait-card .kwc-info{flex:1}
+.kiosk-wait-card .kwc-name{font-weight:700;font-size:14px}
+.kiosk-wait-card .kwc-detail{font-size:12px;color:#8fa3c8}
+.kiosk-wait-card .kwc-time{font-size:13px;font-weight:700;color:var(--amber);margin-right:12px}
+.kiosk-wait-card .kwc-assign{padding:8px 16px;border-radius:8px;border:0;background:var(--teal);color:#fff;font-weight:700;font-size:13px;cursor:pointer}
+.kiosk-queue-lineup{width:100%}
+.kiosk-queue-lineup h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8fa3c8;font-weight:700;margin-bottom:8px}
+.kiosk-rep-list{display:flex;gap:8px;flex-wrap:wrap}
+.kiosk-rep-chip{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600}
+.kiosk-rep-chip.is-up{background:rgba(47,125,114,.25);border-color:var(--teal);color:#6ee7b7}
+.kiosk-rep-chip.is-next{background:rgba(14,165,233,.15);border-color:var(--accent);color:#7dd3fc}
+.kiosk-rep-chip.busy{opacity:.45}
+/* Kiosk walk-in modal overlay */
+.kiosk-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:310;padding:20px}
+.kiosk-modal-card{background:#fff;border-radius:18px;padding:24px;width:min(520px,94vw);max-height:85vh;overflow-y:auto;color:var(--ink)}
+
+/* ===== TV MODE ===== */
+.tv-shell{position:fixed;inset:0;background:linear-gradient(160deg,#070e1a,#0c1a30);color:#fff;display:flex;flex-direction:column;z-index:300;overflow:hidden}
+.tv-header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;background:rgba(0,0,0,.3);flex-shrink:0}
+.tv-header .tvh-left{display:flex;align-items:center;gap:12px}
+.tv-header .tvh-logo{background:var(--teal);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:12px}
+.tv-header .tvh-store{font-weight:800;font-size:22px;letter-spacing:-.5px}
+.tv-header .tvh-date{font-size:13px;color:#8fa3c8;margin-left:12px}
+.tv-header .tvh-right{display:flex;align-items:center;gap:20px}
+.tv-header .tvh-clock{font-family:'Sora',sans-serif;font-size:28px;font-weight:800;letter-spacing:-1px}
+.tv-header .tvh-exit{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#64748b;width:32px;height:32px;border-radius:6px;display:grid;place-items:center;font-size:13px;cursor:pointer;opacity:.4}
+.tv-header .tvh-exit:hover{opacity:1;color:#fff}
+.tv-body{flex:1;display:grid;grid-template-columns:1fr 300px;gap:0;overflow:hidden}
+.tv-main{padding:20px 24px;overflow-y:auto}
+.tv-sidebar{background:rgba(0,0,0,.2);border-left:1px solid rgba(255,255,255,.06);padding:20px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+.tv-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px}
+.tv-metric{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px;text-align:center}
+.tv-metric .tvm-val{font-family:'Sora',sans-serif;font-size:32px;font-weight:800;letter-spacing:-1px}
+.tv-metric .tvm-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-top:2px}
+.tv-metric.alert .tvm-val{color:#f97316}
+.tv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.tv-card{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;position:relative}
+.tv-card .tvc-pos{position:absolute;top:8px;right:10px;font-size:22px;font-weight:800;opacity:.2}
+.tv-card .tvc-name{font-weight:800;font-size:16px;margin-bottom:4px}
+.tv-card .tvc-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
+.tv-card .tvc-stats{margin-top:8px;display:flex;gap:14px;font-size:12px;color:#64748b}
+.tv-card .tvc-stats b{color:#c8d5e6}
+.tv-card .tvc-timer{font-size:11px;color:#64748b;margin-top:4px}
+.tv-card.is-up{border-color:var(--teal);background:rgba(47,125,114,.1)}.tv-card.is-up .tvc-pos{opacity:1;color:var(--teal)}
+.tv-card.is-next{border-color:var(--accent);background:rgba(14,165,233,.08)}
+.tv-card.with-cust{border-color:#f59e0b;background:rgba(245,158,11,.06)}
+.tv-card.on-break{opacity:.5;border-style:dashed}
+.tv-card.unavail{opacity:.35;border-style:dashed}
+.tv-card .tvc-status.st-up{background:rgba(6,95,70,.4);color:#6ee7b7}
+.tv-card .tvc-status.st-next{background:rgba(2,132,199,.3);color:#7dd3fc}
+.tv-card .tvc-status.st-cust{background:rgba(133,100,4,.3);color:#fde68a}
+.tv-card .tvc-status.st-break{background:rgba(124,58,237,.25);color:#c4b5fd}
+.tv-card .tvc-status.st-avail{background:rgba(47,125,114,.25);color:#6ee7b7}
+.tv-card .tvc-status.st-other{background:rgba(100,116,139,.25);color:#94a3b8}
+.tv-sb-section{margin-bottom:4px}
+.tv-sb-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#64748b;font-weight:700;margin-bottom:8px}
+.tv-sb-waiting{display:flex;flex-direction:column;gap:6px}
+.tv-wait-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px}
+.tv-wait-card .tvw-name{font-weight:700;font-size:13px}
+.tv-wait-card .tvw-detail{font-size:11px;color:#64748b}
+.tv-wait-card .tvw-time{font-size:12px;font-weight:700;color:#f97316;margin-top:2px}
+.tv-insight{background:linear-gradient(135deg,rgba(14,165,233,.12),rgba(99,102,241,.12));border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:13px}
+@media(max-width:860px){.tv-body{grid-template-columns:1fr}.tv-sidebar{display:none}.tv-metrics{grid-template-columns:repeat(3,1fr)}}
 </style>
 </head>
 <body>
@@ -327,6 +431,24 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px"><span class="unav-pill">UP</span><span style="font-weight:800;font-size:20px">IQ Up System</span></div>
 <div id="onbStep"></div>
 </div>
+</div>
+
+<!-- ===== KIOSK MODE ===== -->
+<div id="kioskMode" class="kiosk-shell" style="display:none">
+<div class="kiosk-header">
+  <div class="kh-left"><div class="kh-logo">UP</div><div><div class="kh-store" id="kioskStoreName"></div><div class="kh-date" id="kioskDate"></div></div></div>
+  <button class="kh-exit" id="kioskExitBtn" title="Exit kiosk mode">🔒</button>
+</div>
+<div class="kiosk-body" id="kioskBody"></div>
+</div>
+
+<!-- ===== TV MODE ===== -->
+<div id="tvMode" class="tv-shell" style="display:none">
+<div class="tv-header">
+  <div class="tvh-left"><div class="tvh-logo">UP</div><span class="tvh-store" id="tvStoreName"></span><span class="tvh-date" id="tvDate"></span></div>
+  <div class="tvh-right"><span class="tvh-clock" id="tvClock"></span><button class="tvh-exit" id="tvExitBtn" title="Exit TV mode">✕</button></div>
+</div>
+<div class="tv-body"><div class="tv-main" id="tvMain"></div><div class="tv-sidebar" id="tvSidebar"></div></div>
 </div>
 
 <script type="module">
@@ -473,18 +595,273 @@ async function boot(){
   // Subscribe to realtime changes for instant floor updates
   setupRealtime();
 
+  // Restore kiosk/TV mode if device was locked into one
+  const savedMode=localStorage.getItem('iqup_mode');
+  if(savedMode==='kiosk'){enterKioskMode(true);return;}
+  if(savedMode==='tv'){enterTVMode(true);return;}
+
   render();
 }
+
+// Wire up kiosk/TV exit buttons (always available, outside of boot)
+document.getElementById('kioskExitBtn')?.addEventListener('click',exitKioskMode);
+document.getElementById('tvExitBtn')?.addEventListener('click',exitTVMode);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&activeMode==='tv')exitTVMode();});
 
 function setupRealtime(){
   if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}
   if(!currentStore)return;
   realtimeChannel=sb.channel('floor-'+currentStore.id)
-    .on('postgres_changes',{event:'*',schema:'public',table:'iq_up_queue_entries',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'iq_shift_records',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'iq_customer_waiting_queue',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'iq_status_sessions',filter:'store_id=eq.'+currentStore.id},()=>{if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_up_queue_entries',filter:'store_id=eq.'+currentStore.id},()=>{if(activeMode==='kiosk')renderKiosk();else if(activeMode==='tv')renderTV();else if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_shift_records',filter:'store_id=eq.'+currentStore.id},()=>{if(activeMode==='kiosk')renderKiosk();else if(activeMode==='tv')renderTV();else if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_customer_waiting_queue',filter:'store_id=eq.'+currentStore.id},()=>{if(activeMode==='kiosk')renderKiosk();else if(activeMode==='tv')renderTV();else if(currentView==='floor')render();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'iq_status_sessions',filter:'store_id=eq.'+currentStore.id},()=>{if(activeMode==='kiosk')renderKiosk();else if(activeMode==='tv')renderTV();else if(currentView==='floor')render();})
     .subscribe();
+}
+
+// ===== MODE MANAGEMENT (Kiosk / TV) =====
+let activeMode='normal'; // 'normal','kiosk','tv'
+let kioskTickerId=null,tvTickerId=null;
+
+function enterKioskMode(fromStorage){
+  if(!currentStore)return alert('Select a store first.');
+  if(!fromStorage){
+    const pin=prompt('Set a 4-digit PIN to lock kiosk mode:');
+    if(!pin||pin.length<4)return;
+    localStorage.setItem('iqup_kiosk_pin',pin);
+  }
+  activeMode='kiosk';
+  localStorage.setItem('iqup_mode','kiosk');
+  $('#app').style.display='none';$('#landing').style.display='none';$('#onboarding').style.display='none';
+  $('#kioskMode').style.display='flex';$('#tvMode').style.display='none';
+  $('#kioskStoreName').textContent=currentStore?.name||'Store';
+  $('#kioskDate').textContent=new Date().toLocaleDateString('en-CA',{weekday:'long',month:'short',day:'numeric'});
+  renderKiosk();
+}
+function exitKioskMode(){
+  const stored=localStorage.getItem('iqup_kiosk_pin')||'0000';
+  const entered=prompt('Enter PIN to exit kiosk mode:');
+  if(entered!==stored)return alert('Incorrect PIN.');
+  activeMode='normal';localStorage.removeItem('iqup_mode');localStorage.removeItem('iqup_kiosk_pin');
+  if(kioskTickerId){clearInterval(kioskTickerId);kioskTickerId=null;}
+  $('#kioskMode').style.display='none';$('#app').style.display='block';
+  render();
+}
+function enterTVMode(fromStorage){
+  if(!currentStore)return alert('Select a store first.');
+  activeMode='tv';localStorage.setItem('iqup_mode','tv');
+  $('#app').style.display='none';$('#landing').style.display='none';$('#onboarding').style.display='none';
+  $('#tvMode').style.display='flex';$('#kioskMode').style.display='none';
+  $('#tvStoreName').textContent=currentStore?.name||'Store';
+  $('#tvDate').textContent=new Date().toLocaleDateString('en-CA',{weekday:'long',month:'short',day:'numeric'});
+  renderTV();
+  // Clock ticker
+  if(tvTickerId)clearInterval(tvTickerId);
+  tvTickerId=setInterval(()=>{
+    const now=new Date();
+    $('#tvClock').textContent=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+  },1000);
+  $('#tvClock').textContent=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+  try{document.documentElement.requestFullscreen?.();}catch(e){}
+}
+function exitTVMode(){
+  activeMode='normal';localStorage.removeItem('iqup_mode');
+  if(tvTickerId){clearInterval(tvTickerId);tvTickerId=null;}
+  try{document.exitFullscreen?.();}catch(e){}
+  $('#tvMode').style.display='none';$('#app').style.display='block';
+  render();
+}
+
+// ===== KIOSK RENDERER =====
+async function renderKiosk(){
+  if(!currentStore||activeMode!=='kiosk')return;
+  const sid=currentStore.id;
+  const[{data:queue},{data:waiting},{data:shifts}]=await Promise.all([
+    sb.from('iq_up_queue_entries').select('*').eq('store_id',sid).eq('is_in_queue',true).order('queue_position'),
+    sb.from('iq_customer_waiting_queue').select('*').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee']).order('arrival_time'),
+    sb.from('iq_shift_records').select('user_id').eq('store_id',sid).eq('is_active',true)
+  ]);
+  const q=queue??[],w=waiting??[],sh=shifts??[];
+  const nextUp=q.find(e=>e.is_current_up);
+  const nextNext=q.find(e=>e.is_next_in_line);
+  const availCount=q.filter(e=>e.status_code==='available'||e.is_current_up||e.is_next_in_line).length;
+
+  const body=$('#kioskBody');
+  body.innerHTML=`
+    ${nextUp?`<div class="kiosk-nextup"><div class="kn-label">Next Up</div><div class="kn-name">${pName(nextUp.user_id)}</div><div class="kn-pos">${nextNext?'On deck: '+pName(nextNext.user_id):'No one on deck'}</div></div>`
+    :'<div class="kiosk-nextup"><div class="kn-label">Queue Empty</div><div class="kn-name" style="font-size:28px;color:#8fa3c8">No reps in rotation</div></div>'}
+    <button class="kiosk-btn-walkin" id="kioskWalkIn">👋 New Customer Arrived</button>
+    ${nextUp&&w.length?`<button class="kiosk-quick-assign" id="kioskQuickAssign">⚡ Assign Next Waiting → ${pName(nextUp.user_id)}</button>`:''}
+    <div class="kiosk-stats">
+      <div class="kiosk-stat"><div class="ks-val num">${sh.length}</div><div class="ks-lbl">On Floor</div></div>
+      <div class="kiosk-stat"><div class="ks-val num">${availCount}</div><div class="ks-lbl">Available</div></div>
+      <div class="kiosk-stat"><div class="ks-val num" ${w.length?'style="color:#f97316"':''}>${w.length}</div><div class="ks-lbl">Waiting</div></div>
+    </div>
+    ${w.length?`<div class="kiosk-waiting"><h3>Waiting Customers</h3>${w.map(c=>{
+      const mins=Math.floor((Date.now()-new Date(c.arrival_time).getTime())/60000);
+      return`<div class="kiosk-wait-card"><div class="kwc-info"><div class="kwc-name">${esc(c.customer_display_name||'Walk-in')}</div><div class="kwc-detail">${c.customer_group_size>1?c.customer_group_size+' people · ':''}${esc(c.customer_category?.replace(/_/g,' ')||'Walk-in')}${c.requested_employee_user_id?' · Requested '+pName(c.requested_employee_user_id):''}</div></div><div class="kwc-time">${mins}m</div><button class="kwc-assign" data-kassign="${c.id}">Assign</button></div>`;
+    }).join('')}</div>`:''}
+    <div class="kiosk-queue-lineup"><h3>Rotation Order</h3><div class="kiosk-rep-list">${q.map((e,i)=>{
+      const cls=e.is_current_up?'is-up':e.is_next_in_line?'is-next':['with_customer','on_break','lunch','temporarily_unavailable'].includes(e.status_code)?'busy':'';
+      return`<div class="kiosk-rep-chip ${cls}">${i+1}. ${pName(e.user_id)}${e.is_current_up?' ★':''}</div>`;
+    }).join('')}</div></div>`;
+
+  $('#kioskWalkIn')?.addEventListener('click',()=>openKioskWalkIn());
+  $('#kioskQuickAssign')?.addEventListener('click',async()=>{
+    if(!nextUp||!w.length)return;
+    await assignCustomerToRep(w[0].id,nextUp.user_id,{source:'walk_in'});
+    renderKiosk();
+  });
+  $$('[data-kassign]').forEach(b=>{b.onclick=()=>{
+    const repChoices=q.filter(e=>e.status_code==='available'||e.is_current_up).map(e=>e.user_id);
+    if(!repChoices.length)return alert('No available reps to assign.');
+    // Quick assign to current up, or show picker
+    if(nextUp){assignCustomerToRep(b.dataset.kassign,nextUp.user_id,{source:'walk_in'}).then(()=>renderKiosk());}
+  };});
+
+  if(kioskTickerId)clearInterval(kioskTickerId);
+  kioskTickerId=setInterval(()=>{if(activeMode==='kiosk')renderKiosk();},15000); // Gentle refresh every 15s
+}
+
+function openKioskWalkIn(){
+  const modal=document.createElement('div');
+  modal.className='kiosk-modal';
+  modal.id='kioskWalkInModal';
+  modal.innerHTML=`<div class="kiosk-modal-card">
+    <h2 style="font-size:20px;margin-bottom:14px">👋 Log Walk-In</h2>
+    <div class="field"><label>Customer Name</label><input id="kw_name" placeholder="First and last name" style="font-size:16px;padding:12px"></div>
+    <div class="field-row"><div class="field"><label>Group Size</label><input id="kw_size" type="number" value="1" min="1" max="10" style="font-size:16px;padding:12px"></div>
+    <div class="field"><label>Type</label><select id="kw_cat" style="font-size:16px;padding:12px"><option value="walk_in">Walk-in</option><option value="be_back">Be-back</option><option value="appointment">Appointment</option><option value="phone_inquiry">Phone</option></select></div></div>
+    <div class="field"><label>What are they looking for?</label><textarea id="kw_needs" placeholder="Fridge, range, laundry, etc." rows="2" style="font-size:16px;padding:12px"></textarea></div>
+    <div class="field"><label>Requested Rep</label><select id="kw_rep" style="font-size:16px;padding:12px"><option value="">No preference — assign to next up</option>${Object.entries(profiles).map(([id,n])=>`<option value="${id}">${esc(n)}</option>`).join('')}</select></div>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn btn-ghost" id="kw_cancel" style="flex:1;padding:14px;font-size:15px">Cancel</button>
+      <button class="btn btn-primary" id="kw_save" style="flex:2;padding:14px;font-size:15px">Log Customer →</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();}});
+  $('#kw_cancel').onclick=()=>modal.remove();
+  $('#kw_save').onclick=async()=>{
+    const repId=$('#kw_rep').value||null;
+    const row={organization_id:currentOrg.id,store_id:currentStore.id,entered_by:currentUser.id,customer_display_name:$('#kw_name').value.trim()||null,customer_group_size:Number($('#kw_size').value)||1,customer_category:$('#kw_cat').value,customer_needs:$('#kw_needs').value.trim()||null,requested_employee_user_id:repId,status:repId?'requested_employee':'waiting_for_assignment',arrival_time:new Date().toISOString()};
+    const{data:newRow,error}=await sb.from('iq_customer_waiting_queue').insert(row).select().single();
+    if(error)return alert(error.message);
+    await syncWalkInToCRM(newRow,[]);
+    modal.remove();
+    renderKiosk();
+  };
+}
+
+// ===== TV RENDERER =====
+async function renderTV(){
+  if(!currentStore||activeMode!=='tv')return;
+  const sid=currentStore.id;
+  const[{data:queue},{data:shifts},{data:waiting},{data:storeSettings}]=await Promise.all([
+    sb.from('iq_up_queue_entries').select('*').eq('store_id',sid).eq('is_in_queue',true).order('queue_position'),
+    sb.from('iq_shift_records').select('*').eq('store_id',sid).eq('is_active',true).order('login_at'),
+    sb.from('iq_customer_waiting_queue').select('*').eq('store_id',sid).in('status',['waiting_for_assignment','assignment_sent','escalated','requested_employee']).order('arrival_time'),
+    sb.from('iq_store_settings').select('paid_break_minutes,lunch_minutes').eq('store_id',sid).maybeSingle()
+  ]);
+  const q=queue??[],sh=shifts??[],w=waiting??[],ss=storeSettings||{};
+  const breakMin=ss.paid_break_minutes??15,lunchMin=ss.lunch_minutes??30;
+  // Build status map
+  const shiftIds=sh.map(s=>s.id);
+  let statusMap={};
+  if(shiftIds.length){const{data:sess}=await sb.from('iq_status_sessions').select('*').in('shift_id',shiftIds).is('ended_at',null).order('started_at',{ascending:false});(sess??[]).forEach(s=>{if(!statusMap[s.user_id])statusMap[s.user_id]=s;});}
+  const getStatus=uid=>statusMap[uid]?.status??'available';
+  const repData=sh.map(s=>{const qe=q.find(e=>e.user_id===s.user_id);return{...s,queue:qe};});
+  const onFloor=repData.filter(r=>!['ended_shift','off_sales_floor'].includes(getStatus(r.user_id)));
+  const withCust=repData.filter(r=>getStatus(r.user_id)==='with_customer');
+  const avail=repData.filter(r=>{const s=getStatus(r.user_id);return s==='available'||r.queue?.is_current_up||r.queue?.is_next_in_line;});
+  const onBreak=repData.filter(r=>['break','lunch'].includes(getStatus(r.user_id)));
+
+  const shortageRatio=avail.length===0&&w.length>0?'critical':w.length>avail.length?'warning':null;
+
+  const tvMain=$('#tvMain');
+  tvMain.innerHTML=`
+    <div class="tv-metrics">
+      <div class="tv-metric"><div class="tvm-val num">${onFloor.length}</div><div class="tvm-lbl">On Floor</div></div>
+      <div class="tv-metric"><div class="tvm-val num">${withCust.length}</div><div class="tvm-lbl">With Customer</div></div>
+      <div class="tv-metric"><div class="tvm-val num">${avail.length}</div><div class="tvm-lbl">Available</div></div>
+      <div class="tv-metric"><div class="tvm-val num" style="${onBreak.length?'color:#c4b5fd':''}">${onBreak.length}</div><div class="tvm-lbl">On Break</div></div>
+      <div class="tv-metric ${w.length?'alert':''}"><div class="tvm-val num">${w.length}</div><div class="tvm-lbl">Waiting</div></div>
+    </div>
+    ${shortageRatio?`<div class="tv-insight"><span style="font-size:20px">${shortageRatio==='critical'?'🚨':'⚠️'}</span><span>${shortageRatio==='critical'?'<b>No reps available</b> — '+w.length+' customer'+(w.length!==1?'s':'')+' waiting':'<b>'+w.length+' waiting</b> vs '+avail.length+' available — floor getting stretched'}</span></div>`:''} 
+    <div class="tv-grid">${repData.map(r=>{
+      const st=getStatus(r.user_id);const qe=r.queue;const pos=qe?.queue_position;
+      const isUp=qe?.is_current_up;const isNext=qe?.is_next_in_line;
+      const onBrk=['break','lunch'].includes(st);
+      const cls=isUp?'is-up':isNext?'is-next':st==='with_customer'?'with-cust':onBrk?'on-break':['temporarily_unavailable','personal_matter','off_sales_floor'].includes(st)?'unavail':'';
+      const stCls=isUp?'st-up':isNext?'st-next':st==='with_customer'?'st-cust':onBrk?'st-break':st==='available'?'st-avail':'st-other';
+      const stLabel=isUp?'🟢 UP':isNext?'🔵 NEXT':st==='with_customer'?'🟠 WITH CUST':onBrk?(st==='lunch'?'🍽 LUNCH':'☕ BREAK'):(STATUS_LABELS[st]||st);
+      return`<div class="tv-card ${cls}">
+        ${pos?`<div class="tvc-pos">#${pos}</div>`:''}
+        <div class="tvc-name">${pName(r.user_id)}</div>
+        <div class="tvc-status ${stCls}">${stLabel}</div>
+        <div class="tvc-timer" ${st==='with_customer'&&statusMap[r.user_id]?.started_at?`data-ts="${statusMap[r.user_id].started_at}" data-prefix="With cust "`:`data-ts="${r.login_at}" data-prefix="On floor "`}>${st==='with_customer'?'With cust '+elapsed(statusMap[r.user_id]?.started_at):'On floor '+elapsed(r.login_at)}</div>
+        <div class="tvc-stats"><span>Ups: <b>${r.ups_accepted}</b></span><span>Sales: <b>${r.closed_sales}</b></span><span>Served: <b>${r.customers_served}</b></span></div>
+      </div>`;
+    }).join('')}</div>`;
+
+  const tvSb=$('#tvSidebar');
+  tvSb.innerHTML=`
+    <div class="tv-sb-section"><h3>Waiting Customers (${w.length})</h3>
+    <div class="tv-sb-waiting">${w.length?w.map(c=>{
+      const mins=Math.floor((Date.now()-new Date(c.arrival_time).getTime())/60000);
+      return`<div class="tv-wait-card"><div class="tvw-name">${esc(c.customer_display_name||'Walk-in')}</div><div class="tvw-detail">${c.customer_group_size>1?c.customer_group_size+' people · ':''}${esc(c.customer_category?.replace(/_/g,' ')||'')}${c.requested_employee_user_id?' · For '+pName(c.requested_employee_user_id):''}</div><div class="tvw-time">${mins}m wait</div></div>`;
+    }).join(''):'<div style="color:#475569;font-size:13px;padding:8px 0">No one waiting</div>'}</div></div>
+    <div class="tv-sb-section"><h3>Queue Order</h3>
+    <div class="tv-sb-waiting">${q.map((e,i)=>`<div class="tv-wait-card" style="padding:6px 10px"><span style="font-weight:800;color:${e.is_current_up?'#6ee7b7':e.is_next_in_line?'#7dd3fc':'#64748b'};margin-right:8px">${i+1}</span><span style="font-weight:600">${pName(e.user_id)}</span>${e.is_current_up?' <span style="color:#6ee7b7;font-size:11px;font-weight:700">UP</span>':e.is_next_in_line?' <span style="color:#7dd3fc;font-size:11px;font-weight:700">NEXT</span>':''}</div>`).join('')}</div></div>
+    <div class="tv-sb-section"><h3>Today's Totals</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div class="tv-wait-card" style="text-align:center"><div style="font-weight:800;font-size:20px">${sh.reduce((s,r)=>s+r.ups_accepted,0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Ups Taken</div></div>
+      <div class="tv-wait-card" style="text-align:center"><div style="font-weight:800;font-size:20px">${sh.reduce((s,r)=>s+r.closed_sales,0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Sales</div></div>
+      <div class="tv-wait-card" style="text-align:center"><div style="font-weight:800;font-size:20px">${sh.reduce((s,r)=>s+r.ups_missed,0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Missed</div></div>
+      <div class="tv-wait-card" style="text-align:center"><div style="font-weight:800;font-size:20px">${sh.reduce((s,r)=>s+r.customers_served,0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase">Served</div></div>
+    </div></div>`;
+
+  // TV auto-refresh: data via realtime, clocks via interval
+  // The realtime channel already triggers render() for 'floor' — extend it for tv
+}
+
+// ===== GREETER SELF-SERVICE =====
+async function takeGreeterDuty(){
+  if(!currentStore||!currentUser)return;
+  const sid=currentStore.id;
+  // Update store settings to set this user as greeter
+  const{data:ss}=await sb.from('iq_store_settings').select('id').eq('store_id',sid).maybeSingle();
+  const greeterPatch={greeter_enabled:true,greeter_user_id:currentUser.id};
+  if(ss){await sb.from('iq_store_settings').update(greeterPatch).eq('id',ss.id);}
+  else{await sb.from('iq_store_settings').insert({organization_id:currentOrg.id,store_id:sid,...greeterPatch});}
+  // Remove from rotation (but keep in queue for tracking)
+  await sb.from('iq_up_queue_entries').update({is_in_queue:false,is_current_up:false,is_next_in_line:false}).eq('store_id',sid).eq('user_id',currentUser.id);
+  await recalcQueueOrder(sid);
+  // Switch to greeter view
+  currentView='greeter';$$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='greeter'));
+  render();
+}
+async function endGreeterDuty(){
+  if(!currentStore||!currentUser)return;
+  const sid=currentStore.id;
+  // Clear greeter from settings
+  const{data:ss}=await sb.from('iq_store_settings').select('id').eq('store_id',sid).maybeSingle();
+  if(ss)await sb.from('iq_store_settings').update({greeter_user_id:null}).eq('id',ss.id);
+  // Re-enter queue at back
+  const{data:shift}=await sb.from('iq_shift_records').select('id').eq('store_id',sid).eq('user_id',currentUser.id).eq('is_active',true).maybeSingle();
+  if(shift){
+    const{data:existing}=await sb.from('iq_up_queue_entries').select('id').eq('store_id',sid).eq('user_id',currentUser.id).eq('shift_id',shift.id).maybeSingle();
+    if(existing){
+      await sb.from('iq_up_queue_entries').update({is_in_queue:true,queue_position:99999,status_code:'available',is_available_for_assignment:true}).eq('id',existing.id);
+    }else{
+      const{data:maxPos}=await sb.from('iq_up_queue_entries').select('queue_position').eq('store_id',sid).eq('is_in_queue',true).order('queue_position',{ascending:false}).limit(1);
+      const nextPos=(maxPos?.[0]?.queue_position??0)+1;
+      await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:sid,shift_id:shift.id,user_id:currentUser.id,queue_position:nextPos,is_in_queue:true,is_current_up:false,is_next_in_line:false,status_code:'available'});
+    }
+    await recalcQueueOrder(sid);
+  }
+  currentView='floor';$$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='floor'));
+  render();
 }
 
 // ===== ONBOARDING WIZARD =====
@@ -610,14 +987,20 @@ async function renderFloor(){
   mainEl.innerHTML=`
     <div class="floor-banner"><div class="fb-left"><div class="fb-status">🏪</div><div><div class="fb-title">${esc(currentStore.name)}</div><div class="fb-sub">${new Date().toLocaleDateString('en-CA',{weekday:'long',month:'short',day:'numeric'})}</div></div></div>
     <div class="fb-metrics"><div class="fb-m"><div class="fv num">${onFloor.length}</div><div class="fl">On Floor</div></div><div class="fb-m"><div class="fv num">${withCust.length}</div><div class="fl">With Cust</div></div><div class="fb-m"><div class="fv num">${avail.length}</div><div class="fl">Available</div></div><div class="fb-m"><div class="fv num" style="${onBreak.length?'color:#c9b3ff':''}">${onBreak.length}</div><div class="fl">On Break</div></div><div class="fb-m"><div class="fv num">${waitingCustomers.length}</div><div class="fl">Waiting</div></div></div></div>
-    ${myShift?`<div class="quickbar"><span class="qb-label">☕ My Break</span>
-      <button class="qb-btn break-btn ${mySt==='break'?'active-break':''}" data-mybreak="break">Start 15-min Break</button>
-      <button class="qb-btn break-btn ${mySt==='lunch'?'active-break':''}" data-mybreak="lunch">Start Lunch</button>
+    ${myShift?(()=>{
+      const isMyGreeter=ss.greeter_user_id===currentUser.id;
+      return`<div class="quickbar"><span class="qb-label">☕ My Break</span>
+      <button class="qb-btn break-btn ${mySt==='break'?'active-break':''}" data-mybreak="break">15-min Break</button>
+      <button class="qb-btn break-btn ${mySt==='lunch'?'active-break':''}" data-mybreak="lunch">Lunch</button>
       ${myOnBreak?`<button class="qb-btn" data-mybreak="available">End Break</button><span class="qb-timer ${myBreakOver?'over':''}">⏱ ${fmtTime(myBreakSecs)} / ${mySt==='lunch'?lunchMinutes:breakMinutes}m${myBreakOver?' — OVER':''}</span>`:''}
-    </div>`:''}
+      <span style="width:1px;height:24px;background:var(--line);margin:0 4px"></span>
+      ${isMyGreeter
+        ?`<button class="qb-btn qb-greeter active-greeter" id="endGreeterBtn">🚪 End Greeter Duty</button>`
+        :`<button class="qb-btn qb-greeter" id="takeGreeterBtn">🚪 Greeter Duty</button>`}
+    </div>`;})():''}
     <div class="disputes-mini ${openDisputes.length?'has-open':''}"><div class="dm-left">${openDisputes.length?`<span class="dm-count">${openDisputes.length}</span><span>open dispute${openDisputes.length!==1?'s':''}</span>`:'<span style="color:var(--steel)">No open disputes</span>'}</div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="viewDisputes">View Disputes</button><button class="btn btn-danger btn-sm" id="fileDispute">⚡ File Dispute</button></div></div>
     ${aiText?`<div class="ai-insight"><div class="ai-icon">🤖</div><div class="ai-text">${aiText}</div></div>`:''}
-    <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${['admin','owner'].includes(userRole)?`<button class="btn btn-primary" id="logWalkIn">👋 Log Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button>`:''}</div></div>
+    <div class="page-head"><div><h1>Floor Board</h1></div><div class="head-actions">${['admin','owner'].includes(userRole)?`<button class="btn btn-primary" id="logWalkIn">👋 Log Walk-In</button><button class="btn btn-ghost" id="clockInBtn">⏱ Clock In</button><button class="btn btn-ghost btn-sm" id="tvModeBtn" title="Launch TV Mode">📺 TV</button><button class="btn btn-ghost btn-sm" id="kioskModeBtn" title="Launch Greeter Kiosk">🚪 Kiosk</button>`:''}</div></div>
     ${currentReq.length?`<div class="wait-section-label">Current — Requesting a Specific Rep</div><div class="customer-queue">${currentReq.map(c=>waitCardHtml(c)).join('')}</div>`:''}
     ${waitlist.length?`<div class="wait-section-label">Waitlist</div><div class="customer-queue">${waitlist.map(c=>waitCardHtml(c)).join('')}</div>`:''}
     <div class="queue-grid">${repData.length?repData.map(r=>{
@@ -633,7 +1016,7 @@ async function renderFloor(){
       const upSecsLeft=isUp&&offeredAt?Math.max(0,upTimeout-Math.floor((Date.now()-new Date(offeredAt).getTime())/1000)):null;
       return`<div class="rep-card ${cls} ${isUp?'current-up':''} ${isNext?'next-up':''}">
         ${pos?`<div class="rc-pos">#${pos}</div>`:''}
-        <div class="rc-name">${pName(r.user_id)}${r.user_id===currentUser.id?' <span style="font-size:10px;color:var(--teal)">(You)</span>':''}</div>
+        <div class="rc-name">${pName(r.user_id)}${r.user_id===currentUser.id?' <span style="font-size:10px;color:var(--teal)">(You)</span>':''}${ss.greeter_user_id===r.user_id?'<span class="greeter-badge">🚪 Greeter</span>':''}</div>
         <div class="rc-status ${st}">${isUp?'🟢 YOUR UP':isNext?'🔵 Next Up':st==='with_customer'?'🟠 With Customer':onBrk?(st==='lunch'?'🍽 Lunch':'☕ Break'):STATUS_LABELS[st]||st}</div>
         ${upSecsLeft!==null?`<div class="accept-timer ${upSecsLeft<15?'urgent':''}" data-deadline="${new Date(new Date(offeredAt).getTime()+upTimeout*1000).toISOString()}">⏱ Accept up: ${upSecsLeft}s</div>`:''}
         ${onBrk?`<div class="rc-break-timer ${brkOver?'over':''}" data-ts="${statusMap[r.user_id]?.started_at||''}" data-limit="${(st==='lunch'?lunchMinutes:breakMinutes)*60}">⏱ ${fmtTime(brkSecs)} / ${st==='lunch'?lunchMinutes:breakMinutes}m${brkOver?' — OVER':''}</div>`:''}
@@ -655,6 +1038,10 @@ async function renderFloor(){
   $('#logWalkIn')?.addEventListener('click',openWalkInModal);
   $('#clockInBtn')?.addEventListener('click',openClockInModal);
   $('#clockInEmpty')?.addEventListener('click',openClockInModal);
+  $('#tvModeBtn')?.addEventListener('click',()=>enterTVMode());
+  $('#kioskModeBtn')?.addEventListener('click',()=>enterKioskMode());
+  $('#takeGreeterBtn')?.addEventListener('click',takeGreeterDuty);
+  $('#endGreeterBtn')?.addEventListener('click',endGreeterDuty);
   $('#viewDisputes')?.addEventListener('click',()=>{currentView='disputes';$$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='disputes'));render();});
   $('#fileDispute')?.addEventListener('click',openFileDisputeModal);
   $$('[data-status]').forEach(b=>{b.onclick=()=>openStatusModal(b.dataset.status,b.dataset.shift);});
@@ -875,24 +1262,47 @@ async function syncFloorMetricsToCommandCenter(storeId){
 }
 
 function openClockInModal(){
+  let selectedRole='salesperson';
   openModal(`<h2>⏱ Clock In</h2>
     <div class="field"><label>Who's clocking in?</label><select id="ci_user">${Object.entries(profiles).map(([id,n])=>`<option value="${id}" ${id===currentUser.id?'selected':''}>${esc(n)}</option>`).join('')}</select></div>
-    <div class="field"><label>Role</label><select id="ci_role"><option value="salesperson">Salesperson</option><option value="manager">Manager</option></select></div>
+    <div class="field"><label>Shift Role</label></div>
+    <div class="role-picker">
+      <div class="role-opt selected" data-role="salesperson"><div class="ro-icon">🔄</div><div class="ro-title">Salesperson</div><div class="ro-desc">Joins the sales rotation</div></div>
+      <div class="role-opt" data-role="greeter"><div class="ro-icon">🚪</div><div class="ro-title">Greeter</div><div class="ro-desc">Logs walk-ins, not in rotation</div></div>
+      <div class="role-opt" data-role="manager"><div class="ro-icon">📋</div><div class="ro-title">Floor Manager</div><div class="ro-desc">In rotation + admin controls</div></div>
+      <div class="role-opt" data-role="support"><div class="ro-icon">🛠</div><div class="ro-title">Support Staff</div><div class="ro-desc">Clocked in, not in rotation</div></div>
+    </div>
     <div class="form-err" id="formErr"></div>
     <div class="sheet-actions"><button class="btn btn-ghost" id="ci_cancel">Cancel</button><button class="btn btn-primary" id="ci_save">Clock In</button></div>`);
+  $$('.role-opt').forEach(el=>{el.onclick=()=>{$$('.role-opt').forEach(r=>r.classList.remove('selected'));el.classList.add('selected');selectedRole=el.dataset.role;};});
   $('#ci_cancel').onclick=closeModal;
   $('#ci_save').onclick=async()=>{
     const uid=$('#ci_user').value;
+    const joinsRotation=selectedRole==='salesperson'||selectedRole==='manager';
+    const isGreeter=selectedRole==='greeter';
+    const initStatus=isGreeter?'available':'available';
     // Create shift record
-    const{data:shift,error}=await sb.from('iq_shift_records').insert({organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,role_name:$('#ci_role').value,initial_status:'available'}).select().single();
+    const{data:shift,error}=await sb.from('iq_shift_records').insert({organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,role_name:selectedRole,initial_status:initStatus}).select().single();
     if(error)return formErr(error.message);
-    // Add to queue at the back — recalcQueueOrder resolves positions, current_up, and next_in_line
-    const{data:maxPos}=await sb.from('iq_up_queue_entries').select('queue_position').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position',{ascending:false}).limit(1);
-    const nextPos=(maxPos?.[0]?.queue_position??0)+1;
-    await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:shift.id,user_id:uid,queue_position:nextPos,is_in_queue:true,is_current_up:false,is_next_in_line:false,status_code:'available'});
+    if(joinsRotation){
+      // Add to queue at the back
+      const{data:maxPos}=await sb.from('iq_up_queue_entries').select('queue_position').eq('store_id',currentStore.id).eq('is_in_queue',true).order('queue_position',{ascending:false}).limit(1);
+      const nextPos=(maxPos?.[0]?.queue_position??0)+1;
+      await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:shift.id,user_id:uid,queue_position:nextPos,is_in_queue:true,is_current_up:false,is_next_in_line:false,status_code:'available'});
+      await recalcQueueOrder(currentStore.id);
+    }else{
+      // Still create queue entry for tracking, but not in active rotation
+      await sb.from('iq_up_queue_entries').insert({organization_id:currentOrg.id,store_id:currentStore.id,shift_id:shift.id,user_id:uid,queue_position:0,is_in_queue:false,is_current_up:false,is_next_in_line:false,status_code:isGreeter?'available':'administrative_work'});
+    }
+    if(isGreeter){
+      // Auto-assign as store greeter
+      const{data:ss}=await sb.from('iq_store_settings').select('id').eq('store_id',currentStore.id).maybeSingle();
+      const gPatch={greeter_enabled:true,greeter_user_id:uid};
+      if(ss){await sb.from('iq_store_settings').update(gPatch).eq('id',ss.id);}
+      else{await sb.from('iq_store_settings').insert({organization_id:currentOrg.id,store_id:currentStore.id,...gPatch});}
+    }
     // Create status session
-    await sb.from('iq_status_sessions').insert({shift_id:shift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,status:'available',started_at:new Date().toISOString()});
-    await recalcQueueOrder(currentStore.id);
+    await sb.from('iq_status_sessions').insert({shift_id:shift.id,organization_id:currentOrg.id,store_id:currentStore.id,user_id:uid,status:joinsRotation?'available':(isGreeter?'available':'administrative_work'),started_at:new Date().toISOString()});
     closeModal();render();
   };
 }
@@ -1344,7 +1754,14 @@ async function renderSettings(){
     <div class="field"><label><input type="checkbox" id="ss_greeter" ${s.greeter_enabled?'checked':''}> Enable dedicated greeter</label></div>
     <div class="field"><label>Current greeter</label><select id="ss_greeter_user"><option value="">None assigned</option>${Object.entries(profiles).map(([id,n])=>`<option value="${id}" ${id===s.greeter_user_id?'selected':''}>${esc(n)}</option>`).join('')}</select></div></div>
 
-    <button class="btn btn-primary btn-block" id="ss_save" style="margin-bottom:20px">Save All Settings</button>`;
+    <button class="btn btn-primary btn-block" id="ss_save" style="margin-bottom:20px">Save All Settings</button>
+
+    <div class="dash-panel"><h3>📺 Display Modes</h3>
+    <p style="font-size:13px;color:var(--steel);margin-bottom:12px">Launch special display modes for shared devices. Kiosk mode locks the screen into a greeter station (PIN-protected exit). TV mode shows a read-only floor overview for wall displays.</p>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" id="ss_kiosk" style="flex:1">🚪 Launch Kiosk Mode</button>
+      <button class="btn btn-ghost" id="ss_tv" style="flex:1">📺 Launch TV Mode</button>
+    </div></div>`;
 
   // === Event handlers ===
   $('#ss_save')?.addEventListener('click',async()=>{
@@ -1356,6 +1773,10 @@ async function renderSettings(){
     await recalcQueueOrder(currentStore.id);
     render();
   });
+
+  // Kiosk / TV launch from settings
+  $('#ss_kiosk')?.addEventListener('click',()=>enterKioskMode());
+  $('#ss_tv')?.addEventListener('click',()=>enterTVMode());
 
   // Add store
   $('#addStoreBtn')?.addEventListener('click',async()=>{
