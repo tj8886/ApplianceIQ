@@ -516,6 +516,12 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .csv-progress .bar{height:6px;background:var(--ice);border-radius:3px;overflow:hidden;margin:6px 0}
 .csv-progress .fill{height:100%;background:var(--verified);border-radius:3px;transition:width .3s}
 .export-btns{display:flex;gap:8px;flex-wrap:wrap}
+/* === REALTIME DOT === */
+.rt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#666;margin-left:8px;vertical-align:middle;transition:background .3s}
+.rt-dot.live{background:#10b981;box-shadow:0 0 6px rgba(16,185,129,.5);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+/* === ROLE BADGE === */
+.role-badge{padding:4px 0;margin-bottom:6px;text-align:center}
 </style>
 </head>
 <body>
@@ -674,6 +680,8 @@ let orgs=[],currentOrg=null,currentUser=null,currentView='pipeline',pipeView='ac
 let chatLog=[],coachLog=[],coachPersona=null,assistants=[],currentAssistant=null;
 let cache={stages:[],deals:[],contacts:[],companies:[],buyingGroups:[],participants:[],recordings:[]};
 let searchTerm='';
+let currentRole='member'; // owner | admin | manager | member
+let realtimeChannel=null;
 
 let authMode='login'; // login | signup | reset
 function note(msg,ok=false){const n=$('#authNotice');n.textContent=msg;n.className='notice '+(ok?'ok':'err');}
@@ -738,20 +746,76 @@ async function boot(){
   currentUser=session.user;showApp();
   const{data:memberships}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('status','active');
   orgs=(memberships??[]).map(m=>m.organizations).filter(Boolean);
-  if(!orgs.length){await sb.rpc('join_demo_org');const{data:m2}=await sb.from('organization_members').select('organizations(id,name,slug)').eq('status','active');orgs=(m2??[]).map(m=>m.organizations).filter(Boolean);}
+  const roleMap={};(memberships??[]).forEach(m=>{if(m.organizations)roleMap[m.organizations.id]=m.role;});
+  if(!orgs.length){await sb.rpc('join_demo_org');const{data:m2}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('status','active');orgs=(m2??[]).map(m=>m.organizations).filter(Boolean);(m2??[]).forEach(m=>{if(m.organizations)roleMap[m.organizations.id]=m.role;});}
   if(!orgs.length){mainEl.innerHTML='<div class="empty" style="max-width:400px;margin:60px auto;text-align:center"><h2 style="margin:0 0 8px">Welcome to ApplianceIQ CRM</h2><p style="color:var(--steel);margin-bottom:20px">You\'re not part of an organization yet. Create one to get started, or ask your admin for an invite link.</p><button class="btn btn-primary" id="createOrgBtn">Create Organization</button></div>';$('#createOrgBtn').onclick=()=>{openModal('<h2>Create Organization</h2><div class="field"><label>Organization name</label><input id="org_name" placeholder="Your Store Name"></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="org_save">Create</button></div>');$('#org_save').onclick=async()=>{const name=$('#org_name').value.trim();if(!name)return formErr("Name required.");const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");const{data:org,error}=await sb.from("organizations").insert({name,slug}).select("id").single();if(error)return formErr(error.message);await sb.from("organization_members").insert({organization_id:org.id,user_id:currentUser.id,role:"owner",status:"active"});const defaultStages=[{name:"Lead",sort_order:1},{name:"Qualified",sort_order:2},{name:"Quote Sent",sort_order:3},{name:"Floor Visit / Demo",sort_order:4},{name:"Negotiation",sort_order:5},{name:"Closed Won",sort_order:6,is_terminal:true},{name:"Delivery Scheduled",sort_order:7},{name:"Warranty Follow-up",sort_order:8},{name:"Closed Lost",sort_order:9,is_terminal:true}];for(const s of defaultStages){await sb.from("pipeline_stages").insert({organization_id:org.id,...s});}closeModal();boot();};};return;}
-  currentOrg=orgs[0];const sel=$('#orgSelect');
+  currentOrg=orgs[0];currentRole=roleMap[currentOrg.id]||'member';
+  const sel=$('#orgSelect');
   sel.innerHTML=orgs.map(o=>'<option value="'+o.id+'">'+esc(o.name)+'</option>').join('');
-  sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);chatLog=[];render();};
+  sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);currentRole=roleMap[currentOrg.id]||'member';chatLog=[];setupRealtime();applyRBAC();render();};
   $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;searchTerm='';render();};});
   const ic=new URLSearchParams(location.search).get('invite');if(ic)await acceptInvite(ic);
-  render();
+  applyRBAC();setupRealtime();render();
 }
 
 function openModal(html){modalRoot.innerHTML='<div class="overlay" id="ovl"><div class="sheet">'+html+'</div></div>';$('#ovl').addEventListener('click',e=>{if(e.target.id==='ovl')closeModal();});}
 function closeModal(){modalRoot.innerHTML='';}
 window.closeModal=closeModal;
 function formErr(msg){const el=$('#formErr');if(el){el.textContent=msg;el.classList.add('show');}}
+
+// ===== RBAC =====
+function canSee(view){
+  // owner/admin see everything
+  if(currentRole==='owner'||currentRole==='admin')return true;
+  // manager sees everything except settings
+  if(currentRole==='manager')return view!=='settings';
+  // member (rep) sees core views only
+  const repViews=['pipeline','task_centre','contacts','buying_groups','companies','tasks','deliveries','recordings','products','communications','assistant','team_coach'];
+  return repViews.includes(view);
+}
+function isManager(){return['owner','admin','manager'].includes(currentRole);}
+function isAdminRole(){return currentRole==='owner'||currentRole==='admin';}
+function applyRBAC(){
+  $$('.nav-btn[data-view]').forEach(b=>{
+    const view=b.dataset.view;
+    b.style.display=canSee(view)?'':'none';
+  });
+  // Show role badge in sidebar
+  let badge=document.querySelector('.role-badge');
+  if(!badge){badge=document.createElement('div');badge.className='role-badge';document.querySelector('aside')?.insertBefore(badge,document.querySelector('.spacer'));}
+  const roleLabels={owner:'👑 Owner',admin:'🔑 Admin',manager:'👔 Manager',member:'👤 Rep'};
+  badge.innerHTML='<span class="chip '+(isAdminRole()?'g':isManager()?'a':'n')+'" style="font-size:10px;padding:2px 8px">'+esc(roleLabels[currentRole]||currentRole)+'</span>';
+}
+
+// ===== SUPABASE REALTIME =====
+let realtimeDebounce=null;
+function setupRealtime(){
+  // Unsubscribe from previous channel
+  if(realtimeChannel){sb.removeChannel(realtimeChannel);realtimeChannel=null;}
+  if(!currentOrg)return;
+  realtimeChannel=sb.channel('crm-live-'+currentOrg.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'crm_deals',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
+    .on('postgres_changes',{event:'*',schema:'public',table:'crm_tasks',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
+    .on('postgres_changes',{event:'*',schema:'public',table:'contacts',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
+    .on('postgres_changes',{event:'*',schema:'public',table:'crm_delivery_workflows',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
+    .on('postgres_changes',{event:'*',schema:'public',table:'crm_emails',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
+    .subscribe((status)=>{
+      if(status==='SUBSCRIBED'){
+        let dot=document.querySelector('.rt-dot');
+        if(!dot){dot=document.createElement('span');dot.className='rt-dot';dot.title='Live — connected';document.querySelector('.mark')?.appendChild(dot);}
+        dot.classList.add('live');
+      }
+    });
+}
+function onRealtimeChange(payload){
+  // Debounce to avoid rapid re-renders from batch operations
+  clearTimeout(realtimeDebounce);
+  realtimeDebounce=setTimeout(()=>{
+    // Don't re-render if a modal is open (user is editing)
+    if(modalRoot.innerHTML)return;
+    render();
+  },800);
+}
 
 function searchBar(placeholder,onInput){
   return '<div class="search-bar"><input type="text" placeholder="'+esc(placeholder)+'" id="globalSearch" value="'+esc(searchTerm)+'"><button class="search-clear '+(searchTerm?'show':'')+'" id="searchClear">✕</button></div>';
@@ -785,10 +849,17 @@ async function loadCore(){
   ]);
   cache={stages:st.data??[],deals:dl.data??[],contacts:ct.data??[],companies:co.data??[],buyingGroups:bg.data??[],participants:[],recordings:[]};
   if(cache.deals.length){const ids=cache.deals.map(d=>d.id);const[{data:p},{data:recs}]=await Promise.all([sb.from('crm_deal_participants').select('*,contacts(id,first_name,last_name)').in('deal_id',ids),sb.from('sales_recordings').select('id,deal_id').eq('organization_id',currentOrg.id).not('deal_id','is',null)]);cache.participants=p??[];cache.recordings=recs??[];}
+  // RBAC: reps only see their own deals and contacts
+  if(currentRole==='member'){
+    cache.deals=cache.deals.filter(d=>d.owner_user_id===currentUser.id||d.contact_id&&cache.contacts.some(c=>c.id===d.contact_id&&c.owner_user_id===currentUser.id));
+    cache.contacts=cache.contacts.filter(c=>c.owner_user_id===currentUser.id||!c.owner_user_id);
+  }
 }
 
 async function render(){
   showLoading();
+  // RBAC: redirect if user can't see this view
+  if(!canSee(currentView)){currentView='pipeline';$$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='pipeline'));}
   if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
   const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
@@ -2267,7 +2338,9 @@ async function renderTaskCentre(){
     sb.from('crm_tasks').select('*,contacts(id,first_name,last_name),crm_deals(id,title,value_amount)').eq('organization_id',currentOrg.id).order('due_at',{ascending:true}).limit(100),
     sb.from('crm_daily_five').select('*').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).order('work_date',{ascending:false}).limit(1)
   ]);
-  const tasks=allTasks??[];
+  let tasks=allTasks??[];
+  // RBAC: reps see only their assigned tasks
+  if(currentRole==='member'){tasks=tasks.filter(t=>t.assignee_user_id===currentUser.id);}
   const now=new Date();const today=now.toISOString().slice(0,10);
   const overdue=tasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)<now);
   const todayTasks=tasks.filter(t=>!t.completed_at&&t.due_at&&t.due_at.slice(0,10)===today);
@@ -2465,7 +2538,9 @@ async function renderCoaching(){
 // ===== DELIVERIES =====
 async function renderDeliveries(){
   const{data}=await sb.from('crm_delivery_workflows').select('*,crm_deals(id,title,value_amount,contacts(first_name,last_name))').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(50);
-  const dels=data??[];
+  let dels=data??[];
+  // RBAC: reps see only their assigned deliveries
+  if(currentRole==='member'){dels=dels.filter(d=>d.assigned_to===currentUser.id);}
   const STEPS=['pending','inventory_check','install_review','accessory_check','customer_confirmed','delivery_scheduled','delivered','installed','warranty_registered','satisfaction_reviewed','completed'];
   const SHORT=['Pending','Inventory','Install Review','Accessories','Confirmed','Scheduled','Delivered','Installed','Warranty','Satisfaction','Complete'];
   mainEl.innerHTML='<div class="page-head"><div><h1>🚚 Deliveries</h1><div class="sub num">'+dels.length+' workflows</div></div></div>'
@@ -2697,6 +2772,7 @@ async function renderSettings(){
       +'<div class="setting-row"><span>Name</span><span class="setting-val">'+esc(orgData?.name??'')+'</span></div>'
       +'<div class="setting-row"><span>Slug</span><span class="setting-val">'+esc(orgData?.slug??'')+'</span></div>'
       +'<div class="setting-row"><span>Members</span><span class="setting-val">'+memberCount+'</span></div>'
+      +'<div class="setting-row"><span>Your role</span><span class="setting-val" style="text-transform:capitalize">'+esc(currentRole)+'</span></div>'
       +'<div class="setting-row"><span>Created</span><span class="setting-val">'+(orgData?.created_at?new Date(orgData.created_at).toLocaleDateString():'—')+'</span></div>'
       +(isAdmin?'<button class="btn btn-ghost btn-sm" style="margin-top:12px" id="setEditOrg">Edit Name</button>':'')
     +'</div>'
@@ -2736,6 +2812,9 @@ async function renderSettings(){
         +'<br><button class="btn btn-ghost btn-sm" style="margin-top:8px" disabled>Configure Email (Coming Soon)</button>'
       +'</div>'
     +'</div>'
+    // Team roles (admin only)
+    +(isAdmin?'<div class="setting-card" style="grid-column:1/-1"><h3>Team Roles & Permissions</h3><div class="sub">Control what each role can see. Owner/Admin: full access + settings. Manager: team data + dashboards. Member (Rep): own deals, contacts, and tasks only.</div>'
+      +'<div id="roleGrid"></div></div>':'')
   +'</div>';
   // Bind buttons
   $('#setEditOrg')?.addEventListener('click',()=>{
@@ -2747,6 +2826,24 @@ async function renderSettings(){
   $('#setExpContacts')?.addEventListener('click',exportContacts);
   $('#setExpDeals')?.addEventListener('click',exportDeals);
   $('#setExpTasks')?.addEventListener('click',exportTasks);
+  // Team roles grid (admin only)
+  if(isAdmin&&$('#roleGrid')){
+    const{data:allMembers}=await sb.from('organization_members').select('id,user_id,role,status').eq('organization_id',currentOrg.id);
+    const uids2=(allMembers??[]).map(m=>m.user_id);
+    let profMap2={};if(uids2.length){const{data:profs}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids2);(profs??[]).forEach(p=>{profMap2[p.user_id]=p;});}
+    $('#roleGrid').innerHTML=(allMembers??[]).map(m=>{
+      const p=profMap2[m.user_id];const name=p?.full_name||p?.email||m.user_id.slice(0,8)+'…';
+      const isSelf=m.user_id===currentUser.id;
+      return '<div class="setting-row"><span><b>'+esc(name)+'</b>'+(p?.email&&p?.full_name?' <span class="sub" style="font-size:11px">'+esc(p.email)+'</span>':'')+'</span>'
+        +(isSelf?'<span class="chip g" style="font-size:10px">You ('+esc(m.role)+')</span>'
+          :'<select data-role-member="'+m.id+'" style="padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:12px"><option value="member"'+(m.role==='member'?' selected':'')+'>Member (Rep)</option><option value="manager"'+(m.role==='manager'?' selected':'')+'>Manager</option><option value="admin"'+(m.role==='admin'?' selected':'')+'>Admin</option><option value="owner"'+(m.role==='owner'?' selected':'')+'>Owner</option></select>')
+        +'</div>';
+    }).join('');
+    $$('[data-role-member]').forEach(sel=>{sel.onchange=async()=>{
+      const memId=sel.dataset.roleMember;const newRole=sel.value;
+      try{await sb.from('organization_members').update({role:newRole}).eq('id',memId);toast('Role updated to '+newRole,'ok');}catch(err){toast(err.message||'Update failed','err');}
+    };});
+  }
 }
 
 // ===== DEAL WON → DELIVERY WORKFLOW =====
