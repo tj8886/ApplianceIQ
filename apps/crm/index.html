@@ -6,7 +6,9 @@
 <meta name="theme-color" content="#0f1f3d"/>
 <meta name="description" content="ApplianceIQ CRM — AI-powered sales platform for appliance retail. Manage contacts, buying groups, pipeline, deliveries, and coaching."/>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="AIQ CRM">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="IQ CRM">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22ApplianceIQ%20CRM%22%2C%22short_name%22%3A%22IQ%20CRM%22%2C%22description%22%3A%22AI-powered%20CRM%20for%20appliance%20retail%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f1f3d%22%2C%22theme_color%22%3A%22%230f1f3d%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%2520viewBox%3D%270%25200%2520512%2520512%27%253E%253Crect%2520width%3D%27512%27%2520height%3D%27512%27%2520rx%3D%27100%27%2520fill%3D%27%25230f1f3d%27%2F%253E%253Ctext%2520x%3D%27256%27%2520y%3D%27340%27%2520font-family%3D%27system-ui%27%2520font-size%3D%27240%27%2520font-weight%3D%27900%27%2520fill%3D%27white%27%2520text-anchor%3D%27middle%27%253EIQ%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f1f3d'/><text x='16' y='22' font-size='16' font-weight='800' fill='white' text-anchor='middle' font-family='system-ui'>IQ</text></svg>">
 <title>ApplianceIQ CRM — AI-Powered Sales Platform for Appliance Retail</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -617,7 +619,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn active" data-view="pipeline">📋 Pipeline</button>
 <button class="nav-btn" data-view="task_centre">🎯 Task Centre</button>
 <button class="nav-btn" data-view="communications">📧 Communications</button>
-<button class="nav-btn" data-view="command_centre">📊 Command Centre</button>
+<button class="nav-btn" data-view="command_centre">📊 Dashboard</button>
 <div class="nav-sep"></div>
 <button class="nav-btn" data-view="contacts">👤 Contacts</button>
 <button class="nav-btn" data-view="buying_groups">👥 Buying Groups</button>
@@ -628,7 +630,6 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="recordings">🎙 Recordings</button>
 <button class="nav-btn" data-view="products">📦 Products</button>
 <div class="nav-sep"></div>
-<button class="nav-btn" data-view="dashboard">📉 Dashboard</button>
 <button class="nav-btn" data-view="manager">👔 Manager</button>
 <button class="nav-btn" data-view="coaching">🏅 Coaching</button>
 <button class="nav-btn" data-view="reporting">📈 Reporting</button>
@@ -665,6 +666,30 @@ const ago=d=>{if(!d)return'—';const days=Math.floor((Date.now()-new Date(d).ge
 function toast(msg,type=''){const t=$('#toast');t.textContent=msg;t.className='toast show '+(type||'');setTimeout(()=>t.classList.remove('show'),3000);}
 function btnLoad(el,text){if(!el)return;el.classList.add('loading');el.disabled=true;if(text)el.textContent=text;}
 function btnDone(el,text){if(!el)return;el.classList.remove('loading');el.disabled=false;if(text)el.textContent=text;}
+
+// ===== ANALYTICS =====
+const sessionId=crypto.randomUUID?.()??Math.random().toString(36).slice(2);
+function trackEvent(type,data={}){
+  if(!currentOrg||!currentUser)return;
+  sb.from('crm_analytics_events').insert({organization_id:currentOrg.id,user_id:currentUser.id,event_type:type,event_data:data,page:currentView,session_id:sessionId}).then(()=>{});
+}
+
+// ===== GOOGLE CALENDAR SYNC =====
+async function syncToCalendar(deal){
+  if(!deal)return;
+  const closeDate=deal.expected_close_date;
+  const contact=deal.contacts;
+  const title='[IQ] '+deal.title+(contact?' — '+contact.first_name+' '+(contact.last_name??''):'');
+  const date=closeDate||new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const startTime=date+'T10:00:00';
+  const endTime=date+'T10:30:00';
+  const description='Deal: '+deal.title+'\\nValue: '+(deal.value_amount?'$'+Number(deal.value_amount).toLocaleString():'TBD')+'\\nStage: '+deal.stage+(deal.next_action?'\\nNext action: '+deal.next_action:'')+'\\n\\nSynced from ApplianceIQ CRM';
+  // Open Google Calendar create event URL (works without API)
+  const params=new URLSearchParams({action:'TEMPLATE',text:title,dates:startTime.replace(/[-:]/g,'')+'/'+ endTime.replace(/[-:]/g,''),details:description});
+  window.open('https://calendar.google.com/calendar/render?'+params.toString(),'_blank');
+  trackEvent('calendar_sync',{deal_id:deal.id,deal_title:deal.title});
+  toast('Opening Google Calendar','ok');
+}
 const BUYING_ROLES=['Primary buyer','Co-buyer','Decision-maker','Influencer','Product user','Designer','Contractor','Builder','Installer','Property manager','Financial approver','Admin contact','Delivery contact','Other'];
 const RECORD_TYPES={individual:'👤 Individual',household:'👥 Household / Buying Group',business:'🏢 Business Account'};
 
@@ -862,7 +887,8 @@ async function render(){
   if(!canSee(currentView)){currentView='pipeline';$$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='pipeline'));}
   if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
-  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
+  trackEvent('page_view',{page:currentView});
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderCommandCentre,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
   (views[currentView]||renderPipeline)();
 }
 
@@ -1155,6 +1181,7 @@ function openDealModal(deal){
     +'<div id="sec_biz" style="display:none"><div class="field"><label>Business</label><select id="f_co"><option value="">— select —</option>'+cache.companies.map(co=>'<option value="'+co.id+'" '+(deal?.company_id===co.id?'selected':'')+'>'+esc(co.name)+'</option>').join('')+'<option value="__new__">+ New…</option></select></div><div id="newBizW" style="display:none" class="field"><label>Business name</label><input id="f_nco"></div></div>'
     +'<div class="field-row"><div class="field"><label>Value (CAD)</label><input id="f_val" type="number" value="'+(deal?.value_amount??'')+'"></div><div class="field"><label>Margin %</label><input id="f_mar" type="number" value="'+(deal?.margin_pct??'')+'"></div></div>'
     +'<div class="field-row"><div class="field"><label>Expected close</label><input id="f_close" type="date" value="'+(deal?.expected_close_date??'')+'"></div><div class="field"><label>Quote expiry</label><input id="f_exp" type="date" value="'+(deal?.quote_expiry_date??'')+'"></div></div>'
+    +(!isNew?'<button class="btn btn-ghost btn-sm" id="f_cal" type="button" style="margin-bottom:12px">📅 Sync to Google Calendar</button>':'')
     +'<div class="field"><label>Categories</label><input id="f_cats" value="'+((deal?.product_categories||[]).join(', '))+'" placeholder="Refrigeration, Cooking"></div>'
     +'<div class="field-row"><div class="field"><label>Temperature</label><select id="f_temp" class="temp-select"><option value="hot" '+(deal?.temperature==='hot'?'selected':'')+'>🔥 Hot</option><option value="warm" '+((deal?.temperature??'warm')==='warm'?'selected':'')+'>🟡 Warm</option><option value="cold" '+(deal?.temperature==='cold'?'selected':'')+'>🔵 Cold</option></select></div>'
     +'<div class="field"><label>Next action</label><input id="f_next" value="'+esc(deal?.next_action??'')+'"></div></div>'
@@ -1170,6 +1197,7 @@ function openDealModal(deal){
   $('#f_co')?.addEventListener('change',()=>{$('#newBizW').style.display=$('#f_co').value==='__new__'?'block':'none';});
   $('#f_cancel').onclick=closeModal;
   if(!isNew){$('#addPartBtn')?.addEventListener('click',()=>openAddPart(deal.id));}
+  if(!isNew){$('#f_cal')?.addEventListener('click',()=>syncToCalendar(deal));}
   if(!isNew){
     $('#f_del')?.addEventListener('click',async()=>{if(!confirm('Delete this deal permanently?'))return;await sb.from('crm_deals').delete().eq('id',deal.id);closeModal();render();});
     $('#f_arch')?.addEventListener('click',async()=>{await sb.from('crm_deals').update({is_archived:true,archived_at:new Date().toISOString()}).eq('id',deal.id);closeModal();render();});
@@ -1203,7 +1231,7 @@ function openDealModal(deal){
         }
       }
     }
-    closeModal();toast(isNew?'Deal created':'Deal saved','ok');render();
+    closeModal();toast(isNew?'Deal created':'Deal saved','ok');trackEvent(isNew?'deal_created':'deal_saved',{deal_title:title,stage});render();
     }catch(err){btnDone($('#f_save'),isNew?'Create':'Save');formErr(err.message||'Save failed');toast(err.message||'Save failed','err');}
   };
 }
@@ -1312,7 +1340,7 @@ function openContactModal(ct){
       sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'contact',entity_id:ct.id,from_temperature:ct.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
     const{error}=isNew?await sb.from('contacts').insert(row):await sb.from('contacts').update(row).eq('id',ct.id);
     if(error){btnDone(btn,isNew?'Add':'Save');return formErr(error.message);}
-    closeModal();toast(isNew?'Contact added':'Contact saved','ok');render();
+    closeModal();toast(isNew?'Contact added':'Contact saved','ok');trackEvent(isNew?'contact_created':'contact_saved',{name:first});render();
     }catch(err){btnDone(btn,isNew?'Add':'Save');toast(err.message||'Save failed','err');}
   };
 }
@@ -2421,9 +2449,10 @@ async function renderCommandCentre(){
   const staleDeals=active.filter(d=>d.stage_entered_at&&(Date.now()-new Date(d.stage_entered_at).getTime())>14*864e5);
   const overdueContacts=contacts.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical');
   const hotContacts=contacts.filter(c=>c.temperature==='hot');
-  const[{data:allTasks},{data:deliveries}]=await Promise.all([
+  const[{data:allTasks},{data:deliveries},{data:reviews}]=await Promise.all([
     sb.from('crm_tasks').select('id,completed_at,due_at').eq('organization_id',currentOrg.id).limit(200),
-    sb.from('crm_delivery_workflows').select('id,status').eq('organization_id',currentOrg.id).limit(50)
+    sb.from('crm_delivery_workflows').select('id,status').eq('organization_id',currentOrg.id).limit(50),
+    sb.from('ai_coaching_reviews').select('overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('review_kind','coaching').order('created_at',{ascending:true}).limit(50)
   ]);
   const tasks=allTasks??[];
   const openTasks=tasks.filter(t=>!t.completed_at);
@@ -2432,8 +2461,13 @@ async function renderCommandCentre(){
   const quotesExpiring=active.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+7*864e5));
   const dels=deliveries??[];
   const upcomingDels=dels.filter(d=>d.status!=='completed');
+  // Coaching data
+  const rv=(reviews??[]).filter(r=>r.overall_score!=null);const latest=rv.length?rv[rv.length-1]:null;
+  const since30=new Date(Date.now()-30*864e5).toISOString();
+  const avg30=(()=>{const w=rv.filter(r=>r.created_at>=since30);return w.length?w.reduce((s,r)=>s+Number(r.overall_score),0)/w.length:null;})();
+  const last10=rv.slice(-10);
 
-  mainEl.innerHTML='<div class="page-head"><h1>📊 Command Centre</h1><div class="sub">'+esc(currentOrg.name)+' · '+now.toLocaleDateString('en-CA',{month:'long',year:'numeric'})+'</div></div>'
+  mainEl.innerHTML='<div class="page-head"><h1>📊 Dashboard</h1><div class="sub">'+esc(currentOrg.name)+' · '+now.toLocaleDateString('en-CA',{month:'long',year:'numeric'})+'</div></div>'
     +'<div class="cc-section"><h3>💰 Sales</h3><div class="cc-grid">'
       +'<div class="cc-card highlight"><div class="cc-lbl">MTD Revenue</div><div class="cc-val num">'+money(rev)+'</div><div class="cc-sub">'+wonMTD.length+' deals closed</div></div>'
       +'<div class="cc-card"><div class="cc-lbl">Pipeline Value</div><div class="cc-val num">'+money(pipe)+'</div><div class="cc-sub">'+active.length+' active deals</div></div>'
@@ -2446,20 +2480,21 @@ async function renderCommandCentre(){
       +(overdueContacts.length?'<div class="cc-card danger"><div class="cc-lbl">Overdue Follow-ups</div><div class="cc-val num">'+overdueContacts.length+'</div><div class="cc-sub">Need immediate attention</div></div>':'<div class="cc-card highlight"><div class="cc-lbl">Follow-up Compliance</div><div class="cc-val num">100%</div></div>')
       +'<div class="cc-card"><div class="cc-lbl">Total Contacts</div><div class="cc-val num">'+contacts.length+'</div></div>'
     +'</div></div>'
-    +'<div class="cc-section"><h3>📋 Quotes</h3><div class="cc-grid">'
-      +'<div class="cc-card"><div class="cc-lbl">Outstanding</div><div class="cc-val num">'+quotesOut.length+'</div></div>'
-      +(quotesExpiring.length?'<div class="cc-card warn"><div class="cc-lbl">Expiring Soon</div><div class="cc-val num">'+quotesExpiring.length+'</div><div class="cc-sub">Within 7 days</div></div>':'')
-      +'<div class="cc-card"><div class="cc-lbl">Quote→Win</div><div class="cc-val num">'+(quotesOut.length?Math.round(wonMTD.filter(d=>d.quote_attached).length/Math.max(1,quotesOut.length+wonMTD.filter(d=>d.quote_attached).length)*100):0)+'%</div></div>'
-    +'</div></div>'
-    +'<div class="cc-section"><h3>✓ Tasks</h3><div class="cc-grid">'
+    +'<div class="cc-section"><h3>✓ Tasks & 🚚 Deliveries</h3><div class="cc-grid">'
       +'<div class="cc-card"><div class="cc-lbl">Open Tasks</div><div class="cc-val num">'+openTasks.length+'</div></div>'
       +(overdueTasks.length?'<div class="cc-card danger"><div class="cc-lbl">Overdue</div><div class="cc-val num">'+overdueTasks.length+'</div></div>':'')
-      +'<div class="cc-card"><div class="cc-lbl">Completion Rate</div><div class="cc-val num">'+(tasks.length?Math.round(tasks.filter(t=>t.completed_at).length/tasks.length*100):0)+'%</div></div>'
-    +'</div></div>'
-    +'<div class="cc-section"><h3>🚚 Deliveries</h3><div class="cc-grid">'
-      +'<div class="cc-card"><div class="cc-lbl">In Progress</div><div class="cc-val num">'+upcomingDels.length+'</div></div>'
+      +'<div class="cc-card"><div class="cc-lbl">Task Completion</div><div class="cc-val num">'+(tasks.length?Math.round(tasks.filter(t=>t.completed_at).length/tasks.length*100):0)+'%</div></div>'
+      +'<div class="cc-card"><div class="cc-lbl">Active Deliveries</div><div class="cc-val num">'+upcomingDels.length+'</div></div>'
       +'<div class="cc-card"><div class="cc-lbl">Completed</div><div class="cc-val num">'+dels.filter(d=>d.status==='completed').length+'</div></div>'
-    +'</div></div>';
+    +'</div></div>'
+    +'<div class="cc-section"><h3>🏅 Coaching Scores</h3><div class="cc-grid">'
+      +'<div class="cc-card"><div class="cc-lbl">Latest Score</div><div class="cc-val num">'+(latest?Number(latest.overall_score).toFixed(1)+'/10':'—')+'</div></div>'
+      +'<div class="cc-card"><div class="cc-lbl">30-Day Average</div><div class="cc-val num">'+(avg30!=null?avg30.toFixed(1)+'/10':'—')+'</div></div>'
+      +'<div class="cc-card"><div class="cc-lbl">Total Reviews</div><div class="cc-val num">'+rv.length+'</div></div>'
+    +'</div>'
+    +(last10.length?'<div style="margin-top:12px"><div class="trend-bars">'+last10.map(r=>{const s=Number(r.overall_score);return '<div class="tb" style="height:'+Math.max(4,s*10)+'%"><span class="num">'+s.toFixed(1)+'</span></div>';}).join('')+'</div></div>':'')
+    +'</div>';
+  trackEvent('page_view',{page:'dashboard'});
 }
 
 // ===== MANAGER DASHBOARD =====
