@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#0f1f3d"/>
+<title>Your Appliance Specification Package — Spec IQ</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f1f3d;--paper:#f6f8fb;--card:#ffffff;--ink:#0f1f3d;--steel:#5b6b85;--line:#e3e8f0;--verified:#1a9e56;--verified-soft:#e6f7ef;--focus:#2f6fed;--focus-soft:#e8effd;--amber:#e8590c;--amber-soft:#fef0e6;--danger:#c02d1e;--danger-soft:#fce8e6;--radius:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--paper);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:Sora,sans-serif;line-height:1.2;color:var(--navy)}
+a{color:var(--focus);text-decoration:none}
+.container{max-width:860px;margin:0 auto;padding:0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+.badge{display:inline-flex;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600}
+.badge-g{background:var(--verified-soft);color:var(--verified)}
+.badge-b{background:var(--focus-soft);color:var(--focus)}
+.num{font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit}
+.btn-p{background:var(--navy);color:#fff}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading{text-align:center;padding:100px 20px;color:var(--steel)}
+#loading .spinner{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--focus);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 16px}
+#error{display:none;text-align:center;padding:100px 20px}
+#content{display:none}
+.header-bar{background:var(--navy);color:#fff;padding:14px 0}
+.validity-box{border:2px solid var(--focus);border-radius:12px;padding:16px 24px;text-align:center;margin:20px 0;background:linear-gradient(135deg,var(--focus-soft) 0%,#fff 100%)}
+.validity-box.expiring{border-color:var(--amber);background:linear-gradient(135deg,var(--amber-soft) 0%,#fff 100%)}
+.validity-box.expired{border-color:var(--danger);background:linear-gradient(135deg,var(--danger-soft) 0%,#fff 100%)}
+.validity-box .vdate{font-family:Sora;font-weight:700;font-size:24px;color:var(--focus)}
+.validity-box.expiring .vdate{color:var(--amber)}
+.validity-box.expired .vdate{color:var(--danger)}
+.product-card{border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:12px;background:#fff}
+.product-card h3{font-size:15px;margin-bottom:6px}
+.specs-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:13px}
+.specs-grid dt{color:var(--steel);font-size:12px}
+.specs-grid dd{font-weight:600;margin:0 0 6px}
+.pricing-table{width:100%;border-collapse:collapse;font-size:14px}
+.pricing-table th{text-align:left;padding:8px 12px;background:var(--paper);border-bottom:2px solid var(--navy);font-size:12px;text-transform:uppercase;color:var(--steel)}
+.pricing-table td{padding:8px 12px;border-bottom:1px solid var(--line)}
+.pricing-table .total-row td{border-top:2px solid var(--navy);font-weight:700;font-size:16px}
+.footer-bar{background:var(--navy);color:rgba(255,255,255,.5);padding:24px 0;margin-top:60px;text-align:center;font-size:13px}
+@media print{
+  .header-bar,.footer-bar,.no-print{display:none!important}
+  body{background:#fff}
+}
+@media(max-width:600px){
+  .specs-grid{grid-template-columns:1fr 1fr}
+  .meta-grid{grid-template-columns:1fr!important}
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>Loading your specification package…</div>
+</div>
+
+<div id="error">
+  <div style="width:64px;height:64px;border-radius:50%;background:var(--danger-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+    <svg width="28" height="28" fill="none" stroke="var(--danger)" stroke-width="2"><circle cx="14" cy="14" r="12"/><line x1="14" y1="9" x2="14" y2="15"/><line x1="14" y1="19" x2="14.01" y2="19"/></svg>
+  </div>
+  <h2 style="margin-bottom:8px" id="error-title">Package Not Found</h2>
+  <p style="color:var(--steel)" id="error-msg">This link may have expired or is no longer available.</p>
+</div>
+
+<div id="content">
+  <div class="header-bar">
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span style="font-family:Sora;font-weight:700;font-size:17px">Spec IQ</span>
+      </div>
+      <button class="btn no-print" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2);font-size:13px;padding:8px 16px" onclick="window.print()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print
+      </button>
+    </div>
+  </div>
+
+  <!-- Cover -->
+  <section style="padding:48px 0 0">
+    <div class="container" style="text-align:center">
+      <div id="brand-logos" style="display:flex;align-items:center;gap:16px;justify-content:center;margin-bottom:24px;flex-wrap:wrap"></div>
+      <h1 id="pkg-title" style="font-size:32px;font-weight:800;letter-spacing:-.02em"></h1>
+      <p style="color:var(--steel);font-size:16px;margin-top:8px">Appliance Specification Package</p>
+      <div id="meta-grid" class="meta-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:500px;margin:28px auto 0;text-align:left"></div>
+      <div id="validity-section"></div>
+      <div id="approval-stamp"></div>
+      <div id="store-info" style="margin-top:20px"></div>
+    </div>
+  </section>
+
+  <!-- Products -->
+  <section style="padding:48px 0 0">
+    <div class="container">
+      <h2 style="font-size:22px;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--navy)">Appliance Specifications</h2>
+      <div id="products-list"></div>
+    </div>
+  </section>
+
+  <!-- Installation -->
+  <section id="install-section" style="padding:48px 0 0;display:none">
+    <div class="container">
+      <h2 style="font-size:22px;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--navy)">Installation Requirements</h2>
+      <div class="card" style="padding:0;overflow:hidden"><table id="install-table" class="pricing-table" style="font-size:13px"></table></div>
+      <div style="margin-top:16px;padding:12px;background:var(--amber-soft);border-radius:8px;font-size:13px;color:var(--amber)"><strong>Important:</strong> All connections must be verified on-site by a licensed contractor.</div>
+    </div>
+  </section>
+
+  <!-- Warranties -->
+  <section id="warranty-section" style="padding:48px 0 0;display:none">
+    <div class="container">
+      <h2 style="font-size:22px;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--navy)">Protection Plans</h2>
+      <div class="card" style="padding:0;overflow:hidden"><table id="warranty-table" class="pricing-table"></table></div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing-section" style="padding:48px 0 0;display:none">
+    <div class="container">
+      <h2 style="font-size:22px;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--navy)">Pricing Summary</h2>
+      <div class="card" style="padding:0;overflow:hidden"><table id="pricing-table" class="pricing-table"></table></div>
+      <div id="pricing-disclaimer" style="margin-top:16px;font-size:13px;color:var(--steel);font-style:italic"></div>
+    </div>
+  </section>
+
+  <div class="footer-bar">
+    <div class="container">
+      <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <span style="font-family:Sora;font-weight:600;font-size:13px">Powered by Spec IQ — ApplianceIQ</span>
+      </div>
+      <div>Spec. Compare. Price verified.</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV');
+
+const token=new URLSearchParams(window.location.search).get('token');
+if(!token){showError('Invalid Link','No package token provided.');throw'no token'}
+
+function el(id){return document.getElementById(id)}
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-CA',{month:'long',day:'numeric',year:'numeric'})}
+function showError(title,msg){el('loading').style.display='none';el('error-title').textContent=title;el('error-msg').textContent=msg;el('error').style.display='block'}
+
+async function loadPackage(){
+  try{
+    const{data:pkg,error}=await sb.from('speciq_packages').select('*, speciq_projects(customer_name, project_name, property_address, room_name, customer_email)').eq('share_token',token).single();
+    if(error||!pkg){showError('Package Not Found','This link may have expired or is no longer available.');return}
+    const{data:products}=await sb.from('speciq_package_products').select('*').eq('package_id',pkg.id).order('sort_order');
+    const{data:services}=await sb.from('speciq_package_services').select('*').eq('package_id',pkg.id).order('sort_order');
+    const{data:warranties}=await sb.from('speciq_product_warranties').select('*').eq('package_id',pkg.id);
+    const{data:retailer}=await sb.from('speciq_retailer_settings').select('*').eq('organization_id',pkg.organization_id).single();
+    const prods=products||[];
+    const svcs=services||[];
+    const wars=warranties||[];
+
+    // Log view event
+    try{await sb.from('speciq_package_events').insert({package_id:pkg.id,event_type:'viewed',event_data:{user_agent:navigator.userAgent,referrer:document.referrer},ip_address:null,user_agent:navigator.userAgent})}catch(e){}
+    // Update status to viewed if currently sent
+    if(pkg.status==='sent'){try{await sb.from('speciq_packages').update({status:'viewed',viewed_at:new Date().toISOString()}).eq('id',pkg.id)}catch(e){}}
+
+    render(pkg,prods,svcs,wars,retailer);
+  }catch(e){
+    console.error(e);
+    showError('Error Loading','Something went wrong. Please try again later.');
+  }
+}
+
+function render(pkg,products,services,warranties,retailer){
+  document.title=(pkg.package_name||'Specification Package')+' — Spec IQ';
+  el('pkg-title').textContent=pkg.package_name||'Specification Package';
+  const cust=pkg.speciq_projects?.customer_name||'';
+  const proj=pkg.speciq_projects?.project_name||'';
+  const total=products.reduce((s,p)=>s+(parseFloat(p.msrp)||0),0);
+
+  // Brand logos
+  var logos='';
+  if(retailer&&retailer.logo_url)logos+='<img src="'+esc(retailer.logo_url)+'" style="max-height:60px;max-width:180px;object-fit:contain" /><div style="width:1px;height:40px;background:var(--line)"></div>';
+  logos+='<div style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2" style="width:22px;height:22px"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span style="font-family:Sora;font-weight:700;font-size:16px">Spec IQ</span></div>';
+  el('brand-logos').innerHTML=logos;
+
+  // Meta
+  var meta='';
+  if(cust)meta+='<div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px">Customer</div><div style="font-weight:600;margin-top:2px">'+esc(cust)+'</div></div>';
+  meta+='<div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px">Quote #</div><div style="font-weight:600;margin-top:2px">'+(pkg.quote_number||'—')+'</div></div>';
+  meta+='<div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px">Items</div><div style="font-weight:600;margin-top:2px">'+products.length+' appliance'+(products.length!==1?'s':'')+'</div></div>';
+  if(pkg.salesperson_name)meta+='<div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px">Your Specialist</div><div style="font-weight:600;margin-top:2px">'+esc(pkg.salesperson_name)+'</div></div>';
+  meta+='<div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px">Issued</div><div style="font-weight:600;margin-top:2px">'+fmtDate(pkg.quote_issued_at||pkg.created_at)+'</div></div>';
+  if(pkg.speciq_projects?.property_address)meta+='<div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px">Property</div><div style="font-weight:600;margin-top:2px">'+esc(pkg.speciq_projects.property_address)+'</div></div>';
+  el('meta-grid').innerHTML=meta;
+
+  // Validity
+  if(pkg.quote_expires_at){
+    var days=Math.ceil((new Date(pkg.quote_expires_at)-new Date())/(1000*60*60*24));
+    var cls=days<0?'expired':days<=3?'expiring':'';
+    var vdays=pkg.validity_days||14;
+    var disc=vdays>=60?'Commercial pricing valid for '+vdays+' days, subject to product availability and manufacturer terms.':'This proposal and pricing are valid for '+vdays+' calendar days, subject to product availability.';
+    if(retailer&&retailer.validity_disclaimer)disc=retailer.validity_disclaimer;
+    el('validity-section').innerHTML='<div class="validity-box '+cls+'"><div style="font-size:14px;font-weight:600;margin-bottom:4px">Quote Valid Until</div><div class="vdate">'+fmtDate(pkg.quote_expires_at)+'</div>'+(days<0?'<div style="font-size:13px;color:var(--danger);margin-top:4px;font-weight:600">This quote has expired</div>':days<=3?'<div style="font-size:13px;color:var(--amber);margin-top:4px">'+days+' day'+(days!==1?'s':'')+' remaining</div>':'')+'<div style="font-size:12px;color:var(--steel);margin-top:8px">'+esc(disc)+'</div></div>';
+  }
+
+  // Approval stamp
+  if(pkg.approval_status==='approved'||pkg.approval_status==='approved_with_conditions'){
+    el('approval-stamp').innerHTML='<div style="display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border:2px solid var(--verified);border-radius:8px;font-family:Sora;font-weight:700;color:var(--verified);margin-top:12px">✓ AUTHORIZED</div>';
+  }
+
+  // Store info
+  if(retailer&&(retailer.store_name||retailer.store_phone)){
+    var si='<div class="card" style="display:inline-block;text-align:left;margin-top:16px;padding:16px 24px">';
+    if(pkg.salesperson_name)si+='<div style="font-weight:700;font-size:15px;margin-bottom:4px">'+esc(pkg.salesperson_name)+'</div>';
+    if(retailer.store_name)si+='<div style="font-size:13px;color:var(--steel)">'+esc(retailer.store_name)+'</div>';
+    if(retailer.store_address)si+='<div style="font-size:13px;color:var(--steel)">'+esc(retailer.store_address)+'</div>';
+    var city=[retailer.store_city,retailer.store_province].filter(Boolean).join(', ');
+    if(city)si+='<div style="font-size:13px;color:var(--steel)">'+esc(city)+(retailer.store_postal?'  '+esc(retailer.store_postal):'')+'</div>';
+    if(retailer.store_phone)si+='<div style="font-size:13px;color:var(--steel);margin-top:6px"><a href="tel:'+esc(retailer.store_phone)+'" style="color:var(--focus)">'+esc(retailer.store_phone)+'</a></div>';
+    if(retailer.store_email)si+='<div style="font-size:13px"><a href="mailto:'+esc(retailer.store_email)+'" style="color:var(--focus)">'+esc(retailer.store_email)+'</a></div>';
+    si+='</div>';
+    el('store-info').innerHTML=si;
+  }
+
+  // Products
+  var hasElec=false;
+  el('products-list').innerHTML=products.map(function(p){
+    if(p.electrical_requirements)hasElec=true;
+    var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean);
+    var h='<div class="product-card"><div style="display:flex;gap:16px;align-items:flex-start">';
+    if(p.product_image)h+='<img src="'+esc(p.product_image)+'" style="width:80px;height:80px;object-fit:contain;border-radius:8px;border:1px solid var(--line);background:#fff;flex-shrink:0" onerror="this.style.display=\'none\'" />';
+    h+='<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:flex-start">';
+    h+='<div>';
+    if(p.brand_logo)h+='<img src="'+esc(p.brand_logo)+'" style="max-height:18px;max-width:80px;object-fit:contain;margin-bottom:4px;display:block" onerror="this.style.display=\'none\'" />';
+    h+='<h3>'+esc(p.brand)+' '+esc(p.product_name)+'</h3></div>';
+    if(p.msrp>0&&pkg.include_pricing)h+='<span style="font-family:Sora;font-weight:700;font-size:16px">$'+parseFloat(p.msrp).toLocaleString()+'</span>';
+    h+='</div>';
+    h+='<div style="font-size:13px;color:var(--steel);margin:4px 0 10px">Model '+esc(p.model_number)+' · '+esc(p.category)+(p.finish?' · '+esc(p.finish):'')+'</div>';
+    h+='<div class="specs-grid">';
+    if(dims.length)h+='<div><dt>Dimensions</dt><dd>'+dims.map(function(d){return d+'"'}).join(' × ')+'</dd></div>';
+    if(p.electrical_requirements)h+='<div><dt>Electrical</dt><dd>'+esc(p.electrical_requirements)+'</dd></div>';
+    h+='</div>';
+    if(p.spec_sheet_url||p.install_guide_url){
+      h+='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">';
+      if(p.spec_sheet_url)h+='<a href="'+esc(p.spec_sheet_url)+'" target="_blank" style="font-size:12px;padding:4px 10px;background:var(--focus-soft);border-radius:4px;font-weight:600">📄 Spec Sheet</a>';
+      if(p.install_guide_url)h+='<a href="'+esc(p.install_guide_url)+'" target="_blank" style="font-size:12px;padding:4px 10px;background:var(--focus-soft);border-radius:4px;font-weight:600">🔧 Install Guide</a>';
+      h+='</div>';
+    }
+    h+='</div></div></div>';
+    return h;
+  }).join('');
+
+  // Installation requirements
+  if(hasElec){
+    el('install-section').style.display='';
+    var it='<thead><tr><th>Appliance</th><th>Model</th><th>Electrical</th><th>Dimensions</th></tr></thead><tbody>';
+    products.forEach(function(p){
+      var dims=[p.width_inches,p.height_inches,p.depth_inches].filter(Boolean).map(function(d){return d+'"'}).join(' × ');
+      it+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+(esc(p.electrical_requirements)||'—')+'</td><td>'+(dims||'—')+'</td></tr>';
+    });
+    it+='</tbody>';
+    el('install-table').innerHTML=it;
+  }
+
+  // Warranties
+  var warProds=(warranties||[]).filter(function(w){return w.warranty_name});
+  if(warProds.length){
+    el('warranty-section').style.display='';
+    var wt='<thead><tr><th>Appliance</th><th>Plan</th><th>Coverage</th><th style="text-align:right">Price</th></tr></thead><tbody>';
+    warProds.forEach(function(w){
+      var pName='';products.forEach(function(p){if(p.id===w.package_product_id)pName=esc(p.brand)+' '+esc(p.product_name)});
+      var cov=w.coverage_label||(w.coverage_length_months?w.coverage_length_months+' months':'—');
+      var price=w.is_included?'Included':w.selling_price>0?'$'+parseFloat(w.selling_price).toLocaleString():'$0';
+      wt+='<tr><td>'+pName+'</td><td style="font-weight:600">'+esc(w.warranty_name)+'</td><td>'+esc(cov)+'</td><td style="text-align:right;font-family:Sora;color:'+(w.is_included?'var(--verified)':'inherit')+'">'+price+'</td></tr>';
+    });
+    wt+='</tbody>';
+    el('warranty-table').innerHTML=wt;
+  }
+
+  // Pricing
+  if(pkg.include_pricing){
+    el('pricing-section').style.display='';
+    var svcTotal=services.reduce(function(s,x){return s+(parseFloat(x.amount)||0)},0);
+    var grandTotal=total+svcTotal;
+    var pt='<thead><tr><th>Item</th><th>Model</th><th>Category</th><th style="text-align:right">Price</th></tr></thead><tbody>';
+    products.forEach(function(p){pt+='<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+esc(p.category)+'</td><td style="text-align:right;font-family:Sora">'+(p.msrp>0?'$'+parseFloat(p.msrp).toLocaleString():'—')+'</td></tr>'});
+    pt+='<tr style="font-weight:600;border-top:1px solid var(--navy)"><td colspan="3">Product Subtotal</td><td style="text-align:right;font-family:Sora">$'+total.toLocaleString()+'</td></tr>';
+    if(services.length){
+      pt+='<tr><td colspan="4" style="padding-top:12px;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--steel);letter-spacing:.5px;border-bottom:none">Services</td></tr>';
+      services.forEach(function(s){
+        var label={delivery:'Delivery',installation:'Installation',haul_away:'Haul-Away',accessory:'Accessory',warranty:'Protection Plan',other:'Other'}[s.service_type]||s.service_type;
+        pt+='<tr><td colspan="3">'+(s.service_type==='warranty'?'<span style="color:var(--verified)">✓</span> ':'')+esc(s.description||label)+'</td><td style="text-align:right;font-family:Sora">$'+parseFloat(s.amount).toLocaleString()+'</td></tr>';
+      });
+      pt+='<tr style="font-weight:600"><td colspan="3">Services Subtotal</td><td style="text-align:right;font-family:Sora">$'+svcTotal.toLocaleString()+'</td></tr>';
+    }
+    pt+='<tr class="total-row"><td colspan="3">Grand Total</td><td style="text-align:right;font-family:Sora">$'+grandTotal.toLocaleString()+'</td></tr>';
+    pt+='</tbody>';
+    el('pricing-table').innerHTML=pt;
+    if(retailer&&retailer.default_disclaimer)el('pricing-disclaimer').textContent=retailer.default_disclaimer;
+  }
+
+  // Show content
+  el('loading').style.display='none';
+  el('content').style.display='block';
+}
+
+loadPackage();
+</script>
+</body>
+</html>
