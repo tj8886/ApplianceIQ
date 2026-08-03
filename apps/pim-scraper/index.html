@@ -3,25 +3,25 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="theme-color" content="#f6f8fb"/>
+<meta name="theme-color" content="#0c1222"/>
 <title>PIM Scraper v2 — ApplianceIQ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#f6f8fb;--bg2:#ffffff;--surface:#f0f3f7;--card:#ffffff;
-  --accent:#1a9e56;--accent2:#178a4d;--amber:#d97706;--red:#c02d1e;--blue:#2f6fed;
-  --txt:#0f1f3d;--txt2:#5b6b85;--line:#e3e8f0;
+  --bg:#0c1222;--bg2:#111b2e;--surface:#182338;--card:#1e2d47;
+  --accent:#00c896;--accent2:#00e6ac;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;
+  --txt:#e8edf4;--txt2:#7e8fa6;--line:#283a55;
   --radius:10px;
-  --t1:#1a9e56;--t2:#d97706;--t3:#c02d1e;
+  --t1:#00c896;--t2:#f59e0b;--t3:#ef4444;
 }
 html,body{height:100%;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh}
 
 /* Header */
 header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--bg2);border-bottom:1px solid var(--line);flex-shrink:0}
-header .logo{font-family:Sora,sans-serif;font-size:15px;font-weight:800;letter-spacing:-.3px}
+header .logo{font-size:15px;font-weight:800;letter-spacing:-.3px}
 header .logo span{color:var(--accent)}
 header .right{display:flex;align-items:center;gap:12px}
 .cost-pill{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;color:var(--txt2)}
@@ -46,37 +46,37 @@ header .right{display:flex;align-items:center;gap:12px}
 .field input{min-width:280px}
 
 .tier-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
-.tier-badge.t1{background:rgba(26,158,86,.15);color:var(--t1)}
-.tier-badge.t2{background:rgba(217,119,6,.15);color:var(--t2)}
-.tier-badge.t3{background:rgba(192,45,30,.15);color:var(--t3)}
+.tier-badge.t1{background:rgba(0,200,150,.15);color:var(--t1)}
+.tier-badge.t2{background:rgba(245,158,11,.15);color:var(--t2)}
+.tier-badge.t3{background:rgba(239,68,68,.15);color:var(--t3)}
 .tier-badge.tu{background:rgba(126,143,166,.15);color:var(--txt2)}
 
 /* Buttons */
 .btn{padding:9px 18px;border-radius:var(--radius);border:1px solid transparent;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
-.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:#0a1628;border-color:var(--accent)}
 .btn-primary:hover{background:var(--accent2)}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed}
 .btn-secondary{background:var(--surface);color:var(--txt);border-color:var(--line)}
 .btn-secondary:hover{border-color:var(--txt2)}
 .btn-sm{padding:6px 12px;font-size:12px}
-.btn-danger{background:rgba(192,45,30,.15);color:var(--red);border-color:var(--red)}
-.btn-danger:hover{background:rgba(192,45,30,.25)}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border-color:var(--red)}
+.btn-danger:hover{background:rgba(239,68,68,.25)}
 
 /* Mode toggle */
 .mode-toggle{display:flex;background:var(--surface);border-radius:var(--radius);border:1px solid var(--line);overflow:hidden}
 .mode-toggle button{padding:8px 16px;font-size:12px;font-weight:600;font-family:inherit;border:none;background:none;color:var(--txt2);cursor:pointer;transition:all .15s}
-.mode-toggle button.active{background:var(--accent);color:#fff}
+.mode-toggle button.active{background:var(--accent);color:#0a1628}
 
 /* Brand grid */
 .brand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:20px}
 .brand-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:space-between}
 .brand-card:hover{border-color:var(--accent);background:var(--surface)}
-.brand-card.selected{border-color:var(--accent);background:rgba(26,158,86,.08)}
+.brand-card.selected{border-color:var(--accent);background:rgba(0,200,150,.08)}
 .brand-card .name{font-size:13px;font-weight:600}
 .brand-card .meta{display:flex;align-items:center;gap:6px}
 
 /* Results */
-.results-panel{background:var(--card);box-shadow:0 1px 3px rgba(15,31,61,.04);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.results-panel{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
 .results-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
 .results-header h3{font-size:14px;font-weight:700}
 .results-body{max-height:500px;overflow-y:auto}
@@ -144,7 +144,7 @@ header .right{display:flex;align-items:center;gap:12px}
 .brand-filter{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
 .filter-pills{display:flex;gap:4px;flex-wrap:wrap}
 .filter-pills button{padding:4px 10px;border-radius:12px;border:1px solid var(--line);background:none;color:var(--txt2);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
-.filter-pills button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.filter-pills button.active{background:var(--accent);color:#0a1628;border-color:var(--accent)}
 
 /* Product table */
 .prod-table{width:100%;border-collapse:collapse;font-size:12px}
@@ -155,9 +155,9 @@ header .right{display:flex;align-items:center;gap:12px}
 .prod-table .brand-cell{color:var(--txt2)}
 
 /* Diff styling */
-.diff-added{background:rgba(26,158,86,.1);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px}
-.diff-changed{background:rgba(217,119,6,.1);color:var(--amber);padding:2px 6px;border-radius:4px;font-size:11px}
-.diff-removed{background:rgba(192,45,30,.1);color:var(--red);padding:2px 6px;border-radius:4px;font-size:11px;text-decoration:line-through}
+.diff-added{background:rgba(0,200,150,.1);color:var(--accent);padding:2px 6px;border-radius:4px;font-size:11px}
+.diff-changed{background:rgba(245,158,11,.1);color:var(--amber);padding:2px 6px;border-radius:4px;font-size:11px}
+.diff-removed{background:rgba(239,68,68,.1);color:var(--red);padding:2px 6px;border-radius:4px;font-size:11px;text-decoration:line-through}
 
 /* Progress bar */
 .pbar{height:6px;background:var(--surface);border-radius:3px;overflow:hidden;width:100%}
@@ -178,9 +178,9 @@ header .right{display:flex;align-items:center;gap:12px}
 
 /* Completeness chip */
 .completeness{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
-.completeness.high{background:rgba(26,158,86,.15);color:var(--accent)}
-.completeness.med{background:rgba(217,119,6,.15);color:var(--amber)}
-.completeness.low{background:rgba(192,45,30,.15);color:var(--red)}
+.completeness.high{background:rgba(0,200,150,.15);color:var(--accent)}
+.completeness.med{background:rgba(245,158,11,.15);color:var(--amber)}
+.completeness.low{background:rgba(239,68,68,.15);color:var(--red)}
 
 /* Scrollable table wrapper */
 .table-wrap{background:var(--bg2);border:1px solid var(--line);border-radius:var(--radius);overflow:auto;max-height:55vh}
@@ -235,7 +235,7 @@ let scrapeResults = [];
 let sessionCostTotal = 0;
 let isProcessing = false;
 let autoSave = false;
-let aiModel = 'gpt-5.6-luna';
+let aiModel = 'gpt-4.1-mini';
 let brandIntel = null; // PIM products for selected brand
 let discoverResults = null; // from discover-brand edge function
 let discoverLoading = false;
@@ -357,13 +357,26 @@ async function discoverBrand(brandName) {
   try {
     const r = await fetch(SB_URL + '/functions/v1/discover-brand', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ brand: brandName })
+      body: JSON.stringify({ brand: brandName, appliances_only: appliancesOnly })
     });
     discoverResults = await r.json();
     if (discoverResults.error) logEntry('Discovery error: ' + discoverResults.error, 'err');
     else logEntry('Found ' + discoverResults.total + ' URLs (' + discoverResults.new_count + ' new, ' + discoverResults.existing_count + ' in PIM)', 'ok');
   } catch (e) { logEntry('Discovery failed: ' + e.message, 'err'); }
   discoverLoading = false; renderTab();
+}
+
+/* ═══ APPLIANCE RELEVANCE FILTER ═══ */
+const EXCLUDE_TERMS = ['bathroom fan','bath fan','ceiling fan','air purifier','humidifier','dehumidifier','water heater','water cooler','water dispenser','furnace','air conditioner','thermostat','toaster','blender','kettle','food processor','stand mixer','coffee maker','slow cooker','vacuum','floor care','iron','steamer','hair dryer','shaver','replacement part','handle kit','knob kit','trim kit','filler panel','stacking kit','door panel','hose kit','bracket','gasket','element kit','sensor','control board','motor','pump','valve','switch','latch','hinge set','grate set','drip pan','light bulb','filter pack','pedestal','wok ring','touch-up paint','cleaner','descaler'];
+const INCLUDE_TERMS = ['refrigerat','freezer','range','oven','cooktop','rangetop','dishwasher','washer','dryer','laundry','microwave','hood','range hood','wine','beverage center','ice maker','garbage disposal','trash compact','warming drawer','grill','smoker','pizza oven','undercounter'];
+let appliancesOnly = true;
+
+function classifyRelevance(data) {
+  if (!appliancesOnly) return { relevant: true };
+  const name = ((data.product_name||'') + ' ' + (data.short_description||'') + ' ' + (data.category||'')).toLowerCase();
+  for (const term of EXCLUDE_TERMS) { if (name.includes(term)) return { relevant: false, reason: term }; }
+  for (const term of INCLUDE_TERMS) { if (name.includes(term)) return { relevant: true }; }
+  return { relevant: true }; // can't determine = let through
 }
 
 /* ═══ SMART SCRAPE ═══ */
@@ -401,8 +414,14 @@ async function smartScrape(brand,model,url){
   r.status='fail';logEntry('Failed: '+brand+' '+model,'err');renderTab();return r;
 }
 
+function classifyResult(r) {
+  if(r.data){const rel=classifyRelevance(r.data);r._relevant=rel.relevant;r._irrelevantReason=rel.reason;}
+}
+
 async function autoSaveIfEnabled(result) {
+  classifyResult(result);
   if (!autoSave || !result.data || result._saved) return;
+  if (result._relevant===false) { logEntry('Skip auto-save (not appliance: ' + result._irrelevantReason + ')', 'err'); renderTab(); return; }
   const idx = scrapeResults.indexOf(result);
   if (idx >= 0) await saveToPim(idx);
 }
@@ -674,7 +693,8 @@ function renderTab(){
     }
   }
   h+='<div style="margin-left:auto;display:flex;gap:12px;align-items:center">';
-  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">Tier 2: <select onchange="aiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gpt-5.6-luna" '+(aiModel==='gpt-5.6-luna'?'selected':'')+'>GPT-5.6 Luna</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">Tier 2: <select onchange="aiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(appliancesOnly?'checked':'')+' onchange="window.S.toggleAppliancesOnly()" style="accent-color:var(--accent)"/> Appliances only</label>';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-save</label>';
   h+='<button class="btn btn-sm btn-secondary" onclick="window.S.setKeys()">🔑 Keys</button>';
   h+='</div></div>';
@@ -726,6 +746,7 @@ function renderDiscover(){
     h+='<span style="font-size:14px;font-weight:700">Discovered '+dr.total+' URLs</span>';
     h+='<span class="tier-badge t1">'+newOnes.length+' new</span>';
     h+='<span class="tier-badge tu">'+existing.length+' in PIM</span>';
+    if(dr.filtered_count>0)h+='<span style="font-size:11px;color:var(--txt2)">'+dr.filtered_count+' non-appliance filtered out</span>';
     if(dr.has_sitemap)h+='<span style="font-size:11px;color:var(--txt2)">via sitemap</span>';
     const scrapedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url)).length;
     const unsavedDisc=newOnes.filter(r=>{const sr=scrapeResults.find(s=>s.url===r.url);return sr&&sr.data&&!sr._saved}).length;
@@ -805,7 +826,8 @@ function renderDiscover(){
       const feats=r.data?.features?.length||0;
       const assetBits=[];if(specs)assetBits.push(specs+' specs');if(imgs)assetBits.push(imgs+' imgs');if(docs)assetBits.push(docs+' docs');if(vids)assetBits.push(vids+' vids');if(feats)assetBits.push(feats+' features');
       const savedLabel=r._saved?'✓'+(r._assetLog?.length?' +'+r._assetLog.join(', '):''):'';
-      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span></div><div class="detail">'+esc(det)+'</div>'+(assetBits.length||price?'<div class="detail">'+assetBits.join(' · ')+(assetBits.length&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">'+savedLabel+'</span>':'')+'</div></div>';
+      const relBadge=r._relevant===false?'<span class="tier-badge t3" style="margin-left:4px" title="'+esc(r._irrelevantReason||'')+'">✕ not appliance</span>':'';
+      h+='<div class="result-row"><div class="status '+sc+'"></div><div class="info"><div class="model-num">'+esc(r.model||r.data?.model||'—')+'<span class="brand-label">'+esc(r.brand||'')+'</span>'+relBadge+'</div><div class="detail">'+esc(det)+'</div>'+(assetBits.length||price?'<div class="detail">'+assetBits.join(' · ')+(assetBits.length&&price?' · ':'')+price+'</div>':'')+'</div><span class="tier-badge '+tl.cls+'">'+tl.icon+' T'+(r.tier_used||'?')+'</span><div class="cost">'+(r.cost>0?'$'+r.cost.toFixed(4):'FREE')+'</div><div class="actions">'+(r.data?'<button class="btn btn-sm btn-secondary" onclick="window.S.viewResult('+i+')">View</button>':'')+(r.data&&!r._saved?'<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+i+')">Save</button>':'')+(r._saved?'<span style="font-size:11px;color:var(--accent);font-weight:600">'+savedLabel+'</span>':'')+'</div></div>';
     }
     h+='</div></div>';
   }
@@ -987,6 +1009,7 @@ window.S = {
   },
   selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;psResults=[];vaResults=[];enResults={};loadBrandIntel(selectedBrand)},
   toggleAuto(){autoSave=!autoSave},
+  toggleAppliancesOnly(){appliancesOnly=!appliancesOnly;if(selectedBrand&&currentTab==='discover')discoverBrand(selectedBrand);else renderTab()},
   clearResults(){scrapeResults=[];sessionCostTotal=0;document.getElementById('sessionCost').textContent='$0.00';renderTab()},
   rediscover(){if(selectedBrand)discoverBrand(selectedBrand)},
 
@@ -1011,13 +1034,8 @@ window.S = {
   async scrapeUrl(url){
     if(isProcessing)return;
     isProcessing=true;renderTab();
-    try{
-      const result=await Promise.race([
-        smartScrape(selectedBrand||'Unknown','',url),
-        new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout after 30s'))},30000)})
-      ]);
-      if(result)await autoSaveIfEnabled(result);
-    }catch(e){logEntry('Scrape failed: '+(e.message||'error'),'err')}
+    const result=await smartScrape(selectedBrand||'Unknown','',url);
+    await autoSaveIfEnabled(result);
     isProcessing=false;renderTab();
   },
   async scrapeDiscovered(){
@@ -1025,21 +1043,11 @@ window.S = {
     const newOnes=discoverResults.results.filter(r=>!r.in_pim && !scrapeResults.find(sr=>sr.url===r.url));
     if(newOnes.length===0){alert('All URLs already scraped');return}
     isProcessing=true;renderTab();
-    let ok=0,fail=0;
     for(let i=0;i<newOnes.length;i++){
-      logEntry('Scraping '+(i+1)+'/'+newOnes.length+': '+(newOnes[i].model||newOnes[i].url.split('/').pop()||'…'));
-      try{
-        const result=await Promise.race([
-          smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url),
-          new Promise(function(_,rej){setTimeout(function(){rej(new Error('timeout after 30s'))},30000)})
-        ]);
-        if(result&&result.data){ok++;await autoSaveIfEnabled(result)}
-        else{fail++;logEntry('No data returned','err')}
-      }catch(e){fail++;logEntry('Skipped: '+(e.message||'error'),'err')}
-      renderTab();
-      if(i<newOnes.length-1)await new Promise(function(r){setTimeout(r,800)});
+      const result=await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
+      await autoSaveIfEnabled(result);
+      if(i<newOnes.length-1)await new Promise(r=>setTimeout(r,1000));
     }
-    logEntry('Done: '+ok+' scraped, '+fail+' skipped','ok');
     isProcessing=false;renderTab();
   },
 
@@ -1099,7 +1107,7 @@ window.S = {
     if(miss.length>0){
       h+='<div style="font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;margin:14px 0 8px">Missing Fields ('+miss.length+')</div>';
       h+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
-      for(const f of miss)h+='<span style="background:rgba(217,119,6,.1);color:var(--amber);padding:3px 8px;border-radius:4px;font-size:11px">'+esc(f.replace(/_/g,' '))+'</span>';
+      for(const f of miss)h+='<span style="background:rgba(245,158,11,.1);color:var(--amber);padding:3px 8px;border-radius:4px;font-size:11px">'+esc(f.replace(/_/g,' '))+'</span>';
       h+='</div>';
     }
     if(p.source_reference)h+='<div style="margin-top:14px;font-size:11px;color:var(--txt2)">Source: <a href="'+esc(p.source_reference)+'" target="_blank" style="color:var(--blue)">'+esc(p.source_reference)+'</a></div>';
