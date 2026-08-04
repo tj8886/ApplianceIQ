@@ -971,39 +971,21 @@ function bindCoachBar(){
   if(!btn||!inp)return;
   const send=async()=>{
     const txt=inp.value.trim();if(!txt)return;
-    const reply=$('#coachBarReply');reply.style.display='block';reply.innerHTML='<div style="opacity:.6">Searching products and thinking…</div>';
+    const reply=$('#coachBarReply');reply.style.display='block';reply.innerHTML='<div style="opacity:.6">Thinking…</div>';
     inp.value='';btn.disabled=true;
-
-    // Check if this is a product question — search PIM
-    const isProductQ=/compar|vs\.?|versus|product|model|series|brand|dishwash|washer|dryer|fridge|refriger|range|oven|cook|hood|micro|freezer|laundry|bosch|miele|electrolux|thermador|sub.zero|wolf|cove|café|samsung|lg|whirlpool|maytag|kitchenaid|frigidaire|beko|fisher|dacor|jenn|gaggenau|speed.queen|asko|blomberg/i.test(txt);
-    let products=[];
-    let productContext='';
-    if(isProductQ){
-      try{
-        products=await pimProductSearch(txt);
-        if(products.length){
-          productContext='\n\nPRODUCT DATA FROM PIM (use this real data):\n'+JSON.stringify(products.map(p=>({brand:p.brand_name,model:p.model,series:p.series,category:p.category,msrp:p.msrp,sale:p.sale_price,desc:p.short_description,capacity:p.capacity_cu_ft,width:p.width_inches,height:p.height_inches,depth:p.depth_inches,energy_star:p.energy_star,voltage:p.voltage,install:p.installation_type,discontinued:p.is_discontinued})));
-        }
-      }catch(e){/* PIM search failed, continue without */}
-    }
 
     try{
       const{data:{session}}=await sb.auth.getSession();
       const resp=await fetch(SUPABASE_URL+'/functions/v1/ai-intelligence-router',{
         method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-        body:JSON.stringify({organization_id:currentOrg.id,message:txt+(productContext?'\n\nPRODUCT DATA FROM PIM:\n'+productContext:''),history:[]})
+        body:JSON.stringify({organization_id:currentOrg.id,message:txt,history:[]})
       });
       const data=await resp.json();
       const text=data.answer||'No response from the coaching team.';
-      const convId=data.conversation_id;
       const complexity=data.complexity;
 
-      // Build reply with product table + AI analysis
       let html='';
-      if(products.length>1){
-        html+=renderProductTable(products);
-      }
-      // Tier badge
+      // Tier badge + persona
       const tier=complexity?.tier||'';
       html+='<div style="margin-bottom:6px">'+(tier?'<span class="tier-badge tier-'+tier+'">'+tier+'</span> ':'')+(data.primary_persona?'<b>'+esc(data.primary_persona)+'</b>':'')+'</div>';
       // Convert text to styled HTML
@@ -1015,9 +997,9 @@ function bindCoachBar(){
       // Feedback buttons
       html+='<div class="fb-row" id="cbFb"><button class="fb-btn fb-up" onclick="cbFeedback(\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="cbFeedback(\'thumbs_down\')">👎</button></div>';
       reply.innerHTML=html;
-      window._cbMeta={conversation_id:convId,complexity,model_used:data.model_used,cost:data.cost_estimate_usd};
+      window._cbMeta={conversation_id:data.conversation_id,complexity,model_used:data.model_used,cost:data.cost_estimate_usd};
     }catch(err){
-      reply.innerHTML='<span style="opacity:.6">Coach unavailable right now. Try the full <b>Ask the Team</b> or <b>AI Assistant</b> views from the sidebar.</span>';
+      reply.innerHTML='<span style="opacity:.6">Coach unavailable. Try <b>Ask the Team</b> from the sidebar.</span>';
     }
     btn.disabled=false;
   };
