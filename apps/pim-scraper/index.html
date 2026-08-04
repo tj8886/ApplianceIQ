@@ -14,7 +14,7 @@
   --accent:#1a9e56;--accent2:#178a4d;--amber:#d97706;--red:#c02d1e;--blue:#2f6fed;
   --txt:#0f1f3d;--txt2:#5b6b85;--line:#e3e8f0;
   --radius:10px;
-  --t1:#1a9e56;--t2:#d97706;--t3:#c02d1e;
+  --t1:#1a9e56;--t2:#2f6fed;--t3:#d97706;--t4:#c02d1e;
 }
 html,body{height:100%;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
 #app{display:flex;flex-direction:column;height:100vh}
@@ -47,8 +47,9 @@ header .right{display:flex;align-items:center;gap:12px}
 
 .tier-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
 .tier-badge.t1{background:rgba(0,200,150,.15);color:var(--t1)}
-.tier-badge.t2{background:rgba(245,158,11,.15);color:var(--t2)}
-.tier-badge.t3{background:rgba(239,68,68,.15);color:var(--t3)}
+.tier-badge.t2{background:rgba(47,111,237,.15);color:var(--t2)}
+.tier-badge.t3{background:rgba(245,158,11,.15);color:var(--t3)}
+.tier-badge.t4{background:rgba(239,68,68,.15);color:var(--t4)}
 .tier-badge.tu{background:rgba(126,143,166,.15);color:var(--txt2)}
 
 /* Buttons */
@@ -273,8 +274,9 @@ let enResults = {};
 
 const TL = {
   1:{text:'FREE',cls:'t1',icon:'⚡'},
-  2:{text:'CHEAP',cls:'t2',icon:'💲'},
-  3:{text:'AI',cls:'t3',icon:'🤖'},
+  2:{text:'GEMINI',cls:'t2',icon:'💎'},
+  3:{text:'LUNA',cls:'t3',icon:'💲'},
+  4:{text:'HAIKU',cls:'t4',icon:'🤖'},
   0:{text:'UNMAPPED',cls:'tu',icon:'❓'}
 };
 
@@ -291,7 +293,7 @@ function logEntry(msg,cls){
   el.scrollTop=el.scrollHeight;
 }
 
-/* ═══ THREE-TIER PIPELINE ═══ */
+/* ═══ FOUR-TIER PIPELINE ═══ */
 
 async function callTier1(params){
   logEntry('Tier 1 → free-extract…');
@@ -303,11 +305,39 @@ async function callTier1(params){
   }catch(e){logEntry('Tier 1 err: '+e.message,'err');return null}
 }
 
-async function callTier2(partial,fallback,mo){
+let geminiModel = 'gemini-3.5-flash-lite';
+async function callTier2(partial,fallback){
+  const key=localStorage.getItem('aiq_google_key');
+  if(!key){logEntry('Tier 2 skip: no Google key','err');return null}
+  logEntry('Tier 2 → '+geminiModel+'…');
+  const sys='You extract appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches, height_inches, depth_inches, weight_lbs, capacity_cu_ft, voltage, amperage, wattage, energy_star, specs (object of key-value pairs), images (array of {url,type}), availability, features (array of strings). Omit fields you do not know. Return ONLY the JSON object, no other text.';
+  const usr=partial?'Partial data:\n'+JSON.stringify(partial,null,2)+'\n\nFill in missing fields.':'Extract appliance product data:\n'+(fallback||'').substring(0,8000);
+  try{
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+key,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        systemInstruction:{parts:[{text:sys}]},
+        contents:[{parts:[{text:usr}]}],
+        generationConfig:{responseMimeType:'application/json',temperature:0.1,maxOutputTokens:2000}
+      })
+    });
+    const data=await r.json();
+    if(data.error){logEntry('Tier 2 err: '+(data.error.message||JSON.stringify(data.error)),'err');return null}
+    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const parsed=JSON.parse(txt.replace(/```json\s*|```/g,'').trim());
+    const pt=data.usageMetadata?.promptTokenCount||0;
+    const ct=data.usageMetadata?.candidatesTokenCount||0;
+    const cost=(pt*0.0000003+ct*0.0000025);
+    addCost(cost);logEntry('Tier 2 ✓ $'+cost.toFixed(4),'cost');
+    parsed._tier=2;parsed._cost=cost;parsed._model=geminiModel;return parsed;
+  }catch(e){logEntry('Tier 2 err: '+e.message,'err');return null}
+}
+
+async function callTier3(partial,fallback,mo){
   const key=localStorage.getItem('aiq_openai_key');
-  if(!key){logEntry('Tier 2 skip: no OpenAI key','err');return null}
+  if(!key){logEntry('Tier 3 skip: no OpenAI key','err');return null}
   const model=mo||aiModel;
-  logEntry('Tier 2 → '+model+'…');
+  logEntry('Tier 3 → '+model+'…');
   const sys='You extract appliance product data. Return ONLY JSON: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches, height_inches, depth_inches, weight_lbs, capacity_cu_ft, voltage, amperage, wattage, energy_star, specs (obj), images (arr), availability, features (arr). Omit unknowns.';
   const usr=partial?'Partial:\n'+JSON.stringify(partial,null,2)+'\n\nFill gaps.':'Extract:\n'+(fallback||'').substring(0,8000);
   try{
@@ -315,19 +345,19 @@ async function callTier2(partial,fallback,mo){
     if(model.startsWith('gpt-5')||model.startsWith('o')){body.max_completion_tokens=2000;if(model.startsWith('gpt-5'))body.reasoning_effort='none'}else{body.max_tokens=2000}
     const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
     const data=await r.json();
-    if(data.error){logEntry('Tier 2 err: '+data.error.message,'err');return null}
+    if(data.error){logEntry('Tier 3 err: '+data.error.message,'err');return null}
     const txt=data.choices?.[0]?.message?.content||'';
     const parsed=JSON.parse(txt.replace(/```json\s*|```/g,'').trim());
     const cost=((data.usage?.prompt_tokens||0)*0.0000004+(data.usage?.completion_tokens||0)*0.0000016);
-    addCost(cost);logEntry('Tier 2 ✓ $'+cost.toFixed(4),'cost');
-    parsed._tier=2;parsed._cost=cost;parsed._model=model;return parsed;
-  }catch(e){logEntry('Tier 2 err: '+e.message,'err');return null}
+    addCost(cost);logEntry('Tier 3 ✓ $'+cost.toFixed(4),'cost');
+    parsed._tier=3;parsed._cost=cost;parsed._model=model;return parsed;
+  }catch(e){logEntry('Tier 3 err: '+e.message,'err');return null}
 }
 
-async function callTier3(query,brandInfo){
+async function callTier4(query,brandInfo){
   const key=localStorage.getItem('aiq_anthropic_key');
-  if(!key){logEntry('Tier 3 skip: no Anthropic key','err');return null}
-  logEntry('Tier 3 → Haiku + web search…');
+  if(!key){logEntry('Tier 4 skip: no Anthropic key','err');return null}
+  logEntry('Tier 4 → Haiku + web search…');
   try{
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
@@ -335,12 +365,12 @@ async function callTier3(query,brandInfo){
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:'Find specs for: '+query+'. Brand: '+(brandInfo?.brand_name||'unknown')+'. Check manufacturer site first.'}]})});
     const data=await r.json();
-    if(data.error){logEntry('Tier 3 err: '+data.error.message,'err');return null}
+    if(data.error){logEntry('Tier 4 err: '+data.error.message,'err');return null}
     const texts=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text);
     const jm=texts.join('\n').match(/\{[\s\S]*\}/);
-    if(jm){const p=JSON.parse(jm[0]);addCost(0.30);logEntry('Tier 3 ✓ $0.30','cost');p._tier=3;p._cost=0.30;return p}
-    logEntry('Tier 3: no JSON','err');return null;
-  }catch(e){logEntry('Tier 3 err: '+e.message,'err');return null}
+    if(jm){const p=JSON.parse(jm[0]);addCost(0.30);logEntry('Tier 4 ✓ $0.30','cost');p._tier=4;p._cost=0.30;return p}
+    logEntry('Tier 4: no JSON','err');return null;
+  }catch(e){logEntry('Tier 4 err: '+e.message,'err');return null}
 }
 
 /* ═══ BRAND INTEL + DISCOVERY ═══ */
@@ -418,35 +448,44 @@ function classifySegment(data) {
 
 /* ═══ SMART SCRAPE ═══ */
 async function smartScrape(brand,model,url){
-  const t=tier(brand)||3;
+  const t=tier(brand)||4;
   const bi=brandSourceMap[brand]||null;
   const r={brand,model,status:'pending',data:null,tier_used:0,cost:0,url};
   scrapeResults.push(r);renderTab();
 
-  // T1
-  if(t<=1||url){
+  // T1 — free-extract
+  if(t>=1||url){
     const p=url?{url}:{query:brand+' '+model,market:'CA'};
     const t1=await callTier1(p);
     if(t1){
       if(t1.found){r.data=t1;r.status='ok';r.tier_used=1;r.cost=0;renderTab();return r}
-      if(t1._partial&&t<=2){const t2=await callTier2(t1);if(t2){r.data={...t1,...t2,_merged:true};r.status='ok';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}}
+      if(t1._partial&&t>=2){
+        // Try T2 Gemini to fill gaps
+        const t2=await callTier2(t1);
+        if(t2){r.data={...t1,...t2,_merged:true};r.status='ok';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
+        // Try T3 Luna to fill gaps
+        if(t>=2){const t3=await callTier3(t1);if(t3){r.data={...t1,...t3,_merged:true};r.status='ok';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}}
+      }
       if(t1._partial){r.data=t1;r.status='partial';r.tier_used=1;r.cost=0;renderTab();return r}
     }
   }
 
-  // T2
-  if(t<=2){
+  // T2 — Gemini Flash Lite (search + extract)
+  if(t>=2){
     const t1s=await callTier1({query:brand+' '+model,market:'CA'});
     if(t1s&&(t1s.found||t1s._partial)){
       const t2=await callTier2(t1s);
       if(t2){r.data={...t1s,...t2,_merged:true};r.status=t2.model?'ok':'partial';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
+      // Try T3 Luna
+      const t3=await callTier3(t1s);
+      if(t3){r.data={...t1s,...t3,_merged:true};r.status=t3.model?'ok':'partial';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}
       r.data=t1s;r.status='partial';r.tier_used=1;r.cost=0;renderTab();return r;
     }
   }
 
-  // T3
-  const t3=await callTier3(brand+' '+model,bi);
-  if(t3){r.data=t3;r.status=t3.model?'ok':'partial';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}
+  // T4 — Haiku + web search (last resort)
+  const t4=await callTier4(brand+' '+model,bi);
+  if(t4){r.data=t4;r.status=t4.model?'ok':'partial';r.tier_used=4;r.cost=t4._cost||0;renderTab();return r}
 
   r.status='fail';logEntry('Failed: '+brand+' '+model,'err');renderTab();return r;
 }
@@ -478,7 +517,7 @@ async function saveToPim(idx){
     weight_lbs:num(d.weight_lbs),capacity_cu_ft:num(d.capacity_cu_ft),voltage:d.voltage||null,
     energy_star:d.energy_star||null,specs_json:d.specs||null,
     source_type:'scraper_v2',source_reference:d.source_url||r.url||null,
-    source_confidence:r.tier_used===1?0.95:r.tier_used===2?0.80:0.65,
+    source_confidence:r.tier_used===1?0.95:r.tier_used===2?0.80:r.tier_used===3?0.75:0.65,
     source_extracted_at:new Date().toISOString(),source_review_status:'pending',
     market:'CA',status:'active',brand_id:br?.id||null,
     product_segment: classifySegment(d)
@@ -588,13 +627,17 @@ async function priceSyncOne(product) {
   if (t <= 2) {
     const t2 = await callTier2({ brand_name: product.brand_name, model: product.model }, null);
     if (t2 && t2.msrp !== undefined) {
-      return { product, live_price: t2.msrp, currency: t2.currency || product.price_currency, source: 'gpt', tier_used: 2, cost: t2._cost || 0 };
+      return { product, live_price: t2.msrp, currency: t2.currency || product.price_currency, source: 'gemini', tier_used: 2, cost: t2._cost || 0 };
+    }
+    const t3 = await callTier3({ brand_name: product.brand_name, model: product.model }, null);
+    if (t3 && t3.msrp !== undefined) {
+      return { product, live_price: t3.msrp, currency: t3.currency || product.price_currency, source: 'gpt', tier_used: 3, cost: t3._cost || 0 };
     }
   }
 
-  const t3 = await callTier3(product.brand_name + ' ' + product.model + ' price', brandSourceMap[product.brand_name]);
-  if (t3 && t3.msrp !== undefined) {
-    return { product, live_price: t3.msrp, currency: t3.currency || product.price_currency, source: t3.source_url || 'haiku', tier_used: 3, cost: t3._cost || 0 };
+  const t4 = await callTier4(product.brand_name + ' ' + product.model + ' price', brandSourceMap[product.brand_name]);
+  if (t4 && t4.msrp !== undefined) {
+    return { product, live_price: t4.msrp, currency: t4.currency || product.price_currency, source: t4.source_url || 'haiku', tier_used: 4, cost: t4._cost || 0 };
   }
 
   return { product, live_price: null, error: 'Could not find price', tier_used: 0, cost: 0 };
@@ -684,9 +727,9 @@ async function enrichOne(product) {
     }
   }
 
-  // If still missing fields, try T2
+  // If still missing fields, try T2 (Gemini)
   const stillMissing = missing.filter(f => enriched[f] === undefined);
-  if (stillMissing.length > 0 && tier(product.brand_name) <= 2) {
+  if (stillMissing.length > 0 && tier(product.brand_name) >= 2) {
     const t2 = await callTier2({ brand_name: product.brand_name, model: product.model, ...enriched }, null);
     if (t2) {
       tierUsed = 2; cost = t2._cost || 0;
@@ -697,14 +740,27 @@ async function enrichOne(product) {
     }
   }
 
-  // T3 as last resort
-  const finalMissing = missing.filter(f => enriched[f] === undefined);
-  if (finalMissing.length > 3) {
-    const t3 = await callTier3(product.brand_name + ' ' + product.model + ' specifications', brandSourceMap[product.brand_name]);
+  // T3 (Luna) if still missing
+  const stillMissing2 = missing.filter(f => enriched[f] === undefined);
+  if (stillMissing2.length > 0 && tier(product.brand_name) >= 2) {
+    const t3 = await callTier3({ brand_name: product.brand_name, model: product.model, ...enriched }, null);
     if (t3) {
       tierUsed = 3; cost += t3._cost || 0;
-      for (const f of finalMissing) {
+      for (const f of stillMissing2) {
         const v = t3[f] || t3[f.replace('_json', '')];
+        if (v !== undefined && v !== null) enriched[f] = v;
+      }
+    }
+  }
+
+  // T4 (Haiku + web) as last resort
+  const finalMissing = missing.filter(f => enriched[f] === undefined);
+  if (finalMissing.length > 3) {
+    const t4 = await callTier4(product.brand_name + ' ' + product.model + ' specifications', brandSourceMap[product.brand_name]);
+    if (t4) {
+      tierUsed = 4; cost += t4._cost || 0;
+      for (const f of finalMissing) {
+        const v = t4[f] || t4[f.replace('_json', '')];
         if (v !== undefined && v !== null) enriched[f] = v;
       }
     }
@@ -736,7 +792,8 @@ function renderTab(){
     }
   }
   h+='<div style="margin-left:auto;display:flex;gap:12px;align-items:center">';
-  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">Tier 2: <select onchange="aiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gpt-5.6-luna" '+(aiModel==='gpt-5.6-luna'?'selected':'')+'>GPT-5.6 Luna</option><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option><option value="gpt-5.6-terra" '+(aiModel==='gpt-5.6-terra'?'selected':'')+'>GPT-5.6 Terra</option></select></label>';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">T2: <select onchange="geminiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gemini-3.5-flash-lite" '+(geminiModel==='gemini-3.5-flash-lite'?'selected':'')+'>Flash Lite 3.5</option><option value="gemini-3.6-flash" '+(geminiModel==='gemini-3.6-flash'?'selected':'')+'>Flash 3.6</option></select></label>';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">T3: <select onchange="aiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gpt-5.6-luna" '+(aiModel==='gpt-5.6-luna'?'selected':'')+'>GPT-5.6 Luna</option><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(appliancesOnly?'checked':'')+' onchange="window.S.toggleAppliancesOnly()" style="accent-color:var(--accent)"/> Appliances only</label>';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-save</label>';
   h+='<button class="btn btn-sm btn-secondary" onclick="window.S.setKeys()">🔑 Keys</button>';
@@ -1179,9 +1236,11 @@ window.S = {
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pim-export-'+new Date().toISOString().split('T')[0]+'.json';a.click();
   },
   setKeys(){
-    const ok=prompt('OpenAI API Key (Tier 2):',localStorage.getItem('aiq_openai_key')||'');
+    const gk=prompt('Google API Key (Tier 2 — Gemini):',localStorage.getItem('aiq_google_key')||'');
+    if(gk!==null)localStorage.setItem('aiq_google_key',gk);
+    const ok=prompt('OpenAI API Key (Tier 3 — Luna):',localStorage.getItem('aiq_openai_key')||'');
     if(ok!==null)localStorage.setItem('aiq_openai_key',ok);
-    const ak=prompt('Anthropic API Key (Tier 3):',localStorage.getItem('aiq_anthropic_key')||'');
+    const ak=prompt('Anthropic API Key (Tier 4 — Haiku):',localStorage.getItem('aiq_anthropic_key')||'');
     if(ak!==null)localStorage.setItem('aiq_anthropic_key',ak);
   },
 
@@ -1206,16 +1265,22 @@ window.S = {
       const t1=await callTier1(website?{query:query+' site:'+website,market:psMarket}:{query,market:psMarket});
       if(t1){price=t1.msrp||t1.price||null}
 
-      // T2 fallback
-      if(price===null&&localStorage.getItem('aiq_openai_key')){
+      // T2 fallback (Gemini)
+      if(price===null&&localStorage.getItem('aiq_google_key')){
         const t2=await callTier2({brand_name:selectedBrand,model:p.model},'Find the manufacturer MSRP for '+query+'. Return JSON with msrp field.');
         if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
       }
 
-      // T3 fallback
-      if(price===null&&localStorage.getItem('aiq_anthropic_key')){
-        const t3=await callTier3(query+' MSRP price'+(website?' '+website:''),src);
+      // T3 fallback (Luna)
+      if(price===null&&localStorage.getItem('aiq_openai_key')){
+        const t3=await callTier3({brand_name:selectedBrand,model:p.model},'Find the manufacturer MSRP for '+query+'. Return JSON with msrp field.');
         if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
+      }
+
+      // T4 fallback (Haiku)
+      if(price===null&&localStorage.getItem('aiq_anthropic_key')){
+        const t4=await callTier4(query+' MSRP price'+(website?' '+website:''),src);
+        if(t4&&t4.msrp){price=t4.msrp;tierUsed=4;cost=t4._cost||0}
       }
 
       psResults.push({product:p,live_price:price?Number(price):null,source_name:'Manufacturer',source_site:website,tier_used:tierUsed,cost});
@@ -1240,14 +1305,19 @@ window.S = {
         const t1=await callTier1({query:siteQuery,market:psMarket});
         if(t1){price=t1.msrp||t1.price||null}
 
-        if(price===null&&retailer.scrape_tier<=2&&localStorage.getItem('aiq_openai_key')){
+        if(price===null&&localStorage.getItem('aiq_google_key')){
           const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+'). Return JSON with msrp field.');
           if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
         }
 
-        if(price===null&&localStorage.getItem('aiq_anthropic_key')){
-          const t3=await callTier3(query+' price '+retailer.retailer_name+' '+retailer.website,brandSourceMap[selectedBrand]);
+        if(price===null&&retailer.scrape_tier<=2&&localStorage.getItem('aiq_openai_key')){
+          const t3=await callTier3({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+'). Return JSON with msrp field.');
           if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
+        }
+
+        if(price===null&&localStorage.getItem('aiq_anthropic_key')){
+          const t4=await callTier4(query+' price '+retailer.retailer_name+' '+retailer.website,brandSourceMap[selectedBrand]);
+          if(t4&&t4.msrp){price=t4.msrp;tierUsed=4;cost=t4._cost||0}
         }
 
         psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.retailer_name,source_site:retailer.website,tier_used:tierUsed,cost});
