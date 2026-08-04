@@ -206,6 +206,8 @@ header .right{display:flex;align-items:center;gap:12px}
     <button class="tab-btn" onclick="window.S.switchTab('price-sync')">Price Sync</button>
     <button class="tab-btn" onclick="window.S.switchTab('verify')">Verify &amp; Audit</button>
     <button class="tab-btn" onclick="window.S.switchTab('enrich')">Enrich &amp; Complete</button>
+    <button class="tab-btn" onclick="window.S.switchTab('intelligence')">Intelligence</button>
+    <button class="tab-btn" onclick="window.S.switchTab('recalls')">Recalls</button>
   </div>
   <div class="main" id="mainContent">
     <div style="text-align:center;padding:80px 0;color:var(--txt2)">Loading brands…</div>
@@ -453,41 +455,71 @@ async function smartScrape(brand,model,url){
   const r={brand,model,status:'pending',data:null,tier_used:0,cost:0,url};
   scrapeResults.push(r);renderTab();
 
+  // Pre-filter: skip URLs that are obviously not product pages
+  if(url){
+    const lu=url.toLowerCase();
+    const skipPatterns=['/about','/contact','/careers','/blog','/news','/press','/faq','/support',
+      '/warranty','/registration','/privacy','/terms','/cookie','/legal','/sitemap','/search',
+      '/company-profile','/environmental','/recycling','/sustainability','/csr','/corporate',
+      '/media','/investor','/annual-report','/history','/our-story','/locations','/store-locator',
+      '/rebate','/financing','/promotions','/compare','/how-to','/recipe','/tips','/guide'];
+    if(skipPatterns.some(p=>lu.includes(p))){
+      r.status='fail';logEntry('Skip non-product URL: '+url,'err');renderTab();return r;
+    }
+  }
+
   // T1 — free-extract
   if(t>=1||url){
     const p=url?{url}:{query:brand+' '+model,market:'CA'};
     const t1=await callTier1(p);
     if(t1){
       if(t1.found){r.data=t1;r.status='ok';r.tier_used=1;r.cost=0;renderTab();return r}
-      if(t1._partial&&t>=2){
+      if(t1._partial){
         // Try T2 Gemini to fill gaps
         const t2=await callTier2(t1);
-        if(t2){r.data={...t1,...t2,_merged:true};r.status='ok';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
-        // Try T3 Luna to fill gaps
-        if(t>=2){const t3=await callTier3(t1);if(t3){r.data={...t1,...t3,_merged:true};r.status='ok';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}}
+        if(t2&&t2.model){r.data={...t1,...t2,_merged:true};r.status='ok';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
+        // Try T3 to fill gaps
+        const t3=await callTier3(t1);
+        if(t3&&t3.model){r.data={...t1,...t3,_merged:true};r.status='ok';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}
+        r.data=t1;r.status='partial';r.tier_used=1;r.cost=0;renderTab();return r;
       }
-      if(t1._partial){r.data=t1;r.status='partial';r.tier_used=1;r.cost=0;renderTab();return r}
+    }
+    // T1 returned null — if we have a URL, try T2/T3 with the raw page content
+    if(!t1&&url){
+      logEntry('T1 found nothing, trying T2/T3 with page fetch…');
+      try{
+        const resp=await fetch(SB_URL+'/functions/v1/free-extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,raw_text_only:true})});
+        const raw=await resp.json();
+        const pageText=raw?.text||raw?.raw_text||'';
+        if(pageText.length>100){
+          const t2=await callTier2(null,pageText);
+          if(t2&&t2.model){r.data=t2;r.status='ok';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
+          const t3=await callTier3(null,pageText);
+          if(t3&&t3.model){r.data=t3;r.status='ok';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}
+        }
+      }catch(_){}
     }
   }
 
   // T2 — Gemini Flash Lite (search + extract)
-  if(t>=2){
+  if(t>=2&&model){
     const t1s=await callTier1({query:brand+' '+model,market:'CA'});
     if(t1s&&(t1s.found||t1s._partial)){
       const t2=await callTier2(t1s);
-      if(t2){r.data={...t1s,...t2,_merged:true};r.status=t2.model?'ok':'partial';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
-      // Try T3 Luna
+      if(t2&&t2.model){r.data={...t1s,...t2,_merged:true};r.status='ok';r.tier_used=2;r.cost=t2._cost||0;renderTab();return r}
       const t3=await callTier3(t1s);
-      if(t3){r.data={...t1s,...t3,_merged:true};r.status=t3.model?'ok':'partial';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}
+      if(t3&&t3.model){r.data={...t1s,...t3,_merged:true};r.status='ok';r.tier_used=3;r.cost=t3._cost||0;renderTab();return r}
       r.data=t1s;r.status='partial';r.tier_used=1;r.cost=0;renderTab();return r;
     }
   }
 
-  // T4 — Haiku + web search (last resort)
-  const t4=await callTier4(brand+' '+model,bi);
-  if(t4){r.data=t4;r.status=t4.model?'ok':'partial';r.tier_used=4;r.cost=t4._cost||0;renderTab();return r}
+  // T4 — Haiku + web search (last resort, only if we have a model number)
+  if(model){
+    const t4=await callTier4(brand+' '+model,bi);
+    if(t4){r.data=t4;r.status=t4.model?'ok':'partial';r.tier_used=4;r.cost=t4._cost||0;renderTab();return r}
+  }
 
-  r.status='fail';logEntry('Failed: '+brand+' '+model,'err');renderTab();return r;
+  r.status='fail';logEntry('Failed: '+brand+' '+(model||url||''),'err');renderTab();return r;
 }
 
 function classifyResult(r) {
@@ -815,6 +847,8 @@ function renderTab(){
   else if(currentTab==='price-sync') h+=renderPriceSync();
   else if(currentTab==='verify') h+=renderVerify();
   else if(currentTab==='enrich') h+=renderEnrich();
+  else if(currentTab==='intelligence') h+=renderIntelligence();
+  else if(currentTab==='recalls') h+=renderRecalls();
 
   el.innerHTML=h;
 }
@@ -1112,7 +1146,7 @@ function renderEnrich() {
 window.S = {
   switchTab(tab){
     currentTab=tab;
-    document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',['discover','price-sync','verify','enrich'][i]===tab)});
+    document.querySelectorAll('.tab-btn').forEach((b,i)=>{b.classList.toggle('active',['discover','price-sync','verify','enrich','intelligence','recalls'][i]===tab)});
     renderTab();
   },
   selectBrand(n){selectedBrand=(selectedBrand===n)?null:n;psResults=[];vaResults=[];enResults={};loadBrandIntel(selectedBrand)},
@@ -1462,6 +1496,430 @@ async function init(){
 }
 
 init();
+
+/* ═══════════════════════════════════════════════════════════════
+   INTELLIGENCE TAB — News & Media per brand
+   Tiered: T1 FREE (DDG news, Google News RSS) → T2 Gemini categorize → T3 deeper search
+   ═══════════════════════════════════════════════════════════════ */
+let intelResults = [];
+let intelLoading = false;
+let intelExisting = [];
+
+async function loadExistingNews(brand) {
+  const { data } = await sb.from('intel_news').select('*').ilike('company_name', brand).order('scraped_at', { ascending: false }).limit(100);
+  intelExisting = data || [];
+}
+
+async function scanNews(brand) {
+  intelLoading = true; intelResults = []; renderTab();
+  logEntry('Scanning news for ' + brand + '…');
+  const existingUrls = new Set(intelExisting.map(n => n.source_url).filter(Boolean));
+
+  // ── T1 FREE: DuckDuckGo News ──
+  try {
+    const queries = [
+      brand + ' appliance news 2026',
+      brand + ' appliance product launch',
+      brand + ' appliance recall announcement',
+    ];
+    for (const q of queries) {
+      try {
+        const r = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
+        });
+        const html = await r.text();
+        const urlRx = /uddg=([^&"]+)/g;
+        let m;
+        while ((m = urlRx.exec(html)) !== null) {
+          try {
+            const url = decodeURIComponent(m[1]);
+            const lower = url.toLowerCase();
+            if (lower.includes('amazon') || lower.includes('youtube') || lower.includes('reddit') || lower.includes('wikipedia') || lower.includes('duckduckgo')) continue;
+            if (existingUrls.has(url) || intelResults.find(r => r.url === url)) continue;
+            // Extract title from surrounding HTML (approximate)
+            const titleMatch = html.substring(Math.max(0, m.index - 300), m.index).match(/>([^<]{15,120})</g);
+            const title = titleMatch ? titleMatch[titleMatch.length - 1].replace(/^>/, '').trim() : '';
+            intelResults.push({ url, title, source: 'ddg', category: null, summary: null, status: 'found' });
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    logEntry('T1 DDG: found ' + intelResults.length + ' URLs', 'ok');
+  } catch (e) { logEntry('DDG error: ' + e.message, 'err'); }
+
+  // ── T2: Gemini categorize + extract (if key available) ──
+  const gkey = localStorage.getItem('aiq_google_key');
+  if (gkey && intelResults.length > 0) {
+    logEntry('T2: categorizing ' + intelResults.length + ' articles with Gemini…');
+    const urlList = intelResults.slice(0, 30).map((r, i) => (i + 1) + '. ' + r.title + ' — ' + r.url).join('\n');
+    try {
+      const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + gkey, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: 'You categorize appliance industry news articles. For each article, classify into one category: product_launch, financial, acquisition, partnership, executive, regulation, recall, technology, expansion, closure, trade_show, award, sustainability, price_change. Also write a 1-sentence summary. Return ONLY a JSON array: [{index, category, summary, headline, source_name, is_appliance_relevant}]. Omit articles not related to the appliance/home goods industry.' }] },
+          contents: [{ parts: [{ text: 'Categorize these articles about ' + brand + ':\n' + urlList }] }],
+          generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 3000 }
+        })
+      });
+      const data = await resp.json();
+      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const parsed = JSON.parse(txt.replace(/```json\s*|```/g, '').trim());
+      const cost = ((data.usageMetadata?.promptTokenCount || 0) * 0.0000003 + (data.usageMetadata?.candidatesTokenCount || 0) * 0.0000025);
+      addCost(cost);
+      for (const item of parsed) {
+        const idx = (item.index || item.i || 1) - 1;
+        if (intelResults[idx]) {
+          intelResults[idx].category = item.category;
+          intelResults[idx].summary = item.summary;
+          intelResults[idx].title = item.headline || intelResults[idx].title;
+          intelResults[idx].source_name = item.source_name;
+          intelResults[idx].relevant = item.is_appliance_relevant !== false;
+          intelResults[idx].status = 'categorized';
+        }
+      }
+      logEntry('T2 ✓ categorized ' + parsed.length + ' articles · $' + cost.toFixed(4), 'cost');
+    } catch (e) { logEntry('T2 categorize error: ' + e.message, 'err'); }
+  }
+
+  // ── T3: Deeper search if few results — newswires, specialty media ──
+  if (intelResults.filter(r => r.relevant !== false).length < 5 && gkey) {
+    logEntry('T3: Searching deeper — newswires, trade media…');
+    const deepQueries = [
+      '"' + brand + '" site:prnewswire.com OR site:businesswire.com OR site:globenewswire.com appliance',
+      '"' + brand + '" site:appliancemagazine.com OR site:hbsdealer.com OR site:kitchenandbathdesign.com',
+      '"' + brand + '" appliance announcement OR launch OR partnership 2025 OR 2026',
+    ];
+    for (const q of deepQueries) {
+      try {
+        const r = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        const html = await r.text();
+        const urlRx = /uddg=([^&"]+)/g;
+        let mm;
+        while ((mm = urlRx.exec(html)) !== null) {
+          try {
+            const url = decodeURIComponent(mm[1]);
+            if (url.includes('duckduckgo') || existingUrls.has(url) || intelResults.find(r => r.url === url)) continue;
+            intelResults.push({ url, title: '', source: 'deep', category: null, summary: null, status: 'found', relevant: true });
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    logEntry('T3: total ' + intelResults.length + ' articles after deep search', 'ok');
+  }
+
+  intelLoading = false; renderTab();
+}
+
+async function saveNewsArticle(idx) {
+  const a = intelResults[idx]; if (!a) return;
+  const { error } = await sb.from('intel_news').upsert({
+    company_name: selectedBrand, headline: a.title || 'Untitled', summary: a.summary || '',
+    category: a.category || 'uncategorized', source_name: a.source_name || new URL(a.url).hostname,
+    source_url: a.url, scraped_at: new Date().toISOString()
+  }, { onConflict: 'source_url', ignoreDuplicates: true });
+  if (error) { logEntry('Save error: ' + error.message, 'err'); return; }
+  a.status = 'saved'; logEntry('Saved: ' + (a.title || a.url), 'ok'); renderTab();
+}
+
+async function saveAllNews() {
+  const toSave = intelResults.filter(r => r.status !== 'saved' && r.relevant !== false);
+  for (const a of toSave) {
+    await sb.from('intel_news').upsert({
+      company_name: selectedBrand, headline: a.title || 'Untitled', summary: a.summary || '',
+      category: a.category || 'uncategorized', source_name: a.source_name || (a.url ? new URL(a.url).hostname : 'unknown'),
+      source_url: a.url, scraped_at: new Date().toISOString()
+    }, { onConflict: 'source_url', ignoreDuplicates: true });
+    a.status = 'saved';
+  }
+  logEntry('Saved ' + toSave.length + ' articles', 'ok'); renderTab();
+}
+
+function renderIntelligence() {
+  let h = '';
+  if (!selectedBrand) {
+    h += '<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">📰</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to scan news & media</div><div style="font-size:13px;margin-top:6px">Searches DDG News, newswires (PR Newswire, Business Wire, Globe Newswire), and trade media</div></div>';
+    return h;
+  }
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b style="font-size:16px">📰 News Intelligence: ' + esc(selectedBrand) + '</b><span style="margin-left:12px;font-size:12px;color:var(--txt2)">' + intelExisting.length + ' saved articles</span></div>';
+  h += '<div style="display:flex;gap:8px">';
+  if (!intelLoading) h += '<button class="btn btn-primary" onclick="scanNews(\'' + esc(selectedBrand).replace(/'/g, "\\'") + '\')">🔍 Scan News</button>';
+  if (intelResults.filter(r => r.status !== 'saved' && r.relevant !== false).length > 0)
+    h += '<button class="btn btn-primary" style="background:var(--green)" onclick="saveAllNews()">💾 Save All (' + intelResults.filter(r => r.status !== 'saved' && r.relevant !== false).length + ')</button>';
+  h += '</div></div>';
+
+  if (intelLoading) { h += '<div style="padding:20px;text-align:center;color:var(--txt2)">Scanning news sources…</div>'; return h; }
+
+  // Show scan results
+  if (intelResults.length > 0) {
+    const catCounts = {};
+    intelResults.filter(r => r.relevant !== false).forEach(r => { catCounts[r.category || 'uncategorized'] = (catCounts[r.category || 'uncategorized'] || 0) + 1; });
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+    for (const [cat, cnt] of Object.entries(catCounts).sort((a, b) => b[1] - a[1])) {
+      h += '<span class="tier-badge t2">' + esc(cat.replace(/_/g, ' ')) + ' (' + cnt + ')</span>';
+    }
+    h += '</div>';
+    h += '<table><thead><tr><th>Headline</th><th>Category</th><th>Source</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+    intelResults.forEach((a, i) => {
+      if (a.relevant === false) return;
+      const catBadge = a.category ? '<span class="tier-badge t2">' + esc(a.category.replace(/_/g, ' ')) + '</span>' : '<span style="color:var(--txt3)">—</span>';
+      const statusBadge = a.status === 'saved' ? '<span style="color:var(--green)">✓ saved</span>' : '<span style="color:var(--txt3)">' + esc(a.status) + '</span>';
+      h += '<tr><td><a href="' + esc(a.url) + '" target="_blank" style="color:var(--accent)">' + esc(a.title || a.url.substring(0, 60)) + '</a>'
+        + (a.summary ? '<div style="font-size:11px;color:var(--txt2);margin-top:2px">' + esc(a.summary) + '</div>' : '') + '</td>'
+        + '<td>' + catBadge + '</td>'
+        + '<td style="font-size:11px;color:var(--txt2)">' + esc(a.source_name || a.source) + '</td>'
+        + '<td>' + statusBadge + '</td>'
+        + '<td>' + (a.status !== 'saved' ? '<button class="btn btn-sm btn-primary" onclick="saveNewsArticle(' + i + ')">Save</button>' : '') + '</td></tr>';
+    });
+    h += '</tbody></table>';
+  }
+
+  // Show existing saved articles
+  if (intelExisting.length > 0) {
+    h += '<div style="margin-top:24px;border-top:1px solid var(--line);padding-top:16px"><b>📁 Saved Articles (' + intelExisting.length + ')</b></div>';
+    h += '<table><thead><tr><th>Headline</th><th>Category</th><th>Source</th><th>Date</th></tr></thead><tbody>';
+    intelExisting.forEach(a => {
+      h += '<tr><td><a href="' + esc(a.source_url) + '" target="_blank" style="color:var(--accent)">' + esc(a.headline) + '</a>'
+        + (a.summary ? '<div style="font-size:11px;color:var(--txt2);margin-top:2px">' + esc(a.summary) + '</div>' : '') + '</td>'
+        + '<td><span class="tier-badge t2">' + esc((a.category || '').replace(/_/g, ' ')) + '</span></td>'
+        + '<td style="font-size:11px;color:var(--txt2)">' + esc(a.source_name) + '</td>'
+        + '<td style="font-size:11px;color:var(--txt2)">' + esc(a.scraped_at ? new Date(a.scraped_at).toLocaleDateString() : '') + '</td></tr>';
+    });
+    h += '</tbody></table>';
+  }
+  return h;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RECALLS TAB — CPSC (US) + Health Canada
+   Both are FREE public APIs — no AI cost
+   ═══════════════════════════════════════════════════════════════ */
+let recallResults = [];
+let recallLoading = false;
+let recallExisting = [];
+
+async function loadExistingRecalls(brand) {
+  const { data } = await sb.from('aiq_recalls').select('*').ilike('brand_name', '%' + brand + '%').order('recall_date', { ascending: false }).limit(200);
+  recallExisting = data || [];
+}
+
+async function scanRecalls(brand) {
+  recallLoading = true; recallResults = []; renderTab();
+  logEntry('Checking recalls for ' + brand + '…');
+  const existingIds = new Set(recallExisting.map(r => r.source_recall_id).filter(Boolean));
+
+  // ── CPSC (United States) ──
+  try {
+    logEntry('CPSC API…');
+    // CPSC doesn't support manufacturer search directly, use ProductName
+    const cpscUrl = 'https://www.saferproducts.gov/RestWebServices/Recall?format=json&Manufacturer=' + encodeURIComponent(brand);
+    const r = await fetch(cpscUrl, { signal: AbortSignal.timeout(15000) });
+    if (r.ok) {
+      const data = await r.json();
+      for (const rec of (data || [])) {
+        const recallId = 'CPSC-' + (rec.RecallNumber || rec.RecallID || '');
+        if (existingIds.has(recallId)) continue;
+        const products = (rec.Products || []);
+        const hazards = (rec.Hazards || []);
+        const remedies = (rec.Remedies || []);
+        const injuries = (rec.Injuries || []);
+        const manufacturers = (rec.Manufacturers || []);
+        // Check if it's appliance-related
+        const desc = ((rec.Description || '') + ' ' + products.map(p => p.Name || '').join(' ')).toLowerCase();
+        const isAppliance = ['refrigerat','freezer','range','oven','cooktop','dishwasher','washer','dryer','microwave','hood','grill','ice maker'].some(t => desc.includes(t));
+        recallResults.push({
+          source: 'CPSC', source_recall_id: recallId, country: 'US',
+          brand_name: brand,
+          manufacturer_name: manufacturers.map(m => m.Name).join(', ') || brand,
+          product_name: products.map(p => p.Name).join(', '),
+          model_numbers: products.flatMap(p => (p.NumberOfUnits || '').match(/model\s+(?:number\s+)?([A-Z0-9-]+)/gi) || []),
+          category: products[0]?.Type || '',
+          recall_date: rec.RecallDate || null,
+          title: rec.Title || rec.Description?.substring(0, 120) || '',
+          description: rec.Description || '',
+          hazard: hazards.map(h => h.Name || h.HazardType).join('; '),
+          remedy: remedies.map(r => r.Name).join('; '),
+          units_affected: products.map(p => p.NumberOfUnits).join(', '),
+          injury_count: injuries.reduce((sum, inj) => sum + (parseInt(inj.Name) || 0), 0),
+          url: rec.URL || 'https://www.cpsc.gov/Recalls/' + (rec.RecallNumber || ''),
+          is_appliance_related: isAppliance,
+          raw_data: rec,
+          status: 'new'
+        });
+      }
+      logEntry('CPSC: ' + (data || []).length + ' total, ' + recallResults.filter(r => r.source === 'CPSC').length + ' new', 'ok');
+    }
+  } catch (e) { logEntry('CPSC error: ' + e.message, 'err'); }
+
+  // ── Health Canada (recalls-rappels.canada.ca) ──
+  try {
+    logEntry('Health Canada…');
+    const hcUrl = 'https://recalls-rappels.canada.ca/en/search/site?search_api_fulltext=' + encodeURIComponent(brand) + '&type=recall';
+    // Health Canada doesn't have a clean JSON API, so use DDG to find recall pages
+    const ddgQ = 'site:recalls-rappels.canada.ca "' + brand + '" recall';
+    const r = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(ddgQ), {
+      headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(10000)
+    });
+    const html = await r.text();
+    const urlRx = /uddg=([^&"]+)/g;
+    let m;
+    while ((m = urlRx.exec(html)) !== null) {
+      try {
+        const url = decodeURIComponent(m[1]);
+        if (!url.includes('recalls-rappels.canada.ca') || url.includes('duckduckgo')) continue;
+        const recallId = 'HC-' + url.split('/').pop();
+        if (existingIds.has(recallId) || recallResults.find(r => r.source_recall_id === recallId)) continue;
+        const titleMatch = html.substring(Math.max(0, m.index - 400), m.index).match(/>([^<]{15,200})</g);
+        const title = titleMatch ? titleMatch[titleMatch.length - 1].replace(/^>/, '').trim() : url.split('/').pop().replace(/-/g, ' ');
+        recallResults.push({
+          source: 'Health Canada', source_recall_id: recallId, country: 'CA',
+          brand_name: brand, product_name: title, title,
+          url, is_appliance_related: true, status: 'new'
+        });
+      } catch (_) {}
+    }
+    logEntry('Health Canada: ' + recallResults.filter(r => r.source === 'Health Canada').length + ' found', 'ok');
+  } catch (e) { logEntry('Health Canada error: ' + e.message, 'err'); }
+
+  // ── T2 enrichment: Use Gemini to extract details from HC recall pages ──
+  const gkey = localStorage.getItem('aiq_google_key');
+  const hcRecalls = recallResults.filter(r => r.source === 'Health Canada' && !r.description);
+  if (gkey && hcRecalls.length > 0 && hcRecalls.length <= 10) {
+    logEntry('T2: Enriching ' + hcRecalls.length + ' Health Canada recalls with Gemini…');
+    for (const rec of hcRecalls) {
+      try {
+        const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + gkey, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: 'Extract recall details. Return JSON: {product_name, brand_name, model_numbers (array), hazard, remedy, units_affected, recall_date (YYYY-MM-DD), category, description}. Omit unknowns.' }] },
+            contents: [{ parts: [{ text: 'Extract recall details from this Health Canada recall page: ' + rec.url }] }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 1000 },
+            tools: [{ googleSearch: {} }]
+          })
+        });
+        const data = await resp.json();
+        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        if (txt) {
+          const details = JSON.parse(txt.replace(/```json\s*|```/g, '').trim());
+          Object.assign(rec, {
+            product_name: details.product_name || rec.product_name,
+            model_numbers: details.model_numbers || [],
+            hazard: details.hazard || '', remedy: details.remedy || '',
+            units_affected: details.units_affected || '',
+            recall_date: details.recall_date || null,
+            category: details.category || '', description: details.description || ''
+          });
+          const cost = ((data.usageMetadata?.promptTokenCount || 0) * 0.0000003 + (data.usageMetadata?.candidatesTokenCount || 0) * 0.0000025);
+          addCost(cost);
+        }
+      } catch (_) {}
+    }
+    logEntry('T2 ✓ enriched HC recalls', 'cost');
+  }
+
+  recallLoading = false; renderTab();
+}
+
+async function saveRecall(idx) {
+  const r = recallResults[idx]; if (!r) return;
+  const { error } = await sb.from('aiq_recalls').upsert({
+    source: r.source, source_recall_id: r.source_recall_id, country: r.country,
+    brand_name: r.brand_name, manufacturer_name: r.manufacturer_name || r.brand_name,
+    product_name: r.product_name, model_numbers: r.model_numbers || [],
+    category: r.category || '', recall_date: r.recall_date || null,
+    title: r.title, description: r.description || '',
+    hazard: r.hazard || '', remedy: r.remedy || '',
+    units_affected: r.units_affected || '',
+    injury_count: r.injury_count || 0, url: r.url,
+    is_appliance_related: r.is_appliance_related, raw_data: r.raw_data || {}
+  }, { onConflict: 'source,source_recall_id', ignoreDuplicates: false });
+  if (error) { logEntry('Save error: ' + error.message, 'err'); return; }
+  r.status = 'saved'; logEntry('Saved recall: ' + r.title, 'ok'); renderTab();
+}
+
+async function saveAllRecalls() {
+  const toSave = recallResults.filter(r => r.status !== 'saved');
+  for (let i = 0; i < recallResults.length; i++) {
+    if (recallResults[i].status !== 'saved') await saveRecall(i);
+  }
+  logEntry('Saved ' + toSave.length + ' recalls', 'ok');
+}
+
+function renderRecalls() {
+  let h = '';
+  if (!selectedBrand) {
+    h += '<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">⚠️</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check recalls</div><div style="font-size:13px;margin-top:6px">Checks CPSC (US) and Health Canada — completely free, no API keys needed</div></div>';
+    return h;
+  }
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b style="font-size:16px">⚠️ Recall Check: ' + esc(selectedBrand) + '</b><span style="margin-left:12px;font-size:12px;color:var(--txt2)">' + recallExisting.length + ' in database</span></div>';
+  h += '<div style="display:flex;gap:8px">';
+  if (!recallLoading) h += '<button class="btn btn-primary" onclick="scanRecalls(\'' + esc(selectedBrand).replace(/'/g, "\\'") + '\')">🔍 Check Recalls</button>';
+  if (recallResults.filter(r => r.status !== 'saved').length > 0)
+    h += '<button class="btn btn-primary" style="background:var(--green)" onclick="saveAllRecalls()">💾 Save All (' + recallResults.filter(r => r.status !== 'saved').length + ')</button>';
+  h += '</div></div>';
+
+  if (recallLoading) { h += '<div style="padding:20px;text-align:center;color:var(--txt2)">Checking recall databases…</div>'; return h; }
+
+  // Scan results
+  if (recallResults.length > 0) {
+    const cpscCount = recallResults.filter(r => r.source === 'CPSC').length;
+    const hcCount = recallResults.filter(r => r.source === 'Health Canada').length;
+    h += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+    h += '<span class="tier-badge t2">🇺🇸 CPSC: ' + cpscCount + '</span>';
+    h += '<span class="tier-badge t2">🇨🇦 Health Canada: ' + hcCount + '</span>';
+    h += '</div>';
+    h += '<table><thead><tr><th>Recall</th><th>Source</th><th>Date</th><th>Hazard</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+    recallResults.forEach((r, i) => {
+      const statusBadge = r.status === 'saved' ? '<span style="color:var(--green)">✓ saved</span>' : '<span style="color:var(--amber)">new</span>';
+      h += '<tr><td><a href="' + esc(r.url) + '" target="_blank" style="color:var(--accent)">' + esc(r.title || r.product_name || '').substring(0, 80) + '</a>'
+        + (r.product_name && r.product_name !== r.title ? '<div style="font-size:11px;color:var(--txt2)">' + esc(r.product_name) + '</div>' : '')
+        + (r.model_numbers?.length ? '<div style="font-size:10px;color:var(--txt3)">Models: ' + esc(r.model_numbers.join(', ')) + '</div>' : '') + '</td>'
+        + '<td><span class="tier-badge ' + (r.source === 'CPSC' ? 't2' : 't1') + '">' + (r.country === 'US' ? '🇺🇸' : '🇨🇦') + ' ' + esc(r.source) + '</span></td>'
+        + '<td style="font-size:11px">' + esc(r.recall_date || '—') + '</td>'
+        + '<td style="font-size:11px;max-width:200px">' + esc((r.hazard || '').substring(0, 100)) + '</td>'
+        + '<td>' + statusBadge + '</td>'
+        + '<td>' + (r.status !== 'saved' ? '<button class="btn btn-sm btn-primary" onclick="saveRecall(' + i + ')">Save</button>' : '') + '</td></tr>';
+    });
+    h += '</tbody></table>';
+  }
+
+  // Existing recalls in DB
+  if (recallExisting.length > 0) {
+    h += '<div style="margin-top:24px;border-top:1px solid var(--line);padding-top:16px"><b>📁 Recalls in Database (' + recallExisting.length + ')</b></div>';
+    h += '<table><thead><tr><th>Title</th><th>Source</th><th>Date</th><th>Hazard</th><th>Remedy</th></tr></thead><tbody>';
+    recallExisting.forEach(r => {
+      h += '<tr><td><a href="' + esc(r.url) + '" target="_blank" style="color:var(--accent)">' + esc(r.title || r.product_name) + '</a>'
+        + (r.model_numbers?.length ? '<div style="font-size:10px;color:var(--txt3)">Models: ' + esc(r.model_numbers.join(', ')) + '</div>' : '') + '</td>'
+        + '<td><span class="tier-badge ' + (r.source === 'CPSC' ? 't2' : 't1') + '">' + (r.country === 'US' ? '🇺🇸' : '🇨🇦') + ' ' + esc(r.source) + '</span></td>'
+        + '<td style="font-size:11px">' + esc(r.recall_date || '—') + '</td>'
+        + '<td style="font-size:11px">' + esc((r.hazard || '').substring(0, 100)) + '</td>'
+        + '<td style="font-size:11px">' + esc((r.remedy || '').substring(0, 100)) + '</td></tr>';
+    });
+    h += '</tbody></table>';
+  }
+  return h;
+}
+
+// Hook into brand selection to load news/recall data
+const _origLoadBrandIntel = loadBrandIntel;
+loadBrandIntel = async function(brandName) {
+  await _origLoadBrandIntel(brandName);
+  if (brandName) {
+    if (currentTab === 'intelligence') { await loadExistingNews(brandName); renderTab(); }
+    if (currentTab === 'recalls') { await loadExistingRecalls(brandName); renderTab(); }
+  } else {
+    intelResults = []; intelExisting = []; recallResults = []; recallExisting = [];
+  }
+};
+
+// Make functions globally accessible
+window.scanNews = scanNews;
+window.saveNewsArticle = saveNewsArticle;
+window.saveAllNews = saveAllNews;
+window.scanRecalls = scanRecalls;
+window.saveRecall = saveRecall;
+window.saveAllRecalls = saveAllRecalls;
 </script>
 </body>
 </html>
