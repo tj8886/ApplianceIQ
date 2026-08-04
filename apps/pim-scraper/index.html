@@ -312,7 +312,7 @@ async function callTier2(partial,fallback){
   const key=localStorage.getItem('aiq_google_key');
   if(!key){logEntry('Tier 2 skip: no Google key','err');return null}
   logEntry('Tier 2 → '+geminiModel+'…');
-  const sys='You extract appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches, height_inches, depth_inches, weight_lbs, capacity_cu_ft, voltage, amperage, wattage, energy_star, specs (object of key-value pairs), images (array of {url,type}), availability, features (array of strings). Omit fields you do not know. Return ONLY the JSON object, no other text.';
+  const sys='You extract appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string like "120V"), amperage (number), wattage (number), energy_star (boolean), installation_type (string like "Freestanding" or "Built-in"), series (string), upc (string), specs (object of ADDITIONAL key-value pairs NOT already in top-level fields — do NOT duplicate voltage/dimensions/color/capacity here), images (array of {url,type}), availability, features (array of strings), documents (array of {url,title,doc_type}). IMPORTANT: Put dimensions, voltage, amperage, wattage, capacity, color, finish, energy_star, installation_type as TOP-LEVEL fields, not inside specs. The specs object is only for additional specs like noise level, cycles, fuel type, controls, etc. Omit fields you do not know. Return ONLY the JSON object, no other text.';
   const usr=partial?'Partial data:\n'+JSON.stringify(partial,null,2)+'\n\nFill in missing fields.':'Extract appliance product data:\n'+(fallback||'').substring(0,8000);
   try{
     const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+key,{
@@ -340,7 +340,7 @@ async function callTier3(partial,fallback,mo){
   if(!key){logEntry('Tier 3 skip: no OpenAI key','err');return null}
   const model=mo||aiModel;
   logEntry('Tier 3 → '+model+'…');
-  const sys='You extract appliance product data. Return ONLY JSON: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches, height_inches, depth_inches, weight_lbs, capacity_cu_ft, voltage, amperage, wattage, energy_star, specs (obj), images (arr), availability, features (arr). Omit unknowns.';
+  const sys='You extract appliance product data. Return ONLY JSON: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type (string), series (string), upc (string), specs (object of ADDITIONAL specs not already in top-level fields), images (arr), features (arr). Put dimensions/voltage/color as top-level fields, NOT inside specs. Omit unknowns.';
   const usr=partial?'Partial:\n'+JSON.stringify(partial,null,2)+'\n\nFill gaps.':'Extract:\n'+(fallback||'').substring(0,8000);
   try{
     const body={model,temperature:0.1,response_format:{type:'json_object'},messages:[{role:'system',content:sys},{role:'user',content:usr}]};
@@ -363,7 +363,7 @@ async function callTier4(query,brandInfo){
   try{
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
-        system:'Extract appliance specs. Return ONLY JSON: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches, height_inches, depth_inches, weight_lbs, capacity_cu_ft, voltage, specs, images, features, source_url. Omit unknowns.',
+        system:'Extract appliance specs. Return ONLY JSON: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type, series, upc, specs (object of ADDITIONAL specs not in top-level fields), images, features, documents (arr of {url,title,doc_type}), source_url. Put dimensions/voltage/color as top-level fields NOT inside specs. Omit unknowns.',
         tools:[{type:'web_search_20250305',name:'web_search'}],
         messages:[{role:'user',content:'Find specs for: '+query+'. Brand: '+(brandInfo?.brand_name||'unknown')+'. Check manufacturer site first.'}]})});
     const data=await r.json();
@@ -547,13 +547,69 @@ async function saveToPim(idx){
     msrp:num(d.msrp),price_currency:d.currency||'CAD',color:d.color||null,finish:d.finish||null,
     width_inches:num(d.width_inches),height_inches:num(d.height_inches),depth_inches:num(d.depth_inches),
     weight_lbs:num(d.weight_lbs),capacity_cu_ft:num(d.capacity_cu_ft),voltage:d.voltage||null,
+    amperage:num(d.amperage),wattage:num(d.wattage),
     energy_star:d.energy_star||null,specs_json:d.specs||null,
+    installation_type:d.installation_type||null,series:d.series||null,upc:d.upc||null,
     source_type:'scraper_v2',source_reference:d.source_url||r.url||null,
     source_confidence:r.tier_used===1?0.95:r.tier_used===2?0.80:r.tier_used===3?0.75:0.65,
     source_extracted_at:new Date().toISOString(),source_review_status:'pending',
     market:'CA',status:'active',brand_id:br?.id||null,
     product_segment: classifySegment(d)
   };
+  // ── AUTO-BACKFILL: parse specs_json into top-level columns if AI put data there instead ──
+  if(rec.specs_json && typeof rec.specs_json === 'object'){
+    const sj = rec.specs_json;
+    const sjGet = (...keys) => { for(const k of keys){ const v = sj[k]; if(v != null && v !== '') return v; } return null; };
+    const sjNum = (...keys) => { const v = sjGet(...keys); if(v==null) return null; const m = String(v).match(/[\d.]+/); return m ? parseFloat(m[0]) : null; };
+    // Voltage
+    if(!rec.voltage) rec.voltage = sjGet('Volts (V)','Voltage','voltage','Voltage (V)') || null;
+    // Amperage
+    if(!rec.amperage) rec.amperage = sjNum('Amperage','amperage','Amperage (A)','Amperage (amps)','Circuit Breaker Amperage');
+    // Wattage
+    if(!rec.wattage) rec.wattage = sjNum('Watts (W)','Wattage','wattage');
+    // Dimensions
+    if(!rec.width_inches){ const w = sjNum('Width','Cutout Width','width'); if(w && w > 10) rec.width_inches = w; }
+    if(!rec.height_inches){ const h = sjNum('Height','Cutout Height','height'); if(h && h > 5) rec.height_inches = h; }
+    if(!rec.depth_inches){ const dp = sjNum('Depth','Cutout Depth','depth'); if(dp && dp > 10) rec.depth_inches = dp; }
+    // Weight
+    if(!rec.weight_lbs) rec.weight_lbs = sjNum('Net Weight (lbs.)','Gross weight','Gross Weight','Weight','Net weight','weight');
+    // Capacity
+    if(!rec.capacity_cu_ft){
+      const cap = sjGet('Total Capacity','Oven Capacity','capacity','Capacity','Total Capacity (cu. ft.)');
+      if(cap){ const m = String(cap).match(/([\d.]+)/); if(m) rec.capacity_cu_ft = parseFloat(m[1]); }
+    }
+    // Color
+    if(!rec.color) rec.color = sjGet('Color','color','Couleur/Finition','Couleur/finition') || null;
+    if(rec.color && typeof rec.color === 'string' && rec.color.length > 50) rec.color = null; // skip junk
+    // Finish
+    if(!rec.finish) rec.finish = sjGet('Finish','finish') || null;
+    // Installation
+    if(!rec.installation_type) rec.installation_type = sjGet('Installation Type','Construction','construction','Install Type') || null;
+    // Energy Star
+    if(rec.energy_star == null){
+      const es = sjGet('Energy Star','ENERGY STAR','energy_star','Energy Star Rated');
+      if(es && typeof es === 'string' && /yes|true|certified/i.test(es)) rec.energy_star = true;
+      if(es && typeof es === 'string' && /no|false/i.test(es)) rec.energy_star = false;
+    }
+    // Series
+    if(!rec.series) rec.series = sjGet('Series','series','Product Line') || null;
+    // UPC
+    if(!rec.upc) rec.upc = sjGet('UPC','upc','EAN','GTIN') || null;
+    // Fuel type → store in specs_json but also useful for filtering
+    // Color family normalization
+    if(rec.color && !rec.color_family){
+      const cl = (rec.color||'').toLowerCase();
+      if(/stainless/i.test(cl) && !/black/i.test(cl)) rec.color_family = 'Stainless Steel';
+      else if(/black stainless/i.test(cl)) rec.color_family = 'Black Stainless';
+      else if(/^(black|noir|negro|matte black)$/i.test(cl)) rec.color_family = 'Black';
+      else if(/^(white|blanc|matte white)$/i.test(cl)) rec.color_family = 'White';
+      else if(/panel.?ready|integrated/i.test(cl)) rec.color_family = 'Panel Ready';
+      else if(/slate/i.test(cl)) rec.color_family = 'Slate';
+      else if(/graphite|charcoal|gray|grey|silver|titanium/i.test(cl)) rec.color_family = 'Graphite';
+      else if(/bisque|beige/i.test(cl)) rec.color_family = 'Bisque';
+      else if(/inox|acier/i.test(cl)) rec.color_family = 'Stainless Steel';
+    }
+  }
   const{data:saved,error}=await sb.from('aiq_products').upsert(rec,{onConflict:'brand_name,model,market',ignoreDuplicates:false}).select('id').maybeSingle();
   if(error){logEntry('Save err: '+error.message,'err');return}
   const productId=saved?.id;
