@@ -524,6 +524,12 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 /* === ROLE BADGE === */
 .role-badge{padding:4px 0;margin-bottom:6px;text-align:center}
+.fb-row{display:flex;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.08)}
+.fb-btn{background:none;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:2px 10px;cursor:pointer;font-size:14px;transition:all .15s}
+.fb-btn:hover{background:rgba(255,255,255,.1);transform:scale(1.1)}
+.fb-up:hover{border-color:var(--verified)}.fb-dn:hover{border-color:var(--amber)}
+.tier-badge{font-size:9px;padding:2px 6px;border-radius:4px;margin-left:8px;text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+.tier-fast{background:#0d9488;color:#fff}.tier-standard{background:#6366f1;color:#fff}.tier-strong{background:#dc2626;color:#fff}.tier-deterministic{background:#16a34a;color:#fff}
 </style>
 </head>
 <body>
@@ -634,7 +640,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="coaching">🏅 Coaching</button>
 <button class="nav-btn" data-view="reporting">📈 Reporting</button>
 <div class="nav-sep"></div>
-<button class="nav-btn" data-view="assistant">🤖 AI Assistant</button>
+<button class="nav-btn" data-view="team_coach">🏆 Ask the Team</button>
 <button class="nav-btn" data-view="team_coach">🏆 Ask the Team</button>
 <button class="nav-btn" data-view="team">👥 Team</button>
 <button class="nav-btn" data-view="settings">⚙️ Settings</button>
@@ -702,7 +708,7 @@ function showApp(){landingEl.style.display='none';authEl.style.display='none';ap
 window.showLogin=showLogin;window.showSignup=showSignup;
 
 let orgs=[],currentOrg=null,currentUser=null,currentView='pipeline',pipeView='active';
-let chatLog=[],coachLog=[],coachPersona=null,assistants=[],currentAssistant=null;
+let coachLog=[],coachPersona=null;
 let cache={stages:[],deals:[],contacts:[],companies:[],buyingGroups:[],participants:[],recordings:[]};
 let searchTerm='';
 let currentRole='member'; // owner | admin | manager | member
@@ -777,7 +783,7 @@ async function boot(){
   currentOrg=orgs[0];currentRole=roleMap[currentOrg.id]||'member';
   const sel=$('#orgSelect');
   sel.innerHTML=orgs.map(o=>'<option value="'+o.id+'">'+esc(o.name)+'</option>').join('');
-  sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);currentRole=roleMap[currentOrg.id]||'member';chatLog=[];setupRealtime();applyRBAC();render();};
+  sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);currentRole=roleMap[currentOrg.id]||'member';setupRealtime();applyRBAC();render();};
   $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;searchTerm='';render();};});
   const ic=new URLSearchParams(location.search).get('invite');if(ic)await acceptInvite(ic);
   applyRBAC();setupRealtime();render();
@@ -888,7 +894,7 @@ async function render(){
   if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
   trackEvent('page_view',{page:currentView});
-  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderCommandCentre,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderCommandCentre,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
   (views[currentView]||renderPipeline)();
 }
 
@@ -982,36 +988,34 @@ function bindCoachBar(){
     }
 
     try{
-      const sysPrompt='You are an expert appliance retail sales coach and product specialist. You have deep knowledge of all major appliance brands.\n\n'
-        +'RULES:\n'
-        +'- If product data is provided, use ONLY the real data — never invent specs.\n'
-        +'- For comparisons: first list the key differences, then write a SELLING SYNOPSIS — a 3-4 sentence pitch the rep can say out loud to a customer explaining the real difference in plain language.\n'
-        +'- For single products: highlight the top 3 selling points and one honest limitation.\n'
-        +'- Keep responses concise and actionable — reps are busy.\n'
-        +'- Speak as a coach. Be direct, practical, specific.\n'
-        +'- Format comparisons clearly. Use plain text headings with === markers, not markdown.';
-
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,
-          system:sysPrompt,
-          messages:[{role:'user',content:txt+productContext}]})
+      const{data:{session}}=await sb.auth.getSession();
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/ai-intelligence-router',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({organization_id:currentOrg.id,message:txt+(productContext?'\n\nPRODUCT DATA FROM PIM:\n'+productContext:''),history:[]})
       });
       const data=await resp.json();
-      const text=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+      const text=data.answer||'No response from the coaching team.';
+      const convId=data.conversation_id;
+      const complexity=data.complexity;
 
       // Build reply with product table + AI analysis
       let html='';
       if(products.length>1){
         html+=renderProductTable(products);
       }
+      // Tier badge
+      const tier=complexity?.tier||'';
+      html+='<div style="margin-bottom:6px">'+(tier?'<span class="tier-badge tier-'+tier+'">'+tier+'</span> ':'')+(data.primary_persona?'<b>'+esc(data.primary_persona)+'</b>':'')+'</div>';
       // Convert text to styled HTML
       html+='<div style="color:#fff;white-space:pre-wrap;line-height:1.7">'
         +text.replace(/===(.*?)===/g,'<div style="font-weight:800;font-size:14px;margin:12px 0 4px;color:#fff;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:4px">$1</div>')
             .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
             .replace(/^- /gm,'• ')
         +'</div>';
+      // Feedback buttons
+      html+='<div class="fb-row" id="cbFb"><button class="fb-btn fb-up" onclick="cbFeedback(\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="cbFeedback(\'thumbs_down\')">👎</button></div>';
       reply.innerHTML=html;
+      window._cbMeta={conversation_id:convId,complexity,model_used:data.model_used,cost:data.cost_estimate_usd};
     }catch(err){
       reply.innerHTML='<span style="opacity:.6">Coach unavailable right now. Try the full <b>Ask the Team</b> or <b>AI Assistant</b> views from the sidebar.</span>';
     }
@@ -2248,15 +2252,7 @@ mainEl.innerHTML='<div class="page-head"><h1>📉 Coaching Dashboard</h1></div><
 +'<div class="dash-panel"><h3>Score Trend</h3>'+(last10.length?'<div class="trend-bars">'+last10.map(r=>{const s=Number(r.overall_score);return '<div class="tb" style="height:'+Math.max(4,s*10)+'%"><span class="num">'+s.toFixed(1)+'</span></div>';}).join('')+'</div>':'<div class="empty">Record a pitch to start tracking your coaching scores.</div>')+'</div>'
 +'<div class="dash-panel"><h3>Sales Steps Breakdown</h3>'+(rv.length?Object.entries(STEPS).map(([k,l])=>{const v=sa[k];return '<div class="step-row"><div class="sn">'+l+'</div><div class="sbar"><i style="width:'+(v!=null?v*10:0)+'%"></i></div><div class="sv num">'+(v!=null?v.toFixed(1):'—')+'</div></div>';}).join(''):'<div class="empty">Scores appear after coaching reviews.</div>')+'</div>';}
 
-// ===== AI ASSISTANT =====
-async function renderAssistant(){if(!assistants.length){const{data}=await sb.from('ai_assistants').select('*').or('organization_id.eq.'+currentOrg.id+',organization_id.is.null').eq('status','active').order('label');assistants=data??[];if(assistants.length&&!currentAssistant)currentAssistant=assistants[0];}
-if(!assistants.length){mainEl.innerHTML='<div class="page-head"><h1>🤖 AI Assistant</h1></div><div class="dash-panel" style="text-align:center;padding:40px 20px"><div style="font-size:48px;margin-bottom:12px">🤖</div><h3 style="margin:0 0 8px">AI Assistant Not Configured</h3><p style="color:var(--steel);max-width:400px;margin:0 auto 16px">The AI Assistant requires an edge function (<code>ai-assistant</code>) deployed to Supabase and at least one assistant record in the <code>ai_assistants</code> table.</p><p style="color:var(--steel);font-size:13px">In the meantime, use the <b>AI Sales Coach</b> bar on the Pipeline view — it works with the Anthropic API directly for product comparisons and coaching.</p></div>';return;}
-mainEl.innerHTML='<div class="page-head"><h1>🤖 AI Assistant</h1></div><div class="assistant-wrap"><div>'+assistants.map(a=>'<button class="assist-card '+(a.id===currentAssistant?.id?'active':'')+'" data-aid="'+a.id+'"><div class="t">'+esc(a.label)+'</div><div class="d">'+esc(a.description??'')+'</div></button>').join('')+'</div><div class="chat"><div class="msgs" id="msgs">'+(chatLog.length?chatLog.map(m=>'<div class="msg '+(m.role==='user'?'user':'ai')+'">'+esc(m.text)+'</div>').join(''):'<div class="empty">Ask about your pipeline, customers, or products.</div>')+'</div><div class="composer"><textarea id="prompt" placeholder="Ask a question…" rows="1"></textarea><button class="btn btn-primary" id="sendBtn">Send</button></div></div></div>';
-$$('[data-aid]').forEach(b=>{b.onclick=()=>{currentAssistant=assistants.find(a=>a.id===b.dataset.aid);chatLog=[];renderAssistant();};});
-$('#sendBtn').onclick=sendPrompt;$('#prompt')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendPrompt();}});}
-async function sendPrompt(){const txt=$('#prompt')?.value?.trim();if(!txt)return;chatLog.push({role:'user',text:txt});$('#prompt').value='';paintMsgs();chatLog.push({role:'ai',text:'Thinking…'});paintMsgs();
-try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(SUPABASE_URL+'/functions/v1/ai-assistant',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({organization_id:currentOrg.id,assistant_id:currentAssistant?.id,message:txt,history:chatLog.slice(0,-1).slice(-10)})}).catch(()=>null);chatLog.pop();if(res?.ok){const d=await res.json();chatLog.push({role:'ai',text:d.answer??d.response??'No response.'});}else chatLog.push({role:'ai',text:'Assistant is not available right now. This feature requires a configured AI edge function.'});}catch{chatLog.pop();chatLog.push({role:'ai',text:'Could not reach the assistant. Check your connection and try again.'});}paintMsgs();}
-function paintMsgs(){const el=$('#msgs');if(!el)return;el.innerHTML=chatLog.map(m=>'<div class="msg '+(m.role==='user'?'user':'ai')+'">'+esc(m.text)+'</div>').join('');el.scrollTop=el.scrollHeight;}
+window.cbFeedback=async function(signal){const el=$('#cbFb');if(el)el.innerHTML=signal==='thumbs_up'?'<span style="font-size:11px;color:var(--verified)">Thanks! 👍</span>':'<span style="font-size:11px;color:var(--amber)">Noted 👎</span>';const meta=window._cbMeta;if(!meta)return;try{const{data:{session}}=await sb.auth.getSession();await fetch(SUPABASE_URL+'/functions/v1/ai-feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({signal_type:signal,conversation_id:meta.conversation_id,organization_id:currentOrg.id,routing_snapshot:meta.complexity||{},metadata:{model_used:meta.model_used,cost:meta.cost,source:'coach_bar'}})});}catch(e){console.error('CB feedback error',e);}}
 
 // ===== TEAM COACH =====
 async function renderTeamCoach(){const{data:personas}=await sb.from('ai_personas').select('*').eq('organization_id',currentOrg.id).eq('active',true).order('persona_name');if(!coachPersona&&personas?.length)coachPersona=personas[0];
@@ -2266,8 +2262,9 @@ mainEl.innerHTML='<div class="page-head"><h1>🏆 Ask the Team</h1></div><div cl
 $$('[data-pid]').forEach(b=>{b.onclick=()=>{coachPersona=(personas??[]).find(p=>p.id===b.dataset.pid);coachLog=[];renderTeamCoach();};});
 $('#cS').onclick=sendCoach;$('#cI')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCoach();}});}
 async function sendCoach(){const txt=$('#cI')?.value?.trim();if(!txt)return;coachLog.push({role:'user',text:txt});$('#cI').value='';paintCoach();coachLog.push({role:'ai',text:'Thinking…',persona:coachPersona?.persona_name});paintCoach();
-try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(SUPABASE_URL+'/functions/v1/ai-team-coach',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({organization_id:currentOrg.id,persona_id:coachPersona?.id,message:txt,history:coachLog.slice(0,-1).slice(-10)})});const d=await res.json();coachLog.pop();coachLog.push({role:'ai',text:d.ok?d.answer:'Edge function not configured. Deploy ai-team-coach to enable this feature.',persona:d.primary_persona??null});}catch{coachLog.pop();coachLog.push({role:'ai',text:'Could not reach the coaching service. Check your connection.',persona:null});}paintCoach();}
-function paintCoach(){const el=$('#cM');if(!el)return;el.innerHTML=coachLog.map(m=>'<div class="coach-msg '+(m.role==='user'?'user':'ai')+'">'+(m.persona?'<div class="pb">'+esc(m.persona)+'</div>':'')+esc(m.text)+'</div>').join('');el.scrollTop=el.scrollHeight;}
+try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(SUPABASE_URL+'/functions/v1/ai-intelligence-router',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({organization_id:currentOrg.id,persona_id:coachPersona?.id,mode:'manual',message:txt,history:coachLog.slice(0,-1).slice(-10).map(m=>({role:m.role==='user'?'user':'assistant',text:m.text}))})});const d=await res.json();coachLog.pop();coachLog.push({role:'ai',text:d.ok?d.answer:'Could not get a response. Check edge function deployment.',persona:d.primary_persona??coachPersona?.persona_name??null,meta:{conversation_id:d.conversation_id,complexity:d.complexity,model_used:d.model_used,cost:d.cost_estimate_usd}});}catch{coachLog.pop();coachLog.push({role:'ai',text:'Could not reach the coaching service. Check your connection.',persona:null});}paintCoach();}
+function paintCoach(){const el=$('#cM');if(!el)return;el.innerHTML=coachLog.map((m,i)=>'<div class="coach-msg '+(m.role==='user'?'user':'ai')+'">'+(m.persona?'<div class="pb">'+esc(m.persona)+(m.meta?.complexity?.tier?'<span class="tier-badge tier-'+m.meta.complexity.tier+'">'+m.meta.complexity.tier+'</span>':'')+'</div>':'')+esc(m.text)+(m.role==='ai'&&m.meta?'<div class="fb-row" data-idx="'+i+'"><button class="fb-btn fb-up" onclick="sendFeedback('+i+',\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="sendFeedback('+i+',\'thumbs_down\')">👎</button></div>':'')+'</div>').join('');el.scrollTop=el.scrollHeight;}
+window.sendFeedback=async function(idx,signal){const m=coachLog[idx];if(!m||!m.meta)return;const btn=document.querySelector('.fb-row[data-idx="'+idx+'"]');if(btn)btn.innerHTML=signal==='thumbs_up'?'<span style="font-size:11px;color:var(--verified)">Thanks! 👍</span>':'<span style="font-size:11px;color:var(--amber)">Noted 👎</span>';try{const{data:{session}}=await sb.auth.getSession();await fetch(SUPABASE_URL+'/functions/v1/ai-feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({signal_type:signal,conversation_id:m.meta.conversation_id,organization_id:currentOrg.id,routing_snapshot:m.meta.complexity||{},metadata:{persona:m.persona,model_used:m.meta.model_used,cost:m.meta.cost}})});}catch(e){console.error('Feedback error',e);}}
 
 // ===== TEAM =====
 async function renderTeam(){
