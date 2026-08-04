@@ -174,6 +174,11 @@ tbody tr:last-child td{border-bottom:none}
 .catalog-toolbar input,.catalog-toolbar select{height:38px;border:1px solid var(--border);background:#fff;border-radius:8px;padding:0 12px;font-size:13px;color:var(--text)}
 .catalog-toolbar input{min-width:240px;flex:1}
 @media(max-width:700px){.catalog-toolbar{flex-direction:column}.catalog-toolbar input,.catalog-toolbar select{width:100%;min-width:0}}
+.cat-subs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.cat-sub-tag{font-size:10px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;cursor:pointer;color:var(--text2);white-space:nowrap}
+.cat-sub-tag:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cat-sub-tag b{color:var(--accent);margin-left:2px}
+.cat-sub-tag:hover b{color:#fff}
 .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 @media(max-width:600px){.prod-grid{grid-template-columns:1fr}}
 .prod-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:.15s}
@@ -404,7 +409,11 @@ tbody tr:last-child td{border-bottom:none}
       <input type="text" placeholder="Search products by model, brand, or description…" id="prodSearch">
       <select id="prodBrand"><option value="">All brands</option></select>
       <select id="prodCat"><option value="">All categories</option></select>
+      <select id="prodSub"><option value="">All subcategories</option></select>
+      <select id="prodSize"><option value="">All sizes</option></select>
       <select id="prodColor"><option value="">All colors</option></select>
+      <select id="prodFuel"><option value="">All fuel types</option></select>
+      <select id="prodFeature"><option value="">Features</option><option value="counter_depth">Counter-Depth</option><option value="ice_maker">Ice Maker</option><option value="water">Water Dispenser</option><option value="ice_dispenser">Ice Dispenser</option><option value="energy_star">Energy Star</option></select>
       <select id="prodStatus"><option value="">All statuses</option></select>
     </div>
     <div class="stats-row" id="prodKpis"></div>
@@ -710,7 +719,7 @@ async function paginate(table, cols) {
 }
 
 async function loadProducts() {
-  const cols = 'id,model,brand_name,category,is_parts_accessory,status,' + COMP_FIELDS.join(',');
+  const cols = 'id,model,brand_name,category,subcategory,size_class,is_parts_accessory,status,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,' + COMP_FIELDS.join(',');
   const raw = await paginate('aiq_products', cols);
   allProducts = raw.filter(p => p.status === 'active');
 }
@@ -801,8 +810,13 @@ function renderCategories() {
     const withImgs = g.products.filter(p => imgCounts[p.id]).length;
     const withDocs = g.products.filter(p => docCounts[p.id]).length;
     const col = pctCol(avg);
+    // Subcategory breakdown
+    const subMap = {};
+    g.products.forEach(p => { const s = p.subcategory; if (s) subMap[s] = (subMap[s]||0) + 1; });
+    const subs = Object.entries(subMap).sort((a,b) => b[1] - a[1]);
     return `<div class="cat-card${g.isParts ? ' parts' : ''}" onclick="filterProductsByCat('${esc(cat)}')">
       <div class="cat-name">${cat} <span class="cat-count">${cnt}</span></div>
+      ${subs.length ? '<div class="cat-subs">' + subs.slice(0,4).map(([s,c]) => '<span class="cat-sub-tag" onclick="event.stopPropagation();filterProductsByCatSub(\''+esc(cat)+'\',\''+esc(s)+'\')">' + s + ' <b>' + c + '</b></span>').join('') + (subs.length>4?'<span class="cat-sub-tag">+' + (subs.length-4) + ' more</span>':'') + '</div>' : ''}
       <div class="cat-meta"><span>🖼 ${withImgs}</span><span>📄 ${withDocs}</span><span style="color:${col}">◉ ${avg}%</span></div>
       <div class="cat-bar"><div class="cat-bar-fill" style="width:${avg}%;background:${col}"></div></div>
     </div>`;
@@ -825,11 +839,14 @@ function renderCoverage() {
     { label: 'Has Description', count: view.filter(p => p.short_description).length },
     { label: 'Has Dimensions', count: view.filter(p => p.width_inches != null && p.height_inches != null && p.depth_inches != null).length },
     { label: 'Has Category', count: view.filter(p => p.category).length },
+    { label: 'Has Subcategory', count: view.filter(p => p.subcategory).length },
+    { label: 'Has Size Class', count: view.filter(p => p.size_class).length },
     { label: 'Has Color', count: view.filter(p => p.color).length },
     { label: 'Has Finish', count: view.filter(p => p.finish).length },
     { label: 'Has Energy Star', count: view.filter(p => p.energy_star != null).length },
     { label: 'Has Weight', count: view.filter(p => p.weight_lbs != null).length },
     { label: 'Has Voltage', count: view.filter(p => p.voltage).length },
+    { label: 'Has Fuel Type', count: view.filter(p => p.fuel_type).length },
   ];
   document.getElementById('coverageBadge').textContent = currentView + ' view';
   document.getElementById('coveragePanel').innerHTML = fields.map(f => {
@@ -935,6 +952,18 @@ window.filterProductsByCat = function(cat) {
     catalogPage = 0;
     loadCatalog();
   }
+};
+
+window.filterProductsByCatSub = function(cat, sub) {
+  navHistory = [];
+  showPage('products');
+  prodFilters.cat = cat;
+  prodFilters.sub = sub;
+  document.getElementById('prodCat').value = cat;
+  catalogPage = 0;
+  loadCatalog().then(() => {
+    document.getElementById('prodSub').value = sub;
+  });
 };
 
 // ── Brand Directory ──
@@ -1156,7 +1185,7 @@ function bindBdProdClicks() {
 
 // ── Product Catalog ──
 let catalogProducts = [], productsLoaded = false, catalogPage = 0, catalogTotal = 0;
-let prodFilters = { search: '', brand: '', cat: '', color: '', status: '' };
+let prodFilters = { search: '', brand: '', cat: '', sub: '', size: '', color: '', fuel: '', feature: '', status: '' };
 const PAGE_SIZE = 30;
 
 async function loadCatalog() {
@@ -1164,14 +1193,22 @@ async function loadCatalog() {
   const el = document.getElementById('prodContent');
   el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products…</div>';
 
+  const selectCols = 'id,brand_name,model,category,subcategory,size_class,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,installation_type,series';
+
   let q = sb.from('aiq_products')
-    .select('id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs', { count: 'exact' })
+    .select(selectCols, { count: 'exact' })
     .order('brand_name').order('model');
 
   const s = prodFilters.search.trim();
   if (s) {
     const orParts = ['brand_name','model','short_description'].map(c => c+'.ilike.*'+encodeURIComponent(s)+'*');
-    const url = SB_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs&or=('+orParts.join(',')+')&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
+    const url = SB_URL+'/rest/v1/aiq_products?select='+selectCols+'&or=('+orParts.join(',')+')'
+      +(prodFilters.cat?'&category=eq.'+encodeURIComponent(prodFilters.cat):'')
+      +(prodFilters.sub?'&subcategory=eq.'+encodeURIComponent(prodFilters.sub):'')
+      +(prodFilters.size?'&size_class=eq.'+encodeURIComponent(prodFilters.size):'')
+      +(prodFilters.fuel?'&fuel_type=eq.'+encodeURIComponent(prodFilters.fuel):'')
+      +(prodFilters.color?'&color_family=eq.'+encodeURIComponent(prodFilters.color):'')
+      +'&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
     try {
       const headers = {'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON,'Prefer':'count=exact'};
       const resp = await fetch(url, {headers});
@@ -1185,8 +1222,16 @@ async function loadCatalog() {
 
   if (prodFilters.brand) q = q.eq('brand_name', prodFilters.brand);
   if (prodFilters.cat) q = q.eq('category', prodFilters.cat);
+  if (prodFilters.sub) q = q.eq('subcategory', prodFilters.sub);
+  if (prodFilters.size) q = q.eq('size_class', prodFilters.size);
   if (prodFilters.color) q = q.eq('color_family', prodFilters.color);
+  if (prodFilters.fuel) q = q.eq('fuel_type', prodFilters.fuel);
   if (prodFilters.status) q = q.eq('status', prodFilters.status);
+  if (prodFilters.feature === 'counter_depth') q = q.eq('is_counter_depth', true);
+  if (prodFilters.feature === 'ice_maker') q = q.eq('has_ice_maker', true);
+  if (prodFilters.feature === 'water') q = q.eq('has_water_dispenser', true);
+  if (prodFilters.feature === 'ice_dispenser') q = q.eq('has_ice_dispenser', true);
+  if (prodFilters.feature === 'energy_star') q = q.eq('energy_star', true);
 
   const { data, error, count } = await q.range(catalogPage*PAGE_SIZE, catalogPage*PAGE_SIZE+PAGE_SIZE-1);
   if (error) { el.innerHTML = '<div class="feed-empty">Error: '+(error.message||'')+'</div>'; return; }
@@ -1201,12 +1246,35 @@ async function loadCatalog() {
     const ucats = [...new Set((cats||[]).map(c=>c.category))].sort();
     ucats.forEach(c => document.getElementById('prodCat').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
     ['active','draft','discontinued'].forEach(s => document.getElementById('prodStatus').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
-    // Color families
     const { data: colors } = await sb.from('aiq_products').select('color_family').not('color_family','is',null);
     const ucolors = [...new Set((colors||[]).map(c=>c.color_family))].sort();
     ucolors.forEach(c => document.getElementById('prodColor').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
+    // Populate size classes
+    const { data: sizes } = await sb.from('aiq_products').select('size_class').not('size_class','is',null);
+    const usizes = [...new Set((sizes||[]).map(s=>s.size_class))].sort((a,b) => parseInt(a)-parseInt(b));
+    usizes.forEach(s => document.getElementById('prodSize').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
+    // Populate fuel types
+    const { data: fuels } = await sb.from('aiq_products').select('fuel_type').not('fuel_type','is',null);
+    const ufuels = [...new Set((fuels||[]).map(f=>f.fuel_type))].sort();
+    ufuels.forEach(f => document.getElementById('prodFuel').insertAdjacentHTML('beforeend','<option>'+f+'</option>'));
   }
+  // Dynamic subcategory dropdown based on selected category
+  updateSubcategoryDropdown(prodFilters.cat);
   renderCatalog();
+}
+
+function updateSubcategoryDropdown(cat) {
+  const sel = document.getElementById('prodSub');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All subcategories</option>';
+  if (!cat) return;
+  const subs = [...new Set(catalogProducts.map(p => p.subcategory).filter(Boolean))].sort();
+  // Also fetch all subs for this category
+  sb.from('aiq_products').select('subcategory').eq('category', cat).not('subcategory','is',null).then(({data}) => {
+    const allSubs = [...new Set((data||[]).map(d => d.subcategory))].sort();
+    sel.innerHTML = '<option value="">All subcategories</option>';
+    allSubs.forEach(s => sel.insertAdjacentHTML('beforeend', '<option' + (s===current?' selected':'') + '>' + s + '</option>'));
+  });
 }
 
 function renderCatalog() {
@@ -1231,13 +1299,24 @@ function renderCatalog() {
     const ic = imgCounts[p.id]||0;
     const dc = docCounts[p.id]||0;
     const vc = vidCounts[p.id]||0;
-    // Use short_description, or fall back to spec summary from JSON
     const desc = p.short_description || specSummary;
+    // Feature badges
+    const badges = [];
+    if (p.size_class) badges.push(p.size_class);
+    if (p.subcategory) badges.push(p.subcategory);
+    if (p.fuel_type) badges.push(p.fuel_type);
+    if (p.is_counter_depth) badges.push('Counter-Depth');
+    if (p.has_ice_maker) badges.push('🧊 Ice');
+    if (p.has_water_dispenser) badges.push('💧 Water');
+    if (p.has_ice_dispenser) badges.push('🧊💧 Dispenser');
+    if (p.energy_star) badges.push('⭐ E-Star');
+    if (p.noise_dba) badges.push(p.noise_dba + ' dBA');
     return '<div class="prod-card" data-prod-id="'+p.id+'">'
       +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+(p.color_family?' · <span style="color:var(--navy);font-weight:700">'+esc(p.color_family)+'</span>':'')+'</div>'
       +'<div class="pc-model">'+esc(p.model||'—')+'</div>'
       +(desc?'<div class="pc-desc">'+esc(desc)+'</div>':'')
-      +(specs.length?'<div class="pc-specs">'+specs.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>':'')
+      +(badges.length?'<div class="pc-specs">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>':'')
+      +(specs.length?'<div class="pc-specs" style="margin-top:2px">'+specs.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>':'')
       +(p.msrp?'<div class="pc-price">$'+Number(p.msrp).toLocaleString()+'</div>':'')
       +'<div class="pc-assets"><span>🖼 '+ic+'</span><span>📄 '+dc+'</span>'+(vc?'<span>🎬 '+vc+'</span>':'')
       +(jsonKeys>0?'<span style="color:var(--accent);font-weight:600">📊 '+jsonKeys+' specs</span>':'')
@@ -1259,11 +1338,13 @@ function renderCatalog() {
   });
 }
 
-['prodSearch','prodBrand','prodCat','prodColor','prodStatus'].forEach(id => {
+['prodSearch','prodBrand','prodCat','prodSub','prodSize','prodColor','prodFuel','prodFeature','prodStatus'].forEach(id => {
   const el = document.getElementById(id);
-  if (el) el.addEventListener('input', () => {
-    const key = id.replace('prod','').toLowerCase();
-    prodFilters[key === 'search' ? 'search' : key] = el.value;
+  if (el) el.addEventListener(id === 'prodSearch' ? 'input' : 'change', () => {
+    const keyMap = {prodSearch:'search',prodBrand:'brand',prodCat:'cat',prodSub:'sub',prodSize:'size',prodColor:'color',prodFuel:'fuel',prodFeature:'feature',prodStatus:'status'};
+    prodFilters[keyMap[id]] = el.value;
+    // When category changes, reset subcategory
+    if (id === 'prodCat') { prodFilters.sub = ''; document.getElementById('prodSub').value = ''; }
     catalogPage = 0;
     loadCatalog();
   });
