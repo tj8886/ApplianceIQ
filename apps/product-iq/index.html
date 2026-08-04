@@ -429,6 +429,20 @@ tbody tr:last-child td{border-bottom:none}
 
   <!-- INTELLIGENCE -->
   <div id="pageIntelligence" style="display:none">
+    <!-- AI Search Bar for fetching new intelligence -->
+    <div class="panel" style="margin-bottom:20px;border-color:var(--accent)">
+      <div class="panel-head" style="background:var(--navy)"><h3 style="color:#fff">🤖 AI Intelligence Updater</h3></div>
+      <div class="panel-body">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <input type="text" id="intelQuery" placeholder="Search for latest appliance news, recalls, brand updates…" style="flex:1;min-width:250px;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 14px;font-size:14px">
+          <button class="btn btn-accent" style="height:40px;padding:0 20px" onclick="fetchNewIntelligence()">🔍 Fetch New Intel</button>
+          <button class="btn" style="height:40px" onclick="fetchLatestRecalls()">⚠️ Scan Recalls</button>
+          <button class="btn" style="height:40px" onclick="fetchIndustryNews()">📰 Latest News</button>
+        </div>
+        <div id="intelFetchStatus" style="font-size:12px;color:var(--text2)">Search for any topic to fetch and save the latest intelligence. Uses Claude AI with web search to find current information.</div>
+      </div>
+    </div>
+
     <div class="stats-row" id="intelKpis"></div>
     <div class="grid-2">
       <div class="panel">
@@ -471,6 +485,7 @@ tbody tr:last-child td{border-bottom:none}
     <div class="catalog-toolbar">
       <input type="text" placeholder="Search recalls by brand, product, or hazard…" id="recallSearch">
       <select id="recallBrand"><option value="">All brands</option></select>
+      <button class="btn btn-accent" onclick="fetchLatestRecalls()" style="white-space:nowrap">🤖 Scan for New Recalls</button>
     </div>
     <div class="stats-row" id="recallKpis"></div>
     <div id="recallContent"><div class="loading"><div class="spinner"></div>Loading…</div></div>
@@ -1729,6 +1744,65 @@ async function runBatchEnrich() {
     + '</div>';
 }
 window.runBatchEnrich = runBatchEnrich;
+
+// ── INTELLIGENCE FETCHERS (AI-powered with web search) ──
+const INTEL_URL = SB_URL + '/functions/v1/fetch-intelligence';
+
+function getAnthropicKey() {
+  let key = localStorage.getItem('aiq_anthropic_key');
+  if (!key) {
+    key = prompt('Enter your Anthropic API key (needed for AI intelligence search):');
+    if (key) localStorage.setItem('aiq_anthropic_key', key);
+  }
+  return key;
+}
+
+async function fetchNewIntelligence() {
+  const key = getAnthropicKey(); if (!key) return;
+  const query = document.getElementById('intelQuery')?.value;
+  if (!query) { document.getElementById('intelFetchStatus').innerHTML = '⚠️ Enter a search query first'; return; }
+  const status = document.getElementById('intelFetchStatus');
+  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Searching with AI + web search…';
+  try {
+    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, type: 'general', anthropic_key: key }) });
+    const result = await resp.json();
+    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
+    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> items, saved <strong>' + result.items_saved + '</strong> new entries';
+    if (result.items_saved > 0) { intelLoaded = false; loadIntelligence(); }
+  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+}
+window.fetchNewIntelligence = fetchNewIntelligence;
+
+async function fetchIndustryNews() {
+  const key = getAnthropicKey(); if (!key) return;
+  const status = document.getElementById('intelFetchStatus');
+  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Fetching latest industry news…';
+  try {
+    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'news', anthropic_key: key }) });
+    const result = await resp.json();
+    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
+    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> news articles, saved <strong>' + result.items_saved + '</strong> new';
+    if (result.items_saved > 0) { intelLoaded = false; loadIntelligence(); }
+  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+}
+window.fetchIndustryNews = fetchIndustryNews;
+
+async function fetchLatestRecalls() {
+  const key = getAnthropicKey(); if (!key) return;
+  const status = document.getElementById('intelFetchStatus');
+  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Scanning for new recalls…';
+  try {
+    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'recalls', anthropic_key: key }) });
+    const result = await resp.json();
+    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
+    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> recalls, saved <strong>' + result.items_saved + '</strong> new';
+    if (result.items_saved > 0) { recallsLoaded = false; loadRecalls(); }
+  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+}
+window.fetchLatestRecalls = fetchLatestRecalls;
 
 // ── INTELLIGENCE PAGE ──
 let intelLoaded = false;
