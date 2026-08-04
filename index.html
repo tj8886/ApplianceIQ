@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#0f1f3d"/>
+<title>ApplianceIQ CRM — AI-Powered Sales Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f1f3d;--navy-2:#16294e;--paper:#f6f8fb;--card:#fff;--ink:#0f1f3d;--steel:#5b6b85;--line:#e3e8f0;--verified:#1a9e56;--amber:#e8590c;--focus:#2f6fed;--danger:#c02d1e;--radius:10px}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5}
+button{font:inherit;cursor:pointer}input,select,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+#landing{display:block}#auth{display:none}#app{display:none}
+.lnav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:0 5%}
+.lnav-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.lnav-logo{font-family:Sora,sans-serif;font-weight:800;font-size:17px;color:var(--navy);display:flex;align-items:center;gap:9px}
+.lnav-pill{background:var(--navy);color:#fff;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.lnav-links{display:flex;align-items:center;gap:24px}
+.lnav-links a{color:var(--steel);font-size:13px;text-decoration:none;font-weight:500}
+.lbtn{background:var(--navy);color:#fff;font-family:Sora,sans-serif;font-weight:700;font-size:13px;padding:10px 24px;border-radius:999px;border:none;display:inline-block;text-decoration:none}
+.lbtn:hover{background:var(--navy-2)}
+.lbtn-o{border:1px solid var(--line);color:var(--navy);font-size:13px;padding:9px 22px;border-radius:999px;text-decoration:none;font-family:Sora,sans-serif;font-weight:600;display:inline-block;background:0 0}
+.lsection{padding:100px 5%}.lsection-inner{max-width:1200px;margin:0 auto}
+.leyebrow{display:inline-flex;align-items:center;gap:10px;margin-bottom:20px}
+.leyebrow-line{width:24px;height:1px;background:var(--navy)}
+.leyebrow-text{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--navy);font-weight:600}
+.lhero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 5% 80px}
+.lhero-inner{max-width:1200px;margin:0 auto;width:100%}
+.lhero h1{font-family:Sora,sans-serif;font-size:clamp(38px,5.5vw,72px);font-weight:800;letter-spacing:-2px;color:var(--navy);margin-bottom:24px;max-width:800px;line-height:1.05}
+.lhero h1 em{font-style:normal;color:var(--verified)}
+.lhero-sub{font-size:18px;color:var(--steel);max-width:560px;line-height:1.65;margin-bottom:40px}
+.lhero-ctas{display:flex;align-items:center;gap:16px;margin-bottom:72px;flex-wrap:wrap}
+.lhero-stats{display:flex;gap:48px;border-top:1px solid var(--line);padding-top:40px;flex-wrap:wrap}
+.lstat-num{font-family:Sora,sans-serif;font-size:36px;font-weight:800;color:var(--navy);letter-spacing:-1px}
+.lstat-lbl{font-size:12px;color:var(--steel);margin-top:2px}
+.ltitle{font-family:Sora,sans-serif;font-size:clamp(28px,3.5vw,42px);font-weight:700;letter-spacing:-.8px;color:var(--navy);margin-bottom:14px}
+.lsub{font-size:16px;color:var(--steel);max-width:520px;line-height:1.6;margin-bottom:40px}
+.lfeat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.lfeat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 24px}
+.lfeat-icon{font-size:28px;margin-bottom:12px}
+.lfeat h3{font-family:Sora,sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;color:var(--navy)}
+.lfeat p{font-size:14px;color:var(--steel);line-height:1.6}
+.lfooter{background:var(--navy);color:rgba(255,255,255,.7);text-align:center;padding:40px 5%;font-size:13px}
+.lfooter a{color:#fff;text-decoration:none;font-weight:600}
+@media(max-width:768px){.lnav-links a:not(.lbtn){display:none}.lhero-stats{gap:24px}}
+#auth{min-height:100%;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--navy),#132b57 60%,#0c1830)}
+.auth-card{background:var(--card);border-radius:14px;padding:36px 32px;width:min(400px,92vw);box-shadow:0 24px 60px rgba(5,12,28,.45)}
+.mark{display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
+.iq{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:9px;background:var(--navy);color:#fff;font-weight:800;font-size:15px}
+.wordmark{font-weight:800;font-size:19px;letter-spacing:-.02em}
+.wordmark small{display:block;font-weight:500;font-size:11px;color:var(--steel);letter-spacing:.06em;text-transform:uppercase}
+.tagline{color:var(--steel);margin:2px 0 22px;font-size:13px}
+.field{margin-bottom:12px}.field label{display:block;font-size:12px;font-weight:600;color:var(--steel);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fbfcfe}
+.btn{border:0;border-radius:8px;padding:10px 16px;font-weight:600}
+.btn-primary{background:var(--navy);color:#fff}.btn-primary:hover{background:var(--navy-2)}
+.btn-ghost{background:0 0;color:var(--navy);border:1px solid var(--line)}
+.btn-danger{background:0 0;color:var(--danger);border:1px solid #f0c9c4}
+.btn-block{width:100%}.btn-sm{padding:6px 12px;font-size:12px}
+.auth-alt{margin-top:14px;text-align:center;font-size:13px;color:var(--steel)}
+.auth-alt a{color:var(--navy);font-weight:600;cursor:pointer;text-decoration:underline}
+.notice{margin-top:12px;font-size:13px;border-radius:8px;padding:10px 12px;display:none}
+.notice.err{display:block;background:#fdecea;color:#8c2f22}
+.notice.ok{display:block;background:#e8f6ee;color:#14663a}
+#app{display:none;min-height:100vh}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+aside{background:var(--navy);color:#cdd8ec;padding:18px 14px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+aside .mark{margin-bottom:16px}aside .iq{background:#fff;color:var(--navy)}
+aside .wordmark{color:#fff}aside .wordmark small{color:#8fa3c8}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:0 0;border:0;color:#cdd8ec;padding:8px 12px;border-radius:8px;font-weight:500;font-size:13px}
+.nav-btn:hover{background:rgba(255,255,255,.07)}
+.nav-btn.active{background:rgba(255,255,255,.13);color:#fff;font-weight:600}
+.nav-sep{height:1px;background:rgba(255,255,255,.1);margin:8px 4px}
+.spacer{flex:1}
+.org-pick select{width:100%;background:var(--navy-2);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;font-size:12px;margin-bottom:10px}
+.signout{background:0 0;border:1px solid rgba(255,255,255,.2);color:#cdd8ec;border-radius:8px;padding:8px 12px;font-size:12px}
+.perf-banner{background:var(--card);border-bottom:1px solid var(--line);padding:10px 26px;display:flex;align-items:center;gap:20px;overflow-x:auto;flex-shrink:0}
+.perf-metric{display:flex;flex-direction:column;min-width:80px}
+.pm-val{font-size:16px;font-weight:800;color:var(--navy)}.pm-lbl{font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.main-content{padding:22px 26px;flex:1;overflow-y:auto}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
+.sub{color:var(--steel);font-size:13px}
+.head-actions{display:flex;gap:8px;flex-wrap:wrap}
+.view-toggle{display:inline-flex;background:#eef1f7;border-radius:8px;padding:2px;gap:2px;margin-bottom:12px}
+.view-toggle button{padding:5px 14px;border:none;background:0 0;border-radius:6px;font-size:12px;font-weight:600;color:var(--steel);cursor:pointer}
+.view-toggle button.active{background:#fff;color:var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:260px;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:start}
+.col{background:#eef2f8;border-radius:var(--radius);padding:10px;min-height:80px}
+.col h3{margin:2px 4px 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);display:flex;justify-content:space-between;align-items:center}
+.col h3 .cv{font-weight:700;color:var(--navy)}
+.col.drag-over{background:#dce3f0;outline:2px dashed var(--focus)}
+.deal{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;cursor:grab;width:100%;text-align:left;transition:box-shadow .15s}
+.deal:hover{border-color:var(--navy);box-shadow:0 2px 8px rgba(15,31,61,.08)}
+.deal.dragging{opacity:.5}.deal .t{font-weight:600;font-size:13px;margin-bottom:3px}
+.deal .v{color:var(--verified);font-weight:700;font-size:13px}
+.deal .m{color:var(--steel);font-size:11px;margin-top:2px}
+.deal .dm{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.dtag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;text-transform:uppercase}
+.dtag.bg{background:#e3e9f7;color:var(--navy)}.dtag.biz{background:#f0e6ff;color:#6b21a8}
+.dtag.hot{background:#fdecea;color:var(--danger)}.dtag.warn{background:#fff8e6;color:#b8860b}
+.dtag.exp{background:#fef3cd;color:#856404}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+th{background:#f0f3f9;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);padding:9px 12px}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top;font-size:13px}
+tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
+.chip{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px}
+.chip.g{background:#e8f6ee;color:#14663a}.chip.a{background:#fdeee3;color:#9a3d09}
+.chip.n{background:#e9eef7;color:#33518a}.chip.r{background:#fdecea;color:#8c2f22}
+.overlay{position:fixed;inset:0;background:rgba(9,17,35,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:0}
+@media(min-width:640px){.overlay{align-items:center;padding:20px}}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:20px;max-height:88vh;overflow-y:auto}
+@media(min-width:640px){.sheet{border-radius:14px}}
+.sheet h2{margin:0 0 14px;font-size:16px;font-weight:800}
+.sheet-actions{display:flex;gap:8px;margin-top:16px}.sheet-actions .btn{flex:1}
+.form-err{color:var(--danger);font-size:12px;margin-top:8px;display:none}.form-err.show{display:block}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.field-row{grid-template-columns:1fr}}
+.field-group{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px}
+.field-group legend{font-size:11px;font-weight:700;color:var(--steel);text-transform:uppercase;letter-spacing:.04em;padding:0 6px}
+.participant{display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--line);border-radius:6px;margin-bottom:4px;font-size:12px}
+.participant .pn{font-weight:600;flex:1}.participant .pr{color:var(--steel)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+.stat-card .val{font-size:26px;font-weight:800;margin-top:4px}
+.stat-card .lbl{font-size:12px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
+.dash-panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.dash-panel h3{margin:0 0 6px;font-size:15px}
+.trend-bars{display:flex;align-items:flex-end;gap:6px;height:90px;padding:12px 0}
+.trend-bars .tb{flex:1;background:var(--navy);border-radius:4px 4px 0 0;min-height:4px;position:relative;opacity:.85}
+.trend-bars .tb span{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--steel)}
+.step-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.step-row .sn{width:150px;font-size:13px}.step-row .sbar{flex:1;height:10px;background:#eef1f7;border-radius:5px;overflow:hidden}
+.step-row .sbar i{display:block;height:100%;background:var(--navy);border-radius:5px}
+.step-row .sv{width:36px;text-align:right;font-size:13px;font-weight:700}
+.d5-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start}
+.d5-item.done{opacity:.6}
+.d5-num{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+.d5-item.done .d5-num{background:var(--verified)}
+.d5-body{flex:1;min-width:0}
+.d5-body .d5c{font-weight:700;font-size:14px}
+.d5-body .d5r{color:var(--steel);font-size:12px;margin-top:2px}
+.d5-body .d5a{font-size:13px;margin-top:4px}
+.d5-actions{display:flex;gap:6px;flex-shrink:0}
+.assistant-wrap{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:start}
+.assist-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;text-align:left;margin-bottom:6px}
+.assist-card.active{border-color:var(--navy);box-shadow:0 0 0 1px var(--navy)}
+.assist-card .t{font-weight:700;font-size:13px}.assist-card .d{color:var(--steel);font-size:12px;margin-top:3px}
+.chat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-height:440px}
+.msgs{flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:85%;border-radius:10px;padding:10px 13px;white-space:pre-wrap;font-size:13px}
+.msg.user{align-self:flex-end;background:var(--navy);color:#fff}
+.msg.ai{align-self:flex-start;background:#f0f3f9}
+.composer{display:flex;gap:8px;border-top:1px solid var(--line);padding:12px}
+.composer textarea{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;resize:none;height:44px}
+.empty{color:var(--steel);padding:30px;text-align:center}
+.coach-wrap{display:grid;grid-template-columns:180px 1fr;gap:16px;height:calc(100vh - 160px)}
+.persona-card{border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;background:#fff;text-align:left;margin-bottom:6px}
+.persona-card:hover{border-color:var(--navy)}.persona-card.active{border-color:var(--navy);background:#f0f4ff}
+.persona-card .pe{font-size:20px}.persona-card .pn{font-weight:700;font-size:13px}.persona-card .prr{font-size:11px;color:var(--steel)}
+.coach-msgs{flex:1;overflow-y:auto;padding:8px 0}
+.coach-msg{margin:8px 0;padding:10px 14px;border-radius:12px;max-width:85%;font-size:14px;line-height:1.5}
+.coach-msg.user{background:var(--navy);color:#fff;margin-left:auto}.coach-msg.ai{background:#f4f6fb}
+.coach-msg .pb{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.coach-composer{display:flex;gap:8px;border-top:1px solid var(--line);padding:12px 0}
+.coach-composer textarea{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 11px;resize:none;height:44px}
+.member-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.member-row:last-child{border-bottom:none}
+.member-role{font-size:12px;color:var(--steel);background:#f4f6fb;padding:2px 8px;border-radius:6px}
+.invite-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.invite-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+.invite-card .ie{font-weight:600}.invite-card .ir{font-size:12px;color:var(--steel)}
+.is{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;margin-top:6px}
+.is.pending{background:#fff8e6;color:#b8860b}.is.accepted{background:#e8f5e9;color:#2e7d32}
+.rec-ind{font-size:14px;cursor:pointer;padding:2px 4px;border-radius:4px;flex-shrink:0;transition:transform .1s}.rec-ind:hover{transform:scale(1.3)}.rec-ind.none{opacity:.6}
+.rec-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);margin-right:8px;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.rec-timer{font-size:30px;font-weight:800;text-align:center;margin:16px 0;font-variant-numeric:tabular-nums}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--navy);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.consent-row{display:flex;gap:10px;align-items:flex-start;background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:12px;margin:10px 0;font-size:13px}
+.consent-row input{margin-top:2px}
+
+/* === TEMPERATURE BADGES === */
+.temp-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.temp-badge.hot{background:#fdecea;color:#c02d1e}.temp-badge.warm{background:#fff4e5;color:#b8860b}.temp-badge.cold{background:#e3edf7;color:#3b6fa0}
+.temp-badge.hot::before{content:'';width:6px;height:6px;border-radius:50%;background:#c02d1e}
+.temp-badge.warm::before{content:'';width:6px;height:6px;border-radius:50%;background:#e8a317}
+.temp-badge.cold::before{content:'';width:6px;height:6px;border-radius:50%;background:#3b6fa0}
+.temp-select{border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px;font-weight:600;cursor:pointer;background:#fff}
+.iq-badge{background:linear-gradient(135deg,#2f6fed,#1a9e56);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;letter-spacing:.05em}
+
+/* === SLA / FOLLOWUP STATUS === */
+.sla-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
+.sla-badge.on_track{background:#e8f6ee;color:#14663a}.sla-badge.due_soon{background:#fff4e5;color:#b8860b}
+.sla-badge.overdue{background:#fdecea;color:#c02d1e}.sla-badge.critical{background:#c02d1e;color:#fff}
+.sla-badge.completed{background:#e3e9f7;color:var(--navy)}
+.days-badge{font-size:11px;color:var(--steel);font-weight:600}
+.days-badge.warn{color:#b8860b}.days-badge.danger{color:var(--danger)}
+
+/* === TIMELINE === */
+.timeline{position:relative;padding:0 0 0 28px}
+.timeline::before{content:'';position:absolute;left:11px;top:0;bottom:0;width:2px;background:var(--line)}
+.tl-item{position:relative;margin-bottom:16px}
+.tl-dot{position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;border:2px solid var(--line);background:#fff;z-index:1}
+.tl-item.phone .tl-dot{background:#2f6fed;border-color:#2f6fed}
+.tl-item.email .tl-dot{background:#1a9e56;border-color:#1a9e56}
+.tl-item.note .tl-dot{background:#e8a317;border-color:#e8a317}
+.tl-item.meeting .tl-dot{background:#8b5cf6;border-color:#8b5cf6}
+.tl-item.quote .tl-dot{background:var(--amber);border-color:var(--amber)}
+.tl-item.deal .tl-dot{background:var(--navy);border-color:var(--navy)}
+.tl-item.task .tl-dot{background:var(--steel);border-color:var(--steel)}
+.tl-item.delivery .tl-dot{background:#1a9e56;border-color:#1a9e56}
+.tl-item.ai .tl-dot{background:#c026d3;border-color:#c026d3}
+.tl-item.sms .tl-dot{background:#06b6d4;border-color:#06b6d4}
+.tl-card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+.tl-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.tl-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--steel)}
+.tl-time{font-size:11px;color:var(--steel);margin-left:auto}
+.tl-title{font-weight:600;font-size:13px}.tl-body{font-size:13px;color:var(--steel);margin-top:2px}
+.tl-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tl-filter{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--steel)}
+.tl-filter.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* === COMMAND CENTRE === */
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px}
+.cc-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.cc-card .cc-val{font-size:28px;font-weight:800;letter-spacing:-1px;margin-top:6px}
+.cc-card .cc-lbl{font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
+.cc-card .cc-sub{font-size:12px;color:var(--steel);margin-top:2px}
+.cc-card.highlight{border-left:3px solid var(--verified)}
+.cc-card.warn{border-left:3px solid #e8a317}
+.cc-card.danger{border-left:3px solid var(--danger)}
+.cc-section{margin-bottom:24px}
+.cc-section h3{font-size:15px;font-weight:700;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+
+/* === MANAGER DASHBOARD === */
+.mgr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.sp-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;transition:border-color .15s}
+.sp-card:hover{border-color:var(--navy)}
+.sp-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sp-avatar{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.sp-name{font-weight:700;font-size:14px}.sp-role{font-size:11px;color:var(--steel)}
+.sp-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sp-metric{text-align:center}.sp-metric .mv{font-weight:800;font-size:15px}.sp-metric .ml{font-size:10px;color:var(--steel);text-transform:uppercase}
+.sp-flags{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+.sp-flag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
+.sp-flag.alert{background:#fdecea;color:var(--danger)}.sp-flag.good{background:#e8f6ee;color:#14663a}
+.sp-flag.info{background:#e3e9f7;color:var(--navy)}
+
+/* === COACHING QUEUE === */
+.cq-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start}
+.cq-priority{width:4px;border-radius:4px;min-height:40px;flex-shrink:0}
+.cq-priority.p1{background:var(--danger)}.cq-priority.p2{background:#e8a317}.cq-priority.p3{background:var(--focus)}
+.cq-body{flex:1;min-width:0}
+.cq-body .cq-name{font-weight:700;font-size:14px}.cq-body .cq-issue{font-size:13px;margin-top:2px}
+.cq-body .cq-action{font-size:12px;color:var(--focus);font-weight:600;margin-top:4px}
+.cq-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* === DELIVERY WORKFLOW === */
+.dw-steps{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.dw-step{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;background:#f0f3f9;color:var(--steel)}
+.dw-step.done{background:#e8f6ee;color:#14663a}.dw-step.active{background:var(--navy);color:#fff}
+.dw-step.pending{background:#f0f3f9;color:var(--steel)}
+
+/* === AI TASK CENTRE === */
+.tc-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.tc-tab{font-size:12px;font-weight:600;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;cursor:pointer;color:var(--steel)}
+.tc-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.tc-tab .tc-count{background:rgba(255,255,255,.2);padding:1px 6px;border-radius:99px;margin-left:4px;font-size:10px}
+.tc-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start}
+.tc-item.overdue{border-left:3px solid var(--danger)}.tc-item.today{border-left:3px solid var(--focus)}
+.tc-item.ai{border-left:3px solid #c026d3}
+.tc-body{flex:1;min-width:0}
+.tc-body .tc-title{font-weight:600;font-size:13px}.tc-body .tc-meta{font-size:12px;color:var(--steel);margin-top:2px}
+.tc-body .tc-reason{font-size:11px;color:#c026d3;font-weight:600;margin-top:3px}
+.tc-check{width:20px;height:20px;border:2px solid var(--line);border-radius:50%;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.tc-check:hover{border-color:var(--verified)}.tc-check.done{background:var(--verified);border-color:var(--verified);color:#fff}
+
+/* === NOTIFICATIONS === */
+.notif-panel{position:fixed;top:0;right:0;width:min(380px,100vw);height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.12);z-index:200;display:none;flex-direction:column}
+.notif-panel.open{display:flex}
+.notif-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.notif-head h3{margin:0;font-size:16px}
+.notif-list{flex:1;overflow-y:auto;padding:8px}
+.notif-item{padding:12px 14px;border-radius:8px;margin-bottom:4px;cursor:pointer;display:flex;gap:10px}
+.notif-item:hover{background:#f7f9fd}
+.notif-item.unread{background:#f0f4ff}
+.notif-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.notif-icon.urgent{background:#fdecea}.notif-icon.warning{background:#fff4e5}.notif-icon.info{background:#e3e9f7}
+.notif-body .nb-title{font-weight:600;font-size:13px}.notif-body .nb-text{font-size:12px;color:var(--steel);margin-top:1px}
+.notif-body .nb-time{font-size:11px;color:var(--steel);margin-top:3px}
+.notif-bell{position:relative;background:none;border:none;font-size:18px;padding:4px 8px}
+.notif-bell .notif-dot{position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--danger)}
+
+/* === REPORTING === */
+.rpt-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.rpt-filters select{padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:12px;font-weight:600}
+.rpt-table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13px}
+.rpt-table th{background:#f0f3f9;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--steel);padding:10px 12px}
+.rpt-table td{padding:10px 12px;border-top:1px solid var(--line)}
+.rpt-table tr:hover td{background:#f7f9fd}
+.bar-cell{display:flex;align-items:center;gap:8px}.bar-fill{height:8px;border-radius:4px;background:var(--navy)}
+
+/* === CONTACT DETAIL PANEL === */
+.contact-detail{display:grid;grid-template-columns:320px 1fr;gap:20px;min-height:calc(100vh - 160px)}
+@media(max-width:900px){.contact-detail{grid-template-columns:1fr}}
+.cd-sidebar{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;align-self:start}
+.cd-sidebar h2{margin:0 0 4px;font-size:18px}.cd-sidebar .cd-company{font-size:13px;color:var(--steel)}
+.cd-fields{margin-top:16px}.cd-field{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+.cd-field:last-child{border-bottom:none}
+.cd-field .cd-label{color:var(--steel);font-size:12px}.cd-field .cd-value{font-weight:600;text-align:right}
+.cd-actions-bar{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+
+/* === MOBILE === */
+@media(max-width:768px){
+  .shell{grid-template-columns:1fr}
+  aside{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:300;transform:translateX(-100%);transition:transform .2s}
+  aside.open{transform:translateX(0)}
+  .mobile-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--navy);color:#fff}
+  .mobile-header .menu-btn{background:none;border:none;color:#fff;font-size:20px;padding:4px}
+  .mobile-header .mh-title{font-family:Sora,sans-serif;font-weight:800;font-size:15px}
+  .mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:299;display:none}
+  .mobile-overlay.show{display:block}
+  .contact-detail{grid-template-columns:1fr}
+  .cc-grid{grid-template-columns:repeat(2,1fr)}
+  .mgr-grid{grid-template-columns:1fr}
+  .board{grid-auto-columns:min(85vw,260px)}
+  .perf-banner{display:none}
+  .sp-metrics{grid-template-columns:repeat(2,1fr)}
+}
+@media(min-width:769px){.mobile-header,.mobile-overlay{display:none}}
+.stage-row{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.stage-row input{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.icon-btn{border:1px solid var(--line);background:#fff;border-radius:8px;width:34px;height:34px;font-weight:700}
+.icon-btn:disabled{opacity:.35;cursor:default}
+@media(max-width:860px){.shell{grid-template-columns:1fr}aside{flex-direction:row;align-items:center;overflow-x:auto;position:sticky;top:0;z-index:5;padding:8px}aside .mark{margin:0 8px 0 0}.spacer,.nav-sep{display:none}.assistant-wrap,.coach-wrap{grid-template-columns:1fr}.perf-banner{padding:8px 12px;gap:12px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="landing">
+<nav class="lnav"><div class="lnav-inner">
+<div class="lnav-logo"><span class="lnav-pill">IQ</span>ApplianceIQ <b style="color:var(--verified)">CRM</b></div>
+<div class="lnav-links"><a href="#features">Features</a><a href="#" onclick="event.preventDefault();showLogin()" class="lbtn-o">Log In</a><button class="lbtn" onclick="showSignup()">Start Free Trial →</button></div>
+</div></nav>
+<section class="lhero"><div class="lhero-inner">
+<div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">ApplianceIQ CRM</span></div>
+<h1>Every Customer.<br>Every <em>Buying Group</em>.<br>One Pipeline.</h1>
+<p class="lhero-sub">Manage individuals, couples, families, contractors, designers, and business accounts. Drag-and-drop pipeline, AI coaching, Daily Five priorities, post-sale reviews — from first greeting through lifetime ownership.</p>
+<div class="lhero-ctas"><button class="lbtn" onclick="showSignup()" style="padding:14px 32px;font-size:15px">Start 14-Day Free Trial →</button></div>
+<div class="lhero-stats">
+<div><div class="lstat-num">3</div><div class="lstat-lbl">Record Types</div></div>
+<div><div class="lstat-num">∞</div><div class="lstat-lbl">Group Members</div></div>
+<div><div class="lstat-num">6</div><div class="lstat-lbl">AI Coaches</div></div>
+<div><div class="lstat-num">Daily 5</div><div class="lstat-lbl">AI Priorities</div></div>
+</div></div></section>
+<section class="lsection" id="features" style="background:#fff"><div class="lsection-inner">
+<div class="leyebrow"><span class="leyebrow-line"></span><span class="leyebrow-text">Features</span></div>
+<h2 class="ltitle">Built for how appliance sales actually work.</h2>
+<p class="lsub">Couples shop together. Builders send purchasing managers. Your CRM should handle that.</p>
+<div class="lfeat-grid">
+<div class="lfeat"><div class="lfeat-icon">👥</div><h3>Buying Groups</h3><p>Add spouses, contractors, designers, and builders to any deal. Track roles, contact methods, and decision authority.</p></div>
+<div class="lfeat"><div class="lfeat-icon">🏢</div><h3>Business Accounts</h3><p>Company-level records with contacts, locations, projects, and purchase history.</p></div>
+<div class="lfeat"><div class="lfeat-icon">📋</div><h3>Drag-and-Drop Pipeline</h3><p>Move cards between stages. Requirements ensure data is captured. Click to move on mobile.</p></div>
+<div class="lfeat"><div class="lfeat-icon">🎯</div><h3>Daily Five</h3><p>AI identifies your five highest-priority actions each morning.</p></div>
+<div class="lfeat"><div class="lfeat-icon">🎙</div><h3>Post-Sale Reviews</h3><p>After every win or loss, reflect on what worked. AI turns it into coaching insights.</p></div>
+<div class="lfeat"><div class="lfeat-icon">📊</div><h3>Performance Banner</h3><p>Revenue, margin, warranty rate, goal progress — always visible, never overwhelming.</p></div>
+</div></div></section>
+<footer class="lfooter"><p>© 2026 ApplianceIQ · <a href="#" onclick="event.preventDefault();showLogin()">Log In</a></p></footer>
+</div>
+
+<div id="auth"><div class="auth-card">
+<div class="mark"><span class="iq">IQ</span><span class="wordmark">CRMAI&nbsp;IQ<small>Appliance IQ · CRM</small></span></div>
+<p class="tagline">The pipeline is real. We checked.</p>
+<div class="field"><label for="email">Email</label><input id="email" type="email" value="demo@applianceiq.com"></div>
+<div class="field"><label for="password">Password</label><input id="password" type="password" value="DemoIQ2026!"></div>
+<button class="btn btn-primary btn-block" id="signinBtn">Sign in</button>
+<div class="auth-alt">New here? <a id="signupLink">Create an account</a></div>
+<div class="notice" id="authNotice"></div>
+</div></div>
+
+<div id="app"><div class="shell">
+<aside>
+<div class="mark"><span class="iq">IQ</span><span class="wordmark">CRMAI&nbsp;IQ<small>Appliance IQ</small></span></div>
+<select id="orgSelect" aria-label="Organization" style="width:100%;background:var(--navy-2);color:#fff;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px;font-size:12px;margin-bottom:10px"></select>
+<button class="nav-btn active" data-view="pipeline">📋 Pipeline</button>
+<button class="nav-btn" data-view="task_centre">🎯 Task Centre</button>
+<button class="nav-btn" data-view="command_centre">📊 Command Centre</button>
+<div class="nav-sep"></div>
+<button class="nav-btn" data-view="contacts">👤 Contacts</button>
+<button class="nav-btn" data-view="buying_groups">👥 Buying Groups</button>
+<button class="nav-btn" data-view="companies">🏢 Business Accounts</button>
+<div class="nav-sep"></div>
+<button class="nav-btn" data-view="tasks">✓ Tasks</button>
+<button class="nav-btn" data-view="deliveries">🚚 Deliveries</button>
+<button class="nav-btn" data-view="recordings">🎙 Recordings</button>
+<div class="nav-sep"></div>
+<button class="nav-btn" data-view="manager">👔 Manager</button>
+<button class="nav-btn" data-view="coaching">🏅 Coaching</button>
+<button class="nav-btn" data-view="reporting">📈 Reporting</button>
+<div class="nav-sep"></div>
+<button class="nav-btn" data-view="assistant">🤖 AI Assistant</button>
+<button class="nav-btn" data-view="team_coach">🏆 Ask the Team</button>
+<button class="nav-btn" data-view="team">👥 Team</button>
+<div class="spacer"></div>
+<button class="signout" id="signoutBtn">Sign out</button>
+</aside>
+<main>
+<div class="mobile-header"><button class="menu-btn" id="mobileMenuBtn">☰</button><span class="mh-title">ApplianceIQ CRM</span><div class="spacer"></div><button class="notif-bell" id="notifBellTop" title="Notifications">🔔<span class="notif-dot" id="notifDotTop" style="display:none"></span></button></div>
+<div class="perf-banner" id="perfBanner"></div><div class="main-content" id="main"></div></main>
+<div class="mobile-overlay" id="mobileOverlay"></div>
+<div class="notif-panel" id="notifPanel">
+<div class="notif-head"><h3>Notifications</h3><button class="btn btn-ghost btn-sm" id="notifClose">✕</button></div>
+<div class="notif-list" id="notifList"></div>
+</div>
+</div></div>
+<div id="modalRoot"></div>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SUPABASE_URL='https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const landingEl=$('#landing'),authEl=$('#auth'),appEl=$('#app'),mainEl=$('#main'),modalRoot=$('#modalRoot'),perfEl=$('#perfBanner');
+const money=n=>n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ago=d=>{if(!d)return'—';const days=Math.floor((Date.now()-new Date(d).getTime())/864e5);return days===0?'Today':days===1?'Yesterday':days+'d ago';};
+const BUYING_ROLES=['Primary buyer','Co-buyer','Decision-maker','Influencer','Product user','Designer','Contractor','Builder','Installer','Property manager','Financial approver','Admin contact','Delivery contact','Other'];
+const RECORD_TYPES={individual:'👤 Individual',household:'👥 Household / Buying Group',business:'🏢 Business Account'};
+
+function showLogin(){landingEl.style.display='none';authEl.style.display='flex';appEl.style.display='none';$('#email')?.focus();}
+function showSignup(){showLogin();setTimeout(()=>note('Enter email and password, then tap Create an account.',true),100);}
+function showLanding(){landingEl.style.display='block';authEl.style.display='none';appEl.style.display='none';}
+function showApp(){landingEl.style.display='none';authEl.style.display='none';appEl.style.display='block';}
+window.showLogin=showLogin;window.showSignup=showSignup;
+
+let orgs=[],currentOrg=null,currentUser=null,currentView='pipeline',pipeView='active';
+let chatLog=[],coachLog=[],coachPersona=null,assistants=[],currentAssistant=null;
+let cache={stages:[],deals:[],contacts:[],companies:[],buyingGroups:[],participants:[]};
+
+function note(msg,ok=false){const n=$('#authNotice');n.textContent=msg;n.className='notice '+(ok?'ok':'err');}
+$('#signinBtn').onclick=async()=>{const{error}=await sb.auth.signInWithPassword({email:$('#email').value.trim(),password:$('#password').value});if(error)return note(error.message);boot();};
+$('#signupLink').onclick=async()=>{const email=$('#email').value.trim(),pw=$('#password').value;if(!email||!pw)return note('Enter email and password.');const{error}=await sb.auth.signUp({email,password:pw});if(error)return note(error.message);note('Signing you in…',true);const{error:e2}=await sb.auth.signInWithPassword({email,password:pw});if(e2)return note('Check email to confirm.',true);boot();};
+$('#signoutBtn').onclick=async()=>{await sb.auth.signOut();showLanding();};
+
+async function boot(){
+  const{data:{session}}=await sb.auth.getSession();if(!session){showLanding();return;}
+  currentUser=session.user;showApp();
+  const{data:memberships}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('status','active');
+  orgs=(memberships??[]).map(m=>m.organizations).filter(Boolean);
+  if(!orgs.length){await sb.rpc('join_demo_org');const{data:m2}=await sb.from('organization_members').select('organizations(id,name,slug)').eq('status','active');orgs=(m2??[]).map(m=>m.organizations).filter(Boolean);}
+  if(!orgs.length){mainEl.innerHTML='<div class="empty">Not in an organization yet.</div>';return;}
+  currentOrg=orgs[0];const sel=$('#orgSelect');
+  sel.innerHTML=orgs.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join('');
+  sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);chatLog=[];render();};
+  $$('.nav-btn').forEach(b=>{b.onclick=()=>{$$('.nav-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentView=b.dataset.view;render();};});
+  const ic=new URLSearchParams(location.search).get('invite');if(ic)await acceptInvite(ic);
+  render();
+}
+
+function openModal(html){modalRoot.innerHTML=`<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`;$('#ovl').addEventListener('click',e=>{if(e.target.id==='ovl')closeModal();});}
+function closeModal(){modalRoot.innerHTML='';}
+function formErr(msg){const el=$('#formErr');if(el){el.textContent=msg;el.classList.add('show');}}
+
+async function loadCore(){
+  const[st,dl,ct,co,bg]=await Promise.all([
+    sb.from('pipeline_stages').select('*').eq('organization_id',currentOrg.id).order('sort_order'),
+    sb.from('crm_deals').select('*,contacts(id,first_name,last_name),crm_buying_groups(id,name),companies(id,name)').eq('organization_id',currentOrg.id).order('created_at'),
+    sb.from('contacts').select('*,companies(id,name)').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}),
+    sb.from('companies').select('*').eq('organization_id',currentOrg.id).order('name'),
+    sb.from('crm_buying_groups').select('*,crm_buying_group_members(id,contact_id,buying_role,is_primary,contacts(id,first_name,last_name,email,phone))').eq('organization_id',currentOrg.id).order('created_at',{ascending:false})
+  ]);
+  cache={stages:st.data??[],deals:dl.data??[],contacts:ct.data??[],companies:co.data??[],buyingGroups:bg.data??[],participants:[],recordings:[]};
+  if(cache.deals.length){const ids=cache.deals.map(d=>d.id);const[{data:p},{data:recs}]=await Promise.all([sb.from('crm_deal_participants').select('*,contacts(id,first_name,last_name)').in('deal_id',ids),sb.from('sales_recordings').select('id,deal_id').eq('organization_id',currentOrg.id).not('deal_id','is',null)]);cache.participants=p??[];cache.recordings=recs??[];}
+}
+
+async function render(){
+  mainEl.innerHTML='<div class="empty">Loading…</div>';
+  if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
+  renderBanner();
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderDashboard,assistant:renderAssistant,team_coach:renderTeamCoach,team:renderTeam};
+  (views[currentView]||renderPipeline)();
+}
+
+function renderBanner(){
+  const active=cache.deals.filter(d=>!d.is_archived&&!d.closed_at);
+  const wonMTD=cache.deals.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('won')&&new Date(d.closed_at).getMonth()===new Date().getMonth());
+  const rev=wonMTD.reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const margin=wonMTD.reduce((s,d)=>s+Number(d.margin_amount||0),0);
+  const pipe=active.reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const hotDeals=active.filter(d=>d.temperature==='hot').length;
+  const overdueContacts=cache.contacts.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical').length;
+  perfEl.innerHTML=`<div class="perf-metric"><div class="pm-val num">${money(rev)}</div><div class="pm-lbl">MTD Revenue</div></div>
+    <div class="perf-metric"><div class="pm-val num">${rev?Math.round(margin/rev*100)+'%':'—'}</div><div class="pm-lbl">Margin</div></div>
+    <div class="perf-metric"><div class="pm-val num">${money(pipe)}</div><div class="pm-lbl">Pipeline</div></div>
+    <div class="perf-metric"><div class="pm-val num">${active.length}</div><div class="pm-lbl">Active Deals</div></div>
+    <div class="perf-metric"><div class="pm-val num">${wonMTD.length}</div><div class="pm-lbl">Closed Won</div></div>
+    ${hotDeals?`<div class="perf-metric"><div class="pm-val num" style="color:var(--danger)">${hotDeals}</div><div class="pm-lbl">🔥 Hot Deals</div></div>`:''}
+    ${overdueContacts?`<div class="perf-metric"><div class="pm-val num" style="color:var(--danger)">${overdueContacts}</div><div class="pm-lbl">⚠️ Overdue</div></div>`:''}`;
+}
+
+// ===== PIPELINE =====
+function renderPipeline(){
+  const filtered=cache.deals.filter(d=>pipeView==='active'?!d.is_archived:pipeView==='archived'?d.is_archived:true);
+  const total=filtered.filter(d=>!d.closed_at).reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const cols=cache.stages.map(st=>{
+    const items=filtered.filter(d=>d.stage===st.name);
+    const cv=items.reduce((s,d)=>s+Number(d.value_amount||0),0);
+    return`<div class="col" data-stage="${esc(st.name)}"><h3><span>${esc(st.name)}</span><span class="cv num">${items.length?money(cv):''}</span></h3>
+    ${items.map(d=>{
+      const cn=d.contacts?d.contacts.first_name+' '+(d.contacts.last_name??''):'';
+      const parts=cache.participants.filter(p=>p.deal_id===d.id);
+      const daysSince=d.last_contact_at?Math.floor((Date.now()-new Date(d.last_contact_at).getTime())/864e5):null;
+      const expiring=d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5);
+      const hasRec=cache.recordings.some(r=>r.deal_id===d.id);
+      const temp=d.temperature||'warm';
+      const contact=d.contacts||null;
+      const isIQ=contact?.is_iq_lead||d.source==='iq_lead';
+      let tags='';
+      tags+=`<span class="temp-badge ${temp}">${temp}</span>`;
+      if(isIQ)tags+='<span class="iq-badge">IQ Lead</span>';
+      if(d.record_type==='household')tags+='<span class="dtag bg">👥 Group</span>';
+      if(d.record_type==='business')tags+='<span class="dtag biz">🏢 Biz</span>';
+      if(expiring)tags+='<span class="dtag exp">Quote exp</span>';
+      if(daysSince&&daysSince>7)tags+=`<span class="dtag warn">${daysSince}d idle</span>`;
+      return`<button class="deal" draggable="true" data-deal="${d.id}"><div class="t" style="display:flex;align-items:center;justify-content:space-between">${esc(d.title)}<span class="rec-ind ${hasRec?'has':'none'}" data-rec="${d.id}" title="${hasRec?'Has recording':'No recording — tap to record'}">${hasRec?'🎙':'❌'}</span></div>
+        <div class="v num">${money(d.value_amount)}${d.margin_pct?` <span style="font-size:11px;color:var(--steel)">${d.margin_pct}%</span>`:''}</div>
+        <div class="m">${esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')}${parts.length>1?' +'+(parts.length-1):''}${d.next_action?' · '+esc(d.next_action):''}</div>
+        ${tags?`<div class="dm">${tags}</div>`:''}</button>`;
+    }).join('')||'<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>'}</div>`;
+  }).join('');
+  mainEl.innerHTML=`<div class="page-head"><div><h1>Pipeline</h1><div class="sub">${esc(currentOrg.name)} · <b class="num">${money(total)}</b> open</div></div>
+    <div class="head-actions"><button class="btn btn-ghost btn-sm" id="editStagesBtn">Edit stages</button><button class="btn btn-primary" id="newDealBtn">+ New opportunity</button></div></div>
+    <div class="view-toggle" id="vt"><button class="${pipeView==='active'?'active':''}" data-pv="active">Active</button><button class="${pipeView==='archived'?'active':''}" data-pv="archived">Archived</button><button class="${pipeView==='all'?'active':''}" data-pv="all">All</button></div>
+    <div class="board" id="pipeBoard">${cols}</div>`;
+  $$('#vt button').forEach(b=>{b.onclick=()=>{pipeView=b.dataset.pv;renderPipeline();};});
+  $('#newDealBtn').onclick=()=>openDealModal(null);
+  $('#editStagesBtn').onclick=openStagesEditor;
+  $$('[data-deal]').forEach(b=>{b.onclick=e=>{if(e.target.closest('[data-rec]'))return;openDealModal(cache.deals.find(d=>d.id===b.dataset.deal));};});
+  $$('[data-rec]').forEach(b=>{b.onclick=e=>{e.stopPropagation();openRecorderModal(b.dataset.rec);};});
+  // Drag & drop
+  $$('.deal[draggable]').forEach(c=>{
+    c.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',c.dataset.deal);c.classList.add('dragging');});
+    c.addEventListener('dragend',()=>c.classList.remove('dragging'));
+  });
+  $$('.col[data-stage]').forEach(col=>{
+    col.addEventListener('dragover',e=>{e.preventDefault();col.classList.add('drag-over');});
+    col.addEventListener('dragleave',()=>col.classList.remove('drag-over'));
+    col.addEventListener('drop',async e=>{
+      e.preventDefault();col.classList.remove('drag-over');
+      const dealId=e.dataTransfer.getData('text/plain'),newStage=col.dataset.stage;
+      const deal=cache.deals.find(d=>d.id===dealId);if(!deal||deal.stage===newStage)return;
+      if(newStage.toLowerCase().includes('won')){openCloseWonModal(deal,newStage);return;}
+      if(newStage.toLowerCase().includes('lost')){openCloseLostModal(deal,newStage);return;}
+      await moveStage(deal,newStage);
+    });
+  });
+}
+
+async function moveStage(deal,newStage){
+  const now=new Date().toISOString();const terminal=cache.stages.find(s=>s.name===newStage)?.is_terminal;
+  await sb.from('crm_deals').update({stage:newStage,stage_entered_at:now,closed_at:terminal?now:null}).eq('id',deal.id);
+  await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id,changed_at:now,duration_seconds:deal.stage_entered_at?Math.floor((Date.now()-new Date(deal.stage_entered_at).getTime())/1000):null});
+  render();
+}
+
+function openCloseWonModal(deal,newStage){
+  openModal(`<h2>Close Won — ${esc(deal.title)}</h2><p class="sub">Capture the win details.</p>
+    <div class="field"><label>Order number</label><input id="cw_order"></div>
+    <div class="field-row"><div class="field"><label>Final price</label><input id="cw_price" type="number" value="${deal.value_amount??''}"></div><div class="field"><label>Margin %</label><input id="cw_margin" type="number" value="${deal.margin_pct??''}"></div></div>
+    <div class="field-row"><div class="field"><label>Purchase date</label><input id="cw_pdate" type="date" value="${new Date().toISOString().split('T')[0]}"></div><div class="field"><label>Delivery date</label><input id="cw_ddate" type="date"></div></div>
+    <div class="field"><label>Warranty</label><select id="cw_warranty"><option value="">Select…</option><option>Purchased</option><option>Declined</option><option>Included</option></select></div>
+    <div class="field"><label>Products purchased</label><textarea id="cw_prod" rows="2"></textarea></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="cw_cancel">Cancel</button><button class="btn btn-primary" id="cw_save">Close as Won</button></div>`);
+  $('#cw_cancel').onclick=closeModal;
+  $('#cw_save').onclick=async()=>{
+    const price=$('#cw_price').value;if(!price)return formErr('Final price required.');
+    const now=new Date().toISOString();const mpct=$('#cw_margin').value?Number($('#cw_margin').value):null;
+    await sb.from('crm_deals').update({stage:newStage,closed_at:now,stage_entered_at:now,value_amount:Number(price),margin_pct:mpct,margin_amount:mpct?Number(price)*mpct/100:null,order_number:$('#cw_order').value.trim()||null,purchase_date:$('#cw_pdate').value||null,delivery_date:$('#cw_ddate').value||null,warranty_status:$('#cw_warranty').value||null,won_products:$('#cw_prod').value.trim()?[$('#cw_prod').value.trim()]:[]}).eq('id',deal.id);
+    await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id});
+    // Auto-create delivery workflow (Section 8)
+    await createDeliveryWorkflow(deal.id,deal.contact_id);
+    closeModal();setTimeout(()=>openPostMortem(deal.id,'won'),300);render();
+  };
+}
+
+function openCloseLostModal(deal,newStage){
+  openModal(`<h2>Close Lost — ${esc(deal.title)}</h2><p class="sub">Understanding why helps everyone improve.</p>
+    <div class="field"><label>Reason</label><select id="cl_reason"><option value="">Select…</option><option value="price">Price</option><option value="competitor">Competitor</option><option value="timing">Timing</option><option value="product">Product unavailable</option><option value="no_response">No response</option><option value="changed_mind">Changed mind</option><option value="other">Other</option></select></div>
+    <div class="field"><label>Competitor</label><input id="cl_comp"></div>
+    <div class="field"><label>Final objection</label><textarea id="cl_obj" rows="2"></textarea></div>
+    <div class="field"><label>Future follow-up OK?</label><select id="cl_fu"><option value="true">Yes</option><option value="false">No</option></select></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="cl_cancel">Cancel</button><button class="btn btn-danger" id="cl_save">Close as Lost</button></div>`);
+  $('#cl_cancel').onclick=closeModal;
+  $('#cl_save').onclick=async()=>{
+    if(!$('#cl_reason').value)return formErr('Select a reason.');
+    const now=new Date().toISOString();
+    await sb.from('crm_deals').update({stage:newStage,closed_at:now,stage_entered_at:now,lost_reason:$('#cl_reason').value,lost_competitor:$('#cl_comp').value.trim()||null,lost_objection:$('#cl_obj').value.trim()||null,future_followup_permitted:$('#cl_fu').value==='true'}).eq('id',deal.id);
+    await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id});
+    closeModal();setTimeout(()=>openPostMortem(deal.id,'lost'),300);render();
+  };
+}
+
+function openPostMortem(dealId,type){
+  const won=type==='won';
+  openModal(`<h2>${won?'🎉 Post-Sale Review':'📝 Lost-Sale Review'}</h2>
+    <div class="field"><label>Your reflection</label><textarea id="pm_r" rows="3" placeholder="${won?'How did the sale go?':'What happened?'}"></textarea></div>
+    <div class="field"><label>What went well</label><textarea id="pm_w" rows="2"></textarea></div>
+    <div class="field"><label>What to improve</label><textarea id="pm_i" rows="2"></textarea></div>
+    ${won?'':
+    `<div class="field"><label>Controllability</label><select id="pm_c"><option value="controllable">Controllable</option><option value="partially">Partially</option><option value="uncontrollable">Uncontrollable</option></select></div>
+    <div class="field"><label>Recoverable?</label><select id="pm_rc"><option value="yes">Yes</option><option value="maybe">Maybe</option><option value="no">No</option></select></div>`}
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="pm_skip">Skip</button><button class="btn btn-primary" id="pm_save">Save</button></div>`);
+  $('#pm_skip').onclick=closeModal;
+  $('#pm_save').onclick=async()=>{
+    const row={deal_id:dealId,organization_id:currentOrg.id,review_type:type,salesperson_id:currentUser.id,salesperson_reflection:$('#pm_r').value.trim()||null,what_went_well:$('#pm_w').value.trim()||null,what_to_improve:$('#pm_i').value.trim()||null,completed_at:new Date().toISOString()};
+    if(!won){row.controllability=$('#pm_c')?.value;row.is_recoverable=$('#pm_rc')?.value==='yes';}
+    await sb.from('crm_postmortems').insert(row);closeModal();
+  };
+}
+
+// ===== DEAL MODAL =====
+function openDealModal(deal){
+  const isNew=!deal;const parts=isNew?[]:cache.participants.filter(p=>p.deal_id===deal?.id);
+  openModal(`<h2>${isNew?'New Opportunity':'Edit Opportunity'}</h2>
+    <div class="field"><label>Record type</label><select id="f_type">${Object.entries(RECORD_TYPES).map(([k,v])=>`<option value="${k}" ${(deal?.record_type??'individual')===k?'selected':''}>${v}</option>`).join('')}</select></div>
+    <div class="field"><label>Title</label><input id="f_title" value="${esc(deal?.title??'')}" placeholder="Chen — Kitchen Package"></div>
+    <div class="field-row"><div class="field"><label>Stage</label><select id="f_stage">${cache.stages.map(s=>`<option ${(deal?.stage??cache.stages[0]?.name)===s.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Priority</label><select id="f_pri">${['low','normal','high','urgent'].map(p=>`<option ${(deal?.priority??'normal')===p?'selected':''}>${p}</option>`).join('')}</select></div></div>
+    <div id="sec_ind"><div class="field"><label>Contact</label><select id="f_contact"><option value="">— none —</option>${cache.contacts.map(c=>`<option value="${c.id}" ${deal?.contact_id===c.id?'selected':''}>${esc(c.first_name+' '+(c.last_name??''))}</option>`).join('')}</select></div></div>
+    <div id="sec_bg" style="display:none"><div class="field"><label>Buying group</label><select id="f_bg"><option value="">— select —</option>${cache.buyingGroups.map(bg=>`<option value="${bg.id}" ${deal?.buying_group_id===bg.id?'selected':''}>${esc(bg.name)}</option>`).join('')}<option value="__new__">+ New…</option></select></div><div id="newBgW" style="display:none" class="field"><label>Group name</label><input id="f_nbg"></div></div>
+    <div id="sec_biz" style="display:none"><div class="field"><label>Business</label><select id="f_co"><option value="">— select —</option>${cache.companies.map(co=>`<option value="${co.id}" ${deal?.company_id===co.id?'selected':''}>${esc(co.name)}</option>`).join('')}<option value="__new__">+ New…</option></select></div><div id="newBizW" style="display:none" class="field"><label>Business name</label><input id="f_nco"></div></div>
+    <div class="field-row"><div class="field"><label>Value (CAD)</label><input id="f_val" type="number" value="${deal?.value_amount??''}"></div><div class="field"><label>Margin %</label><input id="f_mar" type="number" value="${deal?.margin_pct??''}"></div></div>
+    <div class="field-row"><div class="field"><label>Expected close</label><input id="f_close" type="date" value="${deal?.expected_close_date??''}"></div><div class="field"><label>Quote expiry</label><input id="f_exp" type="date" value="${deal?.quote_expiry_date??''}"></div></div>
+    <div class="field"><label>Categories</label><input id="f_cats" value="${(deal?.product_categories||[]).join(', ')}" placeholder="Refrigeration, Cooking"></div>
+    <div class="field-row"><div class="field"><label>Temperature</label><select id="f_temp" class="temp-select"><option value="hot" ${deal?.temperature==='hot'?'selected':''}>🔥 Hot</option><option value="warm" ${(deal?.temperature??'warm')==='warm'?'selected':''}>🟡 Warm</option><option value="cold" ${deal?.temperature==='cold'?'selected':''}>🔵 Cold</option></select></div>
+    <div class="field"><label>Next action</label><input id="f_next" value="${esc(deal?.next_action??'')}"></div></div>
+    <div class="field"><label>Source</label><input id="f_src" value="${esc(deal?.source??'')}" placeholder="Walk-in, Website, Referral, IQ Lead"></div>
+    ${parts.length?`<fieldset class="field-group"><legend>Participants (${parts.length})</legend>${parts.map(p=>`<div class="participant"><span class="pn">${esc(p.contacts?.first_name??'')} ${esc(p.contacts?.last_name??'')}</span><span class="pr">${esc(p.buying_role)}</span>${p.is_primary?'<span class="chip g" style="font-size:9px">Primary</span>':''}</div>`).join('')}<button class="btn btn-ghost btn-sm" id="addPartBtn" type="button">+ Add participant</button></fieldset>`:''}
+    ${!isNew&&!parts.length?'<button class="btn btn-ghost btn-sm" id="addPartBtn" type="button" style="margin-bottom:12px">+ Add participant</button>':''}
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">${isNew?'':'<button class="btn btn-danger" id="f_del">Delete</button>'}${!isNew&&!deal.is_archived?'<button class="btn btn-ghost" id="f_arch">Archive</button>':''}${!isNew&&deal.is_archived?'<button class="btn btn-ghost" id="f_rest">Restore</button>':''}
+    <button class="btn btn-ghost" id="f_cancel">Cancel</button><button class="btn btn-primary" id="f_save">${isNew?'Create':'Save'}</button></div>`);
+
+  const upd=()=>{const t=$('#f_type').value;$('#sec_ind').style.display=t==='individual'?'block':'none';$('#sec_bg').style.display=t==='household'?'block':'none';$('#sec_biz').style.display=t==='business'?'block':'none';};
+  $('#f_type').onchange=upd;upd();
+  $('#f_bg')?.addEventListener('change',()=>{$('#newBgW').style.display=$('#f_bg').value==='__new__'?'block':'none';});
+  $('#f_co')?.addEventListener('change',()=>{$('#newBizW').style.display=$('#f_co').value==='__new__'?'block':'none';});
+  $('#f_cancel').onclick=closeModal;
+  if(!isNew){$('#addPartBtn')?.addEventListener('click',()=>openAddPart(deal.id));}
+  if(!isNew){
+    $('#f_del')?.addEventListener('click',async()=>{if(!confirm('Delete permanently?'))return;await sb.from('crm_deals').delete().eq('id',deal.id);closeModal();render();});
+    $('#f_arch')?.addEventListener('click',async()=>{await sb.from('crm_deals').update({is_archived:true,archived_at:new Date().toISOString()}).eq('id',deal.id);closeModal();render();});
+    $('#f_rest')?.addEventListener('click',async()=>{await sb.from('crm_deals').update({is_archived:false,archived_at:null}).eq('id',deal.id);closeModal();render();});
+  }
+  $('#f_save').onclick=async()=>{
+    const title=$('#f_title').value.trim();if(!title)return formErr('Title required.');
+    const rt=$('#f_type').value,stage=$('#f_stage').value,terminal=cache.stages.find(s=>s.name===stage)?.is_terminal;
+    let companyId=deal?.company_id??null,bgId=deal?.buying_group_id??null,contactId=null;
+    if(rt==='individual')contactId=$('#f_contact').value||null;
+    if(rt==='household'){const bv=$('#f_bg')?.value;if(bv==='__new__'){const n=$('#f_nbg')?.value?.trim();if(!n)return formErr('Group name required.');const{data:nb,error}=await sb.from('crm_buying_groups').insert({organization_id:currentOrg.id,name:n,group_type:'household'}).select('id').single();if(error)return formErr(error.message);bgId=nb.id;}else bgId=bv||null;}
+    if(rt==='business'){const bv=$('#f_co')?.value;if(bv==='__new__'){const n=$('#f_nco')?.value?.trim();if(!n)return formErr('Business name required.');const{data:nc,error}=await sb.from('companies').insert({organization_id:currentOrg.id,name:n,display_name:n,source:'crm'}).select('id').single();if(error)return formErr(error.message);companyId=nc.id;}else companyId=bv||null;}
+    const cats=$('#f_cats').value.split(',').map(s=>s.trim()).filter(Boolean);
+    const newTemp=$('#f_temp').value;
+    const row={organization_id:currentOrg.id,title,stage,record_type:rt,contact_id:contactId,company_id:companyId,buying_group_id:bgId,value_amount:$('#f_val').value===''?null:Number($('#f_val').value),margin_pct:$('#f_mar').value===''?null:Number($('#f_mar').value),margin_amount:$('#f_val').value&&$('#f_mar').value?Number($('#f_val').value)*Number($('#f_mar').value)/100:null,value_currency:'CAD',expected_close_date:$('#f_close').value||null,quote_expiry_date:$('#f_exp').value||null,product_categories:cats,next_action:$('#f_next').value.trim()||null,priority:$('#f_pri').value,source:$('#f_src').value.trim()||null,closed_at:terminal?(deal?.closed_at??new Date().toISOString()):null,temperature:newTemp};
+    if(!isNew&&deal.temperature!==newTemp){row.temperature_changed_at=new Date().toISOString();row.temperature_changed_by=currentUser.id;row.temperature_reason='Manual update';
+      sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'deal',entity_id:deal.id,from_temperature:deal.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
+    if(isNew){row.stage_entered_at=new Date().toISOString();row.owner_user_id=currentUser.id;}
+    const q=isNew?sb.from('crm_deals').insert(row):sb.from('crm_deals').update(row).eq('id',deal.id);
+    const{error}=await q;if(error)return formErr(error.message);
+    if(!isNew&&deal.stage!==stage)await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:stage,changed_by:currentUser.id});
+    closeModal();render();
+  };
+}
+
+function openAddPart(dealId){
+  closeModal();
+  openModal(`<h2>Add Participant</h2>
+    <div class="field"><label>Contact</label><select id="ap_c"><option value="">Select…</option>${cache.contacts.map(c=>`<option value="${c.id}">${esc(c.first_name+' '+(c.last_name??''))}</option>`).join('')}</select></div>
+    <div class="field"><label>Role</label><select id="ap_r">${BUYING_ROLES.map(r=>`<option>${r}</option>`).join('')}</select></div>
+    <div class="field"><label><input type="checkbox" id="ap_p"> Primary contact</label></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="ap_cancel">Cancel</button><button class="btn btn-primary" id="ap_save">Add</button></div>`);
+  $('#ap_cancel').onclick=closeModal;
+  $('#ap_save').onclick=async()=>{const cid=$('#ap_c').value;if(!cid)return formErr('Select a contact.');const{error}=await sb.from('crm_deal_participants').insert({deal_id:dealId,contact_id:cid,buying_role:$('#ap_r').value,is_primary:$('#ap_p').checked});if(error)return formErr(error.message.includes('duplicate')?'Already a participant.':error.message);closeModal();render();};
+}
+
+function openStagesEditor(){
+  const rows=cache.stages.map((s,i)=>{const u=cache.deals.some(d=>d.stage===s.name);return`<div class="stage-row" data-sid="${s.id}"><input value="${esc(s.name)}" data-rename="${s.id}"><button class="icon-btn" data-up="${i}" ${i===0?'disabled':''}>↑</button><button class="icon-btn" data-down="${i}" ${i===cache.stages.length-1?'disabled':''}>↓</button><button class="icon-btn" data-del="${s.id}" ${u?'disabled title="Has deals"':''}>✕</button></div>`;}).join('');
+  openModal(`<h2>Edit Stages</h2>${rows}<div class="stage-row"><input id="newSN" placeholder="Add stage…"><button class="icon-btn" id="addSB">+</button></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" id="st_c">Close</button><button class="btn btn-primary" id="st_s">Save</button></div>`);
+  $('#st_c').onclick=()=>{closeModal();render();};
+  let order=cache.stages.map(s=>s.id);
+  const reArrow=p=>{const rs=[...p.querySelectorAll('.stage-row[data-sid]')];rs.forEach((r,i)=>{const u=r.querySelector('[data-up]'),d=r.querySelector('[data-down]');if(u){u.disabled=i===0;u.dataset.up=i;}if(d){d.disabled=i===rs.length-1;d.dataset.down=i;}});};
+  modalRoot.addEventListener('click',async e=>{const t=e.target;
+    if(t.dataset.up!==undefined&&!t.disabled){const i=+t.dataset.up;[order[i],order[i-1]]=[order[i-1],order[i]];const p=t.closest('.sheet');const rs=[...p.querySelectorAll('.stage-row[data-sid]')];const a=rs.find(r=>r.dataset.sid===order[i]),b=rs.find(r=>r.dataset.sid===order[i-1]);a.parentNode.insertBefore(b,a);reArrow(p);}
+    if(t.dataset.down!==undefined&&!t.disabled){const i=+t.dataset.down;[order[i],order[i+1]]=[order[i+1],order[i]];const p=t.closest('.sheet');const rs=[...p.querySelectorAll('.stage-row[data-sid]')];const a=rs.find(r=>r.dataset.sid===order[i+1]),b=rs.find(r=>r.dataset.sid===order[i]);a.parentNode.insertBefore(b,a);reArrow(p);}
+    if(t.dataset.del){await sb.from('pipeline_stages').delete().eq('id',t.dataset.del);order=order.filter(id=>id!==t.dataset.del);t.closest('.stage-row').remove();reArrow(t.closest('.sheet'));}
+    if(t.id==='addSB'){const name=$('#newSN').value.trim();if(!name)return formErr('Name required.');const{data,error}=await sb.from('pipeline_stages').insert({organization_id:currentOrg.id,name,sort_order:order.length+1}).select().single();if(error)return formErr(error.message);order.push(data.id);const row=document.createElement('div');row.className='stage-row';row.dataset.sid=data.id;row.innerHTML=`<input value="${esc(name)}" data-rename="${data.id}"><button class="icon-btn" data-up="">↑</button><button class="icon-btn" data-down="">↓</button><button class="icon-btn" data-del="${data.id}">✕</button>`;$('#newSN').closest('.stage-row').before(row);$('#newSN').value='';reArrow(row.closest('.sheet'));}
+  });
+  $('#st_s').onclick=async()=>{const sheet=$('#st_s').closest('.sheet');const rs=[...sheet.querySelectorAll('.stage-row[data-sid]')];for(let i=0;i<rs.length;i++){const sid=rs[i].dataset.sid,nn=rs[i].querySelector('input').value.trim(),orig=cache.stages.find(s=>s.id===sid),up={sort_order:i+1};if(orig&&nn&&nn!==orig.name){up.name=nn;await sb.from('crm_deals').update({stage:nn}).eq('organization_id',currentOrg.id).eq('stage',orig.name);}await sb.from('pipeline_stages').update(up).eq('id',sid);}closeModal();render();};
+}
+
+// ===== DAILY FIVE =====
+async function renderDailyFive(){
+  const today=new Date().toISOString().split('T')[0];
+  let{data:d5}=await sb.from('crm_daily_five').select('*').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).eq('work_date',today).maybeSingle();
+  if(!d5){const items=genD5();const{data:c}=await sb.from('crm_daily_five').insert({organization_id:currentOrg.id,user_id:currentUser.id,work_date:today,items:JSON.stringify(items),total_count:items.length}).select().single();d5=c;}
+  const items=typeof d5?.items==='string'?JSON.parse(d5.items):(d5?.items||[]);
+  const done=items.filter(i=>i.completed).length;
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🎯 Daily Five</h1><div class="sub">${today} · ${done}/${items.length} completed</div></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="d5r">Regenerate</button></div></div>
+    ${items.map((it,i)=>`<div class="d5-item ${it.completed?'done':''}"><div class="d5-num">${it.completed?'✓':i+1}</div><div class="d5-body"><div class="d5c">${esc(it.customer||'Action')}</div><div class="d5r">${esc(it.reason||'')}</div><div class="d5a">${esc(it.action||'')}</div></div>
+    <div class="d5-actions">${!it.completed?`<button class="btn btn-primary btn-sm" data-d5="${i}">Done</button>`:'<span class="chip g">✓</span>'}</div></div>`).join('')}
+    ${!items.length?'<div class="empty">No actions identified today.</div>':''}`;
+  $$('[data-d5]').forEach(b=>{b.onclick=async()=>{items[+b.dataset.d5].completed=true;items[+b.dataset.d5].completed_at=new Date().toISOString();await sb.from('crm_daily_five').update({items:JSON.stringify(items),completed_count:items.filter(i=>i.completed).length}).eq('id',d5.id);renderDailyFive();};});
+  $('#d5r')?.addEventListener('click',async()=>{if(d5?.id)await sb.from('crm_daily_five').delete().eq('id',d5.id);renderDailyFive();});
+}
+function genD5(){
+  const items=[],active=cache.deals.filter(d=>!d.is_archived&&!d.closed_at);
+  active.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5)).slice(0,2).forEach(d=>items.push({customer:d.title,reason:`Quote expires ${d.quote_expiry_date}`,action:'Follow up on expiring quote',deal_id:d.id}));
+  active.filter(d=>d.last_contact_at&&(Date.now()-new Date(d.last_contact_at).getTime())>7*864e5).slice(0,2).forEach(d=>{if(!items.find(i=>i.deal_id===d.id))items.push({customer:d.title,reason:`No contact in ${Math.floor((Date.now()-new Date(d.last_contact_at).getTime())/864e5)} days`,action:'Re-engage',deal_id:d.id});});
+  active.filter(d=>Number(d.value_amount)>10000).sort((a,b)=>(b.value_amount||0)-(a.value_amount||0)).slice(0,2).forEach(d=>{if(!items.find(i=>i.deal_id===d.id))items.push({customer:d.title,reason:`High value: ${money(d.value_amount)}`,action:d.next_action||'Advance deal',deal_id:d.id});});
+  return items.slice(0,5);
+}
+
+// ===== CONTACTS =====
+let contactFilter='all'; // all, hot, warm, cold, overdue
+function renderContacts(){
+  const tempCounts={hot:0,warm:0,cold:0};cache.contacts.forEach(c=>{const t=c.temperature||'warm';if(tempCounts[t]!==undefined)tempCounts[t]++;});
+  const overdue=cache.contacts.filter(c=>(c.followup_status==='overdue'||c.followup_status==='critical')).length;
+  let filtered=cache.contacts;
+  if(contactFilter==='hot')filtered=filtered.filter(c=>c.temperature==='hot');
+  else if(contactFilter==='warm')filtered=filtered.filter(c=>c.temperature==='warm');
+  else if(contactFilter==='cold')filtered=filtered.filter(c=>c.temperature==='cold');
+  else if(contactFilter==='overdue')filtered=filtered.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical');
+  mainEl.innerHTML=`<div class="page-head"><div><h1>Contacts</h1><div class="sub num">${cache.contacts.length} people</div></div><div class="head-actions"><button class="btn btn-primary" id="ncBtn">+ Add contact</button></div></div>
+    <div class="tc-tabs">
+      <button class="tc-tab ${contactFilter==='all'?'active':''}" data-cf="all">All <span class="tc-count">${cache.contacts.length}</span></button>
+      <button class="tc-tab ${contactFilter==='hot'?'active':''}" data-cf="hot">🔥 Hot <span class="tc-count">${tempCounts.hot}</span></button>
+      <button class="tc-tab ${contactFilter==='warm'?'active':''}" data-cf="warm">🟡 Warm <span class="tc-count">${tempCounts.warm}</span></button>
+      <button class="tc-tab ${contactFilter==='cold'?'active':''}" data-cf="cold">🔵 Cold <span class="tc-count">${tempCounts.cold}</span></button>
+      ${overdue?`<button class="tc-tab ${contactFilter==='overdue'?'active':''}" data-cf="overdue">⚠️ Overdue <span class="tc-count">${overdue}</span></button>`:''}
+    </div>
+    <table><thead><tr><th>Name</th><th>Temp</th><th>Company</th><th>Role</th><th>Phone</th><th>Days Since</th><th>Follow-up</th></tr></thead><tbody>
+    ${filtered.map(c=>{
+      const temp=c.temperature||'warm';
+      const dsc=c.days_since_contact!=null?c.days_since_contact:c.last_communication_at?Math.floor((Date.now()-new Date(c.last_communication_at).getTime())/864e5):null;
+      const dscClass=dsc!=null?(dsc>10?'danger':dsc>5?'warn':''):'';
+      const fu=c.followup_status||'on_track';
+      return`<tr class="rowbtn" data-ct="${c.id}"><td><b>${esc(c.first_name)} ${esc(c.last_name??'')}</b>${c.title?`<div class="sub">${esc(c.title)}</div>`:''} ${c.is_iq_lead?'<span class="iq-badge">IQ</span>':''}</td>
+      <td><span class="temp-badge ${temp}">${temp}</span></td>
+      <td>${esc(c.companies?.name??'—')}</td>
+      <td>${c.decision_making_role?`<span class="chip n">${esc(c.decision_making_role)}</span>`:'—'}</td>
+      <td class="num" style="font-size:12px">${esc(c.phone||c.mobile_phone||'—')}</td>
+      <td><span class="days-badge ${dscClass}">${dsc!=null?dsc+'d':'—'}</span></td>
+      <td><span class="sla-badge ${fu}">${fu.replace(/_/g,' ')}</span></td></tr>`;
+    }).join('')||'<tr><td colspan="7" class="empty">No contacts yet.</td></tr>'}
+    </tbody></table>`;
+  $('#ncBtn').onclick=()=>openContactModal(null);
+  $$('[data-ct]').forEach(r=>{r.onclick=()=>{const ct=cache.contacts.find(c=>c.id===r.dataset.ct);openContactDetail(ct);};});
+  $$('[data-cf]').forEach(b=>{b.onclick=()=>{contactFilter=b.dataset.cf;renderContacts();};});
+}
+function openContactModal(ct){
+  const isNew=!ct;
+  openModal(`<h2>${isNew?'Add Contact':'Edit Contact'}</h2>
+    <div class="field-row"><div class="field"><label>First name *</label><input id="c_first" value="${esc(ct?.first_name??'')}"></div><div class="field"><label>Last name</label><input id="c_last" value="${esc(ct?.last_name??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Preferred name</label><input id="c_pref" value="${esc(ct?.preferred_name??'')}"></div><div class="field"><label>Title</label><input id="c_title" value="${esc(ct?.title??'')}"></div></div>
+    <div class="field"><label>Company</label><select id="c_co"><option value="">— none —</option>${cache.companies.map(co=>`<option value="${co.id}" ${ct?.company_id===co.id?'selected':''}>${esc(co.name)}</option>`).join('')}<option value="__new__">+ New…</option></select></div>
+    <div class="field" id="ncW" style="display:none"><label>Company name</label><input id="c_nco"></div>
+    <fieldset class="field-group"><legend>Contact Details</legend>
+    <div class="field"><label>Email</label><input id="c_email" type="email" value="${esc(ct?.email??'')}"></div>
+    <div class="field-row"><div class="field"><label>Mobile</label><input id="c_mob" value="${esc(ct?.mobile_phone||ct?.phone||'')}"></div><div class="field"><label>Alternate</label><input id="c_alt" value="${esc(ct?.alternate_phone??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Preferred method</label><select id="c_pm"><option value="email" ${ct?.preferred_contact_method==='email'?'selected':''}>Email</option><option value="phone" ${ct?.preferred_contact_method==='phone'?'selected':''}>Phone</option><option value="text" ${ct?.preferred_contact_method==='text'?'selected':''}>Text</option></select></div>
+    <div class="field"><label>Language</label><select id="c_lang"><option value="en" ${(ct?.preferred_language??'en')==='en'?'selected':''}>English</option><option value="fr" ${ct?.preferred_language==='fr'?'selected':''}>French</option></select></div></div></fieldset>
+    <div class="field-row"><div class="field"><label>Decision role</label><select id="c_role"><option value="">—</option>${BUYING_ROLES.map(r=>`<option ${ct?.decision_making_role===r?'selected':''}>${r}</option>`).join('')}</select></div>
+    <div class="field"><label>Authority</label><select id="c_auth"><option value="">—</option><option ${ct?.purchasing_authority==='full'?'selected':''}>Full</option><option ${ct?.purchasing_authority==='partial'?'selected':''}>Partial</option><option ${ct?.purchasing_authority==='none'?'selected':''}>None</option></select></div></div>
+    <div class="field-row"><div class="field"><label>Temperature</label><select id="c_temp" class="temp-select"><option value="hot" ${ct?.temperature==='hot'?'selected':''}>🔥 Hot</option><option value="warm" ${(ct?.temperature??'warm')==='warm'?'selected':''}>🟡 Warm</option><option value="cold" ${ct?.temperature==='cold'?'selected':''}>🔵 Cold</option></select></div>
+    <div class="field"><label>Next follow-up</label><input type="date" id="c_nfu" value="${ct?.next_followup_date??''}"></div></div>
+    <div class="field"><label>Notes</label><textarea id="c_note" rows="2">${esc(ct?.notes??'')}</textarea></div>
+    <div class="field"><label><input type="checkbox" id="c_consent" ${ct?.contact_consent!==false?'checked':''}> Contact consent</label></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="c_cancel">Cancel</button><button class="btn btn-primary" id="c_save">${isNew?'Add':'Save'}</button></div>`);
+  $('#c_co').onchange=()=>{$('#ncW').style.display=$('#c_co').value==='__new__'?'block':'none';};
+  $('#c_cancel').onclick=closeModal;
+  $('#c_save').onclick=async()=>{
+    const first=$('#c_first').value.trim();if(!first)return formErr('First name required.');
+    let coId=$('#c_co').value||null;if(coId==='__new__'){const n=$('#c_nco').value.trim();if(!n)return formErr('Company name required.');const{data,error}=await sb.from('companies').insert({organization_id:currentOrg.id,name:n,display_name:n,source:'crm'}).select('id').single();if(error)return formErr(error.message);coId=data.id;}
+    const newTemp=$('#c_temp').value;
+    const row={organization_id:currentOrg.id,first_name:first,last_name:$('#c_last').value.trim()||null,preferred_name:$('#c_pref').value.trim()||null,title:$('#c_title').value.trim()||null,company_id:coId,email:$('#c_email').value.trim()||null,phone:$('#c_mob').value.trim()||null,mobile_phone:$('#c_mob').value.trim()||null,alternate_phone:$('#c_alt').value.trim()||null,preferred_contact_method:$('#c_pm').value,preferred_language:$('#c_lang').value,decision_making_role:$('#c_role').value||null,purchasing_authority:$('#c_auth').value||null,contact_consent:$('#c_consent').checked,notes:$('#c_note').value.trim()||null,source:ct?.source??'crm',temperature:newTemp,next_followup_date:$('#c_nfu').value||null};
+    if(!isNew&&ct.temperature!==newTemp){row.temperature_changed_at=new Date().toISOString();row.temperature_changed_by=currentUser.id;row.temperature_reason='Manual update';
+      sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'contact',entity_id:ct.id,from_temperature:ct.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
+    const{error}=isNew?await sb.from('contacts').insert(row):await sb.from('contacts').update(row).eq('id',ct.id);
+    if(error)return formErr(error.message);closeModal();render();
+  };
+}
+
+// ===== BUYING GROUPS =====
+function renderBuyingGroups(){
+  mainEl.innerHTML=`<div class="page-head"><div><h1>👥 Buying Groups</h1><div class="sub num">${cache.buyingGroups.length} groups</div></div><div class="head-actions"><button class="btn btn-primary" id="nbgBtn">+ New group</button></div></div>
+    <table><thead><tr><th>Group</th><th>Type</th><th>Members</th><th>Primary</th><th>Deals</th></tr></thead><tbody>
+    ${cache.buyingGroups.map(bg=>{const m=bg.crm_buying_group_members||[];const p=m.find(x=>x.is_primary);const dc=cache.deals.filter(d=>d.buying_group_id===bg.id).length;
+      return`<tr class="rowbtn" data-bg="${bg.id}"><td><b>${esc(bg.name)}</b></td><td><span class="chip n">${esc(bg.group_type)}</span></td><td class="num">${m.length}</td><td>${p?.contacts?esc(p.contacts.first_name+' '+(p.contacts.last_name??'')):'—'}</td><td class="num">${dc}</td></tr>`;}).join('')||'<tr><td colspan="5" class="empty">No buying groups yet.</td></tr>'}
+    </tbody></table>`;
+  $('#nbgBtn').onclick=()=>openBGModal(null);
+  $$('[data-bg]').forEach(r=>{r.onclick=()=>openBGModal(cache.buyingGroups.find(bg=>bg.id===r.dataset.bg));});
+}
+function openBGModal(bg){
+  const isNew=!bg;const members=bg?.crm_buying_group_members||[];
+  openModal(`<h2>${isNew?'New Buying Group':'Edit Buying Group'}</h2>
+    <div class="field"><label>Name</label><input id="bg_n" value="${esc(bg?.name??'')}" placeholder="Chen & Mitchell Family"></div>
+    <div class="field"><label>Type</label><select id="bg_t"><option value="household" ${bg?.group_type==='household'?'selected':''}>Household</option><option value="buying_group" ${bg?.group_type==='buying_group'?'selected':''}>Buying Group</option><option value="committee" ${bg?.group_type==='committee'?'selected':''}>Committee</option></select></div>
+    <div class="field"><label>Communication</label><select id="bg_cm"><option value="primary_only" ${(bg?.communication_default??'primary_only')==='primary_only'?'selected':''}>Primary only</option><option value="all_buyers" ${bg?.communication_default==='all_buyers'?'selected':''}>All buyers</option><option value="each_separately" ${bg?.communication_default==='each_separately'?'selected':''}>Each separately</option></select></div>
+    <div class="field"><label>Notes</label><textarea id="bg_notes" rows="2">${esc(bg?.notes??'')}</textarea></div>
+    ${!isNew?`<fieldset class="field-group"><legend>Members (${members.length})</legend>${members.map(m=>`<div class="participant"><span class="pn">${esc(m.contacts?.first_name??'')} ${esc(m.contacts?.last_name??'')}</span><span class="pr">${esc(m.buying_role)}</span>${m.is_primary?'<span class="chip g" style="font-size:9px">Primary</span>':''}<button class="btn btn-ghost btn-sm" data-rmbg="${m.id}" style="padding:2px 6px;color:var(--danger)">✕</button></div>`).join('')}${!members.length?'<div class="sub">No members</div>':''}
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><select id="bg_ac" style="flex:1;padding:6px;border:1px solid var(--line);border-radius:6px;font-size:12px"><option value="">Add contact…</option>${cache.contacts.filter(c=>!members.find(m=>m.contact_id===c.id)).map(c=>`<option value="${c.id}">${esc(c.first_name+' '+(c.last_name??''))}</option>`).join('')}</select><select id="bg_ar" style="padding:6px;border:1px solid var(--line);border-radius:6px;font-size:12px">${BUYING_ROLES.map(r=>`<option>${r}</option>`).join('')}</select><button class="btn btn-primary btn-sm" id="bg_am">Add</button></div></fieldset>`:''}
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions">${!isNew?'<button class="btn btn-danger" id="bg_del">Delete</button>':''}
+    <button class="btn btn-ghost" id="bg_cancel">Cancel</button><button class="btn btn-primary" id="bg_save">${isNew?'Create':'Save'}</button></div>`);
+  $('#bg_cancel').onclick=closeModal;
+  if(!isNew){
+    $$('[data-rmbg]').forEach(b=>{b.onclick=async e=>{e.stopPropagation();await sb.from('crm_buying_group_members').delete().eq('id',b.dataset.rmbg);closeModal();await loadCore();openBGModal(cache.buyingGroups.find(g=>g.id===bg.id));};});
+    $('#bg_am')?.addEventListener('click',async()=>{const cid=$('#bg_ac').value;if(!cid)return formErr('Select contact.');const{error}=await sb.from('crm_buying_group_members').insert({buying_group_id:bg.id,contact_id:cid,buying_role:$('#bg_ar').value,is_primary:!members.length});if(error)return formErr(error.message);closeModal();await loadCore();openBGModal(cache.buyingGroups.find(g=>g.id===bg.id));});
+    $('#bg_del')?.addEventListener('click',async()=>{if(!confirm('Delete?'))return;await sb.from('crm_buying_groups').delete().eq('id',bg.id);closeModal();render();});
+  }
+  $('#bg_save').onclick=async()=>{const name=$('#bg_n').value.trim();if(!name)return formErr('Name required.');const row={organization_id:currentOrg.id,name,group_type:$('#bg_t').value,communication_default:$('#bg_cm').value,notes:$('#bg_notes').value.trim()||null};const{error}=isNew?await sb.from('crm_buying_groups').insert(row):await sb.from('crm_buying_groups').update(row).eq('id',bg.id);if(error)return formErr(error.message);closeModal();render();};
+}
+
+// ===== BUSINESS ACCOUNTS =====
+function renderCompanies(){
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🏢 Business Accounts</h1><div class="sub num">${cache.companies.length} accounts</div></div><div class="head-actions"><button class="btn btn-primary" id="ncoBtn">+ New business</button></div></div>
+    <table><thead><tr><th>Business</th><th>Type</th><th>Industry</th><th>Contacts</th><th>Deals</th><th>Class</th></tr></thead><tbody>
+    ${cache.companies.map(co=>{const cc=cache.contacts.filter(c=>c.company_id===co.id).length;const dc=cache.deals.filter(d=>d.company_id===co.id&&!d.closed_at).length;
+      return`<tr class="rowbtn" data-co="${co.id}"><td><b>${esc(co.display_name||co.name)}</b></td><td>${esc(co.business_type??'—')}</td><td>${esc(co.industry??'—')}</td><td class="num">${cc}</td><td class="num">${dc}</td><td><span class="chip ${co.account_classification==='premium'?'g':co.account_classification==='key'?'a':'n'}">${esc(co.account_classification??'standard')}</span></td></tr>`;}).join('')||'<tr><td colspan="6" class="empty">No business accounts.</td></tr>'}
+    </tbody></table>`;
+  $('#ncoBtn').onclick=()=>openCompanyModal(null);
+  $$('[data-co]').forEach(r=>{r.onclick=()=>openCompanyModal(cache.companies.find(co=>co.id===r.dataset.co));});
+}
+function openCompanyModal(co){
+  const isNew=!co;const cts=isNew?[]:cache.contacts.filter(c=>c.company_id===co?.id);const dls=isNew?[]:cache.deals.filter(d=>d.company_id===co?.id);
+  openModal(`<h2>${isNew?'New Business':'Edit Business'}</h2>
+    <div class="field-row"><div class="field"><label>Operating name *</label><input id="co_n" value="${esc((co?.display_name||co?.name)??'')}"></div><div class="field"><label>Legal name</label><input id="co_ln" value="${esc(co?.legal_name??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Type</label><select id="co_t"><option value="">—</option><option ${co?.business_type==='property_management'?'selected':''}>Property Management</option><option ${co?.business_type==='builder'?'selected':''}>Builder</option><option ${co?.business_type==='contractor'?'selected':''}>Contractor</option><option ${co?.business_type==='designer'?'selected':''}>Designer</option><option ${co?.business_type==='developer'?'selected':''}>Developer</option><option ${co?.business_type==='other'?'selected':''}>Other</option></select></div><div class="field"><label>Industry</label><input id="co_ind" value="${esc(co?.industry??'')}"></div></div>
+    <div class="field-row"><div class="field"><label>Phone</label><input id="co_ph" value="${esc(co?.main_phone??'')}"></div><div class="field"><label>Email</label><input id="co_em" value="${esc(co?.general_email??'')}"></div></div>
+    <div class="field"><label>Website</label><input id="co_web" value="${esc(co?.website??'')}"></div>
+    <div class="field-row"><div class="field"><label>Classification</label><select id="co_cl"><option value="standard" ${(co?.account_classification??'standard')==='standard'?'selected':''}>Standard</option><option value="key" ${co?.account_classification==='key'?'selected':''}>Key</option><option value="premium" ${co?.account_classification==='premium'?'selected':''}>Premium</option></select></div><div class="field"><label>Revenue potential</label><input id="co_rev" type="number" value="${co?.annual_revenue_potential??''}"></div></div>
+    <div class="field-row"><div class="field"><label>Credit</label><select id="co_cr"><option value="not_assessed" ${(co?.credit_status??'not_assessed')==='not_assessed'?'selected':''}>Not assessed</option><option value="approved" ${co?.credit_status==='approved'?'selected':''}>Approved</option><option value="pending" ${co?.credit_status==='pending'?'selected':''}>Pending</option></select></div><div class="field"><label>Terms</label><input id="co_trm" value="${esc(co?.account_terms??'')}" placeholder="Net 30"></div></div>
+    <div class="field"><label>Notes</label><textarea id="co_notes" rows="2">${esc(co?.notes??'')}</textarea></div>
+    ${cts.length?`<fieldset class="field-group"><legend>Contacts (${cts.length})</legend>${cts.map(c=>`<div class="participant"><span class="pn">${esc(c.first_name)} ${esc(c.last_name??'')}</span><span class="pr">${esc(c.title??'')}</span></div>`).join('')}</fieldset>`:''}
+    ${dls.length?`<fieldset class="field-group"><legend>Deals (${dls.length})</legend>${dls.map(d=>`<div class="participant"><span class="pn">${esc(d.title)}</span><span class="pr">${esc(d.stage)} · ${money(d.value_amount)}</span></div>`).join('')}</fieldset>`:''}
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" id="co_cancel">Cancel</button><button class="btn btn-primary" id="co_save">${isNew?'Create':'Save'}</button></div>`);
+  $('#co_cancel').onclick=closeModal;
+  $('#co_save').onclick=async()=>{const n=$('#co_n').value.trim();if(!n)return formErr('Name required.');
+    const row={organization_id:currentOrg.id,name:n,display_name:n,legal_name:$('#co_ln').value.trim()||null,business_type:$('#co_t').value||null,industry:$('#co_ind').value.trim()||null,main_phone:$('#co_ph').value.trim()||null,general_email:$('#co_em').value.trim()||null,website:$('#co_web').value.trim()||null,account_classification:$('#co_cl').value,annual_revenue_potential:$('#co_rev').value?Number($('#co_rev').value):null,credit_status:$('#co_cr').value,account_terms:$('#co_trm').value.trim()||null,notes:$('#co_notes').value.trim()||null,source:co?.source??'crm'};
+    const{error}=isNew?await sb.from('companies').insert(row):await sb.from('companies').update(row).eq('id',co.id);if(error)return formErr(error.message);closeModal();render();};
+}
+
+// ===== PRODUCTS / TASKS =====
+async function renderProducts(){const{data}=await sb.from('products').select('*').eq('organization_id',currentOrg.id).order('category');mainEl.innerHTML=`<div class="page-head"><h1>Products</h1><div class="sub num">${(data??[]).length} models</div></div><table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Stock</th></tr></thead><tbody>${(data??[]).map(p=>`<tr><td><b>${esc(p.brand)} ${esc(p.model)}</b><div class="sub">${esc(p.name)}</div></td><td>${esc(p.category??'—')}</td><td class="num">${money(p.msrp)}</td><td class="num">${p.margin_pct?p.margin_pct+'%':'—'}</td><td>${p.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Order</span>'}</td></tr>`).join('')}</tbody></table>`;}
+function renderTasks(){sb.from('crm_tasks').select('*,crm_deals(title)').eq('organization_id',currentOrg.id).is('completed_at',null).order('due_at').then(({data})=>{mainEl.innerHTML=`<div class="page-head"><h1>Tasks</h1><div class="sub num">${(data??[]).length} open</div></div><table><thead><tr><th>Task</th><th>Deal</th><th>Due</th><th>Priority</th><th></th></tr></thead><tbody>${(data??[]).map(t=>`<tr><td><b>${esc(t.title)}</b></td><td>${esc(t.crm_deals?.title??'—')}</td><td class="num">${t.due_at?new Date(t.due_at).toLocaleDateString():'—'}</td><td><span class="chip ${t.priority==='urgent'?'a':'n'}">${esc(t.priority)}</span></td><td><button class="btn btn-ghost btn-sm" data-done="${t.id}">Done</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">No open tasks.</td></tr>'}</tbody></table>`;$$('[data-done]').forEach(b=>{b.onclick=async()=>{await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done);render();};});});}
+
+// ===== RECORDINGS =====
+const REC_MAX=10800;function fmtTime(s){if(s>=3600){const h=Math.floor(s/3600);return`${h}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;}return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+async function renderRecordings(){const{data:recs}=await sb.from('sales_recordings').select('*').eq('organization_id',currentOrg.id).order('created_at',{ascending:false});const rids=(recs??[]).map(r=>r.coaching_review_id).filter(Boolean);let rvs={};if(rids.length){const{data:rv}=await sb.from('ai_coaching_reviews').select('id,overall_score').in('id',rids);(rv??[]).forEach(r=>rvs[r.id]=r);}
+mainEl.innerHTML=`<div class="page-head"><div><h1>Recordings</h1><div class="sub num">${(recs??[]).length}</div></div><div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 Record</button></div></div><table><thead><tr><th>Recording</th><th>Status</th><th>Score</th><th></th></tr></thead><tbody>${(recs??[]).map(r=>{const sc=r.coaching_review_id&&rvs[r.coaching_review_id]?.overall_score!=null?Number(rvs[r.coaching_review_id].overall_score).toFixed(1)+'/10':'—';return`<tr><td><b>${esc(r.file_name??'Recording')}</b><div class="sub num">${new Date(r.created_at).toLocaleDateString()}${r.duration_seconds?' · '+fmtTime(r.duration_seconds):''}</div></td><td><span class="chip ${r.status==='complete'?'g':r.status==='failed'?'r':'n'}">${esc(r.status)}</span></td><td class="num">${sc}</td><td><button class="btn btn-ghost btn-sm" data-play="${r.id}">Play</button></td></tr>`;}).join('')||'<tr><td colspan="4" class="empty">No recordings.</td></tr>'}</tbody></table><div id="recP"></div>`;
+$('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
+$$('[data-play]').forEach(b=>{b.onclick=async()=>{const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;const{data}=await sb.storage.from('crm-media').createSignedUrl(rec.file_path,300);if(data?.signedUrl)$('#recP').innerHTML=`<div class="dash-panel" style="margin-top:16px"><audio controls src="${data.signedUrl}" style="width:100%"></audio></div>`;};});}
+function openRecorderModal(dealId){
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){openModal('<h2>Not supported</h2><p>Use Chrome or Safari.</p><div class="sheet-actions"><button class="btn btn-primary" onclick="closeModal()">OK</button></div>');return;}
+  const deal=dealId?cache.deals.find(d=>d.id===dealId):null;
+  let stream,recorder,chunks=[],elapsed=0,timer;
+  openModal(`<h2>🎙 Record${deal?' — '+esc(deal.title):''}</h2>${deal?`<div class="sub" style="margin-bottom:10px">${money(deal.value_amount)} · ${esc(deal.stage)}</div>`:''}
+    <div class="consent-row"><input type="checkbox" id="rc"><div>All participants informed this is recorded for coaching.</div></div><div class="rec-timer" id="rT">0:00</div><div id="rS" style="text-align:center;color:var(--steel);font-size:13px"></div><div class="sheet-actions"><button class="btn btn-ghost" id="r_cancel">Cancel</button><button class="btn btn-primary" id="r_start" disabled>Start</button><button class="btn btn-danger" id="r_stop" style="display:none">Stop</button></div>`);
+  $('#rc').onchange=()=>{$('#r_start').disabled=!$('#rc').checked;};
+  $('#r_start').onclick=async()=>{try{stream=await navigator.mediaDevices.getUserMedia({audio:true});}catch{return formErr('Mic denied.');}recorder=new MediaRecorder(stream);chunks=[];elapsed=0;
+    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    recorder.onstop=async()=>{clearInterval(timer);stream.getTracks().forEach(t=>t.stop());const blob=new Blob(chunks,{type:recorder.mimeType});$('#rS').innerHTML='<div class="spin" style="margin:8px auto"></div> Uploading…';
+      const ext=recorder.mimeType.includes('webm')?'webm':'ogg';const fn=`${deal?esc(deal.title).replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'_':'pitch_'}${Date.now()}.${ext}`;const path=`${currentOrg.id}/${currentUser.id}/${fn}`;
+      const{error:ue}=await sb.storage.from('crm-media').upload(path,blob,{contentType:recorder.mimeType});if(ue){$('#rS').textContent='Upload failed: '+ue.message;return;}
+      await sb.from('sales_recordings').insert({organization_id:currentOrg.id,user_id:currentUser.id,deal_id:dealId||null,file_name:fn,file_path:path,file_size_bytes:blob.size,duration_seconds:elapsed,mime_type:recorder.mimeType,status:'uploaded',consent_obtained:true,consent_method:'in_app_checkbox'});
+      openModal(`<h2>Saved</h2><div style="text-align:center;color:var(--verified);font-weight:700;margin:16px 0">✓ ${fmtTime(elapsed)} recorded${deal?' for '+esc(deal.title):''}</div><div class="sheet-actions"><button class="btn btn-primary" id="r_done">Done</button></div>`);$('#r_done').onclick=()=>{closeModal();render();};};
+    recorder.start(1000);$('#r_start').style.display='none';$('#r_stop').style.display='';
+    timer=setInterval(()=>{elapsed++;$('#rT').textContent=fmtTime(elapsed);if(elapsed>=REC_MAX)recorder.stop();},1000);$('#rS').innerHTML='<span class="rec-dot"></span> Recording…';};
+  $('#r_stop').onclick=()=>{if(recorder?.state==='recording')recorder.stop();};
+  $('#r_cancel').onclick=()=>{if(recorder?.state==='recording')recorder.stop();stream?.getTracks().forEach(t=>t.stop());clearInterval(timer);closeModal();};
+}
+
+// ===== DASHBOARD =====
+async function renderDashboard(){const since=new Date(Date.now()-30*864e5).toISOString();const[{data:reviews},{data:events}]=await Promise.all([sb.from('ai_coaching_reviews').select('overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('review_kind','coaching').order('created_at',{ascending:true}).limit(200),sb.from('kpi_events').select('event_type,created_at').eq('organization_id',currentOrg.id).gte('created_at',since)]);
+const rv=(reviews??[]).filter(r=>r.overall_score!=null);const latest=rv.length?rv[rv.length-1]:null;const avg30=(()=>{const w=rv.filter(r=>r.created_at>=since);return w.length?w.reduce((s,r)=>s+Number(r.overall_score),0)/w.length:null;})();const cnt=type=>(events??[]).filter(e=>e.event_type===type).length;const last10=rv.slice(-10);
+const STEPS={prospecting:'Prospecting',preparation:'Preparation',needs_discovery:'Discovery',presentation:'Presentation',objection_handling:'Objections',closing:'Closing',follow_up:'Follow-up'};const sa={};Object.keys(STEPS).forEach(k=>{const v=rv.map(r=>Number(r.kpi_scores?.[k])).filter(v=>!isNaN(v));sa[k]=v.length?v.reduce((a,b)=>a+b,0)/v.length:null;});
+mainEl.innerHTML=`<div class="page-head"><h1>Dashboard</h1></div><div class="stat-grid"><div class="stat-card"><div class="lbl">Latest</div><div class="val num">${latest?Number(latest.overall_score).toFixed(1)+'/10':'—'}</div></div><div class="stat-card"><div class="lbl">30d Avg</div><div class="val num">${avg30!=null?avg30.toFixed(1)+'/10':'—'}</div></div><div class="stat-card"><div class="lbl">Recordings</div><div class="val num">${cnt('recording_uploaded')}</div></div><div class="stat-card"><div class="lbl">Sessions</div><div class="val num">${cnt('coaching_generated')}</div></div></div>
+<div class="dash-panel"><h3>Trend</h3>${last10.length?`<div class="trend-bars">${last10.map(r=>{const s=Number(r.overall_score);return`<div class="tb" style="height:${Math.max(4,s*10)}%"><span class="num">${s.toFixed(1)}</span></div>`;}).join('')}</div>`:'<div class="empty">Record a pitch to start.</div>'}</div>
+<div class="dash-panel"><h3>Sales Steps</h3>${rv.length?Object.entries(STEPS).map(([k,l])=>{const v=sa[k];return`<div class="step-row"><div class="sn">${l}</div><div class="sbar"><i style="width:${v!=null?v*10:0}%"></i></div><div class="sv num">${v!=null?v.toFixed(1):'—'}</div></div>`;}).join(''):'<div class="empty">Scores appear after coaching.</div>'}</div>`;}
+
+// ===== AI ASSISTANT =====
+async function renderAssistant(){if(!assistants.length){const{data}=await sb.from('ai_assistants').select('*').eq('organization_id',currentOrg.id).order('sort_order');assistants=data??[];if(assistants.length&&!currentAssistant)currentAssistant=assistants[0];}
+mainEl.innerHTML=`<div class="page-head"><h1>🤖 AI Assistant</h1></div><div class="assistant-wrap"><div>${assistants.map(a=>`<button class="assist-card ${a.id===currentAssistant?.id?'active':''}" data-aid="${a.id}"><div class="t">${esc(a.name)}</div><div class="d">${esc(a.description??'')}</div></button>`).join('')}</div><div class="chat"><div class="msgs" id="msgs">${chatLog.length?chatLog.map(m=>`<div class="msg ${m.role==='user'?'user':'ai'}">${esc(m.text)}</div>`).join(''):'<div class="empty">Ask about your pipeline, customers, or products.</div>'}</div><div class="composer"><textarea id="prompt" placeholder="Ask…" rows="1"></textarea><button class="btn btn-primary" id="sendBtn">Send</button></div></div></div>`;
+$$('[data-aid]').forEach(b=>{b.onclick=()=>{currentAssistant=assistants.find(a=>a.id===b.dataset.aid);chatLog=[];renderAssistant();};});
+$('#sendBtn').onclick=sendPrompt;$('#prompt')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendPrompt();}});}
+async function sendPrompt(){const txt=$('#prompt')?.value?.trim();if(!txt)return;chatLog.push({role:'user',text:txt});$('#prompt').value='';paintMsgs();chatLog.push({role:'ai',text:'Thinking…'});paintMsgs();
+try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({organization_id:currentOrg.id,assistant_id:currentAssistant?.id,message:txt,history:chatLog.slice(0,-1).slice(-10)})}).catch(()=>null);chatLog.pop();if(res?.ok){const d=await res.json();chatLog.push({role:'ai',text:d.answer??d.response??'No response.'});}else chatLog.push({role:'ai',text:'Assistant unavailable.'});}catch{chatLog.pop();chatLog.push({role:'ai',text:'Network error.'});}paintMsgs();}
+function paintMsgs(){const el=$('#msgs');if(!el)return;el.innerHTML=chatLog.map(m=>`<div class="msg ${m.role==='user'?'user':'ai'}">${esc(m.text)}</div>`).join('');el.scrollTop=el.scrollHeight;}
+
+// ===== TEAM COACH =====
+async function renderTeamCoach(){const{data:personas}=await sb.from('ai_personas').select('*').eq('organization_id',currentOrg.id).order('sort_order');if(!coachPersona&&personas?.length)coachPersona=personas[0];
+mainEl.innerHTML=`<div class="page-head"><h1>🏆 Ask the Team</h1></div><div class="coach-wrap"><div>${(personas??[]).map(p=>`<button class="persona-card ${p.id===coachPersona?.id?'active':''}" data-pid="${p.id}"><div class="pe">${esc(p.avatar_emoji??'🤖')}</div><div class="pn">${esc(p.name)}</div><div class="prr">${esc(p.role??'')}</div></button>`).join('')}</div>
+<div style="display:flex;flex-direction:column"><div class="coach-msgs" id="cM">${coachLog.length?coachLog.map(m=>`<div class="coach-msg ${m.role==='user'?'user':'ai'}">${m.persona?`<div class="pb">${esc(m.persona)}</div>`:''}${esc(m.text)}</div>`).join(''):'<div class="empty">Pick a persona and ask.</div>'}</div><div class="coach-composer"><textarea id="cI" placeholder="Ask…" rows="1"></textarea><button class="btn btn-primary" id="cS">Send</button></div></div></div>`;
+$$('[data-pid]').forEach(b=>{b.onclick=()=>{coachPersona=(personas??[]).find(p=>p.id===b.dataset.pid);coachLog=[];renderTeamCoach();};});
+$('#cS').onclick=sendCoach;$('#cI')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCoach();}});}
+async function sendCoach(){const txt=$('#cI')?.value?.trim();if(!txt)return;coachLog.push({role:'user',text:txt});$('#cI').value='';paintCoach();coachLog.push({role:'ai',text:'Thinking…',persona:coachPersona?.name});paintCoach();
+try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(`${SUPABASE_URL}/functions/v1/ai-team-coach`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({organization_id:currentOrg.id,persona_id:coachPersona?.id,message:txt,history:coachLog.slice(0,-1).slice(-10)})});const d=await res.json();coachLog.pop();coachLog.push({role:'ai',text:d.ok?d.answer:`Error: ${d.detail??'Unknown'}`,persona:d.primary_persona??null});}catch{coachLog.pop();coachLog.push({role:'ai',text:'Network error.',persona:null});}paintCoach();}
+function paintCoach(){const el=$('#cM');if(!el)return;el.innerHTML=coachLog.map(m=>`<div class="coach-msg ${m.role==='user'?'user':'ai'}">${m.persona?`<div class="pb">${esc(m.persona)}</div>`:''}${esc(m.text)}</div>`).join('');el.scrollTop=el.scrollHeight;}
+
+// ===== TEAM =====
+async function renderTeam(){const isAdmin=await checkAdmin();const{data:members}=await sb.from('organization_members').select('id,user_id,role,status,created_at').eq('organization_id',currentOrg.id);const{data:invites}=await sb.from('org_invites').select('id,invited_email,role,status,invite_code,created_at').eq('organization_id',currentOrg.id).order('created_at',{ascending:false});
+mainEl.innerHTML=`<div class="page-head"><div><h1>👥 Team</h1><div class="sub">${(members??[]).length} members</div></div>${isAdmin?'<button class="btn btn-primary" id="invBtn">+ Invite</button>':''}</div>
+<div class="dash-panel"><h3>Members</h3>${(members??[]).map(m=>`<div class="member-row"><div style="flex:1"><b>${esc(m.user_id.slice(0,8)+'…')}</b></div><span class="member-role">${esc(m.role)}</span></div>`).join('')}</div>
+${isAdmin?`<div class="dash-panel"><h3>Invites</h3>${(invites??[]).length?`<div class="invite-grid">${(invites??[]).map(i=>`<div class="invite-card"><div class="ie">${esc(i.invited_email)}</div><div class="ir">${esc(i.role)}</div><span class="is ${i.status}">${esc(i.status)}</span>${i.status==='pending'?`<div style="margin-top:6px"><button class="btn btn-ghost btn-sm" onclick="copyInvite('${esc(i.invite_code)}')">📋 Copy</button></div>`:''}</div>`).join('')}</div>`:'<div class="empty">No invites.</div>'}</div>`:''}`; 
+if(isAdmin)$('#invBtn')?.addEventListener('click',showInviteModal);}
+async function checkAdmin(){const{data}=await sb.from('organization_members').select('role').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).maybeSingle();return data?.role==='owner'||data?.role==='admin';}
+function showInviteModal(){openModal(`<h2>Invite</h2><div class="field"><label>Email</label><input id="inv_e" type="email"></div><div class="field"><label>Role</label><select id="inv_r"><option value="member">Member</option><option value="admin">Admin</option></select></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="inv_s">Send</button></div>`);
+$('#inv_s').onclick=async()=>{const email=$('#inv_e').value.trim();if(!email?.includes('@'))return formErr('Valid email required.');const{data,error}=await sb.from('org_invites').insert({organization_id:currentOrg.id,invited_email:email,role:$('#inv_r').value,invited_by:currentUser.id}).select('invite_code').single();if(error)return formErr(error.message);closeModal();const link=`${location.origin}${location.pathname}?invite=${data.invite_code}`;try{await navigator.clipboard.writeText(link);alert('Link copied: '+link);}catch{alert('Share: '+link);}renderTeam();};}
+async function acceptInvite(code){const{data,error}=await sb.rpc('accept_invite',{p_invite_code:code});if(error)alert('Error: '+error.message);else if(data?.ok)alert(data.already_member?'Already on team.':'Welcome! 🎉');const u=new URL(location.href);u.searchParams.delete('invite');history.replaceState(null,'',u);}
+window.copyInvite=async code=>{const link=`${location.origin}${location.pathname}?invite=${code}`;try{await navigator.clipboard.writeText(link);alert('Copied!');}catch{prompt('Copy:',link);}};
+
+// ===== CONTACT DETAIL WITH TIMELINE =====
+async function openContactDetail(ct){
+  const[{data:acts},{data:deals},{data:tasks},{data:emails}]=await Promise.all([
+    sb.from('activities').select('*').eq('organization_id',currentOrg.id).eq('entity_id',ct.id).order('created_at',{ascending:false}).limit(50),
+    sb.from('crm_deals').select('id,title,stage,value_amount,created_at,closed_at').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}),
+    sb.from('crm_tasks').select('id,title,due_at,completed_at,priority').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}).limit(20),
+    sb.from('crm_emails').select('id,subject,sent_at,status').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}).limit(20)
+  ]);
+  const temp=ct.temperature||'warm';
+  const dsc=ct.days_since_contact!=null?ct.days_since_contact:ct.last_communication_at?Math.floor((Date.now()-new Date(ct.last_communication_at).getTime())/864e5):null;
+  const fu=ct.followup_status||'on_track';
+  // Build timeline from all sources
+  let timeline=[];
+  (acts??[]).forEach(a=>timeline.push({type:a.activity_type||'note',date:a.created_at,title:a.title||a.summary||a.activity_type,body:a.summary||'',icon:a.activity_type==='phone_call'?'📞':a.activity_type==='email'?'📧':a.activity_type==='meeting'?'🤝':a.activity_type==='sms'?'💬':'📝',cls:a.activity_type==='phone_call'?'phone':a.activity_type==='email'?'email':a.activity_type==='meeting'?'meeting':a.activity_type==='sms'?'sms':'note'}));
+  (deals??[]).forEach(d=>timeline.push({type:'deal',date:d.created_at,title:`Deal: ${d.title}`,body:`${d.stage} · ${money(d.value_amount)}`,icon:'💰',cls:'deal'}));
+  (tasks??[]).forEach(t=>timeline.push({type:'task',date:t.due_at||t.created_at,title:t.title,body:t.completed_at?'Completed':'Due '+ago(t.due_at),icon:'✓',cls:'task'}));
+  (emails??[]).forEach(e=>timeline.push({type:'email',date:e.sent_at,title:e.subject,body:e.status,icon:'📧',cls:'email'}));
+  timeline.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  
+  mainEl.innerHTML=`<div class="page-head"><div><button class="btn btn-ghost btn-sm" id="backToContacts">← Contacts</button></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="cd_edit">Edit</button><button class="btn btn-ghost btn-sm" id="cd_log">+ Log activity</button><button class="btn btn-primary btn-sm" id="cd_deal">+ New deal</button></div></div>
+  <div class="contact-detail">
+    <div class="cd-sidebar">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span class="temp-badge ${temp}">${temp}</span>${ct.is_iq_lead?'<span class="iq-badge">IQ Lead</span>':''}<span class="sla-badge ${fu}">${fu.replace(/_/g,' ')}</span></div>
+      <h2>${esc(ct.first_name)} ${esc(ct.last_name??'')}</h2>
+      <div class="cd-company">${esc(ct.companies?.name||ct.title||'')}</div>
+      <div class="cd-fields">
+        <div class="cd-field"><span class="cd-label">Email</span><span class="cd-value">${esc(ct.email||'—')}</span></div>
+        <div class="cd-field"><span class="cd-label">Phone</span><span class="cd-value">${esc(ct.phone||ct.mobile_phone||'—')}</span></div>
+        <div class="cd-field"><span class="cd-label">Preferred</span><span class="cd-value">${esc(ct.preferred_contact_method||'—')}</span></div>
+        <div class="cd-field"><span class="cd-label">Role</span><span class="cd-value">${esc(ct.decision_making_role||'—')}</span></div>
+        <div class="cd-field"><span class="cd-label">Days since contact</span><span class="cd-value days-badge ${dsc>10?'danger':dsc>5?'warn':''}">${dsc!=null?dsc+'d':'—'}</span></div>
+        <div class="cd-field"><span class="cd-label">Last method</span><span class="cd-value">${esc(ct.last_contact_method||'—')}</span></div>
+        <div class="cd-field"><span class="cd-label">Next follow-up</span><span class="cd-value">${ct.next_followup_date||'—'}</span></div>
+        <div class="cd-field"><span class="cd-label">Source</span><span class="cd-value">${esc(ct.source||'—')}</span></div>
+      </div>
+      <div class="cd-actions-bar">
+        <button class="btn btn-ghost btn-sm" onclick="quickLog('phone_call','${ct.id}')">📞 Call</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLog('email','${ct.id}')">📧 Email</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLog('sms','${ct.id}')">💬 Text</button>
+        <button class="btn btn-ghost btn-sm" onclick="quickLog('meeting','${ct.id}')">🤝 Meet</button>
+      </div>
+      <div style="margin-top:14px"><h4 style="margin:0 0 6px;font-size:13px">Active Deals</h4>
+        ${(deals??[]).filter(d=>!d.closed_at).map(d=>`<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>${esc(d.title)}</b><div class="sub">${esc(d.stage)} · ${money(d.value_amount)}</div></div>`).join('')||'<div class="sub">No active deals</div>'}
+      </div>
+    </div>
+    <div>
+      <h3 style="margin:0 0 12px">Timeline</h3>
+      <div class="timeline">
+        ${timeline.length?timeline.map(t=>`<div class="tl-item ${t.cls}"><div class="tl-dot"></div><div class="tl-card"><div class="tl-head"><span>${t.icon}</span><span class="tl-type">${esc(t.type)}</span><span class="tl-time">${ago(t.date)}</span></div><div class="tl-title">${esc(t.title)}</div>${t.body?`<div class="tl-body">${esc(t.body)}</div>`:''}</div></div>`).join(''):'<div class="empty">No activity yet. Log a call, email, or meeting to start the timeline.</div>'}
+      </div>
+    </div>
+  </div>`;
+  $('#backToContacts').onclick=()=>{currentView='contacts';render();};
+  $('#cd_edit').onclick=()=>openContactModal(ct);
+  $('#cd_deal').onclick=()=>openDealModal(null);
+  $('#cd_log').onclick=()=>openLogModal(ct.id);
+}
+
+window.quickLog=async(type,contactId)=>{
+  const summary=prompt(`Quick ${type.replace('_',' ')} note:`);
+  if(!summary)return;
+  await sb.from('activities').insert({organization_id:currentOrg.id,actor_user_id:currentUser.id,entity_type:'contact',entity_id:contactId,activity_type:type,summary,source:'crm',metadata:{}});
+  await sb.from('contacts').update({last_communication_at:new Date().toISOString(),last_contact_method:type,last_contacted_by:currentUser.id,days_since_contact:0,followup_status:'on_track'}).eq('id',contactId);
+  const ct=cache.contacts.find(c=>c.id===contactId);if(ct)openContactDetail({...ct,last_communication_at:new Date().toISOString(),last_contact_method:type,days_since_contact:0,followup_status:'on_track'});
+};
+
+function openLogModal(contactId){
+  openModal(`<h2>Log Activity</h2>
+    <div class="field"><label>Type</label><select id="log_type"><option value="phone_call">📞 Phone Call</option><option value="email">📧 Email</option><option value="sms">💬 Text/SMS</option><option value="meeting">🤝 Meeting</option><option value="note">📝 Note</option><option value="presentation">📊 Presentation</option><option value="store_visit">🏪 Store Visit</option></select></div>
+    <div class="field"><label>Summary</label><textarea id="log_summary" rows="3" placeholder="What happened?"></textarea></div>
+    <div class="field"><label>Next follow-up</label><input type="date" id="log_nfu"></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="log_save">Save</button></div>`);
+  $('#log_save').onclick=async()=>{
+    const summary=$('#log_summary').value.trim();if(!summary)return formErr('Summary required.');
+    const type=$('#log_type').value;
+    await sb.from('activities').insert({organization_id:currentOrg.id,actor_user_id:currentUser.id,entity_type:'contact',entity_id:contactId,activity_type:type,summary,title:type.replace(/_/g,' ')+': '+summary.slice(0,50),source:'crm',metadata:{}});
+    const upd={last_communication_at:new Date().toISOString(),last_contact_method:type,last_contacted_by:currentUser.id,days_since_contact:0,followup_status:'on_track'};
+    const nfu=$('#log_nfu').value;if(nfu)upd.next_followup_date=nfu;
+    await sb.from('contacts').update(upd).eq('id',contactId);
+    closeModal();render();
+  };
+}
+
+// ===== AI TASK CENTRE (replaces Daily Five) =====
+let tcTab='today';
+async function renderTaskCentre(){
+  const[{data:allTasks},{data:d5}]=await Promise.all([
+    sb.from('crm_tasks').select('*,contacts(id,first_name,last_name),crm_deals(id,title,value_amount)').eq('organization_id',currentOrg.id).order('due_at',{ascending:true}).limit(100),
+    sb.from('crm_daily_five').select('*').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).order('work_date',{ascending:false}).limit(1)
+  ]);
+  const tasks=allTasks??[];
+  const now=new Date();const today=now.toISOString().slice(0,10);
+  const overdue=tasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)<now);
+  const todayTasks=tasks.filter(t=>!t.completed_at&&t.due_at&&t.due_at.slice(0,10)===today);
+  const upcoming=tasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)>now&&t.due_at.slice(0,10)!==today);
+  const completed=tasks.filter(t=>t.completed_at);
+  const aiTasks=tasks.filter(t=>!t.completed_at&&t.ai_recommended);
+  // Generate AI recommendations from deal data
+  const hotDeals=cache.deals.filter(d=>d.temperature==='hot'&&!d.closed_at);
+  const expiringQuotes=cache.deals.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5)&&!d.closed_at);
+  const idleDeals=cache.deals.filter(d=>d.last_contact_at&&(Date.now()-new Date(d.last_contact_at).getTime())>7*864e5&&!d.closed_at);
+
+  const tabs={today:todayTasks,overdue,upcoming,ai:aiTasks,completed};
+  const current=tabs[tcTab]||todayTasks;
+
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🎯 AI Task Centre</h1><div class="sub">Prioritized by AI · Easy wins first</div></div><div class="head-actions"><button class="btn btn-primary" id="newTaskBtn">+ New task</button></div></div>
+    ${hotDeals.length||expiringQuotes.length||idleDeals.length?`<div class="dash-panel" style="margin-bottom:14px;border-left:3px solid #c026d3"><h3 style="color:#c026d3;font-size:13px;margin:0 0 8px">🤖 AI Recommendations</h3>
+      ${hotDeals.slice(0,3).map(d=>`<div class="tc-item ai"><div class="tc-body"><div class="tc-title">Follow up: ${esc(d.title)}</div><div class="tc-meta">${money(d.value_amount)} · ${esc(d.stage)}</div><div class="tc-reason">Hot lead — don't let it cool</div></div><button class="btn btn-ghost btn-sm" onclick="quickLog('phone_call','${d.contact_id}')">📞 Call</button></div>`).join('')}
+      ${expiringQuotes.slice(0,2).map(d=>`<div class="tc-item ai"><div class="tc-body"><div class="tc-title">Quote expiring: ${esc(d.title)}</div><div class="tc-meta">${money(d.value_amount)} · Expires ${d.quote_expiry_date}</div><div class="tc-reason">Quote expires soon — close or extend</div></div></div>`).join('')}
+      ${idleDeals.slice(0,2).map(d=>{const ds=Math.floor((Date.now()-new Date(d.last_contact_at).getTime())/864e5);return`<div class="tc-item ai"><div class="tc-body"><div class="tc-title">Re-engage: ${esc(d.title)}</div><div class="tc-meta">${money(d.value_amount)} · ${ds}d idle</div><div class="tc-reason">No contact in ${ds} days — at risk</div></div></div>`;}).join('')}
+    </div>`:''}
+    <div class="tc-tabs">
+      <button class="tc-tab ${tcTab==='today'?'active':''}" data-tc="today">Today <span class="tc-count">${todayTasks.length}</span></button>
+      <button class="tc-tab ${tcTab==='overdue'?'active':''}" data-tc="overdue">Overdue <span class="tc-count">${overdue.length}</span></button>
+      <button class="tc-tab ${tcTab==='upcoming'?'active':''}" data-tc="upcoming">Upcoming <span class="tc-count">${upcoming.length}</span></button>
+      <button class="tc-tab ${tcTab==='completed'?'active':''}" data-tc="completed">Completed <span class="tc-count">${completed.length}</span></button>
+    </div>
+    <div>${current.map(t=>{
+      const isOd=!t.completed_at&&t.due_at&&new Date(t.due_at)<now;
+      return`<div class="tc-item ${isOd?'overdue':t.due_at?.slice(0,10)===today?'today':''}">
+        <div class="tc-check ${t.completed_at?'done':''}" data-tid="${t.id}" title="Complete">✓</div>
+        <div class="tc-body"><div class="tc-title">${esc(t.title)}</div>
+          <div class="tc-meta">${t.contacts?esc(t.contacts.first_name+' '+(t.contacts.last_name||'')):''} ${t.crm_deals?' · '+esc(t.crm_deals.title):''} ${t.due_at?' · Due '+ago(t.due_at):''}</div>
+          ${t.ai_recommended?'<div class="tc-reason">AI recommended</div>':''}
+          ${t.escalation_level>0?`<div style="font-size:11px;color:var(--danger);font-weight:600">⚠️ Escalated (Level ${t.escalation_level})</div>`:''}
+        </div>
+      </div>`;}).join('')||'<div class="empty">No tasks in this category.</div>'}</div>`;
+  $$('[data-tc]').forEach(b=>{b.onclick=()=>{tcTab=b.dataset.tc;renderTaskCentre();};});
+  $$('[data-tid]').forEach(c=>{c.onclick=async()=>{
+    const tid=c.dataset.tid;const done=c.classList.contains('done');
+    await sb.from('crm_tasks').update(done?{completed_at:null}:{completed_at:new Date().toISOString()}).eq('id',tid);
+    renderTaskCentre();
+  };});
+  $('#newTaskBtn').onclick=openNewTaskModal;
+}
+
+function openNewTaskModal(){
+  openModal(`<h2>New Task</h2>
+    <div class="field"><label>Title *</label><input id="nt_title"></div>
+    <div class="field"><label>Description</label><textarea id="nt_desc" rows="2"></textarea></div>
+    <div class="field-row"><div class="field"><label>Due date</label><input type="datetime-local" id="nt_due"></div>
+    <div class="field"><label>Priority</label><select id="nt_pri"><option value="medium">Medium</option><option value="high">High</option><option value="low">Low</option></select></div></div>
+    <div class="field"><label>Contact</label><select id="nt_ct"><option value="">—</option>${cache.contacts.map(c=>`<option value="${c.id}">${esc(c.first_name)} ${esc(c.last_name??'')}</option>`).join('')}</select></div>
+    <div class="field"><label>Deal</label><select id="nt_deal"><option value="">—</option>${cache.deals.filter(d=>!d.closed_at).map(d=>`<option value="${d.id}">${esc(d.title)}</option>`).join('')}</select></div>
+    <div class="form-err" id="formErr"></div>
+    <div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="nt_save">Create</button></div>`);
+  $('#nt_save').onclick=async()=>{
+    const title=$('#nt_title').value.trim();if(!title)return formErr('Title required.');
+    await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title,description:$('#nt_desc').value.trim()||null,due_at:$('#nt_due').value?new Date($('#nt_due').value).toISOString():null,priority:$('#nt_pri').value,contact_id:$('#nt_ct').value||null,deal_id:$('#nt_deal').value||null,assignee_user_id:currentUser.id,metadata:{}});
+    closeModal();renderTaskCentre();
+  };
+}
+
+// ===== COMMAND CENTRE =====
+async function renderCommandCentre(){
+  const deals=cache.deals;const contacts=cache.contacts;
+  const now=new Date();const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
+  const active=deals.filter(d=>!d.is_archived&&!d.closed_at);
+  const wonMTD=deals.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('won')&&d.closed_at>=monthStart);
+  const lostMTD=deals.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('lost')&&d.closed_at>=monthStart);
+  const rev=wonMTD.reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const pipe=active.reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const avgDeal=wonMTD.length?rev/wonMTD.length:0;
+  const closeRate=wonMTD.length+lostMTD.length>0?Math.round(wonMTD.length/(wonMTD.length+lostMTD.length)*100):0;
+  // Pipeline aging
+  const staleDeals=active.filter(d=>d.stage_entered_at&&(Date.now()-new Date(d.stage_entered_at).getTime())>14*864e5);
+  // Contact performance
+  const overdueContacts=contacts.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical');
+  const hotContacts=contacts.filter(c=>c.temperature==='hot');
+  // Tasks
+  const[{data:allTasks},{data:deliveries}]=await Promise.all([
+    sb.from('crm_tasks').select('id,completed_at,due_at').eq('organization_id',currentOrg.id).limit(200),
+    sb.from('crm_delivery_workflows').select('id,status').eq('organization_id',currentOrg.id).limit(50)
+  ]);
+  const tasks=allTasks??[];
+  const openTasks=tasks.filter(t=>!t.completed_at);
+  const overdueTasks=tasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)<now);
+  // Quotes
+  const quotesOut=active.filter(d=>d.quote_attached);
+  const quotesExpiring=active.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+7*864e5));
+  const dels=deliveries??[];
+  const upcomingDels=dels.filter(d=>d.status!=='completed');
+
+  mainEl.innerHTML=`<div class="page-head"><h1>📊 Command Centre</h1><div class="sub">${esc(currentOrg.name)} · ${now.toLocaleDateString('en-CA',{month:'long',year:'numeric'})}</div></div>
+
+    <div class="cc-section"><h3>💰 Sales</h3>
+    <div class="cc-grid">
+      <div class="cc-card highlight"><div class="cc-lbl">MTD Revenue</div><div class="cc-val num">${money(rev)}</div><div class="cc-sub">${wonMTD.length} deals closed</div></div>
+      <div class="cc-card"><div class="cc-lbl">Pipeline Value</div><div class="cc-val num">${money(pipe)}</div><div class="cc-sub">${active.length} active deals</div></div>
+      <div class="cc-card"><div class="cc-lbl">Avg Deal Size</div><div class="cc-val num">${money(avgDeal)}</div></div>
+      <div class="cc-card"><div class="cc-lbl">Close Rate</div><div class="cc-val num">${closeRate}%</div><div class="cc-sub">${wonMTD.length}W / ${lostMTD.length}L</div></div>
+      ${staleDeals.length?`<div class="cc-card warn"><div class="cc-lbl">Stale Deals</div><div class="cc-val num">${staleDeals.length}</div><div class="cc-sub">>14d in same stage</div></div>`:''}
+    </div></div>
+
+    <div class="cc-section"><h3>👤 Contacts</h3>
+    <div class="cc-grid">
+      <div class="cc-card"><div class="cc-lbl">Hot Leads</div><div class="cc-val num">${hotContacts.length}</div></div>
+      ${overdueContacts.length?`<div class="cc-card danger"><div class="cc-lbl">Overdue Follow-ups</div><div class="cc-val num">${overdueContacts.length}</div><div class="cc-sub">Need immediate attention</div></div>`:`<div class="cc-card highlight"><div class="cc-lbl">Follow-up Compliance</div><div class="cc-val num">100%</div></div>`}
+      <div class="cc-card"><div class="cc-lbl">Total Contacts</div><div class="cc-val num">${contacts.length}</div></div>
+    </div></div>
+
+    <div class="cc-section"><h3>📋 Quotes</h3>
+    <div class="cc-grid">
+      <div class="cc-card"><div class="cc-lbl">Outstanding</div><div class="cc-val num">${quotesOut.length}</div></div>
+      ${quotesExpiring.length?`<div class="cc-card warn"><div class="cc-lbl">Expiring Soon</div><div class="cc-val num">${quotesExpiring.length}</div><div class="cc-sub">Within 7 days</div></div>`:''}
+      <div class="cc-card"><div class="cc-lbl">Quote→Win Rate</div><div class="cc-val num">${quotesOut.length?Math.round(wonMTD.filter(d=>d.quote_attached).length/Math.max(1,quotesOut.length+wonMTD.filter(d=>d.quote_attached).length)*100):0}%</div></div>
+    </div></div>
+
+    <div class="cc-section"><h3>✓ Tasks</h3>
+    <div class="cc-grid">
+      <div class="cc-card"><div class="cc-lbl">Open Tasks</div><div class="cc-val num">${openTasks.length}</div></div>
+      ${overdueTasks.length?`<div class="cc-card danger"><div class="cc-lbl">Overdue</div><div class="cc-val num">${overdueTasks.length}</div></div>`:''}
+      <div class="cc-card"><div class="cc-lbl">Completion Rate</div><div class="cc-val num">${tasks.length?Math.round(tasks.filter(t=>t.completed_at).length/tasks.length*100):0}%</div></div>
+    </div></div>
+
+    <div class="cc-section"><h3>🚚 Deliveries</h3>
+    <div class="cc-grid">
+      <div class="cc-card"><div class="cc-lbl">In Progress</div><div class="cc-val num">${upcomingDels.length}</div></div>
+      <div class="cc-card"><div class="cc-lbl">Completed</div><div class="cc-val num">${dels.filter(d=>d.status==='completed').length}</div></div>
+    </div></div>`;
+}
+
+// ===== MANAGER DASHBOARD =====
+async function renderManager(){
+  const[{data:members},{data:allDeals},{data:allTasks}]=await Promise.all([
+    sb.from('organization_members').select('user_id,role,profiles(user_id,full_name,email)').eq('organization_id',currentOrg.id).eq('status','active'),
+    sb.from('crm_deals').select('id,title,owner_user_id,stage,value_amount,closed_at,temperature,last_contact_at,quote_expiry_date').eq('organization_id',currentOrg.id),
+    sb.from('crm_tasks').select('id,assignee_user_id,completed_at,due_at').eq('organization_id',currentOrg.id)
+  ]);
+  const mems=members??[];const deals=allDeals??[];const tasks=allTasks??[];
+  const now=new Date();const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
+
+  mainEl.innerHTML=`<div class="page-head"><div><h1>👔 Manager Dashboard</h1><div class="sub">Team Performance · ${esc(currentOrg.name)}</div></div></div>
+    <div class="mgr-grid">${mems.map(m=>{
+      const uid=m.user_id;const name=m.profiles?.full_name||m.profiles?.email||uid.slice(0,8);
+      const initials=(name.split(' ').map(w=>w[0]).join('').toUpperCase()).slice(0,2);
+      const uDeals=deals.filter(d=>d.owner_user_id===uid);
+      const uWon=uDeals.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('won')&&d.closed_at>=monthStart);
+      const uRev=uWon.reduce((s,d)=>s+Number(d.value_amount||0),0);
+      const uActive=uDeals.filter(d=>!d.closed_at);
+      const uHot=uActive.filter(d=>d.temperature==='hot');
+      const uTasks=tasks.filter(t=>t.assignee_user_id===uid);
+      const uOverdue=uTasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)<now);
+      const uTaskRate=uTasks.length?Math.round(uTasks.filter(t=>t.completed_at).length/uTasks.length*100):0;
+      const uIdle=uActive.filter(d=>d.last_contact_at&&(Date.now()-new Date(d.last_contact_at).getTime())>7*864e5);
+      const uExpiring=uActive.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5));
+      let flags='';
+      if(uHot.length)flags+=`<span class="sp-flag alert">🔥 ${uHot.length} hot</span>`;
+      if(uOverdue.length)flags+=`<span class="sp-flag alert">⚠️ ${uOverdue.length} overdue</span>`;
+      if(uExpiring.length)flags+=`<span class="sp-flag alert">📋 ${uExpiring.length} expiring</span>`;
+      if(uIdle.length)flags+=`<span class="sp-flag info">${uIdle.length} idle</span>`;
+      if(!uOverdue.length&&uTaskRate>80)flags+=`<span class="sp-flag good">✓ On track</span>`;
+      return`<div class="sp-card" data-sp="${uid}">
+        <div class="sp-head"><div class="sp-avatar">${initials}</div><div><div class="sp-name">${esc(name)}</div><div class="sp-role">${esc(m.role)}</div></div></div>
+        <div class="sp-metrics">
+          <div class="sp-metric"><div class="mv num">${money(uRev)}</div><div class="ml">Revenue</div></div>
+          <div class="sp-metric"><div class="mv num">${uActive.length}</div><div class="ml">Active</div></div>
+          <div class="sp-metric"><div class="mv num">${uTaskRate}%</div><div class="ml">Task Rate</div></div>
+        </div>
+        ${flags?`<div class="sp-flags">${flags}</div>`:''}
+      </div>`;
+    }).join('')}</div>`;
+}
+
+// ===== COACHING QUEUE =====
+async function renderCoaching(){
+  const[{data:queue},{data:members}]=await Promise.all([
+    sb.from('crm_coaching_queue').select('*,profiles!crm_coaching_queue_salesperson_id_fkey(full_name)').eq('organization_id',currentOrg.id).eq('status','pending').order('priority',{ascending:false}).limit(20),
+    sb.from('organization_members').select('user_id,profiles(full_name)').eq('organization_id',currentOrg.id).eq('status','active')
+  ]);
+  // Auto-generate coaching items from data
+  const autoItems=[];
+  const deals=cache.deals;const contacts=cache.contacts;
+  // Hot leads with no recent contact
+  contacts.filter(c=>c.temperature==='hot'&&c.days_since_contact>5).forEach(c=>{
+    autoItems.push({name:c.first_name+' '+(c.last_name||''),issue:`Hot lead idle for ${c.days_since_contact} days`,action:'Coach Follow-up Strategy',priority:3});
+  });
+  // Deals with expiring quotes
+  deals.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5)&&!d.closed_at).forEach(d=>{
+    const owner=(members??[]).find(m=>m.user_id===d.owner_user_id);
+    autoItems.push({name:owner?.profiles?.full_name||'Unassigned',issue:`Quote expiring on ${esc(d.title)}`,action:'Coach Close or Extend',priority:2});
+  });
+  // High-value stale deals
+  deals.filter(d=>!d.closed_at&&Number(d.value_amount)>5000&&d.last_contact_at&&(Date.now()-new Date(d.last_contact_at).getTime())>10*864e5).forEach(d=>{
+    const owner=(members??[]).find(m=>m.user_id===d.owner_user_id);
+    autoItems.push({name:owner?.profiles?.full_name||'Unassigned',issue:`${money(d.value_amount)} deal idle: ${esc(d.title)}`,action:'Coach Re-engagement',priority:2});
+  });
+
+  const savedQ=queue??[];
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🏅 Coaching Queue</h1><div class="sub">AI-ranked associates needing coaching</div></div></div>
+    ${autoItems.length?autoItems.map(i=>`<div class="cq-item">
+      <div class="cq-priority p${i.priority}"></div>
+      <div class="cq-body"><div class="cq-name">${esc(i.name)}</div><div class="cq-issue">${esc(i.issue)}</div><div class="cq-action">${esc(i.action)}</div></div>
+      <div class="cq-actions"><button class="btn btn-ghost btn-sm">Coach</button></div>
+    </div>`).join(''):'<div class="empty">No coaching items — your team is on track.</div>'}
+    ${savedQ.length?'<h3 style="margin:20px 0 10px">Saved Queue</h3>'+savedQ.map(q=>'<div class="cq-item"><div class="cq-priority p'+Math.min(3,q.priority||1)+'"></div><div class="cq-body"><div class="cq-name">'+esc(q.profiles?.full_name||'—')+'</div><div class="cq-issue">'+esc(q.title)+'</div><div class="cq-action">'+esc(q.coaching_type)+'</div></div></div>').join(''):''}`;
+}
+
+// ===== DELIVERIES =====
+async function renderDeliveries(){
+  const{data}=await sb.from('crm_delivery_workflows').select('*,crm_deals(id,title,value_amount,contacts(first_name,last_name))').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(50);
+  const dels=data??[];
+  const STEPS=['pending','inventory_check','install_review','accessory_check','customer_confirmed','delivery_scheduled','delivered','installed','warranty_registered','satisfaction_reviewed','completed'];
+  const SHORT=['Pending','Inventory','Install Review','Accessories','Confirmed','Scheduled','Delivered','Installed','Warranty','Satisfaction','Complete'];
+  mainEl.innerHTML=`<div class="page-head"><div><h1>🚚 Deliveries</h1><div class="sub num">${dels.length} workflows</div></div></div>
+    ${dels.length?dels.map(d=>{
+      const si=STEPS.indexOf(d.status);const cn=d.crm_deals?.contacts;
+      return`<div class="dash-panel"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div><b>${esc(d.crm_deals?.title||'—')}</b><div class="sub">${cn?esc(cn.first_name+' '+(cn.last_name||'')):''} · ${money(d.crm_deals?.value_amount)}</div></div>
+        <button class="btn btn-ghost btn-sm" data-adv="${d.id}">Advance →</button></div>
+        <div class="dw-steps">${SHORT.map((s,i)=>`<span class="dw-step ${i<si?'done':i===si?'active':'pending'}">${s}</span>`).join('')}</div>
+        ${d.delivery_date?`<div class="sub" style="margin-top:8px">Delivery: ${d.delivery_date}</div>`:''}
+      </div>`;
+    }).join(''):'<div class="empty">No delivery workflows yet. Won deals automatically create delivery workflows.</div>'}`;
+  $$('[data-adv]').forEach(b=>{b.onclick=async()=>{
+    const wf=dels.find(d=>d.id===b.dataset.adv);if(!wf)return;
+    const si=STEPS.indexOf(wf.status);if(si>=STEPS.length-1)return;
+    const next=STEPS[si+1];const upd={status:next,updated_at:new Date().toISOString()};
+    if(next==='delivered')upd.delivered_at=new Date().toISOString();
+    if(next==='installed')upd.installed_at=new Date().toISOString();
+    if(next==='warranty_registered')upd.warranty_registered_at=new Date().toISOString();
+    await sb.from('crm_delivery_workflows').update(upd).eq('id',wf.id);
+    renderDeliveries();
+  };});
+}
+
+// ===== REPORTING =====
+async function renderReporting(){
+  const[{data:members}]=await Promise.all([
+    sb.from('organization_members').select('user_id,role,profiles(full_name)').eq('organization_id',currentOrg.id).eq('status','active')
+  ]);
+  const deals=cache.deals;const contacts=cache.contacts;
+  const now=new Date();const monthStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString();
+  const mems=members??[];
+
+  const rows=mems.map(m=>{
+    const uid=m.user_id;const name=m.profiles?.full_name||uid.slice(0,8);
+    const uDeals=deals.filter(d=>d.owner_user_id===uid);
+    const uWon=uDeals.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('won')&&d.closed_at>=monthStart);
+    const uLost=uDeals.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('lost')&&d.closed_at>=monthStart);
+    const rev=uWon.reduce((s,d)=>s+Number(d.value_amount||0),0);
+    const active=uDeals.filter(d=>!d.closed_at);
+    const pipe=active.reduce((s,d)=>s+Number(d.value_amount||0),0);
+    const closeRate=uWon.length+uLost.length>0?Math.round(uWon.length/(uWon.length+uLost.length)*100):0;
+    const avgDeal=uWon.length?Math.round(rev/uWon.length):0;
+    const hot=active.filter(d=>d.temperature==='hot').length;
+    return{name,rev,pipe,won:uWon.length,closeRate,avgDeal,hot,active:active.length};
+  }).sort((a,b)=>b.rev-a.rev);
+  const maxRev=Math.max(1,...rows.map(r=>r.rev));
+
+  mainEl.innerHTML=`<div class="page-head"><div><h1>📈 Reporting</h1><div class="sub">${esc(currentOrg.name)} · ${now.toLocaleDateString('en-CA',{month:'long',year:'numeric'})}</div></div></div>
+    <div class="dash-panel"><h3>Leaderboard</h3>
+    <table class="rpt-table"><thead><tr><th>#</th><th>Salesperson</th><th>Revenue</th><th>Pipeline</th><th>Won</th><th>Close %</th><th>Avg Deal</th><th>Hot</th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr><td><b>${i+1}</b></td><td><b>${esc(r.name)}</b></td><td class="num"><div class="bar-cell"><div class="bar-fill" style="width:${Math.max(4,r.rev/maxRev*100)}%"></div>${money(r.rev)}</div></td><td class="num">${money(r.pipe)}</td><td class="num">${r.won}</td><td class="num">${r.closeRate}%</td><td class="num">${money(r.avgDeal)}</td><td class="num">${r.hot?`<span class="temp-badge hot">${r.hot}</span>`:'-'}</td></tr>`).join('')}
+    </tbody></table></div>
+
+    <div class="cc-grid">
+      <div class="cc-card highlight"><div class="cc-lbl">Total Revenue</div><div class="cc-val num">${money(rows.reduce((s,r)=>s+r.rev,0))}</div></div>
+      <div class="cc-card"><div class="cc-lbl">Total Pipeline</div><div class="cc-val num">${money(rows.reduce((s,r)=>s+r.pipe,0))}</div></div>
+      <div class="cc-card"><div class="cc-lbl">Total Deals Won</div><div class="cc-val num">${rows.reduce((s,r)=>s+r.won,0)}</div></div>
+      <div class="cc-card"><div class="cc-lbl">Avg Close Rate</div><div class="cc-val num">${rows.length?Math.round(rows.reduce((s,r)=>s+r.closeRate,0)/rows.length):0}%</div></div>
+    </div>`;
+}
+
+// ===== NOTIFICATIONS =====
+async function loadNotifications(){
+  const{data}=await sb.from('crm_notifications').select('*').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(30);
+  const notifs=data??[];
+  const unread=notifs.filter(n=>!n.is_read);
+  const dot=$('#notifDotTop');if(dot)dot.style.display=unread.length?'block':'none';
+  const list=$('#notifList');if(!list)return;
+  list.innerHTML=notifs.length?notifs.map(n=>`<div class="notif-item ${n.is_read?'':'unread'}" data-nid="${n.id}">
+    <div class="notif-icon ${n.severity==='critical'||n.severity==='urgent'?'urgent':n.severity==='warning'?'warning':'info'}">${n.severity==='critical'?'🔴':n.severity==='urgent'?'⚠️':n.severity==='warning'?'🟡':'ℹ️'}</div>
+    <div class="notif-body"><div class="nb-title">${esc(n.title)}</div><div class="nb-text">${esc(n.body||'')}</div><div class="nb-time">${ago(n.created_at)}</div></div>
+  </div>`).join(''):'<div class="empty">No notifications</div>';
+  $$('[data-nid]').forEach(el=>{el.onclick=async()=>{
+    await sb.from('crm_notifications').update({is_read:true,read_at:new Date().toISOString()}).eq('id',el.dataset.nid);
+    el.classList.remove('unread');loadNotifications();
+  };});
+}
+
+// ===== MOBILE MENU =====
+function setupMobile(){
+  const aside=document.querySelector('aside');
+  const overlay=$('#mobileOverlay');
+  const menuBtn=$('#mobileMenuBtn');
+  if(menuBtn){menuBtn.onclick=()=>{aside.classList.toggle('open');overlay.classList.toggle('show');};}
+  if(overlay){overlay.onclick=()=>{aside.classList.remove('open');overlay.classList.remove('show');};}
+  // Close menu on nav
+  $$('.nav-btn').forEach(b=>{const orig=b.onclick;b.addEventListener('click',()=>{aside.classList.remove('open');overlay.classList.remove('show');});});
+  // Notif bell
+  const bell=$('#notifBellTop');const panel=$('#notifPanel');
+  if(bell){bell.onclick=()=>{panel.classList.toggle('open');if(panel.classList.contains('open'))loadNotifications();};}
+  const notifClose=$('#notifClose');if(notifClose){notifClose.onclick=()=>panel.classList.remove('open');}
+}
+
+// ===== DEAL WON → DELIVERY WORKFLOW =====
+async function createDeliveryWorkflow(dealId,contactId){
+  await sb.from('crm_delivery_workflows').insert({organization_id:currentOrg.id,deal_id:dealId,contact_id:contactId||null,status:'pending',assigned_to:currentUser.id});
+  // Create follow-up tasks
+  const taskTemplates=[
+    {title:'Verify inventory for order',days:0,cat:'delivery'},
+    {title:'Review installation requirements',days:1,cat:'delivery'},
+    {title:'Verify accessories ordered',days:1,cat:'delivery'},
+    {title:'Confirm delivery with customer',days:2,cat:'delivery'},
+    {title:'Post-delivery follow-up',days:5,cat:'post_sale'},
+    {title:'Warranty registration reminder',days:7,cat:'warranty'},
+    {title:'Customer satisfaction check',days:14,cat:'post_sale'}
+  ];
+  for(const tmpl of taskTemplates){
+    const due=new Date(Date.now()+tmpl.days*864e5).toISOString();
+    await sb.from('crm_tasks').insert({organization_id:currentOrg.id,deal_id:dealId,contact_id:contactId||null,assignee_user_id:currentUser.id,title:tmpl.title,due_at:due,priority:tmpl.days<3?'high':'medium',task_type:tmpl.cat,task_category:tmpl.cat,source:'delivery_workflow',metadata:{}});
+  }
+}
+
+boot();
+setupMobile();
+loadNotifications();
+</script>
+</body>
+</html>
