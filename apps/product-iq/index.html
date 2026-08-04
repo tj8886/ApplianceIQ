@@ -1194,9 +1194,9 @@ async function openProductDetail(productId) {
 
   const [{ data: p }, { data: imgs }, { data: docs }, { data: vids }, { data: feats }, { data: certs }] = await Promise.all([
     sb.from('aiq_products').select('*').eq('id', productId).maybeSingle(),
-    sb.from('pim_product_images').select('image_type,image_url,alt_text,display_order').eq('product_id', productId).order('display_order').limit(50),
-    sb.from('pim_product_documents').select('doc_type,doc_url,title,file_size_bytes').eq('product_id', productId).limit(50),
-    sb.from('pim_product_videos').select('video_type,video_url,title,thumbnail_url').eq('product_id', productId).limit(20),
+    sb.from('pim_product_images').select('image_type,file_url,cdn_url,alt_text,caption,is_primary,display_order,width_px,height_px,angle,finish_shown').eq('product_id', productId).order('is_primary', {ascending: false}).order('display_order').limit(50),
+    sb.from('pim_product_documents').select('doc_type,file_url,file_name,title,description,file_size_bytes,mime_type,language').eq('product_id', productId).order('doc_type').limit(50),
+    sb.from('pim_product_videos').select('video_type,video_url,embed_url,title,description,thumbnail_url,duration_seconds,platform').eq('product_id', productId).order('display_order').limit(20),
     sb.from('pim_product_features').select('feature_text,feature_category').eq('product_id', productId),
     sb.from('pim_product_certifications').select('certification_name,certification_body,certification_number').eq('product_id', productId)
   ]);
@@ -1335,28 +1335,40 @@ async function openProductDetail(productId) {
   // ── TAB: Images ──
   html += '<div class="pd-tab-content" id="tab-images">';
   if (imgArr.length) {
-    // Group by type
+    // Group by type, with primary images first
     const imgGroups = {};
     imgArr.forEach(img => {
       const t = img.image_type || 'unknown';
       if (!imgGroups[t]) imgGroups[t] = [];
       imgGroups[t].push(img);
     });
-    Object.entries(imgGroups).forEach(([type, images]) => {
+    // Sort groups: product first, then lifestyle, then rest
+    const typeOrder = ['product','hero','front','angle','interior','detail','lifestyle','gallery','swatch','dimension_diagram','dimensions','feature_detail','product_page'];
+    const sortedTypes = Object.keys(imgGroups).sort((a,b) => {
+      const ai = typeOrder.indexOf(a), bi = typeOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    sortedTypes.forEach(type => {
+      const images = imgGroups[type];
       html += '<div style="margin-bottom:20px"><h4 style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">' + prettyLabel(type) + ' (' + images.length + ')</h4>';
       html += '<div class="img-gallery">';
       images.forEach(img => {
+        const url = img.cdn_url || img.file_url;
+        const isImage = url && !url.endsWith('.pdf') && !url.endsWith('.webm');
         html += '<div class="img-card">'
           + '<div class="img-preview">';
-        if (img.image_url) {
-          html += '<img src="' + esc(img.image_url) + '" alt="' + esc(img.alt_text || p.model) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=no-preview>🖼</div>\'">';
+        if (isImage) {
+          html += '<img src="' + esc(url) + '" alt="' + esc(img.alt_text || p.model) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=no-preview>🖼</div>\'">';
         } else {
           html += '<div class="no-preview">🖼</div>';
         }
         html += '</div><div class="img-info">'
-          + '<div class="img-type">' + prettyLabel(img.image_type || 'photo') + '</div>'
-          + (img.alt_text ? '<div style="font-size:10px;color:var(--text2);margin-top:2px">' + esc(img.alt_text) + '</div>' : '')
-          + (img.image_url ? '<a href="' + esc(img.image_url) + '" target="_blank" style="font-size:10px;color:var(--blue);margin-top:4px;display:block">Open Full Size →</a>' : '')
+          + '<div class="img-type">' + prettyLabel(img.image_type || 'photo') + (img.is_primary ? ' ★' : '') + '</div>'
+          + (img.alt_text ? '<div style="font-size:10px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px" title="' + esc(img.alt_text) + '">' + esc(img.alt_text) + '</div>' : '')
+          + (img.finish_shown ? '<div style="font-size:10px;color:var(--text3);margin-top:1px">Finish: ' + esc(img.finish_shown) + '</div>' : '')
+          + (img.angle ? '<div style="font-size:10px;color:var(--text3)">Angle: ' + esc(img.angle) + '</div>' : '')
+          + (img.width_px && img.height_px ? '<div style="font-size:10px;color:var(--text3)">' + img.width_px + '×' + img.height_px + 'px</div>' : '')
+          + (url ? '<a href="' + esc(url) + '" target="_blank" style="font-size:10px;color:var(--blue);margin-top:4px;display:block">Open Full Size →</a>' : '')
           + '</div></div>';
       });
       html += '</div></div>';
@@ -1368,21 +1380,36 @@ async function openProductDetail(productId) {
   html += '<div class="pd-tab-content" id="tab-documents">';
   if (docArr.length) {
     const docGroups = {};
+    // Sort order for doc types
+    const docTypeOrder = ['installation_guide','owners_manual','spec_sheet','energy_guide','dimension_guide','quick_start_guide','wiring_diagram','warranty','brochure','sell_sheet','safety_info','other'];
     docArr.forEach(d => {
       const t = d.doc_type || 'other';
       if (!docGroups[t]) docGroups[t] = [];
       docGroups[t].push(d);
     });
-    Object.entries(docGroups).forEach(([type, documents]) => {
+    const sortedDocTypes = Object.keys(docGroups).sort((a,b) => {
+      const ai = docTypeOrder.indexOf(a), bi = docTypeOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    sortedDocTypes.forEach(type => {
+      const documents = docGroups[type];
       html += '<div style="margin-bottom:20px"><h4 style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">' + prettyLabel(type) + ' (' + documents.length + ')</h4>';
       html += '<div class="doc-list">';
       documents.forEach(d => {
         const iconClass = docIcon(d.doc_type);
+        const isPdf = d.mime_type === 'application/pdf' || (d.file_url||'').endsWith('.pdf');
         html += '<div class="doc-row">'
           + '<div class="doc-icon ' + iconClass + '">' + docEmoji(d.doc_type) + '</div>'
-          + '<div class="doc-details"><div class="doc-title">' + esc(d.title || prettyLabel(d.doc_type)) + '</div>'
-          + '<div class="doc-meta">' + prettyLabel(d.doc_type) + (d.file_size_bytes ? ' · ' + Math.round(d.file_size_bytes/1024) + ' KB' : '') + '</div></div>'
-          + (d.doc_url ? '<div class="doc-action"><a href="' + esc(d.doc_url) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">Open →</a></div>' : '')
+          + '<div class="doc-details"><div class="doc-title">' + esc(d.title || d.file_name || prettyLabel(d.doc_type)) + '</div>'
+          + '<div class="doc-meta">'
+          + prettyLabel(d.doc_type)
+          + (isPdf ? ' · PDF' : d.mime_type === 'text/html' ? ' · Web Link' : '')
+          + (d.file_size_bytes ? ' · ' + (d.file_size_bytes > 1048576 ? (d.file_size_bytes/1048576).toFixed(1) + ' MB' : Math.round(d.file_size_bytes/1024) + ' KB') : '')
+          + (d.language ? ' · ' + d.language.toUpperCase() : '')
+          + '</div>'
+          + (d.description ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + esc(d.description) + '</div>' : '')
+          + '</div>'
+          + (d.file_url ? '<div class="doc-action"><a href="' + esc(d.file_url) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">' + (isPdf ? '📥 Download' : '🔗 Open') + '</a></div>' : '')
           + '</div>';
       });
       html += '</div></div>';
@@ -1393,16 +1420,39 @@ async function openProductDetail(productId) {
   // ── TAB: Videos ──
   html += '<div class="pd-tab-content" id="tab-videos">';
   if (vidArr.length) {
-    html += '<div class="doc-list">';
+    // Group by type
+    const vidGroups = {};
     vidArr.forEach(v => {
-      html += '<div class="doc-row">'
-        + '<div class="doc-icon" style="background:rgba(192,38,211,.1);color:var(--pink)">🎬</div>'
-        + '<div class="doc-details"><div class="doc-title">' + esc(v.title || prettyLabel(v.video_type || 'Video')) + '</div>'
-        + '<div class="doc-meta">' + prettyLabel(v.video_type || 'video') + '</div></div>'
-        + (v.video_url ? '<div class="doc-action"><a href="' + esc(v.video_url) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">Watch →</a></div>' : '')
-        + '</div>';
+      const t = v.video_type || 'other';
+      if (!vidGroups[t]) vidGroups[t] = [];
+      vidGroups[t].push(v);
     });
-    html += '</div>';
+    Object.entries(vidGroups).forEach(([type, videos]) => {
+      html += '<div style="margin-bottom:20px"><h4 style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">' + prettyLabel(type) + ' (' + videos.length + ')</h4>';
+      html += '<div class="doc-list">';
+      videos.forEach(v => {
+        const isYouTube = v.platform === 'youtube' || (v.video_url||'').includes('youtube.com') || (v.video_url||'').includes('youtu.be');
+        const watchUrl = v.video_url || v.embed_url;
+        html += '<div class="doc-row" style="gap:14px">';
+        // Thumbnail
+        if (v.thumbnail_url) {
+          html += '<div style="width:120px;height:68px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--surface3)"><img src="' + esc(v.thumbnail_url) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML=\'🎬\'" loading="lazy"></div>';
+        } else {
+          html += '<div class="doc-icon" style="background:rgba(192,38,211,.1);color:var(--pink);width:48px;height:48px;font-size:20px">🎬</div>';
+        }
+        html += '<div class="doc-details"><div class="doc-title">' + esc(v.title || prettyLabel(v.video_type || 'Video')) + '</div>'
+          + '<div class="doc-meta">'
+          + prettyLabel(v.video_type || 'video')
+          + (isYouTube ? ' · <span style="color:red;font-weight:600">▶ YouTube</span>' : v.platform ? ' · ' + prettyLabel(v.platform) : '')
+          + (v.duration_seconds ? ' · ' + Math.floor(v.duration_seconds/60) + ':' + String(v.duration_seconds%60).padStart(2,'0') : '')
+          + '</div>'
+          + (v.description ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + esc(v.description) + '</div>' : '')
+          + '</div>'
+          + (watchUrl ? '<div class="doc-action"><a href="' + esc(watchUrl) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">▶ Watch</a></div>' : '')
+          + '</div>';
+      });
+      html += '</div></div>';
+    });
   } else html += '<div class="feed-empty">No videos for this product.</div>';
   html += '</div>';
 
