@@ -359,6 +359,18 @@ tbody tr:last-child td{border-bottom:none}
         <div class="panel-body" style="padding:0 16px 8px"><div class="feed" id="feedList"><div class="feed-empty">Waiting for changes…</div></div></div>
       </div>
     </div>
+    <!-- Auto-Enrich Panel -->
+    <div class="panel" style="margin-top:24px;margin-bottom:24px">
+      <div class="panel-head">
+        <h3>🤖 Auto-Enrich from Spec Sheets</h3>
+        <button class="btn btn-accent" style="font-size:12px" onclick="runBatchEnrich()">▶ Start Batch Enrichment</button>
+      </div>
+      <div class="panel-body" id="batchEnrichPanel">
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          Automatically extract specifications from PDF spec sheets using AI. Finds products that have spec sheet documents but missing specs data, fetches each PDF, extracts dimensions, electrical, features, and all specifications, then populates the product record. Requires an Anthropic API key (stored in browser).
+        </div>
+      </div>
+    </div>
     <div class="grid-2" style="margin-top:24px">
       <div class="panel">
         <div class="panel-head"><h3>Document Types</h3></div>
@@ -1243,6 +1255,8 @@ async function openProductDetail(productId) {
     + (p.msrp ? '<div style="font-family:Sora;font-weight:700;font-size:28px;color:var(--accent)">$' + Number(p.msrp).toLocaleString() + '</div>' : '')
     + (p.map_price ? '<div style="font-size:12px;color:var(--text3)">MAP: $' + Number(p.map_price).toLocaleString() + '</div>' : '')
     + '<div style="margin-top:8px"><div class="completeness-bar"><div class="mini-bar" style="width:80px"><div class="mini-fill" style="width:' + comp + '%;background:' + col + '"></div></div><span style="color:' + col + ';font-weight:700">' + comp + '% complete</span></div></div>'
+    + (docArr.length ? '<button class="btn" style="margin-top:10px;font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent)" id="enrichBtn" data-pid="' + p.id + '">🤖 Extract Specs from Documents</button>' : '')
+    + '<div id="enrichStatus" style="font-size:11px;color:var(--text2);margin-top:6px"></div>'
     + '</div></div></div>';
 
   // ── TABS (Syndigo-style) ──
@@ -1519,7 +1533,139 @@ async function openProductDetail(productId) {
       document.getElementById('tab-' + btn.dataset.tab)?.classList.add('active');
     });
   });
+
+  // Bind enrich button
+  const enrichBtn = document.getElementById('enrichBtn');
+  if (enrichBtn) {
+    enrichBtn.addEventListener('click', async () => {
+      const pid = enrichBtn.dataset.pid;
+      const apiKey = localStorage.getItem('aiq_anthropic_key');
+      if (!apiKey) {
+        const key = prompt('Enter your Anthropic API key (stored locally, used for spec extraction):');
+        if (!key) return;
+        localStorage.setItem('aiq_anthropic_key', key);
+      }
+      await enrichProduct(pid);
+    });
+  }
 }
+
+// ── ENRICH FROM SPEC SHEET ──
+const ENRICH_URL = SB_URL + '/functions/v1/enrich-from-spec';
+
+async function enrichProduct(productId) {
+  const statusEl = document.getElementById('enrichStatus');
+  const btn = document.getElementById('enrichBtn');
+  const apiKey = localStorage.getItem('aiq_anthropic_key');
+  if (!apiKey) { statusEl.textContent = '❌ No API key set'; return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Extracting...'; }
+  if (statusEl) statusEl.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Fetching spec sheet and extracting with AI...';
+
+  try {
+    const resp = await fetch(ENRICH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: productId, anthropic_key: apiKey, mode: 'single' }),
+    });
+    const result = await resp.json();
+    if (result.error) {
+      if (statusEl) statusEl.textContent = '❌ ' + result.error;
+      if (btn) { btn.disabled = false; btn.textContent = '🤖 Extract Specs from Documents'; }
+      return result;
+    }
+    if (statusEl) statusEl.innerHTML = '✅ Extracted <strong>' + result.specs_extracted + ' specs</strong> and updated <strong>' + result.fields_updated + ' fields</strong>' + (result.pdf_fetched ? ' from PDF' : ' via web search');
+    if (btn) { btn.textContent = '✅ Done — Refresh to see'; btn.onclick = () => openProductDetail(productId); }
+    return result;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '❌ Error: ' + e.message;
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Extract Specs from Documents'; }
+    return { error: e.message };
+  }
+}
+
+// ── BATCH AUTO-ENRICH ──
+async function findEnrichableProducts() {
+  try {
+    const resp = await fetch(ENRICH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'find' }),
+    });
+    return await resp.json();
+  } catch (e) {
+    return { products: [], count: 0, error: e.message };
+  }
+}
+
+let batchRunning = false;
+let batchCancelled = false;
+
+async function runBatchEnrich() {
+  const apiKey = localStorage.getItem('aiq_anthropic_key');
+  if (!apiKey) {
+    const key = prompt('Enter your Anthropic API key for batch extraction:');
+    if (!key) return;
+    localStorage.setItem('aiq_anthropic_key', key);
+  }
+
+  const panel = document.getElementById('batchEnrichPanel');
+  if (!panel) return;
+
+  batchRunning = true;
+  batchCancelled = false;
+  panel.innerHTML = '<div class="loading"><div class="spinner"></div>Finding products that need enrichment...</div>';
+
+  const { products, count, error } = await findEnrichableProducts();
+  if (error || !products?.length) {
+    panel.innerHTML = '<div class="feed-empty">' + (error || 'No products found with spec sheets needing enrichment.') + '</div>';
+    batchRunning = false;
+    return;
+  }
+
+  let processed = 0, succeeded = 0, failed = 0;
+  const total = products.length;
+
+  const renderProgress = (currentModel) => {
+    panel.innerHTML = '<div style="padding:16px">'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-weight:600">Auto-Enriching Products</span><button class="btn" style="font-size:11px;padding:3px 10px" id="cancelBatch">⏹ Stop</button></div>'
+      + '<div class="prog-track" style="height:12px;margin-bottom:10px"><div class="prog-fill" style="width:' + Math.round((processed/total)*100) + '%;background:var(--accent)"></div></div>'
+      + '<div style="font-size:12px;color:var(--text2)">' + processed + ' / ' + total + ' processed · <span style="color:var(--green)">' + succeeded + ' enriched</span> · <span style="color:var(--red)">' + failed + ' failed</span></div>'
+      + (currentModel ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">Processing: ' + esc(currentModel) + '</div>' : '')
+      + '</div>';
+    document.getElementById('cancelBatch')?.addEventListener('click', () => { batchCancelled = true; });
+  };
+
+  renderProgress('');
+
+  for (const p of products) {
+    if (batchCancelled) break;
+    renderProgress(p.brand_name + ' ' + p.model);
+
+    try {
+      const resp = await fetch(ENRICH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: p.id, anthropic_key: localStorage.getItem('aiq_anthropic_key'), mode: 'single' }),
+      });
+      const result = await resp.json();
+      if (result.success) succeeded++; else failed++;
+    } catch (e) { failed++; }
+    processed++;
+    renderProgress('');
+
+    // Small delay to avoid rate limits
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  batchRunning = false;
+  panel.innerHTML = '<div style="padding:16px;text-align:center">'
+    + '<div style="font-size:18px;margin-bottom:8px">' + (batchCancelled ? '⏹ Stopped' : '✅ Complete') + '</div>'
+    + '<div style="font-size:14px;color:var(--text2)">' + succeeded + ' products enriched, ' + failed + ' failed, ' + (total - processed) + ' skipped</div>'
+    + '<button class="btn" style="margin-top:12px" onclick="refreshAll()">↻ Refresh Dashboard</button>'
+    + '</div>';
+}
+window.runBatchEnrich = runBatchEnrich;
 
 // ── Realtime feed ──
 const feedItems = [];
