@@ -322,6 +322,9 @@ tbody tr:last-child td{border-bottom:none}
     <button class="on" data-page="dashboard">📊 Dashboard</button>
     <button data-page="brands">🏢 Brands</button>
     <button data-page="products">📦 Products</button>
+    <button data-page="intelligence">🧠 Intelligence</button>
+    <button data-page="recalls">⚠️ Recalls</button>
+    <button data-page="search">🔍 Search</button>
     <button data-page="manufacturer" id="navMfr" style="display:none">🏭 Manufacturer</button>
   </div>
 
@@ -422,6 +425,63 @@ tbody tr:last-child td{border-bottom:none}
   <!-- MANUFACTURER -->
   <div id="pageManufacturer" style="display:none">
     <div id="mfrContent"></div>
+  </div>
+
+  <!-- INTELLIGENCE -->
+  <div id="pageIntelligence" style="display:none">
+    <div class="stats-row" id="intelKpis"></div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>📰 Industry News</h3><span class="badge" id="newsCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="newsContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🛡️ Warranty Policies</h3><span class="badge" id="warrantyCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="warrantyContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:18px">
+      <div class="panel">
+        <div class="panel-head"><h3>🏭 Manufacturer Knowledge</h3><span class="badge" id="mfrKnowledgeCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="mfrKnowledgeContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>⚔️ Competitive Cross-Reference</h3><span class="badge" id="crossRefCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="crossRefContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:18px">
+      <div class="panel">
+        <div class="panel-head"><h3>💰 MAP Policies</h3></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:350px" id="mapContent"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🏪 Buying Groups</h3></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:350px" id="buyingContent"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🔧 Service Providers</h3></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:350px" id="serviceContent"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECALLS -->
+  <div id="pageRecalls" style="display:none">
+    <div class="catalog-toolbar">
+      <input type="text" placeholder="Search recalls by brand, product, or hazard…" id="recallSearch">
+      <select id="recallBrand"><option value="">All brands</option></select>
+    </div>
+    <div class="stats-row" id="recallKpis"></div>
+    <div id="recallContent"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+  </div>
+
+  <!-- SEARCH (Universal) -->
+  <div id="pageSearch" style="display:none">
+    <div style="margin-bottom:20px">
+      <input type="text" id="universalSearch" placeholder="Search everything — products, brands, recalls, news, warranties, specs…" style="width:100%;height:48px;border:2px solid var(--accent);border-radius:12px;padding:0 20px;font-size:16px;color:var(--text)">
+    </div>
+    <div id="searchResults"><div class="feed-empty">Type to search across all intelligence data — products, brands, manufacturer knowledge, recalls, warranties, news, competitive cross-references, and more.</div></div>
   </div>
 
   <div id="authModalRoot"></div>
@@ -811,7 +871,7 @@ function renderAll() { renderKPIs(); renderCategories(); renderCoverage(); rende
 // ── Page Navigation ──
 let currentPage = 'dashboard';
 let navHistory = []; // for breadcrumbs
-const pages = ['dashboard','brands','products','brandDetail','productDetail','manufacturer'];
+const pages = ['dashboard','brands','products','brandDetail','productDetail','manufacturer','intelligence','recalls','search'];
 
 function showPage(page, ctx) {
   currentPage = page;
@@ -837,6 +897,9 @@ document.querySelectorAll('#pageNav button').forEach(b => {
     if (page === 'brands' && !brandsLoaded) loadBrands();
     if (page === 'products' && !productsLoaded) loadCatalog();
     if (page === 'manufacturer') loadManufacturerPortal();
+    if (page === 'intelligence' && !intelLoaded) loadIntelligence();
+    if (page === 'recalls' && !recallsLoaded) loadRecalls();
+    if (page === 'search') document.getElementById('universalSearch')?.focus();
   });
 });
 
@@ -1666,6 +1729,188 @@ async function runBatchEnrich() {
     + '</div>';
 }
 window.runBatchEnrich = runBatchEnrich;
+
+// ── INTELLIGENCE PAGE ──
+let intelLoaded = false;
+async function loadIntelligence() {
+  intelLoaded = true;
+  const [{ data: news }, { data: warranties }, { data: vendors }, { data: crossRefs }, { data: mapPols }, { data: bGroups }, { data: svcProviders }] = await Promise.all([
+    sb.from('intel_news').select('*').order('published_date', { ascending: false }).limit(50),
+    sb.from('aiq_warranty_policies').select('*').order('brand_name').limit(200),
+    sb.from('mfr_vendors').select('*').eq('status', 'active').order('name').limit(150),
+    sb.from('competitive_cross_reference').select('*').limit(250),
+    sb.from('brand_map_policies').select('*').order('brand_name').limit(50),
+    sb.from('buying_groups').select('*').order('name').limit(20),
+    sb.from('aiq_service_providers').select('*').limit(50),
+  ]);
+
+  // KPIs
+  document.getElementById('intelKpis').innerHTML =
+    '<div class="stat-card accent"><div class="label">News Articles</div><div class="value">' + (news||[]).length + '</div></div>'
+    + '<div class="stat-card purple"><div class="label">Warranty Policies</div><div class="value">' + (warranties||[]).length + '</div></div>'
+    + '<div class="stat-card green"><div class="label">Manufacturer Knowledge</div><div class="value">' + (vendors||[]).length + '</div></div>'
+    + '<div class="stat-card yellow"><div class="label">Cross-References</div><div class="value">' + (crossRefs||[]).length + '</div></div>'
+    + '<div class="stat-card pink"><div class="label">MAP Policies</div><div class="value">' + (mapPols||[]).length + '</div></div>'
+    + '<div class="stat-card"><div class="label">Buying Groups</div><div class="value">' + (bGroups||[]).length + '</div></div>';
+
+  // News
+  document.getElementById('newsCount').textContent = (news||[]).length;
+  document.getElementById('newsContent').innerHTML = (news||[]).length ?
+    '<table><thead><tr><th>Date</th><th>Headline</th><th>Company</th><th>Category</th><th>Source</th></tr></thead><tbody>'
+    + (news||[]).map(n => '<tr><td class="cat-tag">' + (n.published_date || '—') + '</td><td style="font-weight:600;max-width:350px">' + esc(n.headline) + '</td><td><span class="brand-tag">' + esc(n.company_name) + '</span></td><td class="cat-tag">' + prettyLabel(n.category) + '</td><td class="cat-tag">' + esc(n.source_name||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No news articles.</div>';
+
+  // Warranties
+  document.getElementById('warrantyCount').textContent = (warranties||[]).length;
+  document.getElementById('warrantyContent').innerHTML = (warranties||[]).length ?
+    '<table><thead><tr><th>Brand</th><th>Category</th><th>Coverage</th><th>Duration</th></tr></thead><tbody>'
+    + (warranties||[]).map(w => '<tr><td><span class="brand-tag">' + esc(w.brand_name) + '</span></td><td class="cat-tag">' + esc(w.category||w.product_type||'') + '</td><td style="max-width:300px;font-size:12px">' + esc(w.coverage_summary||w.description||'') + '</td><td style="font-weight:600">' + esc(w.duration||w.warranty_years ? (w.warranty_years||'') + ' yr' : '') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No warranty data.</div>';
+
+  // Manufacturer Knowledge (from mfr_vendors)
+  document.getElementById('mfrKnowledgeCount').textContent = (vendors||[]).length;
+  document.getElementById('mfrKnowledgeContent').innerHTML = (vendors||[]).length ?
+    '<table><thead><tr><th>Brand</th><th>Tier</th><th>Focus</th><th>Story</th><th>Selling Angles</th></tr></thead><tbody>'
+    + (vendors||[]).map(v => '<tr><td><span class="brand-tag">' + esc(v.name) + '</span></td><td><span class="tier-pill ' + esc(v.tier||'') + '">' + esc(v.tier||'') + '</span></td><td class="cat-tag" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(v.focus||'') + '</td><td style="font-size:11px;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(v.story||'') + '</td><td style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(typeof v.sellingAngles === 'object' ? JSON.stringify(v.sellingAngles) : (v.sellingAngles||'')) + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No manufacturer knowledge.</div>';
+
+  // Competitive Cross-Reference
+  document.getElementById('crossRefCount').textContent = (crossRefs||[]).length;
+  document.getElementById('crossRefContent').innerHTML = (crossRefs||[]).length ?
+    '<table><thead><tr><th>Brand A</th><th>Model A</th><th>vs</th><th>Brand B</th><th>Model B</th><th>Category</th></tr></thead><tbody>'
+    + (crossRefs||[]).map(c => '<tr><td><span class="brand-tag">' + esc(c.brand_a||c.brand_name_a||'') + '</span></td><td class="model-name">' + esc(c.model_a||c.model_number_a||'') + '</td><td style="color:var(--text3)">↔</td><td><span class="brand-tag">' + esc(c.brand_b||c.brand_name_b||'') + '</span></td><td class="model-name">' + esc(c.model_b||c.model_number_b||'') + '</td><td class="cat-tag">' + esc(c.category||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No cross-references.</div>';
+
+  // MAP Policies
+  document.getElementById('mapContent').innerHTML = (mapPols||[]).length ?
+    '<table><thead><tr><th>Brand</th><th>Policy</th></tr></thead><tbody>'
+    + (mapPols||[]).map(m => '<tr><td><span class="brand-tag">' + esc(m.brand_name) + '</span></td><td style="font-size:12px">' + esc(m.policy_summary||m.description||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No MAP policies.</div>';
+
+  // Buying Groups
+  document.getElementById('buyingContent').innerHTML = (bGroups||[]).length ?
+    '<table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>'
+    + (bGroups||[]).map(b => '<tr><td style="font-weight:600">' + esc(b.name) + '</td><td class="cat-tag">' + esc(b.type||b.group_type||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No buying groups.</div>';
+
+  // Service Providers
+  document.getElementById('serviceContent').innerHTML = (svcProviders||[]).length ?
+    '<table><thead><tr><th>Name</th><th>Region</th></tr></thead><tbody>'
+    + (svcProviders||[]).map(s => '<tr><td style="font-weight:600">' + esc(s.company_name||s.name||'') + '</td><td class="cat-tag">' + esc(s.region||s.service_area||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No service providers.</div>';
+}
+
+// ── RECALLS PAGE ──
+let recallsLoaded = false, allRecalls = [];
+async function loadRecalls() {
+  recallsLoaded = true;
+  const { data } = await sb.from('aiq_recalls').select('*').order('recall_date', { ascending: false });
+  allRecalls = data || [];
+  // Populate brand filter
+  const brands = [...new Set(allRecalls.map(r => r.brand_name).filter(Boolean))].sort();
+  const sel = document.getElementById('recallBrand');
+  if (sel.options.length <= 1) brands.forEach(b => sel.insertAdjacentHTML('beforeend', '<option>' + b + '</option>'));
+  renderRecalls();
+}
+
+function renderRecalls() {
+  const search = (document.getElementById('recallSearch')?.value || '').toLowerCase();
+  const brand = document.getElementById('recallBrand')?.value || '';
+  let list = allRecalls;
+  if (search) list = list.filter(r => (r.title||'').toLowerCase().includes(search) || (r.brand_name||'').toLowerCase().includes(search) || (r.hazard||'').toLowerCase().includes(search) || (r.product_name||'').toLowerCase().includes(search));
+  if (brand) list = list.filter(r => r.brand_name === brand);
+
+  document.getElementById('recallKpis').innerHTML =
+    '<div class="stat-card red"><div class="label">Total Recalls</div><div class="value">' + list.length + '</div><div class="sub">of ' + allRecalls.length + '</div></div>'
+    + '<div class="stat-card yellow"><div class="label">Brands Affected</div><div class="value">' + new Set(list.map(r => r.brand_name)).size + '</div></div>'
+    + '<div class="stat-card"><div class="label">With Injuries</div><div class="value">' + list.filter(r => r.injury_count > 0).length + '</div></div>';
+
+  document.getElementById('recallContent').innerHTML = list.length ?
+    '<div class="doc-list">' + list.map(r =>
+      '<div class="doc-row" style="align-items:flex-start;gap:14px">'
+      + '<div class="doc-icon pdf" style="font-size:16px">⚠️</div>'
+      + '<div class="doc-details" style="flex:1">'
+      + '<div class="doc-title">' + esc(r.title) + '</div>'
+      + '<div class="doc-meta"><span class="brand-tag">' + esc(r.brand_name) + '</span> · ' + esc(r.recall_date||'') + ' · ' + esc(r.country||'') + (r.units_affected ? ' · ' + esc(r.units_affected) + ' units' : '') + '</div>'
+      + (r.hazard ? '<div style="font-size:12px;color:var(--red);margin-top:4px">⚠️ ' + esc(r.hazard) + '</div>' : '')
+      + (r.remedy ? '<div style="font-size:12px;color:var(--green);margin-top:2px">✅ ' + esc(r.remedy) + '</div>' : '')
+      + (r.model_numbers ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">Models: ' + esc(typeof r.model_numbers === 'object' ? r.model_numbers.join(', ') : r.model_numbers) + '</div>' : '')
+      + '</div>'
+      + (r.url ? '<div class="doc-action"><a href="' + esc(r.url) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">View →</a></div>' : '')
+      + '</div>'
+    ).join('') + '</div>'
+    : '<div class="feed-empty">No recalls match your search.</div>';
+}
+
+document.getElementById('recallSearch')?.addEventListener('input', renderRecalls);
+document.getElementById('recallBrand')?.addEventListener('change', renderRecalls);
+
+// ── UNIVERSAL SEARCH ──
+let searchDebounce = null;
+document.getElementById('universalSearch')?.addEventListener('input', e => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => runUniversalSearch(e.target.value), 300);
+});
+
+async function runUniversalSearch(query) {
+  const el = document.getElementById('searchResults');
+  if (!query || query.length < 2) { el.innerHTML = '<div class="feed-empty">Type to search across all intelligence data.</div>'; return; }
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Searching…</div>';
+  const q = query.toLowerCase();
+  const results = [];
+
+  // Search products (use PostgREST for ilike)
+  try {
+    const orParts = ['brand_name','model','short_description','category'].map(c => c + '.ilike.*' + encodeURIComponent(q) + '*');
+    const url = SB_URL + '/rest/v1/aiq_products?select=id,brand_name,model,category,short_description&or=(' + orParts.join(',') + ')&limit=10&order=brand_name';
+    const resp = await fetch(url, { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } });
+    const prods = await resp.json();
+    (prods||[]).forEach(p => results.push({ type: '📦 Product', title: p.brand_name + ' ' + p.model, sub: p.category + (p.short_description ? ' — ' + p.short_description : ''), action: () => openProductDetail(p.id) }));
+  } catch(e) {}
+
+  // Search brands
+  const matchBrands = allBrands.filter(b => (b.brand_name||'').toLowerCase().includes(q) || (b.parent_company||'').toLowerCase().includes(q) || (b.brand_story||'').toLowerCase().includes(q));
+  matchBrands.slice(0, 5).forEach(b => results.push({ type: '🏢 Brand', title: b.brand_name, sub: (b.parent_company ? b.parent_company + ' · ' : '') + (b.brand_tier||'') + (b.brand_tagline ? ' — ' + b.brand_tagline : ''), action: () => openBrandDetail(b.id) }));
+
+  // Search recalls
+  const { data: recalls } = await sb.from('aiq_recalls').select('id,brand_name,title,hazard,recall_date').or('title.ilike.*' + q + '*,brand_name.ilike.*' + q + '*,hazard.ilike.*' + q + '*').limit(5);
+  (recalls||[]).forEach(r => results.push({ type: '⚠️ Recall', title: r.title, sub: r.brand_name + ' · ' + (r.recall_date||'') }));
+
+  // Search news
+  const { data: news } = await sb.from('intel_news').select('headline,company_name,category,published_date').or('headline.ilike.*' + q + '*,company_name.ilike.*' + q + '*').limit(5);
+  (news||[]).forEach(n => results.push({ type: '📰 News', title: n.headline, sub: n.company_name + ' · ' + (n.published_date||'') }));
+
+  // Search warranties
+  const { data: warr } = await sb.from('aiq_warranty_policies').select('brand_name,category,coverage_summary,product_type').or('brand_name.ilike.*' + q + '*,coverage_summary.ilike.*' + q + '*').limit(5);
+  (warr||[]).forEach(w => results.push({ type: '🛡️ Warranty', title: w.brand_name + ' — ' + (w.category||w.product_type||''), sub: w.coverage_summary||'' }));
+
+  // Search mfr vendors
+  const { data: vend } = await sb.from('mfr_vendors').select('name,tier,focus,story').or('name.ilike.*' + q + '*,story.ilike.*' + q + '*,focus.ilike.*' + q + '*').limit(5);
+  (vend||[]).forEach(v => results.push({ type: '🏭 Manufacturer', title: v.name, sub: (v.tier||'') + ' · ' + (v.focus||'') }));
+
+  // Search cross-references
+  const { data: xref } = await sb.from('competitive_cross_reference').select('*').or('brand_name_a.ilike.*' + q + '*,brand_name_b.ilike.*' + q + '*,model_number_a.ilike.*' + q + '*,model_number_b.ilike.*' + q + '*').limit(5);
+  (xref||[]).forEach(x => results.push({ type: '⚔️ Cross-Ref', title: (x.brand_name_a||'') + ' ' + (x.model_number_a||'') + ' vs ' + (x.brand_name_b||'') + ' ' + (x.model_number_b||''), sub: x.category||'' }));
+
+  if (!results.length) {
+    el.innerHTML = '<div class="feed-empty">No results found for "' + esc(query) + '".</div>';
+    return;
+  }
+
+  el.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">' + results.length + ' results for "' + esc(query) + '"</div>'
+    + '<div class="doc-list">' + results.map((r, i) =>
+      '<div class="doc-row" style="cursor:' + (r.action ? 'pointer' : 'default') + '" ' + (r.action ? 'data-search-idx="' + i + '"' : '') + '>'
+      + '<div style="font-size:11px;color:var(--text3);width:90px;flex-shrink:0;font-weight:600">' + r.type + '</div>'
+      + '<div class="doc-details"><div class="doc-title">' + esc(r.title) + '</div>'
+      + '<div class="doc-meta">' + esc((r.sub||'').substring(0, 150)) + '</div></div></div>'
+    ).join('') + '</div>';
+
+  // Bind click actions
+  document.querySelectorAll('[data-search-idx]').forEach(row => {
+    const idx = parseInt(row.dataset.searchIdx);
+    if (results[idx]?.action) row.addEventListener('click', results[idx].action);
+  });
+}
 
 // ── Realtime feed ──
 const feedItems = [];
