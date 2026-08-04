@@ -413,7 +413,7 @@ tbody tr:last-child td{border-bottom:none}
       <select id="prodSize"><option value="">All sizes</option></select>
       <select id="prodColor"><option value="">All colors</option></select>
       <select id="prodFuel"><option value="">All fuel types</option></select>
-      <select id="prodFeature"><option value="">Features</option><option value="counter_depth">Counter-Depth</option><option value="ice_maker">Ice Maker</option><option value="water">Water Dispenser</option><option value="ice_dispenser">Ice Dispenser</option><option value="energy_star">Energy Star</option></select>
+      <select id="prodFeature"><option value="">Features</option><option value="counter_depth">Counter-Depth</option><option value="ice_maker">Ice Maker</option><option value="water">Water Dispenser</option><option value="ice_dispenser">Ice Dispenser</option><option value="energy_star">Energy Star</option><option value="frost_free">Frost-Free</option><option value="manual_defrost">Manual Defrost</option></select>
       <select id="prodStatus"><option value="">All statuses</option></select>
     </div>
     <div class="stats-row" id="prodKpis"></div>
@@ -719,7 +719,7 @@ async function paginate(table, cols) {
 }
 
 async function loadProducts() {
-  const cols = 'id,model,brand_name,category,subcategory,size_class,is_parts_accessory,status,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,' + COMP_FIELDS.join(',');
+  const cols = 'id,model,brand_name,category,subcategory,size_class,is_parts_accessory,status,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,defrost_type,' + COMP_FIELDS.join(',');
   const raw = await paginate('aiq_products', cols);
   allProducts = raw.filter(p => p.status === 'active');
 }
@@ -1193,7 +1193,7 @@ async function loadCatalog() {
   const el = document.getElementById('prodContent');
   el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products…</div>';
 
-  const selectCols = 'id,brand_name,model,category,subcategory,size_class,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,installation_type,series';
+  const selectCols = 'id,brand_name,model,category,subcategory,size_class,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,installation_type,series,defrost_type';
 
   let q = sb.from('aiq_products')
     .select(selectCols, { count: 'exact' })
@@ -1232,6 +1232,8 @@ async function loadCatalog() {
   if (prodFilters.feature === 'water') q = q.eq('has_water_dispenser', true);
   if (prodFilters.feature === 'ice_dispenser') q = q.eq('has_ice_dispenser', true);
   if (prodFilters.feature === 'energy_star') q = q.eq('energy_star', true);
+  if (prodFilters.feature === 'frost_free') q = q.eq('defrost_type', 'Frost-Free');
+  if (prodFilters.feature === 'manual_defrost') q = q.eq('defrost_type', 'Manual');
 
   const { data, error, count } = await q.range(catalogPage*PAGE_SIZE, catalogPage*PAGE_SIZE+PAGE_SIZE-1);
   if (error) { el.innerHTML = '<div class="feed-empty">Error: '+(error.message||'')+'</div>'; return; }
@@ -1310,6 +1312,7 @@ function renderCatalog() {
     if (p.has_water_dispenser) badges.push('💧 Water');
     if (p.has_ice_dispenser) badges.push('🧊💧 Dispenser');
     if (p.energy_star) badges.push('⭐ E-Star');
+    if (p.defrost_type) badges.push(p.defrost_type === 'Frost-Free' ? '❄️ Frost-Free' : '🔧 Manual Defrost');
     if (p.noise_dba) badges.push(p.noise_dba + ' dBA');
     return '<div class="prod-card" data-prod-id="'+p.id+'">'
       +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+(p.color_family?' · <span style="color:var(--navy);font-weight:700">'+esc(p.color_family)+'</span>':'')+'</div>'
