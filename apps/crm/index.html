@@ -530,6 +530,13 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .fb-up:hover{border-color:var(--verified)}.fb-dn:hover{border-color:var(--amber)}
 .tier-badge{font-size:9px;padding:2px 6px;border-radius:4px;margin-left:8px;text-transform:uppercase;font-weight:700;letter-spacing:.5px}
 .tier-fast{background:#0d9488;color:#fff}.tier-standard{background:#6366f1;color:#fff}.tier-strong{background:#dc2626;color:#fff}.tier-deterministic{background:#16a34a;color:#fff}
+.tw-cursor{animation:blink .6s infinite;color:var(--accent);font-weight:700}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.thinking-dots{display:flex;gap:4px;padding:8px 0}
+.thinking-dots span{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:dotPulse 1.2s infinite}
+.thinking-dots span:nth-child(2){animation-delay:.2s}
+.thinking-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dotPulse{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
 </style>
 </head>
 <body>
@@ -919,8 +926,9 @@ function renderBanner(){
 let coachBarHistory=[], coachBarConvId=null;
 function aiCoachBar(){
   coachBarHistory=[];coachBarConvId=null;
-  return '<div class="ai-coach-bar" style="flex-wrap:wrap"><div class="acb-icon">🤖</div><div class="acb-body" style="width:100%"><div class="acb-title">AI Sales Coach</div><div class="acb-sub">Ask anything — coaching, products, comparisons, objections, emails, scripts</div><div class="acb-input"><input id="coachBarInput" placeholder="e.g. Compare Bosch 800 vs 500 dishwasher, or: draft a follow-up email for my customer"><button class="btn-ai" id="coachBarSend">Ask</button></div><div id="coachBarReply" style="margin-top:10px;display:none;background:rgba(255,255,255,.05);border-radius:10px;padding:14px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.6"></div></div></div>';
+  return '<div class="ai-coach-bar" style="flex-wrap:wrap"><div class="acb-icon">🤖</div><div class="acb-body" style="width:100%"><div class="acb-title">AI Sales Coach</div><div class="acb-sub">Ask anything — coaching, products, comparisons, objections, emails, scripts</div><div class="acb-input"><input id="coachBarInput" placeholder="e.g. Compare Bosch 800 vs 500 dishwasher, or: draft a follow-up email for my customer"><button class="btn-ai" id="coachBarSend">Ask</button></div><div id="coachBarReply" style="margin-top:10px;display:none;background:rgba(255,255,255,.05);border-radius:10px;padding:14px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.6;position:relative"><button onclick="closeCoachBar()" style="position:sticky;top:0;float:right;background:rgba(255,255,255,.1);border:none;color:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:12px;z-index:1">✕ Close</button></div></div></div>';
 }
+window.closeCoachBar=function(){const r=$('#coachBarReply');if(r){r.style.display='none';r.innerHTML='';coachBarHistory=[];coachBarConvId=null;}}
 async function pimProductSearch(query){
   // Extract brand/model/category terms for PIM lookup
   const words=query.toLowerCase();
@@ -992,21 +1000,46 @@ function bindCoachBar(){
       coachBarHistory.push({role:'ai',text:'Coach unavailable. Try Ask the Team from the sidebar.',persona:null,tier:null});
     }
     paintCoachBar(reply);
+    // Typewriter effect on the last AI message
+    const lastIdx=coachBarHistory.length-1;
+    const lastMsg=coachBarHistory[lastIdx];
+    if(lastMsg?.role==='ai'&&lastMsg.text)typewrite(reply,lastIdx,lastMsg);
     btn.disabled=false;
   };
+  function typewrite(container,idx,msg){
+    const targetEl=container.querySelector('[data-tw="'+idx+'"]');
+    if(!targetEl)return;
+    const fullText=msg.text;
+    const formatted=esc(fullText).replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- /gm,'• ');
+    const words=formatted.split(/(\s+)/);
+    let shown=0;
+    targetEl.innerHTML='<span class="tw-cursor">|</span>';
+    const interval=setInterval(()=>{
+      const chunk=words.slice(shown,shown+3).join('');
+      if(shown===0)targetEl.innerHTML=chunk+'<span class="tw-cursor">|</span>';
+      else targetEl.innerHTML=targetEl.innerHTML.replace('<span class="tw-cursor">|</span>','')+chunk+'<span class="tw-cursor">|</span>';
+      shown+=3;
+      container.scrollTop=container.scrollHeight;
+      if(shown>=words.length){clearInterval(interval);targetEl.innerHTML=targetEl.innerHTML.replace('<span class="tw-cursor">|</span>','');
+        // Show feedback buttons after typing finishes
+        const fbEl=container.querySelector('[data-cbifb="'+idx+'"]');if(fbEl)fbEl.style.display='flex';
+      }
+    },30);
+  }
   function paintCoachBar(el){
     el.innerHTML=coachBarHistory.map((m,i)=>{
       if(m.role==='user')return '<div style="margin:8px 0;padding:8px 12px;background:rgba(255,255,255,.08);border-radius:8px;font-size:13px">'+esc(m.text)+'</div>';
       const tier=m.tier||'';
+      const isLast=i===coachBarHistory.length-1;
       return '<div style="margin:8px 0">'
         +(tier?'<span class="tier-badge tier-'+tier+'">'+tier+'</span> ':'')
         +(m.persona?'<b>'+esc(m.persona)+'</b>':'')
-        +'<div style="color:#fff;white-space:pre-wrap;line-height:1.7;margin-top:4px">'
-        +esc(m.text).replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- /gm,'• ')
+        +'<div data-tw="'+i+'" style="color:#fff;white-space:pre-wrap;line-height:1.7;margin-top:4px">'
+        +(isLast?'':esc(m.text).replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- /gm,'• '))
         +'</div>'
-        +(m.meta?'<div class="fb-row" data-cbi="'+i+'"><button class="fb-btn fb-up" onclick="cbFeedbackIdx('+i+',\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="cbFeedbackIdx('+i+',\'thumbs_down\')">👎</button></div>':'')
+        +(m.meta?'<div class="fb-row" data-cbi="'+i+'" data-cbifb="'+i+'" style="'+(isLast?'display:none':'display:flex')+'"><button class="fb-btn fb-up" onclick="cbFeedbackIdx('+i+',\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="cbFeedbackIdx('+i+',\'thumbs_down\')">👎</button></div>':'')
         +'</div>';
-    }).join('')+'<div style="clear:both"></div>';
+    }).join('');
     el.scrollTop=el.scrollHeight;
   }
   btn.onclick=send;
@@ -2254,12 +2287,39 @@ mainEl.innerHTML='<div class="page-head"><h1>🏆 Ask the Team</h1></div><div cl
 +'<div style="display:flex;flex-direction:column"><div class="coach-msgs" id="cM">'+(coachLog.length?coachLog.map((m,i)=>paintCoachMsg(m,i)).join(''):'<div class="empty">Ask anything — the right persona will answer automatically. Or pick a specific team member.</div>')+'</div><div class="coach-composer"><textarea id="cI" placeholder="Ask the team…" rows="1"></textarea><button class="btn btn-primary" id="cS">Send</button></div></div></div>';
 $$('[data-pid]').forEach(b=>{b.onclick=()=>{const pid=b.dataset.pid;if(pid==='auto')coachPersona={id:'auto',persona_name:'Auto',persona_role:'Best persona for your question',avatar_emoji:'🧠'};else coachPersona=(personas??[]).find(p=>p.id===pid);coachLog=[];renderTeamCoach();};});
 $('#cS').onclick=sendCoach;$('#cI')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCoach();}});}
-async function sendCoach(){const txt=$('#cI')?.value?.trim();if(!txt)return;coachLog.push({role:'user',text:txt});$('#cI').value='';paintCoach();coachLog.push({role:'ai',text:'Thinking…',persona:coachPersona?.id==='auto'?null:coachPersona?.persona_name});paintCoach();
+async function sendCoach(){const txt=$('#cI')?.value?.trim();if(!txt)return;coachLog.push({role:'user',text:txt});$('#cI').value='';paintCoach();
+// Show thinking indicator
+coachLog.push({role:'ai',text:'',persona:coachPersona?.id==='auto'?null:coachPersona?.persona_name,_thinking:true});paintCoach();
 const isAuto=coachPersona?.id==='auto';
-const payload={organization_id:currentOrg.id,message:txt,history:coachLog.slice(0,-1).slice(-10).map(m=>({role:m.role==='user'?'user':'assistant',text:m.text}))};
+const payload={organization_id:currentOrg.id,message:txt,history:coachLog.slice(0,-1).filter(m=>!m._thinking).slice(-10).map(m=>({role:m.role==='user'?'user':'assistant',text:m.text}))};
 if(!isAuto){payload.persona_id=coachPersona?.id;payload.mode='manual';}
-try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(SUPABASE_URL+'/functions/v1/ai-intelligence-router',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(payload)});const d=await res.json();coachLog.pop();coachLog.push({role:'ai',text:d.ok?d.answer:'Could not get a response. Check edge function deployment.',persona:d.primary_persona??null,meta:{conversation_id:d.conversation_id,complexity:d.complexity,model_used:d.model_used,cost:d.cost_estimate_usd,routed_personas:d.routed_personas}});}catch{coachLog.pop();coachLog.push({role:'ai',text:'Could not reach the coaching service. Check your connection.',persona:null});}paintCoach();}
-function paintCoachMsg(m,i){return '<div class="coach-msg '+(m.role==='user'?'user':'ai')+'">'+(m.role==='ai'&&m.persona?'<div class="pb">'+esc(m.persona)+(m.meta?.complexity?.tier?'<span class="tier-badge tier-'+m.meta.complexity.tier+'">'+m.meta.complexity.tier+'</span>':'')+(m.meta?.routed_personas?.length>1?' <span style="font-size:10px;opacity:.6">+ '+m.meta.routed_personas.filter(p=>p!==m.persona).join(', ')+'</span>':'')+'</div>':'')+esc(m.text)+(m.role==='ai'&&m.meta?'<div class="fb-row" data-idx="'+i+'"><button class="fb-btn fb-up" onclick="sendFeedback('+i+',\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="sendFeedback('+i+',\'thumbs_down\')">👎</button></div>':'')+'</div>';}
+try{const{data:{session}}=await sb.auth.getSession();const res=await fetch(SUPABASE_URL+'/functions/v1/ai-intelligence-router',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(payload)});const d=await res.json();coachLog.pop();const msg={role:'ai',text:d.ok?d.answer:'Could not get a response.',persona:d.primary_persona??null,meta:{conversation_id:d.conversation_id,complexity:d.complexity,model_used:d.model_used,cost:d.cost_estimate_usd,routed_personas:d.routed_personas}};coachLog.push(msg);paintCoach();typewriteCoach(coachLog.length-1,msg);}catch{coachLog.pop();coachLog.push({role:'ai',text:'Could not reach the coaching service.',persona:null});paintCoach();}}
+function typewriteCoach(idx,msg){
+  const el=$('#cM');if(!el)return;
+  const targetEl=el.querySelector('[data-ctw="'+idx+'"]');if(!targetEl)return;
+  const formatted=esc(msg.text).replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- /gm,'• ');
+  const words=formatted.split(/(\s+)/);
+  let shown=0;
+  targetEl.innerHTML='<span class="tw-cursor">|</span>';
+  const interval=setInterval(()=>{
+    const chunk=words.slice(shown,shown+3).join('');
+    if(shown===0)targetEl.innerHTML=chunk+'<span class="tw-cursor">|</span>';
+    else targetEl.innerHTML=targetEl.innerHTML.replace('<span class="tw-cursor">|</span>','')+chunk+'<span class="tw-cursor">|</span>';
+    shown+=3;el.scrollTop=el.scrollHeight;
+    if(shown>=words.length){clearInterval(interval);targetEl.innerHTML=targetEl.innerHTML.replace('<span class="tw-cursor">|</span>','');
+      const fbEl=el.querySelector('[data-cfb="'+idx+'"]');if(fbEl)fbEl.style.display='flex';
+    }
+  },30);
+}
+function paintCoachMsg(m,i){
+  const isLast=i===coachLog.length-1;
+  if(m._thinking)return '<div class="coach-msg ai"><div class="thinking-dots"><span>.</span><span>.</span><span>.</span></div></div>';
+  return '<div class="coach-msg '+(m.role==='user'?'user':'ai')+'">'
+    +(m.role==='ai'&&m.persona?'<div class="pb">'+esc(m.persona)+(m.meta?.complexity?.tier?'<span class="tier-badge tier-'+m.meta.complexity.tier+'">'+m.meta.complexity.tier+'</span>':'')+(m.meta?.routed_personas?.length>1?' <span style="font-size:10px;opacity:.6">+ '+m.meta.routed_personas.filter(p=>p!==m.persona).join(', ')+'</span>':'')+'</div>':'')
+    +(m.role==='user'?esc(m.text):'<div data-ctw="'+i+'">'+(isLast?'':esc(m.text).replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- /gm,'• '))+'</div>')
+    +(m.role==='ai'&&m.meta?'<div class="fb-row" data-idx="'+i+'" data-cfb="'+i+'" style="'+(isLast?'display:none':'display:flex')+'"><button class="fb-btn fb-up" onclick="sendFeedback('+i+',\'thumbs_up\')">👍</button><button class="fb-btn fb-dn" onclick="sendFeedback('+i+',\'thumbs_down\')">👎</button></div>':'')
+    +'</div>';
+}
 function paintCoach(){const el=$('#cM');if(!el)return;el.innerHTML=coachLog.map((m,i)=>paintCoachMsg(m,i)).join('');el.scrollTop=el.scrollHeight;}
 window.sendFeedback=async function(idx,signal){const m=coachLog[idx];if(!m||!m.meta)return;const btn=document.querySelector('.fb-row[data-idx="'+idx+'"]');if(btn)btn.innerHTML=signal==='thumbs_up'?'<span style="font-size:11px;color:var(--verified)">Thanks! 👍</span>':'<span style="font-size:11px;color:var(--amber)">Noted 👎</span>';try{const{data:{session}}=await sb.auth.getSession();await fetch(SUPABASE_URL+'/functions/v1/ai-feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({signal_type:signal,conversation_id:m.meta.conversation_id,organization_id:currentOrg.id,routing_snapshot:m.meta.complexity||{},metadata:{persona:m.persona,model_used:m.meta.model_used,cost:m.meta.cost}})});}catch(e){console.error('Feedback error',e);}}
 
