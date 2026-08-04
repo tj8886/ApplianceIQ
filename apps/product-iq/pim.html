@@ -519,6 +519,12 @@ const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
 const sb = createClient(SB_URL, SB_KEY);
 
+// ── AUTH GATE: app requires sign-in; front door is index.html ──
+{
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.replace('index.html'); throw new Error('redirecting to login'); }
+}
+
 // ── Completeness fields ──
 const COMP_FIELDS = [
   'short_description','category','msrp','color',
@@ -2193,7 +2199,7 @@ function showAuthModal(mode) {
 }
 window.showAuthModal = showAuthModal;
 function closeAuthModal() { document.getElementById('authModalRoot').innerHTML = ''; }
-window.pimSignOut = async function() { await sb.auth.signOut(); pimUser = null; pimRole = null; retailerProfile = null; retailerBrands = []; renderAuthBar(); document.getElementById('navMfr').style.display = 'none'; document.getElementById('gateNotice').innerHTML = ''; };
+window.pimSignOut = async function() { await sb.auth.signOut(); window.location.replace('index.html'); };
 
 // Expose for onclick in HTML
 window.openProductDetail = openProductDetail;
