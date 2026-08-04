@@ -235,6 +235,7 @@ let selectedBrand = null;
 let scrapeResults = [];
 let sessionCostTotal = 0;
 let isProcessing = false;
+let stopRequested = false;
 let autoSave = false;
 let aiModel = 'gpt-5.6-luna';
 let brandIntel = null; // PIM products for selected brand
@@ -795,7 +796,8 @@ function renderDiscover(){
     if(scrapedCount>0)h+='<span style="font-size:11px;color:var(--accent)">'+scrapedCount+' scraped</span>';
     h+='<div style="margin-left:auto;display:flex;gap:8px">';
     if(unsavedDisc>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveAll()">💾 Save All ('+unsavedDisc+')</button>';
-    if(newOnes.length>scrapedCount)h+='<button class="btn btn-sm btn-primary" onclick="window.S.scrapeDiscovered()" '+(isProcessing?'disabled':'')+'>🚀 Scrape '+(newOnes.length-scrapedCount)+' Remaining</button>';
+    if(isProcessing)h+='<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button>';
+    else if(newOnes.length>scrapedCount)h+='<button class="btn btn-sm btn-primary" onclick="window.S.scrapeDiscovered()">🚀 Scrape '+(newOnes.length-scrapedCount)+' Remaining</button>';
     h+='</div></div>';
 
     if(newOnes.length>0){
@@ -917,9 +919,10 @@ function renderPriceSync() {
 
   // Action buttons
   h+='<div class="controls">';
-  if(hasDirect)h+='<button class="btn btn-primary" onclick="window.S.psCheckMfr()" '+(isProcessing?'disabled':'')+'>🏭 Check Manufacturer MSRP ('+brandIntel.products.length+')</button>';
-  h+='<button class="btn btn-primary" onclick="window.S.psCheckRetailers()" '+(isProcessing||psSelectedRetailers.size===0?'disabled':'')+'>🏪 Check '+psSelectedRetailers.size+' Retailer'+(psSelectedRetailers.size!==1?'s':'')+'</button>';
-  h+='<span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Checking prices…':'Manufacturer MSRP = source of truth')+'</span>';
+  if(isProcessing){h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button><span style="font-size:12px;color:var(--txt2)">⏳ Checking prices…</span>';}
+  else{if(hasDirect)h+='<button class="btn btn-primary" onclick="window.S.psCheckMfr()">🏭 Check Manufacturer MSRP ('+brandIntel.products.length+')</button>';
+  h+='<button class="btn btn-primary" onclick="window.S.psCheckRetailers()" '+(psSelectedRetailers.size===0?'disabled':'')+'>🏪 Check '+psSelectedRetailers.size+' Retailer'+(psSelectedRetailers.size!==1?'s':'')+'</button>';
+  h+='<span style="font-size:12px;color:var(--txt2)">Manufacturer MSRP = source of truth</span>';}
   h+='</div>';
 
   h+='<div class="log-panel'+(psResults.length>0?' show':'')+'" id="scrapeLog"></div>';
@@ -976,7 +979,10 @@ function renderVerify() {
   const verified=vaResults.filter(r=>r.status==='verified').length;
   const drifted=vaResults.filter(r=>r.status==='drifted').length;
 
-  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.vaVerifyAll()" '+(isProcessing||brandIntel.products.length===0?'disabled':'')+'>🔍 Verify '+brandIntel.products.length+' Products Against Live Data</button><span style="font-size:12px;color:var(--txt2)">'+(isProcessing?'⏳ Verifying…':vaResults.length>0?verified+' verified, '+drifted+' drifted':'Re-scrape source URLs and compare with stored data')+'</span></div>';
+  h+='<div class="controls">';
+  if(isProcessing)h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button><span style="font-size:12px;color:var(--txt2)">⏳ Verifying…</span>';
+  else h+='<button class="btn btn-primary" onclick="window.S.vaVerifyAll()" '+(brandIntel.products.length===0?'disabled':'')+'>🔍 Verify '+brandIntel.products.length+' Products Against Live Data</button><span style="font-size:12px;color:var(--txt2)">'+(vaResults.length>0?verified+' verified, '+drifted+' drifted':'Re-scrape source URLs and compare with stored data')+'</span>';
+  h+='</div>';
 
   h+='<div class="log-panel'+(vaResults.length>0?' show':'')+'" id="scrapeLog"></div>';
 
@@ -1016,7 +1022,10 @@ function renderEnrich() {
   const filled=Object.values(enResults).reduce((s,r)=>s+(r.filled||0),0);
   const avgComp=products.length>0?Math.round(products.reduce((s,p)=>s+completeness(p),0)/products.length):0;
 
-  h+='<div class="controls"><button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(isProcessing||lowComp===0?'disabled':'')+'>🧩 Auto-fill '+lowComp+' Incomplete Products</button><span style="font-size:12px;color:var(--txt2)">Avg completeness: '+avgComp+'% · '+filled+' fields filled this session'+(isProcessing?' · ⏳ Processing…':'')+'</span></div>';
+  h+='<div class="controls">';
+  if(isProcessing)h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button><span style="font-size:12px;color:var(--txt2)">Avg completeness: '+avgComp+'% · '+filled+' fields filled this session · ⏳ Processing…</span>';
+  else h+='<button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(lowComp===0?'disabled':'')+'>🧩 Auto-fill '+lowComp+' Incomplete Products</button><span style="font-size:12px;color:var(--txt2)">Avg completeness: '+avgComp+'% · '+filled+' fields filled this session</span>';
+  h+='</div>';
 
   h+='<div class="log-panel'+(Object.keys(enResults).length>0?' show':'')+'" id="scrapeLog"></div>';
 
@@ -1080,17 +1089,19 @@ window.S = {
     await autoSaveIfEnabled(result);
     isProcessing=false;renderTab();
   },
+  requestStop(){stopRequested=true;logEntry('⏹ Stop requested — finishing current item…','err');renderTab()},
   async scrapeDiscovered(){
     if(!discoverResults||isProcessing)return;
     const newOnes=discoverResults.results.filter(r=>!r.in_pim && !scrapeResults.find(sr=>sr.url===r.url));
     if(newOnes.length===0){alert('All URLs already scraped');return}
-    isProcessing=true;renderTab();
+    isProcessing=true;stopRequested=false;renderTab();
     for(let i=0;i<newOnes.length;i++){
+      if(stopRequested){logEntry('⏹ Stopped after '+i+'/'+newOnes.length,'err');break}
       const result=await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
       await autoSaveIfEnabled(result);
       if(i<newOnes.length-1)await new Promise(r=>setTimeout(r,1000));
     }
-    isProcessing=false;renderTab();
+    isProcessing=false;stopRequested=false;renderTab();
   },
 
   viewResult(i){
@@ -1184,8 +1195,9 @@ window.S = {
     if(!brandIntel||isProcessing)return;
     const src=brandSourceMap[selectedBrand];
     const website=psMarket==='CA'?(src?.ca_website||src?.us_website):(src?.us_website||src?.ca_website);
-    isProcessing=true;renderTab();
+    isProcessing=true;stopRequested=false;renderTab();
     for(const p of brandIntel.products.slice(0,50)){
+      if(stopRequested){logEntry('⏹ Stopped','err');break}
       logEntry('Manufacturer price: '+p.model+'…');
       const query=selectedBrand+' '+p.model;
       let price=null;let tierUsed=1;let cost=0;
@@ -1210,14 +1222,16 @@ window.S = {
       renderTab();
       await new Promise(r=>setTimeout(r,500));
     }
-    isProcessing=false;renderTab();
+    isProcessing=false;stopRequested=false;renderTab();
   },
   async psCheckRetailers(){
     if(!brandIntel||isProcessing||psSelectedRetailers.size===0)return;
     const selected=psRetailers.filter(r=>r.country===psMarket&&psSelectedRetailers.has(r.website));
-    isProcessing=true;renderTab();
+    isProcessing=true;stopRequested=false;renderTab();
     for(const retailer of selected){
+      if(stopRequested){logEntry('⏹ Stopped','err');break}
       for(const p of brandIntel.products.slice(0,30)){
+        if(stopRequested)break;
         logEntry('Checking '+retailer.retailer_name+': '+p.model+'…');
         const query=selectedBrand+' '+p.model;
         const siteQuery=query+' site:'+retailer.website;
@@ -1241,7 +1255,7 @@ window.S = {
         await new Promise(r=>setTimeout(r,500));
       }
     }
-    isProcessing=false;renderTab();
+    isProcessing=false;stopRequested=false;renderTab();
   },
   async psUpdate(i){
     const r=psResults[i];if(!r||r.live_price===null||r.source_name!=='Manufacturer')return;
@@ -1258,13 +1272,14 @@ window.S = {
   /* ── Verify & Audit ── */
   async vaVerifyAll(){
     if(!brandIntel||!brandIntel.products.length)return;
-    isProcessing=true;vaResults=[];renderTab();
+    isProcessing=true;stopRequested=false;vaResults=[];renderTab();
     for(let i=0;i<brandIntel.products.length;i++){
+      if(stopRequested){logEntry('⏹ Stopped after '+i+'/'+brandIntel.products.length,'err');break}
       const r=await verifyOne(brandIntel.products[i]);
       vaResults.push(r);renderTab();
       if(i<brandIntel.products.length-1)await new Promise(r=>setTimeout(r,800));
     }
-    isProcessing=false;renderTab();
+    isProcessing=false;stopRequested=false;renderTab();
   },
   vaViewDiff(i){
     const r=vaResults[i];if(!r)return;
@@ -1312,13 +1327,14 @@ window.S = {
   async enEnrichLow(){
     if(!brandIntel)return;
     const low=brandIntel.products.filter(p=>completeness(p)<50).slice(0,20);
-    isProcessing=true;renderTab();
+    isProcessing=true;stopRequested=false;renderTab();
     for(let i=0;i<low.length;i++){
+      if(stopRequested){logEntry('⏹ Stopped after '+i+'/'+low.length,'err');break}
       const r=await enrichOne(low[i]);
       enResults[low[i].id]=r;renderTab();
       if(i<low.length-1)await new Promise(r=>setTimeout(r,800));
     }
-    isProcessing=false;renderTab();
+    isProcessing=false;stopRequested=false;renderTab();
   },
   enPreview(pid){
     const r=enResults[pid];if(!r)return;
