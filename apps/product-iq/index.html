@@ -389,6 +389,7 @@ tbody tr:last-child td{border-bottom:none}
       <input type="text" placeholder="Search products by model, brand, or description…" id="prodSearch">
       <select id="prodBrand"><option value="">All brands</option></select>
       <select id="prodCat"><option value="">All categories</option></select>
+      <select id="prodColor"><option value="">All colors</option></select>
       <select id="prodStatus"><option value="">All statuses</option></select>
     </div>
     <div class="stats-row" id="prodKpis"></div>
@@ -1065,7 +1066,7 @@ function bindBdProdClicks() {
 
 // ── Product Catalog ──
 let catalogProducts = [], productsLoaded = false, catalogPage = 0, catalogTotal = 0;
-let prodFilters = { search: '', brand: '', cat: '', status: '' };
+let prodFilters = { search: '', brand: '', cat: '', color: '', status: '' };
 const PAGE_SIZE = 30;
 
 async function loadCatalog() {
@@ -1074,13 +1075,13 @@ async function loadCatalog() {
   el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products…</div>';
 
   let q = sb.from('aiq_products')
-    .select('id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs', { count: 'exact' })
+    .select('id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs', { count: 'exact' })
     .order('brand_name').order('model');
 
   const s = prodFilters.search.trim();
   if (s) {
     const orParts = ['brand_name','model','short_description'].map(c => c+'.ilike.*'+encodeURIComponent(s)+'*');
-    const url = SB_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs&or=('+orParts.join(',')+')&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
+    const url = SB_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs&or=('+orParts.join(',')+')&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
     try {
       const headers = {'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON,'Prefer':'count=exact'};
       const resp = await fetch(url, {headers});
@@ -1094,6 +1095,7 @@ async function loadCatalog() {
 
   if (prodFilters.brand) q = q.eq('brand_name', prodFilters.brand);
   if (prodFilters.cat) q = q.eq('category', prodFilters.cat);
+  if (prodFilters.color) q = q.eq('color_family', prodFilters.color);
   if (prodFilters.status) q = q.eq('status', prodFilters.status);
 
   const { data, error, count } = await q.range(catalogPage*PAGE_SIZE, catalogPage*PAGE_SIZE+PAGE_SIZE-1);
@@ -1109,6 +1111,10 @@ async function loadCatalog() {
     const ucats = [...new Set((cats||[]).map(c=>c.category))].sort();
     ucats.forEach(c => document.getElementById('prodCat').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
     ['active','draft','discontinued'].forEach(s => document.getElementById('prodStatus').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
+    // Color families
+    const { data: colors } = await sb.from('aiq_products').select('color_family').not('color_family','is',null);
+    const ucolors = [...new Set((colors||[]).map(c=>c.color_family))].sort();
+    ucolors.forEach(c => document.getElementById('prodColor').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
   }
   renderCatalog();
 }
@@ -1138,7 +1144,7 @@ function renderCatalog() {
     // Use short_description, or fall back to spec summary from JSON
     const desc = p.short_description || specSummary;
     return '<div class="prod-card" data-prod-id="'+p.id+'">'
-      +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+'</div>'
+      +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+(p.color_family?' · <span style="color:var(--navy);font-weight:700">'+esc(p.color_family)+'</span>':'')+'</div>'
       +'<div class="pc-model">'+esc(p.model||'—')+'</div>'
       +(desc?'<div class="pc-desc">'+esc(desc)+'</div>':'')
       +(specs.length?'<div class="pc-specs">'+specs.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>':'')
@@ -1163,7 +1169,7 @@ function renderCatalog() {
   });
 }
 
-['prodSearch','prodBrand','prodCat','prodStatus'].forEach(id => {
+['prodSearch','prodBrand','prodCat','prodColor','prodStatus'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', () => {
     const key = id.replace('prod','').toLowerCase();
