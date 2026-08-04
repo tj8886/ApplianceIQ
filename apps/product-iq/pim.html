@@ -4,359 +4,2275 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Product IQ — PIM Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 :root{
-  --indigo:#4f46e5;--indigo-light:#6366f1;--indigo-dark:#4338ca;
-  --cyan:#06b6d4;--emerald:#10b981;--amber:#f59e0b;--rose:#f43f5e;
+  --bg:#f6f8fb;--surface:#ffffff;--surface2:#f0f3f7;--surface3:#e8ecf2;
+  --border:#e3e8f0;--border2:#d1d8e3;
+  --text:#0f1f3d;--text2:#5b6b85;--text3:#8a95a8;
+  --accent:#1a9e56;--accent2:#178a4d;--accent-glow:rgba(26,158,86,.08);
+  --green:#1a9e56;--yellow:#d97706;--red:#c02d1e;--purple:#7c3aed;--pink:#c026d3;
+  --orange:#e8590c;--blue:#2f6fed;
   --navy:#0f1f3d;
-  --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
-  --s400:#94a3b8;--s500:#64748b;--s600:#475569;--s700:#334155;--s800:#1e293b;
-  --radius:10px;
+  --radius:10px;--radius-sm:6px;
 }
-body{font-family:'Inter',system-ui,sans-serif;background:var(--s50);color:var(--s800);min-height:100vh;display:flex}
-a{color:var(--indigo);text-decoration:none}
+html{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
+body{min-height:100vh}
+a{color:var(--blue);text-decoration:none}
 
-/* Sidebar */
-.sidebar{width:240px;background:#fff;border-right:1px solid var(--s200);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;z-index:50}
-.sb-logo{padding:20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--s200)}
-.sb-logo .mark{width:32px;height:32px;background:linear-gradient(135deg,var(--indigo),var(--cyan));border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px}
-.sb-logo span{font-weight:700;font-size:15px;color:var(--navy)}
-.sb-nav{flex:1;padding:12px;overflow-y:auto}
-.sb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--s400);padding:16px 12px 6px;margin-top:4px}
-.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--s600);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left}
-.sb-item:hover{background:var(--s100);color:var(--s800)}
-.sb-item.active{background:rgba(79,70,229,.08);color:var(--indigo);font-weight:600}
-.sb-item .icon{width:18px;text-align:center;font-size:14px}
-.sb-user{padding:16px;border-top:1px solid var(--s200);display:flex;align-items:center;gap:10px}
-.sb-user .avatar{width:32px;height:32px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
-.sb-user .uinfo{flex:1;min-width:0}
-.sb-user .uname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sb-user .urole{font-size:11px;color:var(--s400)}
-.sb-user .logout{padding:4px 10px;border:1px solid var(--s200);border-radius:6px;font-size:11px;color:var(--s500);cursor:pointer;background:#fff;font-family:inherit;transition:all .15s}
-.sb-user .logout:hover{border-color:var(--rose);color:var(--rose)}
+.shell{max-width:1440px;margin:0 auto;padding:20px 24px 40px}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 0 20px;border-bottom:1px solid var(--border);margin-bottom:24px;flex-wrap:wrap;gap:12px}
+header h1{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:10px;color:var(--navy)}
+header h1 span{color:var(--accent)}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite;flex-shrink:0}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.last-update{font-size:12px;color:var(--text3)}
+.btn{background:#fff;border:1px solid var(--border2);color:var(--text);padding:7px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:500;transition:.15s}
+.btn:hover{background:var(--surface2);border-color:var(--text3)}
+.btn-accent{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn-accent:hover{background:#142847}
+.btn.active{background:var(--navy);border-color:var(--navy);color:#fff}
 
-/* Main */
-.main{margin-left:240px;flex:1;min-height:100vh}
-.topbar{height:56px;background:#fff;border-bottom:1px solid var(--s200);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:40}
-.topbar h2{font-size:16px;font-weight:700;color:var(--navy)}
-.topbar .search{padding:8px 14px;border:1px solid var(--s200);border-radius:8px;font-size:13px;width:300px;outline:none;font-family:inherit;background:var(--s50)}
-.topbar .search:focus{border-color:var(--indigo);background:#fff}
-.content{padding:24px}
+/* Toggle */
+.toggle-bar{display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius-sm);padding:2px;border:1px solid var(--border)}
+.toggle-bar .btn{border:none;background:transparent;padding:6px 14px;border-radius:4px;font-size:12px;color:var(--text2)}
+.toggle-bar .btn.active{background:var(--navy);color:#fff}
 
-/* Dashboard */
-.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-.stat-card{background:#fff;border:1px solid var(--s200);border-radius:var(--radius);padding:20px}
-.stat-card .stat-num{font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-.02em}
-.stat-card .stat-label{font-size:12px;color:var(--s500);margin-top:2px}
-.stat-card .stat-change{font-size:11px;font-weight:600;margin-top:8px}
-.stat-card .stat-change.up{color:var(--emerald)}
-.stat-card .stat-change.down{color:var(--rose)}
+/* Stats Row */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;box-shadow:0 1px 3px rgba(15,31,61,.04)}
+.stat-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:6px;font-weight:600}
+.stat-card .value{font-family:'Sora',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.5px;line-height:1.1}
+.stat-card .sub{font-size:12px;color:var(--text2);margin-top:4px}
+.stat-card.accent .value{color:var(--accent)}
+.stat-card.green .value{color:var(--green)}
+.stat-card.yellow .value{color:var(--yellow)}
+.stat-card.purple .value{color:var(--purple)}
+.stat-card.pink .value{color:var(--pink)}
+.stat-card.orange .value{color:var(--orange)}
+.stat-card.red .value{color:var(--red)}
 
-/* Tables */
-.panel{background:#fff;border:1px solid var(--s200);border-radius:var(--radius);margin-bottom:24px}
-.panel-header{padding:16px 20px;border-bottom:1px solid var(--s200);display:flex;align-items:center;justify-content:space-between}
-.panel-header h3{font-size:15px;font-weight:700;color:var(--navy)}
-.panel-header .badge{padding:3px 10px;background:var(--s100);border-radius:100px;font-size:12px;font-weight:600;color:var(--s500)}
-table{width:100%;border-collapse:collapse}
-th{text-align:left;padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--s400);background:var(--s50);border-bottom:1px solid var(--s200)}
-td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--s100)}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--s50)}
-.pill{display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600}
-.pill-green{background:rgba(16,185,129,.1);color:var(--emerald)}
-.pill-blue{background:rgba(79,70,229,.1);color:var(--indigo)}
-.pill-amber{background:rgba(245,158,11,.1);color:var(--amber)}
-.pill-gray{background:var(--s100);color:var(--s500)}
+/* Grids */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:24px}
+@media(max-width:1000px){.grid-2,.grid-3{grid-template-columns:1fr}}
 
-/* Category breakdown */
-.cat-bar{display:flex;align-items:center;gap:12px;padding:8px 0}
-.cat-bar .cat-name{width:140px;font-size:12px;font-weight:500;color:var(--s600)}
-.cat-bar .bar-track{flex:1;height:8px;background:var(--s100);border-radius:4px;overflow:hidden}
-.cat-bar .bar-fill{height:100%;border-radius:4px;background:var(--indigo);transition:width .6s}
-.cat-bar .cat-count{width:50px;text-align:right;font-size:12px;font-weight:600;color:var(--s700)}
+/* Panels */
+.panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 3px rgba(15,31,61,.04)}
+.panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:var(--surface2)}
+.panel-head h3{font-family:'Sora',sans-serif;font-size:14px;font-weight:600;color:var(--navy)}
+.panel-head .badge{font-size:11px;background:#fff;border:1px solid var(--border2);padding:2px 8px;border-radius:12px;color:var(--text2)}
+.panel-head .badge.red{background:rgba(192,45,30,.08);border-color:rgba(192,45,30,.25);color:var(--red)}
+.panel-body{padding:16px}
+
+/* Progress bars */
+.prog-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.prog-row:last-child{margin-bottom:0}
+.prog-label{width:130px;font-size:12px;color:var(--text2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prog-track{flex:1;height:8px;background:#e8ecf2;border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.prog-pct{width:48px;text-align:right;font-size:12px;font-weight:600;flex-shrink:0}
+
+/* Category cards */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.cat-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:.15s}
+.cat-card:hover{border-color:var(--accent);background:rgba(26,158,86,.04)}
+.cat-card .cat-name{font-weight:600;font-size:13px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.cat-card .cat-count{color:var(--navy);font-family:'Sora',sans-serif;font-size:20px;font-weight:700}
+.cat-card .cat-meta{font-size:11px;color:var(--text3);margin-top:6px;display:flex;gap:10px}
+.cat-card .cat-meta span{display:flex;align-items:center;gap:3px}
+.cat-card .cat-bar{margin-top:8px;height:4px;background:#e8ecf2;border-radius:2px;overflow:hidden}
+.cat-card .cat-bar-fill{height:100%;border-radius:2px}
+.cat-card.parts{opacity:.5;border-style:dashed}
+.cat-card.parts:hover{opacity:.8}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;max-height:500px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border2);color:var(--text3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;position:sticky;top:0;background:var(--surface2);z-index:1}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border)}
+tbody tr{cursor:pointer;transition:.1s}
+tbody tr:hover{background:rgba(26,158,86,.04)}
+tbody tr:last-child td{border-bottom:none}
+.model-name{font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand-tag{font-size:11px;color:var(--navy);background:rgba(15,31,61,.06);padding:2px 7px;border-radius:3px;white-space:nowrap;font-weight:600}
+.cat-tag{font-size:11px;color:var(--text2);white-space:nowrap}
+.completeness-bar{display:inline-flex;align-items:center;gap:6px}
+.completeness-bar .mini-bar{width:60px;height:5px;background:#e8ecf2;border-radius:3px;overflow:hidden}
+.completeness-bar .mini-fill{height:100%;border-radius:3px}
+
+/* Asset grid */
+.asset-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.asset-item{text-align:center;padding:12px 8px;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.asset-item .count{font-family:'Sora',sans-serif;font-size:22px;font-weight:700;color:var(--navy)}
+.asset-item .type{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* Feed */
+.feed{max-height:380px;overflow-y:auto}
+.feed-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.feed-item:last-child{border-bottom:none}
+.feed-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.feed-icon.img{background:rgba(47,111,237,.1);color:var(--blue)}
+.feed-icon.doc{background:rgba(124,58,237,.1);color:var(--purple)}
+.feed-icon.vid{background:rgba(192,38,211,.1);color:var(--pink)}
+.feed-icon.prod{background:rgba(26,158,86,.1);color:var(--green)}
+.feed-text{flex:1;color:var(--text2)}
+.feed-text strong{color:var(--navy);font-weight:600}
+.feed-time{color:var(--text3);font-size:11px;flex-shrink:0}
+.feed-empty{padding:24px;text-align:center;color:var(--text3);font-size:13px}
 
 /* Loading */
-.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--s400);font-size:14px}
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3)}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--navy);border-radius:50%;animation:spin .6s linear infinite;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* Page views */
-.page{display:none}
-.page.active{display:block}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#c8d0dc;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#a0aab8}
 
-@media(max-width:768px){
-  .sidebar{display:none}
-  .main{margin-left:0}
-  .dash-grid{grid-template-columns:1fr 1fr}
-}
+/* Page nav */
+.page-nav{display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius);padding:3px;border:1px solid var(--border);margin-bottom:24px}
+.page-nav button{border:none;background:transparent;padding:10px 18px;border-radius:8px;font-weight:600;font-size:13px;color:var(--text2);cursor:pointer;transition:.15s;white-space:nowrap}
+.page-nav button:hover{color:var(--navy);background:rgba(15,31,61,.04)}
+.page-nav button.on{background:var(--navy);color:#fff}
+@media(max-width:600px){.page-nav{overflow-x:auto}.page-nav button{padding:8px 12px;font-size:12px}}
+
+/* Breadcrumbs */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text3);margin-bottom:16px;flex-wrap:wrap}
+.breadcrumb a{color:var(--accent);cursor:pointer;font-weight:500}
+.breadcrumb a:hover{text-decoration:underline}
+.breadcrumb .sep{color:var(--border2)}
+.breadcrumb .current{color:var(--navy);font-weight:600}
+
+/* Brand directory */
+.brand-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+@media(max-width:700px){.brand-grid{grid-template-columns:1fr}}
+.brand-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:.15s}
+.brand-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(26,158,86,.08)}
+.brand-card .bc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.brand-card .bc-name{font-family:'Sora',sans-serif;font-weight:700;font-size:16px;color:var(--navy)}
+.brand-card .bc-parent{font-size:11px;color:var(--text3);margin-top:2px}
+.tier-pill{display:inline-flex;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.tier-pill.ultra_luxury{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f}
+.tier-pill.luxury{background:rgba(124,58,237,.1);color:#7c3aed}
+.tier-pill.mid{background:rgba(37,99,235,.1);color:#2563eb}
+.tier-pill.entry{background:rgba(100,116,139,.1);color:#64748b}
+.bc-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:10px}
+.bc-meta span{display:flex;align-items:center;gap:4px}
+.bc-story{font-size:12px;color:var(--text2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bc-contact{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bc-link{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;color:var(--navy);text-decoration:none;transition:.15s}
+.bc-link:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.bc-cats{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.bc-cats span{font-size:10px;background:var(--surface2);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--text3)}
+
+/* Product catalog */
+.catalog-toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.catalog-toolbar input,.catalog-toolbar select{height:38px;border:1px solid var(--border);background:#fff;border-radius:8px;padding:0 12px;font-size:13px;color:var(--text)}
+.catalog-toolbar input{min-width:240px;flex:1}
+@media(max-width:700px){.catalog-toolbar{flex-direction:column}.catalog-toolbar input,.catalog-toolbar select{width:100%;min-width:0}}
+.cat-subs{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.cat-sub-tag{font-size:10px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;cursor:pointer;color:var(--text2);white-space:nowrap}
+.cat-sub-tag:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cat-sub-tag b{color:var(--accent);margin-left:2px}
+.cat-sub-tag:hover b{color:#fff}
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+@media(max-width:600px){.prod-grid{grid-template-columns:1fr}}
+.prod-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:.15s}
+.prod-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(26,158,86,.08)}
+.prod-card .pc-brand{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.prod-card .pc-model{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:var(--navy);margin-bottom:4px}
+.prod-card .pc-desc{font-size:12px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
+.prod-card .pc-specs{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text3)}
+.prod-card .pc-specs span{background:var(--surface2);padding:2px 7px;border-radius:4px}
+.prod-card .pc-price{font-family:'Sora',sans-serif;font-weight:700;font-size:18px;color:var(--accent);margin-top:8px}
+.prod-card .pc-bar{margin-top:8px}
+.prod-card .pc-assets{display:flex;gap:10px;margin-top:8px;font-size:11px;color:var(--text3)}
+.prod-card .pc-assets span{display:flex;align-items:center;gap:3px}
+.pager-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 0;font-size:13px;color:var(--text2)}
+.pager-bar button{border:1px solid var(--border);background:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px}
+.pager-bar button:hover:not(:disabled){background:var(--surface2)}
+.pager-bar button:disabled{opacity:.4;cursor:not-allowed}
+
+/* Brand detail */
+.brand-detail{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px}
+.bd-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.bd-header h2{font-family:'Sora',sans-serif;font-size:24px;color:var(--navy)}
+.bd-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+@media(max-width:700px){.bd-info{grid-template-columns:1fr 1fr}}
+.bd-info div{padding:14px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.bd-info small{display:block;font-size:11px;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+.bd-story{font-size:14px;color:var(--text2);line-height:1.7;margin:16px 0}
+.bd-innovations{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.bd-innovations span{background:rgba(26,158,86,.08);color:var(--accent);padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600}
+.bd-links{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+
+/* Product detail tabs */
+.pd-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:var(--radius);padding:3px;border:1px solid var(--border);margin-bottom:20px;overflow-x:auto}
+.pd-tabs button{border:none;background:transparent;padding:9px 16px;border-radius:8px;font-weight:600;font-size:12px;color:var(--text2);cursor:pointer;transition:.15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.pd-tabs button:hover{color:var(--navy);background:rgba(15,31,61,.04)}
+.pd-tabs button.on{background:var(--navy);color:#fff}
+.pd-tabs .tab-count{font-size:10px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:8px;font-weight:700}
+.pd-tabs button:not(.on) .tab-count{background:var(--surface3);color:var(--text3)}
+.pd-tab-content{display:none}
+.pd-tab-content.active{display:block}
+
+/* Spec grid */
+.spec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.spec-cell{padding:12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.spec-cell:nth-child(even){background:var(--surface2)}
+.spec-cell small{display:block;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.spec-cell .sv{font-weight:600;font-size:13px}
+.spec-cell.empty{opacity:.4}
+.spec-cell.empty .sv{color:var(--red);font-style:italic;font-weight:400}
+.feature-list{display:grid;gap:6px}
+.feature-item{padding:8px 12px;background:var(--surface2);border-radius:6px;font-size:13px;display:flex;align-items:center;gap:8px}
+.feature-item::before{content:'✓';color:var(--accent);font-weight:700}
+
+/* Image gallery */
+.img-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.img-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;transition:.15s}
+.img-card:hover{border-color:var(--accent);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.img-card .img-preview{width:100%;height:140px;display:flex;align-items:center;justify-content:center;background:#fff;overflow:hidden}
+.img-card .img-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.img-card .img-preview .no-preview{font-size:32px;color:var(--border2)}
+.img-card .img-info{padding:10px 12px}
+.img-card .img-type{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--text3)}
+.img-card .img-url{font-size:10px;color:var(--blue);word-break:break-all;margin-top:4px}
+
+/* Doc list */
+.doc-list{display:grid;gap:8px}
+.doc-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);transition:.15s}
+.doc-row:hover{border-color:var(--accent)}
+.doc-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.doc-icon.pdf{background:rgba(192,45,30,.1);color:var(--red)}
+.doc-icon.manual{background:rgba(47,111,237,.1);color:var(--blue)}
+.doc-icon.spec{background:rgba(124,58,237,.1);color:var(--purple)}
+.doc-icon.other{background:rgba(100,116,139,.1);color:var(--text3)}
+.doc-details{flex:1;min-width:0}
+.doc-details .doc-title{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-details .doc-meta{font-size:11px;color:var(--text3)}
+.doc-action{flex-shrink:0}
+
+/* Auth bar */
+.auth-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:8px 0;margin-bottom:-8px;font-size:12px;color:var(--text3)}
+.auth-bar .user-email{color:var(--navy);font-weight:600}
+.auth-bar .role-chip{background:rgba(26,158,86,.1);color:var(--accent);padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;text-transform:uppercase}
+.auth-bar .role-chip.mfr{background:rgba(124,58,237,.1);color:#7c3aed}
+.auth-bar .role-chip.retailer{background:rgba(37,99,235,.1);color:#2563eb}
+.auth-bar button{border:1px solid var(--border);background:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:var(--text2)}
+.auth-bar button:hover{background:var(--surface2)}
+.auth-modal{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:center;justify-content:center}
+.auth-box{background:#fff;border-radius:var(--radius);padding:32px;max-width:380px;width:90%}
+.auth-box h2{font-family:'Sora',sans-serif;margin-bottom:16px;font-size:20px;color:var(--navy)}
+.auth-box .field{margin-bottom:12px}
+.auth-box label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.auth-box input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px}
+.auth-box .err{color:var(--red);font-size:12px;margin:8px 0}
+.auth-box .btn-row{display:flex;gap:8px;margin-top:16px}
+.auth-box .btn-primary{background:var(--navy);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;flex:1}
+.auth-box .btn-ghost{background:transparent;border:1px solid var(--border);padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;color:var(--text2)}
+
+/* Retailer gate */
+.gate-notice{background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.2);border-radius:var(--radius);padding:20px;margin-bottom:20px;display:flex;align-items:center;gap:14px}
+.gate-notice .gate-icon{font-size:28px;flex-shrink:0}
+.gate-notice p{font-size:13px;color:var(--text2);line-height:1.6;margin:0}
+.gate-notice strong{color:var(--navy)}
+
+/* Mfr portal */
+.mfr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.mfr-actions button{border:1px solid var(--border);background:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px}
+.mfr-actions button:hover{background:var(--surface2)}
+
+/* Validation checklist */
+.val-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.val-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:500}
+.val-item.has{background:rgba(26,158,86,.06);color:var(--green)}
+.val-item.missing{background:rgba(192,45,30,.06);color:var(--red)}
+.val-item .val-icon{font-size:14px;flex-shrink:0}
 </style>
 </head>
 <body>
+<div class="shell">
 
-<aside class="sidebar">
-  <div class="sb-logo"><div class="mark">IQ</div><span>Product IQ</span></div>
-  <nav class="sb-nav">
-    <div class="sb-section">Overview</div>
-    <button class="sb-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</button>
-
-    <div class="sb-section">Catalog</div>
-    <button class="sb-item" onclick="showPage('products')"><span class="icon">📦</span> Products</button>
-    <button class="sb-item" onclick="showPage('brands')"><span class="icon">🏷️</span> Brands</button>
-    <button class="sb-item" onclick="showPage('categories')"><span class="icon">📂</span> Categories</button>
-
-    <div class="sb-section">Intelligence</div>
-    <button class="sb-item" onclick="showPage('prices')"><span class="icon">💰</span> Retailer Prices</button>
-    <button class="sb-item" onclick="showPage('recalls')"><span class="icon">⚠️</span> Recalls</button>
-
-    <div class="sb-section">Assets</div>
-    <button class="sb-item" onclick="showPage('assets')"><span class="icon">🖼️</span> Digital Assets</button>
-    <button class="sb-item" onclick="showPage('cad')"><span class="icon">📐</span> CAD / BIM</button>
-
-    <div class="sb-section">Network</div>
-    <button class="sb-item" onclick="showPage('retailers')"><span class="icon">🏪</span> Retailers</button>
-  </nav>
-  <div class="sb-user">
-    <div class="avatar" id="userAvatar">?</div>
-    <div class="uinfo"><div class="uname" id="userName">Loading...</div><div class="urole" id="userRole">—</div></div>
-    <button class="logout" onclick="doLogout()">Out</button>
+  <!-- Auth -->
+  <div class="auth-bar" id="authContent">
+    <button onclick="showAuthModal('login')">Sign In</button>
   </div>
-</aside>
 
-<div class="main">
-  <div class="topbar">
-    <h2 id="pageTitle">Dashboard</h2>
-    <input type="text" class="search" placeholder="Search products by model, brand, or category..." id="globalSearch" onkeydown="if(event.key==='Enter')searchProducts()">
+  <!-- Header -->
+  <header>
+    <h1>
+      <span>Product IQ</span> PIM
+      <div class="live-dot"></div>
+    </h1>
+    <div class="header-right">
+      <span class="last-update" id="lastUpdate"></span>
+      <div class="toggle-bar" id="viewToggle">
+        <button class="btn active" data-view="products" onclick="setView('products')">Products</button>
+        <button class="btn" data-view="all" onclick="setView('all')">All</button>
+        <button class="btn" data-view="parts" onclick="setView('parts')">Parts</button>
+      </div>
+      <button class="btn" onclick="refreshAll()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <div id="gateNotice"></div>
+
+  <!-- Nav -->
+  <div class="page-nav" id="pageNav">
+    <button class="on" data-page="dashboard">📊 Dashboard</button>
+    <button data-page="brands">🏢 Brands</button>
+    <button data-page="products">📦 Products</button>
+    <button data-page="intelligence">🧠 Intelligence</button>
+    <button data-page="recalls">⚠️ Recalls</button>
+    <button data-page="search">🔍 Search</button>
+    <button data-page="manufacturer" id="navMfr" style="display:none">🏭 Manufacturer</button>
   </div>
 
   <!-- DASHBOARD -->
-  <div class="content page active" id="page-dashboard">
-    <div class="dash-grid" id="statCards"><div class="loading">Loading stats...</div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+  <div id="pageDashboard">
+    <div class="stats-row" id="kpiRow">
+      <div class="stat-card accent"><div class="label">Products</div><div class="value" id="kpiProducts">—</div><div class="sub" id="kpiProductsSub"></div></div>
+      <div class="stat-card red"><div class="label">Parts / Accessories</div><div class="value" id="kpiParts">—</div><div class="sub" id="kpiPartsSub">excluded from scraper</div></div>
+      <div class="stat-card green"><div class="label">Avg Completeness</div><div class="value" id="kpiComplete">—</div><div class="sub" id="kpiCompleteSub"></div></div>
+      <div class="stat-card purple"><div class="label">Images</div><div class="value" id="kpiImages">—</div><div class="sub" id="kpiImagesSub"></div></div>
+      <div class="stat-card pink"><div class="label">Documents</div><div class="value" id="kpiDocs">—</div><div class="sub" id="kpiDocsSub"></div></div>
+      <div class="stat-card yellow"><div class="label">Brands</div><div class="value" id="kpiBrands">—</div><div class="sub" id="kpiBrandsSub"></div></div>
+    </div>
+    <div class="panel" style="margin-bottom:24px">
+      <div class="panel-head"><h3>Product Categories</h3><span class="badge" id="catCount"></span></div>
+      <div class="panel-body" id="catGrid"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+    </div>
+    <div class="grid-2">
       <div class="panel">
-        <div class="panel-header"><h3>Products by Category</h3></div>
-        <div style="padding:16px 20px" id="categoryBars"><div class="loading">Loading...</div></div>
+        <div class="panel-head"><h3>Data Coverage</h3><span class="badge" id="coverageBadge"></span></div>
+        <div class="panel-body" id="coveragePanel"><div class="loading"><div class="spinner"></div>Loading…</div></div>
       </div>
       <div class="panel">
-        <div class="panel-header"><h3>Recent Products</h3></div>
-        <div id="recentProducts"><div class="loading">Loading...</div></div>
+        <div class="panel-head"><h3>Asset Breakdown</h3></div>
+        <div class="panel-body" id="assetPanel"><div class="loading"><div class="spinner"></div>Loading…</div></div>
       </div>
     </div>
-  </div>
-
-  <!-- PRODUCTS -->
-  <div class="content page" id="page-products">
-    <div class="panel">
-      <div class="panel-header"><h3>Product Catalog</h3><span class="badge" id="productCount">—</span></div>
-      <div id="productTable"><div class="loading">Loading products...</div></div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>Needs Fixing</h3><span class="badge red" id="fixCount">—</span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" id="fixTable"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Realtime Feed</h3><span class="badge">Live</span></div>
+        <div class="panel-body" style="padding:0 16px 8px"><div class="feed" id="feedList"><div class="feed-empty">Waiting for changes…</div></div></div>
+      </div>
+    </div>
+    <!-- Auto-Enrich Panel -->
+    <div class="panel" style="margin-top:24px;margin-bottom:24px">
+      <div class="panel-head">
+        <h3>🤖 Auto-Enrich from Spec Sheets</h3>
+        <button class="btn btn-accent" style="font-size:12px" onclick="runBatchEnrich()">▶ Start Batch Enrichment</button>
+      </div>
+      <div class="panel-body" id="batchEnrichPanel">
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          Automatically extract specifications from PDF spec sheets using AI. Finds products that have spec sheet documents but missing specs data, fetches each PDF, extracts dimensions, electrical, features, and all specifications, then populates the product record. Requires an Anthropic API key (stored in browser).
+        </div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:24px">
+      <div class="panel">
+        <div class="panel-head"><h3>Document Types</h3></div>
+        <div class="panel-body" id="docTypePanel"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Image Types</h3></div>
+        <div class="panel-body" id="imgTypePanel"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+      </div>
     </div>
   </div>
 
   <!-- BRANDS -->
-  <div class="content page" id="page-brands">
-    <div class="panel">
-      <div class="panel-header"><h3>Brand Directory</h3><span class="badge" id="brandCount">—</span></div>
-      <div id="brandTable"><div class="loading">Loading brands...</div></div>
+  <div id="pageBrands" style="display:none">
+    <div class="catalog-toolbar" id="brandToolbar">
+      <input type="text" placeholder="Search brands by name, parent company, or headquarters…" id="brandSearch">
+      <select id="brandTier"><option value="">All tiers</option><option value="ultra_luxury">Ultra Luxury</option><option value="luxury">Luxury</option><option value="mid">Mid-Range</option><option value="entry">Entry</option></select>
+      <select id="brandCountry"><option value="">All countries</option></select>
+      <select id="brandContact"><option value="">All contact status</option></select>
     </div>
+    <div class="stats-row" id="brandKpis"></div>
+    <div id="brandContent"><div class="loading"><div class="spinner"></div>Loading brands…</div></div>
   </div>
 
-  <!-- CATEGORIES -->
-  <div class="content page" id="page-categories">
-    <div class="panel">
-      <div class="panel-header"><h3>Category Breakdown</h3></div>
-      <div style="padding:20px" id="catBreakdown"><div class="loading">Loading...</div></div>
+  <!-- PRODUCTS -->
+  <div id="pageProducts" style="display:none">
+    <div class="catalog-toolbar" id="prodToolbar">
+      <input type="text" placeholder="Search products by model, brand, or description…" id="prodSearch">
+      <select id="prodBrand"><option value="">All brands</option></select>
+      <select id="prodCat"><option value="">All categories</option></select>
+      <select id="prodSub"><option value="">All subcategories</option></select>
+      <select id="prodSize"><option value="">All sizes</option></select>
+      <select id="prodColor"><option value="">All colors</option></select>
+      <select id="prodFuel"><option value="">All fuel types</option></select>
+      <select id="prodFeature"><option value="">Features</option><option value="counter_depth">Counter-Depth</option><option value="ice_maker">Ice Maker</option><option value="water">Water Dispenser</option><option value="ice_dispenser">Ice Dispenser</option><option value="energy_star">Energy Star</option><option value="frost_free">Frost-Free</option><option value="manual_defrost">Manual Defrost</option></select>
+      <select id="prodStatus"><option value="">All statuses</option></select>
     </div>
+    <div class="stats-row" id="prodKpis"></div>
+    <div id="prodContent"><div class="loading"><div class="spinner"></div>Loading products…</div></div>
+    <div class="pager-bar" id="prodPager" style="display:none"></div>
   </div>
 
-  <!-- PRICES -->
-  <div class="content page" id="page-prices">
-    <div class="panel">
-      <div class="panel-header"><h3>Retailer Price Tracking</h3><span class="badge" id="priceCount">—</span></div>
-      <div id="priceTable"><div class="loading">Loading prices...</div></div>
+  <!-- BRAND DETAIL -->
+  <div id="pageBrandDetail" style="display:none">
+    <div id="brandDetailContent"></div>
+  </div>
+
+  <!-- PRODUCT DETAIL -->
+  <div id="pageProductDetail" style="display:none">
+    <div id="productDetailContent"></div>
+  </div>
+
+  <!-- MANUFACTURER -->
+  <div id="pageManufacturer" style="display:none">
+    <div id="mfrContent"></div>
+  </div>
+
+  <!-- INTELLIGENCE -->
+  <div id="pageIntelligence" style="display:none">
+    <!-- AI Search Bar for fetching new intelligence -->
+    <div class="panel" style="margin-bottom:20px;border-color:var(--accent)">
+      <div class="panel-head" style="background:var(--navy)"><h3 style="color:#fff">🤖 AI Intelligence Updater</h3></div>
+      <div class="panel-body">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <input type="text" id="intelQuery" placeholder="Search for latest appliance news, recalls, brand updates…" style="flex:1;min-width:250px;height:40px;border:1px solid var(--border);border-radius:8px;padding:0 14px;font-size:14px">
+          <button class="btn btn-accent" style="height:40px;padding:0 20px" onclick="fetchNewIntelligence()">🔍 Fetch New Intel</button>
+          <button class="btn" style="height:40px" onclick="fetchLatestRecalls()">⚠️ Scan Recalls</button>
+          <button class="btn" style="height:40px" onclick="fetchIndustryNews()">📰 Latest News</button>
+        </div>
+        <div id="intelFetchStatus" style="font-size:12px;color:var(--text2)">Search for any topic to fetch and save the latest intelligence. Uses Claude AI with web search to find current information.</div>
+      </div>
+    </div>
+
+    <div class="stats-row" id="intelKpis"></div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>📰 Industry News</h3><span class="badge" id="newsCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="newsContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🛡️ Warranty Policies</h3><span class="badge" id="warrantyCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="warrantyContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+    </div>
+    <div class="grid-2" style="margin-top:18px">
+      <div class="panel">
+        <div class="panel-head"><h3>🏭 Manufacturer Knowledge</h3><span class="badge" id="mfrKnowledgeCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="mfrKnowledgeContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>⚔️ Competitive Cross-Reference</h3><span class="badge" id="crossRefCount"></span></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:500px" id="crossRefContent"><div class="loading"><div class="spinner"></div>Loading…</div></div></div>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:18px">
+      <div class="panel">
+        <div class="panel-head"><h3>💰 MAP Policies</h3></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:350px" id="mapContent"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🏪 Buying Groups</h3></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:350px" id="buyingContent"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>🔧 Service Providers</h3></div>
+        <div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:350px" id="serviceContent"></div></div>
+      </div>
     </div>
   </div>
 
   <!-- RECALLS -->
-  <div class="content page" id="page-recalls">
-    <div class="panel">
-      <div class="panel-header"><h3>Active Recalls</h3><span class="badge" id="recallCount">—</span></div>
-      <div id="recallTable"><div class="loading">Loading recalls...</div></div>
+  <div id="pageRecalls" style="display:none">
+    <div class="catalog-toolbar">
+      <input type="text" placeholder="Search recalls by brand, product, or hazard…" id="recallSearch">
+      <select id="recallBrand"><option value="">All brands</option></select>
+      <button class="btn btn-accent" onclick="fetchLatestRecalls()" style="white-space:nowrap">🤖 Scan for New Recalls</button>
     </div>
+    <div class="stats-row" id="recallKpis"></div>
+    <div id="recallContent"><div class="loading"><div class="spinner"></div>Loading…</div></div>
   </div>
 
-  <!-- ASSETS / CAD / RETAILERS — placeholders -->
-  <div class="content page" id="page-assets"><div class="panel"><div class="panel-header"><h3>Digital Asset Management</h3></div><div style="padding:40px;text-align:center;color:var(--s400)">DAM browser — coming in next build</div></div></div>
-  <div class="content page" id="page-cad"><div class="panel"><div class="panel-header"><h3>CAD / BIM Sources</h3><span class="badge">158 brands</span></div><div style="padding:40px;text-align:center;color:var(--s400)">CAD directory — coming in next build</div></div></div>
-  <div class="content page" id="page-retailers"><div class="panel"><div class="panel-header"><h3>Retailer Network</h3></div><div style="padding:40px;text-align:center;color:var(--s400)">Retailer directory — coming in next build</div></div></div>
+  <!-- SEARCH (Universal) -->
+  <div id="pageSearch" style="display:none">
+    <div style="margin-bottom:20px">
+      <input type="text" id="universalSearch" placeholder="Search everything — products, brands, recalls, news, warranties, specs…" style="width:100%;height:48px;border:2px solid var(--accent);border-radius:12px;padding:0 20px;font-size:16px;color:var(--text)">
+    </div>
+    <div id="searchResults"><div class="feed-empty">Type to search across all intelligence data — products, brands, manufacturer knowledge, recalls, warranties, news, competitive cross-references, and more.</div></div>
+  </div>
+
+  <div id="authModalRoot"></div>
 </div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
+const sb = createClient(SB_URL, SB_KEY);
 
-// Auth check
-const { data: { session } } = await sb.auth.getSession();
-if (!session) { window.location.href = 'index.html'; }
+// ── Completeness fields ──
+const COMP_FIELDS = [
+  'short_description','category','msrp','color',
+  'width_inches','height_inches','depth_inches','weight_lbs',
+  'capacity_cu_ft','voltage','specs_json','finish','energy_star'
+];
+const TOTAL_F = COMP_FIELDS.length;
 
-const user = session.user;
-document.getElementById('userName').textContent = user.email.split('@')[0];
-document.getElementById('userAvatar').textContent = user.email[0].toUpperCase();
-document.getElementById('userRole').textContent = 'Platform Admin';
+function calcComp(p) {
+  let n = 0;
+  for (const f of COMP_FIELDS) {
+    const v = p[f];
+    if (v !== null && v !== undefined && v !== '') n++;
+  }
+  return Math.round((n / TOTAL_F) * 100);
+}
 
-window.doLogout = async function() {
-  await sb.auth.signOut();
-  window.location.href = 'index.html';
+const fmt = n => (n||0).toLocaleString();
+function esc(s) { return String(s??'—').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pctCol(p) { return p >= 80 ? '#1a9e56' : p >= 50 ? '#d97706' : '#c02d1e'; }
+function prettyLabel(s) { return (s||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return new Date(ts).toLocaleDateString();
+}
+// ── Parse specs_json into usable display data ──
+// Maps common JSON keys (messy scraped names) → clean display labels
+const SPEC_KEY_MAP = {
+  // Color/Finish
+  'Color': 'Color', 'color': 'Color', 'Couleur/Finition': 'Color', 'Color Family': 'Color Family',
+  // Dimensions
+  'Cutout Width': 'Width', 'Cutout Depth': 'Depth', 'Cutout Height': 'Height',
+  // Power
+  'Volts (V)': 'Voltage', 'Watts (W)': 'Wattage', 'Amperage': 'Amperage', 'Frequency (Hz)': 'Frequency',
+  'Fuel Type': 'Fuel Type', 'Plug Type': 'Plug Type',
+  // Capacity
+  'Oven Capacity': 'Capacity', 'capacity': 'Capacity', 'Total Capacity': 'Capacity',
+  // Features
+  'Air Fry': 'Air Fry', 'Self Clean (Y/N)': 'Self Clean', 'Self Clean': 'Self Clean',
+  'Convection': 'Convection', 'Convention': 'Convection', 'Sabbath Mode (Y/N)': 'Sabbath Mode',
+  'Control Type': 'Controls', 'controls': 'Controls', 'Control Elements': 'Controls',
+  'Cooking Modes': 'Cooking Modes', 'Installation Type': 'Installation', 'Construction': 'Installation',
+  // Type
+  'Burner Type': 'Burner Type', 'Type of Grate': 'Grate Type', 'Cooktop Element Style': 'Element Style',
+  'vacuum_type': 'Type', 'Product Type': 'Type', 'Oven Type': 'Type',
+  // Size
+  'Oven Size': 'Size', 'Net Weight (lbs.)': 'Weight',
+  // Series/Line
+  'series': 'Series', 'product_line': 'Product Line',
+  // General
+  'Certification': 'Certification', 'Energy Class': 'Energy Class',
+  'filters': 'Filters', 'lighting': 'Lighting', 'blower_cfm': 'CFM',
+  'ducting_options': 'Ducting', 'power_source': 'Power Source',
+  'Door Type': 'Door Type', 'Display': 'Display', 'Timer': 'Timer',
 };
 
-// ── Dashboard ──
-async function loadDashboard() {
-  const [prodRes, brandRes, retRes, recallRes] = await Promise.all([
-    sb.from('aiq_products').select('id', { count: 'exact', head: true }),
-    sb.from('brand_catalog').select('id', { count: 'exact', head: true }),
-    sb.from('aiq_retailers').select('id', { count: 'exact', head: true }).eq('status','active'),
-    sb.from('aiq_recalls').select('id', { count: 'exact', head: true })
+// Priority keys to show on cards (most useful at a glance)
+const CARD_SPEC_PRIORITY = [
+  'Color', 'Voltage', 'Fuel Type', 'Capacity', 'Installation', 'Controls',
+  'Air Fry', 'Self Clean', 'Convection', 'Type', 'CFM', 'Element Style',
+  'Wattage', 'Burner Type', 'Cooking Modes', 'Size', 'Filters', 'Lighting',
+  'Series', 'Power Source', 'Energy Class', 'Door Type', 'Frequency',
+];
+
+// Extract clean key specs from specs_json
+function extractSpecs(specsJson) {
+  if (!specsJson || typeof specsJson !== 'object') return {};
+  const result = {};
+  for (const [rawKey, value] of Object.entries(specsJson)) {
+    if (value == null || value === '' || value === 'N/A') continue;
+    // Clean the key - remove tab characters and excessive whitespace from scraped keys
+    const cleanKey = rawKey.replace(/\t+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    // Check direct map
+    if (SPEC_KEY_MAP[cleanKey]) {
+      result[SPEC_KEY_MAP[cleanKey]] = String(value).trim();
+      continue;
+    }
+    // Check if the cleaned key contains a mapped suffix (handles "Technical Details\t\tFuel Type" → "Fuel Type")
+    for (const [mapKey, mapLabel] of Object.entries(SPEC_KEY_MAP)) {
+      if (cleanKey.endsWith(mapKey) || cleanKey.includes(mapKey)) {
+        if (!result[mapLabel]) result[mapLabel] = String(value).trim();
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+// Get top N display specs for a card
+function getCardSpecs(p) {
+  const specs = [];
+  // First pull from top-level columns
+  if (p.finish) specs.push(p.finish);
+  if (p.color) specs.push(p.color);
+  if (p.voltage) specs.push(p.voltage);
+  if (p.capacity_cu_ft) specs.push(p.capacity_cu_ft + ' cu ft');
+  if (p.width_inches && p.height_inches) specs.push(p.width_inches + '×' + p.height_inches + '"');
+  if (p.energy_star) specs.push('⭐ Energy Star');
+  // Then fill from specs_json
+  if (specs.length < 5 && p.specs_json) {
+    const extracted = extractSpecs(p.specs_json);
+    for (const key of CARD_SPEC_PRIORITY) {
+      if (specs.length >= 5) break;
+      if (extracted[key]) {
+        // Don't duplicate what we already have from top-level
+        const val = extracted[key];
+        if (val.length > 30) continue; // Skip long values for cards
+        const already = specs.some(s => s.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(s.toLowerCase()));
+        if (!already) specs.push(val);
+      }
+    }
+  }
+  return specs;
+}
+
+// Count total meaningful data points (top-level + JSON)
+function calcRichComp(p) {
+  let n = 0;
+  for (const f of COMP_FIELDS) {
+    const v = p[f];
+    if (v !== null && v !== undefined && v !== '') n++;
+  }
+  // Add JSON richness
+  let jsonKeys = 0;
+  if (p.specs_json && typeof p.specs_json === 'object') {
+    jsonKeys = Object.entries(p.specs_json).filter(([,v]) => v != null && v !== '' && v !== 'N/A').length;
+  }
+  // Completeness = top-level fields filled + bonus for JSON richness
+  // Base: out of 13 fields. JSON adds up to 50% bonus (capped)
+  const basePct = Math.round((n / TOTAL_F) * 100);
+  const jsonBonus = Math.min(jsonKeys * 2, 50); // each JSON key worth 2%, max 50%
+  return Math.min(100, basePct + jsonBonus);
+}
+
+// Quick summary line from JSON
+function getSpecSummary(p) {
+  if (!p.specs_json || typeof p.specs_json !== 'object') return '';
+  const extracted = extractSpecs(p.specs_json);
+  const parts = [];
+  if (extracted['Fuel Type']) parts.push(extracted['Fuel Type']);
+  if (extracted['Capacity']) parts.push(extracted['Capacity']);
+  if (extracted['Controls']) parts.push(extracted['Controls']);
+  if (extracted['Voltage']) parts.push(extracted['Voltage']);
+  if (extracted['Installation']) parts.push(extracted['Installation']);
+  return parts.slice(0, 3).join(' · ');
+}
+
+function docIcon(type) {
+  const t = (type||'').toLowerCase();
+  if (t.includes('pdf') || t.includes('install') || t.includes('manual')) return 'pdf';
+  if (t.includes('spec') || t.includes('sheet')) return 'spec';
+  if (t.includes('manual') || t.includes('guide') || t.includes('use')) return 'manual';
+  return 'other';
+}
+function docEmoji(type) {
+  const t = (type||'').toLowerCase();
+  if (t.includes('pdf')) return '📕';
+  if (t.includes('spec')) return '📋';
+  if (t.includes('manual') || t.includes('guide')) return '📘';
+  if (t.includes('install')) return '🔧';
+  if (t.includes('warranty')) return '🛡️';
+  if (t.includes('energy')) return '⚡';
+  return '📄';
+}
+
+// ── State ──
+let allProducts = [];
+let catMap = {};
+let imgCounts = {};
+let docCounts = {};
+let vidCounts = {};
+let imgTotals = 0, docTotals = 0, vidTotals = 0;
+let imgByType = {}, docByType = {};
+let prodsWithImgs = 0, prodsWithDocs = 0, prodsWithVids = 0;
+let currentView = 'products';
+
+function filtered() {
+  if (currentView === 'products') return allProducts.filter(p => !p.is_parts_accessory);
+  if (currentView === 'parts') return allProducts.filter(p => p.is_parts_accessory);
+  return allProducts;
+}
+
+// ── Data loading ──
+async function paginate(table, cols) {
+  let all = [], from = 0;
+  const PG = 1000;
+  while (true) {
+    const { data, error } = await sb.from(table).select(cols).range(from, from + PG - 1);
+    if (error) { console.error(table, error); break; }
+    all = all.concat(data);
+    if (data.length < PG) break;
+    from += PG;
+  }
+  return all;
+}
+
+async function loadProducts() {
+  const cols = 'id,model,brand_name,category,subcategory,size_class,is_parts_accessory,status,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,defrost_type,' + COMP_FIELDS.join(',');
+  const raw = await paginate('aiq_products', cols);
+  allProducts = raw.filter(p => p.status === 'active');
+}
+
+async function loadCatMap() {
+  const { data } = await sb.from('pim_category_map').select('*');
+  catMap = {};
+  for (const r of (data || [])) catMap[r.raw_category] = r;
+}
+
+async function loadImageCounts() {
+  const all = await paginate('pim_product_images', 'product_id,image_type');
+  imgCounts = {}; imgByType = {};
+  const s = new Set();
+  for (const r of all) {
+    imgCounts[r.product_id] = (imgCounts[r.product_id]||0) + 1;
+    s.add(r.product_id);
+    const t = r.image_type || 'unknown';
+    imgByType[t] = (imgByType[t]||0) + 1;
+  }
+  imgTotals = all.length;
+  prodsWithImgs = s.size;
+}
+
+async function loadDocCounts() {
+  const all = await paginate('pim_product_documents', 'product_id,doc_type');
+  docCounts = {}; docByType = {};
+  const s = new Set();
+  for (const r of all) {
+    docCounts[r.product_id] = (docCounts[r.product_id]||0) + 1;
+    s.add(r.product_id);
+    const t = r.doc_type || 'unknown';
+    docByType[t] = (docByType[t]||0) + 1;
+  }
+  docTotals = all.length;
+  prodsWithDocs = s.size;
+}
+
+async function loadVidCounts() {
+  const { data } = await sb.from('pim_product_videos').select('product_id,video_type');
+  vidCounts = {};
+  const s = new Set();
+  for (const r of (data||[])) {
+    vidCounts[r.product_id] = (vidCounts[r.product_id]||0) + 1;
+    s.add(r.product_id);
+  }
+  vidTotals = (data||[]).length;
+  prodsWithVids = s.size;
+}
+
+// ── Dashboard Rendering ──
+function renderKPIs() {
+  const prods = allProducts.filter(p => !p.is_parts_accessory);
+  const parts = allProducts.filter(p => p.is_parts_accessory);
+  const view = filtered();
+  const avg = view.length > 0 ? Math.round(view.reduce((s,p) => s + calcRichComp(p), 0) / view.length) : 0;
+  const brands = new Set(view.map(p => p.brand_name).filter(Boolean));
+  document.getElementById('kpiProducts').textContent = fmt(prods.length);
+  document.getElementById('kpiProductsSub').textContent = new Set(prods.map(p=>p.category).filter(Boolean)).size + ' categories';
+  document.getElementById('kpiParts').textContent = fmt(parts.length);
+  document.getElementById('kpiComplete').textContent = avg + '%';
+  document.getElementById('kpiCompleteSub').textContent = TOTAL_F + ' fields · ' + currentView + ' view';
+  document.getElementById('kpiImages').textContent = fmt(imgTotals);
+  document.getElementById('kpiImagesSub').textContent = fmt(prodsWithImgs) + ' products w/ images';
+  document.getElementById('kpiDocs').textContent = fmt(docTotals);
+  document.getElementById('kpiDocsSub').textContent = fmt(prodsWithDocs) + ' products w/ docs';
+  document.getElementById('kpiBrands').textContent = brands.size;
+  document.getElementById('kpiBrandsSub').textContent = 'in current view';
+  document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function renderCategories() {
+  const view = filtered();
+  const groups = {};
+  for (const p of view) {
+    const cat = p.category || 'Uncategorized';
+    if (!groups[cat]) groups[cat] = { products: [], isParts: !!p.is_parts_accessory };
+    groups[cat].products.push(p);
+  }
+  const sorted = Object.entries(groups).sort((a,b) => {
+    if (a[1].isParts !== b[1].isParts) return a[1].isParts ? 1 : -1;
+    return b[1].products.length - a[1].products.length;
+  });
+  document.getElementById('catCount').textContent = sorted.length + ' categories';
+  document.getElementById('catGrid').innerHTML = `<div class="cat-grid">${sorted.map(([cat, g]) => {
+    const cnt = g.products.length;
+    const avg = Math.round(g.products.reduce((s,p) => s + calcRichComp(p), 0) / cnt);
+    const withImgs = g.products.filter(p => imgCounts[p.id]).length;
+    const withDocs = g.products.filter(p => docCounts[p.id]).length;
+    const col = pctCol(avg);
+    // Subcategory breakdown
+    const subMap = {};
+    g.products.forEach(p => { const s = p.subcategory; if (s) subMap[s] = (subMap[s]||0) + 1; });
+    const subs = Object.entries(subMap).sort((a,b) => b[1] - a[1]);
+    return `<div class="cat-card${g.isParts ? ' parts' : ''}" onclick="filterProductsByCat('${esc(cat)}')">
+      <div class="cat-name">${cat} <span class="cat-count">${cnt}</span></div>
+      ${subs.length ? '<div class="cat-subs">' + subs.slice(0,4).map(([s,c]) => '<span class="cat-sub-tag" onclick="event.stopPropagation();filterProductsByCatSub(\''+esc(cat)+'\',\''+esc(s)+'\')">' + s + ' <b>' + c + '</b></span>').join('') + (subs.length>4?'<span class="cat-sub-tag">+' + (subs.length-4) + ' more</span>':'') + '</div>' : ''}
+      <div class="cat-meta"><span>🖼 ${withImgs}</span><span>📄 ${withDocs}</span><span style="color:${col}">◉ ${avg}%</span></div>
+      <div class="cat-bar"><div class="cat-bar-fill" style="width:${avg}%;background:${col}"></div></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderCoverage() {
+  const view = filtered();
+  const total = view.length || 1;
+  const viewProdIds = new Set(view.map(p => p.id));
+  const viewImgs = [...viewProdIds].filter(id => imgCounts[id]).length;
+  const viewDocs = [...viewProdIds].filter(id => docCounts[id]).length;
+  const viewVids = [...viewProdIds].filter(id => vidCounts[id]).length;
+  const fields = [
+    { label: 'Has Images', count: viewImgs },
+    { label: 'Has Documents', count: viewDocs },
+    { label: 'Has Videos', count: viewVids },
+    { label: 'Has MSRP', count: view.filter(p => p.msrp != null).length },
+    { label: 'Has Specs JSON', count: view.filter(p => p.specs_json != null).length },
+    { label: 'Has Description', count: view.filter(p => p.short_description).length },
+    { label: 'Has Dimensions', count: view.filter(p => p.width_inches != null && p.height_inches != null && p.depth_inches != null).length },
+    { label: 'Has Category', count: view.filter(p => p.category).length },
+    { label: 'Has Subcategory', count: view.filter(p => p.subcategory).length },
+    { label: 'Has Size Class', count: view.filter(p => p.size_class).length },
+    { label: 'Has Color', count: view.filter(p => p.color).length },
+    { label: 'Has Finish', count: view.filter(p => p.finish).length },
+    { label: 'Has Energy Star', count: view.filter(p => p.energy_star != null).length },
+    { label: 'Has Weight', count: view.filter(p => p.weight_lbs != null).length },
+    { label: 'Has Voltage', count: view.filter(p => p.voltage).length },
+    { label: 'Has Fuel Type', count: view.filter(p => p.fuel_type).length },
+  ];
+  document.getElementById('coverageBadge').textContent = currentView + ' view';
+  document.getElementById('coveragePanel').innerHTML = fields.map(f => {
+    const pct = Math.round((f.count / total) * 100);
+    return `<div class="prog-row"><span class="prog-label">${f.label}</span><div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${pctCol(pct)}"></div></div><span class="prog-pct" style="color:${pctCol(pct)}">${pct}%</span></div>`;
+  }).join('');
+}
+
+function renderAssets() {
+  const items = [];
+  Object.entries(imgByType).sort((a,b) => b[1]-a[1]).slice(0,5).forEach(([t,c]) => items.push({count:c, type: prettyLabel(t) + ' imgs'}));
+  Object.entries(docByType).sort((a,b) => b[1]-a[1]).slice(0,5).forEach(([t,c]) => items.push({count:c, type: prettyLabel(t)}));
+  if (vidTotals > 0) items.push({count:vidTotals, type:'Videos'});
+  document.getElementById('assetPanel').innerHTML = `<div class="asset-grid">${items.map(i =>
+    `<div class="asset-item"><div class="count">${fmt(i.count)}</div><div class="type">${i.type}</div></div>`
+  ).join('')}</div>`;
+}
+
+function renderNeedsFix() {
+  const prods = allProducts.filter(p => !p.is_parts_accessory).map(p => ({
+    ...p, completeness: calcRichComp(p), images: imgCounts[p.id] || 0, docs: docCounts[p.id] || 0
+  })).sort((a,b) => a.completeness - b.completeness);
+  const worst = prods.slice(0, 40);
+  const under50 = prods.filter(p => p.completeness < 50).length;
+  document.getElementById('fixCount').textContent = fmt(under50) + ' products < 50%';
+  const el = document.getElementById('fixTable');
+  if (!worst.length) { el.innerHTML = '<div class="feed-empty">All products look good!</div>'; return; }
+  el.innerHTML = `<table><thead><tr><th>Model</th><th>Brand</th><th>Category</th><th>🖼</th><th>📄</th><th>Completeness</th></tr></thead><tbody>${worst.map(p => {
+    const c = p.completeness; const col = pctCol(c);
+    return `<tr onclick="openProductDetail('${p.id}')"><td class="model-name" title="${esc(p.model)}">${esc(p.model)}</td><td><span class="brand-tag">${esc(p.brand_name)}</span></td><td class="cat-tag">${esc(p.category)}</td><td>${p.images}</td><td>${p.docs}</td><td><div class="completeness-bar"><div class="mini-bar"><div class="mini-fill" style="width:${c}%;background:${col}"></div></div><span style="color:${col};font-weight:600">${c}%</span></div></td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function renderDocTypes() {
+  const sorted = Object.entries(docByType).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('docTypePanel').innerHTML = sorted.map(([t,c])=>{
+    const pct = Math.round((c/max)*100);
+    return `<div class="prog-row"><span class="prog-label">${prettyLabel(t)}</span><div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:#7c3aed"></div></div><span class="prog-pct" style="color:#7c3aed">${fmt(c)}</span></div>`;
+  }).join('');
+}
+
+function renderImgTypes() {
+  const sorted = Object.entries(imgByType).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  document.getElementById('imgTypePanel').innerHTML = sorted.map(([t,c])=>{
+    const pct = Math.round((c/max)*100);
+    return `<div class="prog-row"><span class="prog-label">${prettyLabel(t)}</span><div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:#2f6fed"></div></div><span class="prog-pct" style="color:#2f6fed">${fmt(c)}</span></div>`;
+  }).join('');
+}
+
+function renderAll() { renderKPIs(); renderCategories(); renderCoverage(); renderAssets(); renderNeedsFix(); renderDocTypes(); renderImgTypes(); }
+
+// ── Page Navigation ──
+let currentPage = 'dashboard';
+let navHistory = []; // for breadcrumbs
+const pages = ['dashboard','brands','products','brandDetail','productDetail','manufacturer','intelligence','recalls','search'];
+
+function showPage(page, ctx) {
+  currentPage = page;
+  pages.forEach(p => {
+    const el = document.getElementById('page' + p.charAt(0).toUpperCase() + p.slice(1));
+    if (el) el.style.display = p === page ? '' : 'none';
+  });
+  // Nav button highlighting
+  const navPage = (page === 'brandDetail') ? 'brands' : (page === 'productDetail') ? 'products' : page;
+  document.querySelectorAll('#pageNav button').forEach(b => b.classList.toggle('on', b.dataset.page === navPage));
+  // Header toggle
+  const hdr = document.querySelector('.header-right');
+  if (hdr) hdr.style.display = page === 'dashboard' ? '' : 'none';
+  // Track context for breadcrumbs
+  if (ctx) navHistory.push(ctx);
+}
+
+document.querySelectorAll('#pageNav button').forEach(b => {
+  b.addEventListener('click', () => {
+    const page = b.dataset.page;
+    navHistory = [];
+    showPage(page);
+    if (page === 'brands' && !brandsLoaded) loadBrands();
+    if (page === 'products' && !productsLoaded) loadCatalog();
+    if (page === 'manufacturer') loadManufacturerPortal();
+    if (page === 'intelligence' && !intelLoaded) loadIntelligence();
+    if (page === 'recalls' && !recallsLoaded) loadRecalls();
+    if (page === 'search') document.getElementById('universalSearch')?.focus();
+  });
+});
+
+// ── Category click → Products with filter ──
+window.filterProductsByCat = function(cat) {
+  navHistory = [];
+  showPage('products');
+  if (!productsLoaded) {
+    loadCatalog().then(() => {
+      document.getElementById('prodCat').value = cat;
+      prodFilters.cat = cat;
+      catalogPage = 0;
+      loadCatalog();
+    });
+  } else {
+    document.getElementById('prodCat').value = cat;
+    prodFilters.cat = cat;
+    catalogPage = 0;
+    loadCatalog();
+  }
+};
+
+window.filterProductsByCatSub = function(cat, sub) {
+  navHistory = [];
+  showPage('products');
+  prodFilters.cat = cat;
+  prodFilters.sub = sub;
+  document.getElementById('prodCat').value = cat;
+  catalogPage = 0;
+  loadCatalog().then(() => {
+    document.getElementById('prodSub').value = sub;
+  });
+};
+
+// ── Brand Directory ──
+let allBrands = [], brandsLoaded = false;
+let brandFilters = { search: '', tier: '', country: '', contact: '' };
+
+async function loadBrands() {
+  brandsLoaded = true;
+  const { data, error } = await sb.from('brand_catalog')
+    .select('id,brand_name,brand_tier,parent_company,country,headquarters,founded_year,canada_website,us_website,canada_email,canada_phone,contact_status,brand_story,brand_tagline,key_innovations,product_categories,product_count,is_active')
+    .order('brand_name');
+  if (error) { document.getElementById('brandContent').innerHTML = '<div class="feed-empty">Error loading brands: ' + (error.message||'') + '</div>'; return; }
+  allBrands = data || [];
+  const countries = [...new Set(allBrands.map(b => b.country).filter(Boolean))].sort();
+  const contacts = [...new Set(allBrands.map(b => b.contact_status).filter(Boolean))].sort();
+  const countryEl = document.getElementById('brandCountry');
+  const contactEl = document.getElementById('brandContact');
+  if (countryEl.options.length <= 1) countries.forEach(c => countryEl.insertAdjacentHTML('beforeend', '<option value="'+c+'">'+c+'</option>'));
+  if (contactEl.options.length <= 1) contacts.forEach(c => contactEl.insertAdjacentHTML('beforeend', '<option value="'+c+'">'+c.replace(/_/g,' ')+'</option>'));
+  renderBrands();
+}
+
+function filteredBrands() {
+  let list = allBrands;
+  const s = brandFilters.search.toLowerCase();
+  if (s) list = list.filter(b => (b.brand_name||'').toLowerCase().includes(s) || (b.parent_company||'').toLowerCase().includes(s) || (b.headquarters||'').toLowerCase().includes(s) || (b.brand_tagline||'').toLowerCase().includes(s));
+  if (brandFilters.tier) list = list.filter(b => b.brand_tier === brandFilters.tier);
+  if (brandFilters.country) list = list.filter(b => b.country === brandFilters.country);
+  if (brandFilters.contact) list = list.filter(b => b.contact_status === brandFilters.contact);
+  return list;
+}
+
+function renderBrands() {
+  const list = filteredBrands();
+  const tiers = {};
+  list.forEach(b => { tiers[b.brand_tier] = (tiers[b.brand_tier]||0)+1; });
+  const withPhone = list.filter(b=>b.canada_phone).length;
+  const withEmail = list.filter(b=>b.canada_email).length;
+  const withWeb = list.filter(b=>b.us_website||b.canada_website).length;
+  document.getElementById('brandKpis').innerHTML =
+    '<div class="stat-card accent"><div class="label">Brands</div><div class="value">'+list.length+'</div><div class="sub">of '+allBrands.length+' total</div></div>'
+    +'<div class="stat-card purple"><div class="label">Ultra Luxury</div><div class="value">'+(tiers.ultra_luxury||0)+'</div></div>'
+    +'<div class="stat-card"><div class="label">Luxury</div><div class="value">'+(tiers.luxury||0)+'</div></div>'
+    +'<div class="stat-card"><div class="label">Mid-Range</div><div class="value">'+(tiers.mid||0)+'</div></div>'
+    +'<div class="stat-card"><div class="label">Entry</div><div class="value">'+(tiers.entry||0)+'</div></div>'
+    +'<div class="stat-card green"><div class="label">Has Contact Info</div><div class="value">'+withPhone+'</div><div class="sub">phone · '+withEmail+' email · '+withWeb+' web</div></div>';
+  if (!list.length) { document.getElementById('brandContent').innerHTML = '<div class="feed-empty">No brands match your filters.</div>'; return; }
+  document.getElementById('brandContent').innerHTML = '<div class="brand-grid">' + list.map(b => {
+    const cats = (b.product_categories||[]).slice(0,4);
+    // Get product count from allProducts (more accurate than brand_catalog.product_count)
+    const prodCount = allProducts.filter(p => p.brand_name === b.brand_name).length;
+    const imgCount = allProducts.filter(p => p.brand_name === b.brand_name && imgCounts[p.id]).length;
+    return '<div class="brand-card" data-brand-id="'+b.id+'">'
+      +'<div class="bc-top"><div><div class="bc-name">'+esc(b.brand_name)+'</div>'
+        +(b.parent_company?'<div class="bc-parent">'+esc(b.parent_company)+'</div>':'')
+      +'</div><span class="tier-pill '+esc(b.brand_tier)+'">'+esc((b.brand_tier||'').replace(/_/g,' '))+'</span></div>'
+      +'<div class="bc-meta">'
+        +(b.country?'<span>🌍 '+esc(b.country)+'</span>':'')
+        +'<span>📦 '+prodCount+' products</span>'
+        +'<span>🖼 '+imgCount+' with images</span>'
+      +'</div>'
+      +(b.brand_story?'<div class="bc-story">'+esc(b.brand_story)+'</div>':'')
+      +'<div class="bc-contact">'
+        +(b.us_website?'<a class="bc-link" href="'+esc(b.us_website)+'" target="_blank" onclick="event.stopPropagation()">🌐 US</a>':'')
+        +(b.canada_website?'<a class="bc-link" href="'+esc(b.canada_website)+'" target="_blank" onclick="event.stopPropagation()">🍁 CA</a>':'')
+        +(b.canada_phone?'<a class="bc-link" href="tel:'+esc(b.canada_phone)+'" onclick="event.stopPropagation()">📞</a>':'')
+        +(b.canada_email?'<a class="bc-link" href="mailto:'+esc(b.canada_email)+'" onclick="event.stopPropagation()">✉️</a>':'')
+      +'</div>'
+      +(cats.length?'<div class="bc-cats">'+cats.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')
+    +'</div>';
+  }).join('') + '</div>';
+  document.querySelectorAll('.brand-card[data-brand-id]').forEach(card => {
+    card.addEventListener('click', () => openBrandDetail(card.dataset.brandId));
+  });
+}
+
+['brandSearch','brandTier','brandCountry','brandContact'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => {
+    const key = id.replace('brand','').toLowerCase();
+    brandFilters[key === 'search' ? 'search' : key] = el.value;
+    renderBrands();
+  });
+});
+
+// ── BRAND DETAIL (Enhanced) ──
+async function openBrandDetail(brandId) {
+  showPage('brandDetail', { type: 'brand', id: brandId });
+  const b = allBrands.find(x => x.id === brandId);
+  if (!b) { document.getElementById('brandDetailContent').innerHTML = '<div class="feed-empty">Brand not found.</div>'; return; }
+
+  const el = document.getElementById('brandDetailContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading brand details…</div>';
+
+  // Fetch ALL products for this brand with full data
+  const { data: prods } = await sb.from('aiq_products')
+    .select('id,model,category,msrp,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json,weight_lbs,capacity_cu_ft,voltage,is_parts_accessory,' + COMP_FIELDS.join(','))
+    .eq('brand_name', b.brand_name)
+    .eq('status', 'active')
+    .order('category').order('model')
+    .limit(500);
+
+  const products = prods || [];
+  const cats = [...new Set(products.map(p => p.category).filter(Boolean))].sort();
+  const innovations = b.key_innovations || [];
+  const totalImgs = products.reduce((s, p) => s + (imgCounts[p.id] || 0), 0);
+  const totalDocs = products.reduce((s, p) => s + (docCounts[p.id] || 0), 0);
+  const totalVids = products.reduce((s, p) => s + (vidCounts[p.id] || 0), 0);
+  const avgComp = products.length ? Math.round(products.reduce((s,p) => s + calcRichComp(p), 0) / products.length) : 0;
+  const prodsOnly = products.filter(p => !p.is_parts_accessory);
+
+  let html = '<div class="breadcrumb">'
+    + '<a onclick="navHistory=[];showPage(\'brands\')">Brands</a>'
+    + '<span class="sep">›</span>'
+    + '<span class="current">' + esc(b.brand_name) + '</span>'
+    + '</div>';
+
+  // Brand header card
+  html += '<div class="brand-detail">'
+    + '<div class="bd-header"><div><h2>' + esc(b.brand_name) + '</h2>'
+    + (b.brand_tagline ? '<div style="color:var(--text2);font-size:14px;margin-top:4px;font-style:italic">' + esc(b.brand_tagline) + '</div>' : '')
+    + '</div><span class="tier-pill ' + esc(b.brand_tier) + '">' + esc((b.brand_tier||'').replace(/_/g,' ')) + '</span></div>';
+
+  // KPI row for this brand
+  html += '<div class="stats-row">'
+    + '<div class="stat-card accent"><div class="label">Products</div><div class="value">' + prodsOnly.length + '</div><div class="sub">' + cats.length + ' categories</div></div>'
+    + '<div class="stat-card green"><div class="label">Completeness</div><div class="value">' + avgComp + '%</div></div>'
+    + '<div class="stat-card purple"><div class="label">Images</div><div class="value">' + fmt(totalImgs) + '</div></div>'
+    + '<div class="stat-card pink"><div class="label">Documents</div><div class="value">' + fmt(totalDocs) + '</div></div>'
+    + '<div class="stat-card yellow"><div class="label">Videos</div><div class="value">' + fmt(totalVids) + '</div></div>'
+    + '</div>';
+
+  // Info grid
+  html += '<div class="bd-info">'
+    + (b.parent_company ? '<div><small>Parent Company</small>' + esc(b.parent_company) + '</div>' : '')
+    + (b.country ? '<div><small>Country</small>' + esc(b.country) + '</div>' : '')
+    + (b.headquarters ? '<div><small>Headquarters</small>' + esc(b.headquarters) + '</div>' : '')
+    + (b.founded_year ? '<div><small>Founded</small>' + esc(b.founded_year) + '</div>' : '')
+    + (b.contact_status ? '<div><small>Contact Status</small>' + prettyLabel(b.contact_status) + '</div>' : '')
+    + '<div><small>Products in DB</small>' + products.length + '</div>'
+    + '</div>';
+
+  // Contact links
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">'
+    + (b.us_website ? '<a class="bc-link" href="' + esc(b.us_website) + '" target="_blank">🌐 US Website</a>' : '')
+    + (b.canada_website ? '<a class="bc-link" href="' + esc(b.canada_website) + '" target="_blank">🍁 CA Website</a>' : '')
+    + (b.canada_phone ? '<a class="bc-link" href="tel:' + esc(b.canada_phone) + '">📞 ' + esc(b.canada_phone) + '</a>' : '')
+    + (b.canada_email ? '<a class="bc-link" href="mailto:' + esc(b.canada_email) + '">✉️ ' + esc(b.canada_email) + '</a>' : '')
+    + '</div>';
+
+  if (b.brand_story) html += '<div class="bd-story">' + esc(b.brand_story) + '</div>';
+  if (innovations.length) html += '<div style="margin:12px 0"><strong style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Key Innovations</strong><div class="bd-innovations">' + innovations.map(i => '<span>' + esc(i) + '</span>').join('') + '</div></div>';
+
+  html += '</div>'; // end brand-detail
+
+  // Category filter for products within brand
+  html += '<div class="panel"><div class="panel-head"><h3>Products (' + prodsOnly.length + ')</h3>'
+    + '<div style="display:flex;gap:8px;align-items:center"><select id="bdCatFilter" style="height:32px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-size:12px"><option value="">All Categories</option>' + cats.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select>'
+    + '<input type="text" id="bdProdSearch" placeholder="Search models…" style="height:32px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:12px;width:200px"></div>'
+    + '</div>';
+
+  // Product table with assets
+  html += '<div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:600px" id="bdProdTable">';
+  html += buildBrandProductTable(prodsOnly, '');
+  html += '</div></div></div>';
+
+  el.innerHTML = html;
+
+  // Bind category filter and search
+  const catFilter = document.getElementById('bdCatFilter');
+  const searchInput = document.getElementById('bdProdSearch');
+  const filterAndRender = () => {
+    const cat = catFilter.value;
+    const search = searchInput.value.toLowerCase();
+    let filtered = prodsOnly;
+    if (cat) filtered = filtered.filter(p => p.category === cat);
+    if (search) filtered = filtered.filter(p => (p.model||'').toLowerCase().includes(search) || (p.short_description||'').toLowerCase().includes(search));
+    document.getElementById('bdProdTable').innerHTML = buildBrandProductTable(filtered, search);
+    bindBdProdClicks();
+  };
+  catFilter.addEventListener('change', filterAndRender);
+  searchInput.addEventListener('input', filterAndRender);
+  bindBdProdClicks();
+}
+
+function buildBrandProductTable(prods, highlight) {
+  if (!prods.length) return '<div class="feed-empty">No products match your filters.</div>';
+  return '<table><thead><tr><th>Model</th><th>Category</th><th>Key Specs</th><th>MSRP</th><th>🖼</th><th>📄</th><th>Data</th></tr></thead><tbody>'
+    + prods.map(p => {
+      const comp = calcRichComp(p);
+      const col = pctCol(comp);
+      const ic = imgCounts[p.id] || 0;
+      const dc = docCounts[p.id] || 0;
+      const specSnippets = getCardSpecs(p).slice(0, 3);
+      const jsonKeys = (p.specs_json && typeof p.specs_json === 'object') ? Object.keys(p.specs_json).length : 0;
+      return '<tr class="bd-prod-row" data-prod-id="' + p.id + '">'
+        + '<td><div class="model-name">' + esc(p.model) + '</div>'
+        + (p.short_description ? '<div style="font-size:11px;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.short_description) + '</div>' : '')
+        + '</td>'
+        + '<td class="cat-tag">' + esc(p.category) + '</td>'
+        + '<td style="max-width:220px"><div style="display:flex;gap:4px;flex-wrap:wrap">'
+        + specSnippets.map(s => '<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:3px;color:var(--text2);white-space:nowrap">' + esc(s) + '</span>').join('')
+        + (jsonKeys > 0 ? '<span style="font-size:10px;color:var(--accent);font-weight:600">+' + jsonKeys + ' specs</span>' : '')
+        + '</div></td>'
+        + '<td style="font-weight:600;color:var(--accent)">' + (p.msrp ? '$' + Number(p.msrp).toLocaleString() : '—') + '</td>'
+        + '<td>' + (ic ? '<span style="color:var(--blue);font-weight:600">' + ic + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
+        + '<td>' + (dc ? '<span style="color:var(--purple);font-weight:600">' + dc + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
+        + '<td><div class="completeness-bar"><div class="mini-bar"><div class="mini-fill" style="width:' + comp + '%;background:' + col + '"></div></div><span style="color:' + col + ';font-weight:600">' + comp + '%</span></div></td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+function bindBdProdClicks() {
+  document.querySelectorAll('.bd-prod-row').forEach(row => {
+    row.addEventListener('click', () => openProductDetail(row.dataset.prodId));
+  });
+}
+
+// ── Product Catalog ──
+let catalogProducts = [], productsLoaded = false, catalogPage = 0, catalogTotal = 0;
+let prodFilters = { search: '', brand: '', cat: '', sub: '', size: '', color: '', fuel: '', feature: '', status: '' };
+const PAGE_SIZE = 30;
+
+async function loadCatalog() {
+  productsLoaded = true;
+  const el = document.getElementById('prodContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products…</div>';
+
+  const selectCols = 'id,brand_name,model,category,subcategory,size_class,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,installation_type,series,defrost_type';
+
+  let q = sb.from('aiq_products')
+    .select(selectCols, { count: 'exact' })
+    .order('brand_name').order('model');
+
+  const s = prodFilters.search.trim();
+  if (s) {
+    const orParts = ['brand_name','model','short_description'].map(c => c+'.ilike.*'+encodeURIComponent(s)+'*');
+    const url = SB_URL+'/rest/v1/aiq_products?select='+selectCols+'&or=('+orParts.join(',')+')'
+      +(prodFilters.cat?'&category=eq.'+encodeURIComponent(prodFilters.cat):'')
+      +(prodFilters.sub?'&subcategory=eq.'+encodeURIComponent(prodFilters.sub):'')
+      +(prodFilters.size?'&size_class=eq.'+encodeURIComponent(prodFilters.size):'')
+      +(prodFilters.fuel?'&fuel_type=eq.'+encodeURIComponent(prodFilters.fuel):'')
+      +(prodFilters.color?'&color_family=eq.'+encodeURIComponent(prodFilters.color):'')
+      +'&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
+    try {
+      const headers = {'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON,'Prefer':'count=exact'};
+      const resp = await fetch(url, {headers});
+      const countHeader = resp.headers.get('content-range');
+      catalogTotal = countHeader ? parseInt(countHeader.split('/')[1]) : 0;
+      catalogProducts = await resp.json();
+    } catch(e) { catalogProducts = []; catalogTotal = 0; }
+    renderCatalog();
+    return;
+  }
+
+  if (prodFilters.brand) q = q.eq('brand_name', prodFilters.brand);
+  if (prodFilters.cat) q = q.eq('category', prodFilters.cat);
+  if (prodFilters.sub) q = q.eq('subcategory', prodFilters.sub);
+  if (prodFilters.size) q = q.eq('size_class', prodFilters.size);
+  if (prodFilters.color) q = q.eq('color_family', prodFilters.color);
+  if (prodFilters.fuel) q = q.eq('fuel_type', prodFilters.fuel);
+  if (prodFilters.status) q = q.eq('status', prodFilters.status);
+  if (prodFilters.feature === 'counter_depth') q = q.eq('is_counter_depth', true);
+  if (prodFilters.feature === 'ice_maker') q = q.eq('has_ice_maker', true);
+  if (prodFilters.feature === 'water') q = q.eq('has_water_dispenser', true);
+  if (prodFilters.feature === 'ice_dispenser') q = q.eq('has_ice_dispenser', true);
+  if (prodFilters.feature === 'energy_star') q = q.eq('energy_star', true);
+  if (prodFilters.feature === 'frost_free') q = q.eq('defrost_type', 'Frost-Free');
+  if (prodFilters.feature === 'manual_defrost') q = q.eq('defrost_type', 'Manual');
+
+  const { data, error, count } = await q.range(catalogPage*PAGE_SIZE, catalogPage*PAGE_SIZE+PAGE_SIZE-1);
+  if (error) { el.innerHTML = '<div class="feed-empty">Error: '+(error.message||'')+'</div>'; return; }
+  catalogProducts = data || [];
+  catalogTotal = count || 0;
+
+  if (document.getElementById('prodBrand').options.length <= 1) {
+    const { data: brands } = await sb.from('aiq_products').select('brand_name').not('brand_name','is',null);
+    const unique = [...new Set((brands||[]).map(b=>b.brand_name))].sort();
+    unique.forEach(b => document.getElementById('prodBrand').insertAdjacentHTML('beforeend','<option>'+b+'</option>'));
+    const { data: cats } = await sb.from('aiq_products').select('category').not('category','is',null);
+    const ucats = [...new Set((cats||[]).map(c=>c.category))].sort();
+    ucats.forEach(c => document.getElementById('prodCat').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
+    ['active','draft','discontinued'].forEach(s => document.getElementById('prodStatus').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
+    const { data: colors } = await sb.from('aiq_products').select('color_family').not('color_family','is',null);
+    const ucolors = [...new Set((colors||[]).map(c=>c.color_family))].sort();
+    ucolors.forEach(c => document.getElementById('prodColor').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
+    // Populate size classes
+    const { data: sizes } = await sb.from('aiq_products').select('size_class').not('size_class','is',null);
+    const usizes = [...new Set((sizes||[]).map(s=>s.size_class))].sort((a,b) => parseInt(a)-parseInt(b));
+    usizes.forEach(s => document.getElementById('prodSize').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
+    // Populate fuel types
+    const { data: fuels } = await sb.from('aiq_products').select('fuel_type').not('fuel_type','is',null);
+    const ufuels = [...new Set((fuels||[]).map(f=>f.fuel_type))].sort();
+    ufuels.forEach(f => document.getElementById('prodFuel').insertAdjacentHTML('beforeend','<option>'+f+'</option>'));
+  }
+  // Dynamic subcategory dropdown based on selected category
+  updateSubcategoryDropdown(prodFilters.cat);
+  renderCatalog();
+}
+
+function updateSubcategoryDropdown(cat) {
+  const sel = document.getElementById('prodSub');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All subcategories</option>';
+  if (!cat) return;
+  const subs = [...new Set(catalogProducts.map(p => p.subcategory).filter(Boolean))].sort();
+  // Also fetch all subs for this category
+  sb.from('aiq_products').select('subcategory').eq('category', cat).not('subcategory','is',null).then(({data}) => {
+    const allSubs = [...new Set((data||[]).map(d => d.subcategory))].sort();
+    sel.innerHTML = '<option value="">All subcategories</option>';
+    allSubs.forEach(s => sel.insertAdjacentHTML('beforeend', '<option' + (s===current?' selected':'') + '>' + s + '</option>'));
+  });
+}
+
+function renderCatalog() {
+  const prods = catalogProducts;
+  const totalPages = Math.ceil(catalogTotal / PAGE_SIZE);
+  document.getElementById('prodKpis').innerHTML =
+    '<div class="stat-card accent"><div class="label">Showing</div><div class="value">'+prods.length+'</div><div class="sub">of '+fmt(catalogTotal)+' products</div></div>'
+    +'<div class="stat-card green"><div class="label">With MSRP</div><div class="value">'+prods.filter(p=>p.msrp).length+'</div></div>'
+    +'<div class="stat-card purple"><div class="label">Energy Star</div><div class="value">'+prods.filter(p=>p.energy_star).length+'</div></div>'
+    +'<div class="stat-card yellow"><div class="label">Page</div><div class="value">'+(catalogPage+1)+' / '+Math.max(1,totalPages)+'</div></div>';
+  if (!prods.length) {
+    document.getElementById('prodContent').innerHTML = '<div class="feed-empty">No products match your filters.</div>';
+    document.getElementById('prodPager').style.display = 'none';
+    return;
+  }
+  document.getElementById('prodContent').innerHTML = '<div class="prod-grid">' + prods.map(p => {
+    const comp = calcRichComp(p);
+    const col = pctCol(comp);
+    const specs = getCardSpecs(p);
+    const specSummary = getSpecSummary(p);
+    const jsonKeys = (p.specs_json && typeof p.specs_json === 'object') ? Object.keys(p.specs_json).length : 0;
+    const ic = imgCounts[p.id]||0;
+    const dc = docCounts[p.id]||0;
+    const vc = vidCounts[p.id]||0;
+    const desc = p.short_description || specSummary;
+    // Feature badges
+    const badges = [];
+    if (p.size_class) badges.push(p.size_class);
+    if (p.subcategory) badges.push(p.subcategory);
+    if (p.fuel_type) badges.push(p.fuel_type);
+    if (p.is_counter_depth) badges.push('Counter-Depth');
+    if (p.has_ice_maker) badges.push('🧊 Ice');
+    if (p.has_water_dispenser) badges.push('💧 Water');
+    if (p.has_ice_dispenser) badges.push('🧊💧 Dispenser');
+    if (p.energy_star) badges.push('⭐ E-Star');
+    if (p.defrost_type) badges.push(p.defrost_type === 'Frost-Free' ? '❄️ Frost-Free' : '🔧 Manual Defrost');
+    if (p.noise_dba) badges.push(p.noise_dba + ' dBA');
+    return '<div class="prod-card" data-prod-id="'+p.id+'">'
+      +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+(p.color_family?' · <span style="color:var(--navy);font-weight:700">'+esc(p.color_family)+'</span>':'')+'</div>'
+      +'<div class="pc-model">'+esc(p.model||'—')+'</div>'
+      +(desc?'<div class="pc-desc">'+esc(desc)+'</div>':'')
+      +(badges.length?'<div class="pc-specs">'+badges.map(b=>'<span>'+esc(b)+'</span>').join('')+'</div>':'')
+      +(specs.length?'<div class="pc-specs" style="margin-top:2px">'+specs.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>':'')
+      +(p.msrp?'<div class="pc-price">$'+Number(p.msrp).toLocaleString()+'</div>':'')
+      +'<div class="pc-assets"><span>🖼 '+ic+'</span><span>📄 '+dc+'</span>'+(vc?'<span>🎬 '+vc+'</span>':'')
+      +(jsonKeys>0?'<span style="color:var(--accent);font-weight:600">📊 '+jsonKeys+' specs</span>':'')
+      +'</div>'
+      +'<div class="pc-bar"><div class="completeness-bar"><div class="mini-bar"><div class="mini-fill" style="width:'+comp+'%;background:'+col+'"></div></div><span style="color:'+col+';font-weight:600;font-size:11px">'+comp+'%</span></div></div>'
+    +'</div>';
+  }).join('') + '</div>';
+  // Pager
+  const pager = document.getElementById('prodPager');
+  if (totalPages > 1) {
+    pager.style.display = 'flex';
+    pager.innerHTML = '<span>'+fmt(catalogTotal)+' products · Page '+(catalogPage+1)+' of '+totalPages+'</span>'
+      +'<span><button id="prevPage" '+(catalogPage===0?'disabled':'')+'>← Previous</button> <button id="nextPage" '+((catalogPage+1)>=totalPages?'disabled':'')+'>Next →</button></span>';
+    document.getElementById('prevPage')?.addEventListener('click', () => { catalogPage--; loadCatalog(); });
+    document.getElementById('nextPage')?.addEventListener('click', () => { catalogPage++; loadCatalog(); });
+  } else pager.style.display = 'none';
+  document.querySelectorAll('.prod-card[data-prod-id]').forEach(card => {
+    card.addEventListener('click', () => openProductDetail(card.dataset.prodId));
+  });
+}
+
+['prodSearch','prodBrand','prodCat','prodSub','prodSize','prodColor','prodFuel','prodFeature','prodStatus'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(id === 'prodSearch' ? 'input' : 'change', () => {
+    const keyMap = {prodSearch:'search',prodBrand:'brand',prodCat:'cat',prodSub:'sub',prodSize:'size',prodColor:'color',prodFuel:'fuel',prodFeature:'feature',prodStatus:'status'};
+    prodFilters[keyMap[id]] = el.value;
+    // When category changes, reset subcategory
+    if (id === 'prodCat') { prodFilters.sub = ''; document.getElementById('prodSub').value = ''; }
+    catalogPage = 0;
+    loadCatalog();
+  });
+});
+
+// ── View toggle ──
+window.setView = function(v) {
+  currentView = v;
+  document.querySelectorAll('#viewToggle .btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  renderAll();
+};
+
+// ── PRODUCT DETAIL (Tabbed like Syndigo) ──
+async function openProductDetail(productId) {
+  showPage('productDetail', { type: 'product', id: productId });
+  const el = document.getElementById('productDetailContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading product…</div>';
+
+  const [{ data: p }, { data: imgs }, { data: docs }, { data: vids }, { data: feats }, { data: certs }] = await Promise.all([
+    sb.from('aiq_products').select('*').eq('id', productId).maybeSingle(),
+    sb.from('pim_product_images').select('image_type,file_url,cdn_url,alt_text,caption,is_primary,display_order,width_px,height_px,angle,finish_shown').eq('product_id', productId).order('is_primary', {ascending: false}).order('display_order').limit(50),
+    sb.from('pim_product_documents').select('doc_type,file_url,file_name,title,description,file_size_bytes,mime_type,language').eq('product_id', productId).order('doc_type').limit(50),
+    sb.from('pim_product_videos').select('video_type,video_url,embed_url,title,description,thumbnail_url,duration_seconds,platform').eq('product_id', productId).order('display_order').limit(20),
+    sb.from('pim_product_features').select('feature_text,feature_category').eq('product_id', productId),
+    sb.from('pim_product_certifications').select('certification_name,certification_body,certification_number').eq('product_id', productId)
   ]);
 
-  document.getElementById('statCards').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${(prodRes.count||0).toLocaleString()}</div><div class="stat-label">Products</div></div>
-    <div class="stat-card"><div class="stat-num">${brandRes.count||0}</div><div class="stat-label">Brands</div></div>
-    <div class="stat-card"><div class="stat-num">${retRes.count||0}</div><div class="stat-label">Active Retailers</div></div>
-    <div class="stat-card"><div class="stat-num">${recallRes.count||0}</div><div class="stat-label">Active Recalls</div></div>
-  `;
+  if (!p) { el.innerHTML = '<div class="feed-empty">Product not found.</div>'; return; }
 
-  // Category bars
-  const { data: cats } = await sb.rpc('', {}).catch(() => ({ data: null }));
-  // fallback: query directly
-  const { data: catData } = await sb.from('aiq_products').select('category').not('category','is',null);
-  if (catData) {
-    const counts = {};
-    catData.forEach(r => { counts[r.category] = (counts[r.category]||0) + 1; });
-    const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
-    const max = sorted[0]?.[1] || 1;
-    document.getElementById('categoryBars').innerHTML = sorted.map(([cat, cnt]) =>
-      `<div class="cat-bar"><span class="cat-name">${cat}</span><div class="bar-track"><div class="bar-fill" style="width:${(cnt/max*100).toFixed(1)}%"></div></div><span class="cat-count">${cnt}</span></div>`
-    ).join('');
-  }
+  const comp = calcRichComp(p);
+  const col = pctCol(comp);
+  const jsonKeyCount = (p.specs_json && typeof p.specs_json === 'object') ? Object.entries(p.specs_json).filter(([,v]) => v != null && v !== '').length : 0;
+  const imgArr = imgs || [];
+  const docArr = docs || [];
+  const vidArr = vids || [];
+  const featArr = feats || [];
+  const certArr = certs || [];
 
-  // Recent products
-  const { data: recent } = await sb.from('aiq_products').select('brand_name,model,category,subcategory,created_at').order('created_at',{ascending:false}).limit(8);
-  if (recent) {
-    document.getElementById('recentProducts').innerHTML = `<table><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Subcategory</th></tr></thead><tbody>${
-      recent.map(r => `<tr><td>${r.brand_name}</td><td><strong>${r.model||'—'}</strong></td><td>${r.category||'—'}</td><td><span class="pill pill-blue">${r.subcategory||'—'}</span></td></tr>`).join('')
-    }</tbody></table>`;
-  }
-}
-
-// ── Products ──
-async function loadProducts(search) {
-  let q = sb.from('aiq_products').select('brand_name,model,category,subcategory,msrp,status,created_at').order('brand_name').limit(100);
-  if (search) {
-    q = sb.from('aiq_products').select('brand_name,model,category,subcategory,msrp,status,created_at')
-      .or(`model.ilike.%${search}%,brand_name.ilike.%${search}%,category.ilike.%${search}%`)
-      .order('brand_name').limit(100);
-  }
-  const { data, count } = await q;
-  const { count: total } = await sb.from('aiq_products').select('id',{count:'exact',head:true});
-  document.getElementById('productCount').textContent = `${total?.toLocaleString()||'—'} total`;
-  if (data) {
-    document.getElementById('productTable').innerHTML = `<table><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Subcategory</th><th>MSRP</th><th>Status</th></tr></thead><tbody>${
-      data.map(r => `<tr><td>${r.brand_name}</td><td><strong>${r.model||'—'}</strong></td><td>${r.category||'—'}</td><td><span class="pill pill-blue">${r.subcategory||'—'}</span></td><td>${r.msrp?'$'+Number(r.msrp).toLocaleString():'—'}</td><td><span class="pill ${r.status==='active'?'pill-green':'pill-gray'}">${r.status}</span></td></tr>`).join('')
-    }</tbody></table>`;
-  }
-}
-
-// ── Brands ──
-async function loadBrands() {
-  const { data } = await sb.from('brand_catalog').select('id,name,category,canada_website,us_website,canada_email,contact_status').order('name').limit(200);
-  document.getElementById('brandCount').textContent = data?.length || '—';
-  if (data) {
-    document.getElementById('brandTable').innerHTML = `<table><thead><tr><th>Brand</th><th>Category</th><th>Website</th><th>Contact</th><th>Status</th></tr></thead><tbody>${
-      data.map(r => `<tr><td><strong>${r.name}</strong></td><td>${r.category||'—'}</td><td>${r.canada_website||r.us_website?`<a href="${r.canada_website||r.us_website}" target="_blank">Visit</a>`:'—'}</td><td>${r.canada_email||'—'}</td><td><span class="pill ${r.contact_status==='verified'?'pill-green':'pill-gray'}">${r.contact_status||'—'}</span></td></tr>`).join('')
-    }</tbody></table>`;
-  }
-}
-
-// ── Categories ──
-async function loadCategories() {
-  const { data } = await sb.from('aiq_products').select('category,subcategory');
-  if (data) {
-    const tree = {};
-    data.forEach(r => {
-      if (!r.category) return;
-      if (!tree[r.category]) tree[r.category] = {};
-      const sc = r.subcategory || 'Uncategorized';
-      tree[r.category][sc] = (tree[r.category][sc]||0) + 1;
-    });
-    const sorted = Object.entries(tree).sort((a,b) => {
-      const ta = Object.values(a[1]).reduce((s,v)=>s+v,0);
-      const tb = Object.values(b[1]).reduce((s,v)=>s+v,0);
-      return tb - ta;
-    });
-    document.getElementById('catBreakdown').innerHTML = sorted.map(([cat, subs]) => {
-      const total = Object.values(subs).reduce((s,v)=>s+v,0);
-      const subEntries = Object.entries(subs).sort((a,b)=>b[1]-a[1]);
-      return `<div style="margin-bottom:20px"><div style="font-weight:700;font-size:14px;margin-bottom:8px">${cat} <span style="color:var(--s400);font-weight:400">(${total})</span></div>${
-        subEntries.map(([sc,cnt]) => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0 3px 16px;font-size:13px;color:var(--s600)"><span style="width:200px">${sc}</span><span style="font-weight:600">${cnt}</span></div>`).join('')
-      }</div>`;
-    }).join('');
-  }
-}
-
-// ── Prices ──
-async function loadPrices() {
-  const { data, count } = await sb.from('pim_retailer_prices').select('*',{count:'exact'}).order('checked_at',{ascending:false}).limit(50);
-  document.getElementById('priceCount').textContent = count || '0';
-  if (data && data.length) {
-    document.getElementById('priceTable').innerHTML = `<table><thead><tr><th>Brand</th><th>Model</th><th>Retailer</th><th>Price</th><th>Regular</th><th>Condition</th><th>Status</th></tr></thead><tbody>${
-      data.map(r => `<tr><td>${r.brand_name}</td><td><strong>${r.model}</strong></td><td>${r.retailer_name}</td><td>${r.price?'$'+Number(r.price).toLocaleString():'—'}</td><td>${r.regular_price?'$'+Number(r.regular_price).toLocaleString():'—'}</td><td><span class="pill pill-amber">${r.condition_normalized||r.condition||'new'}</span></td><td><span class="pill pill-green">${r.listing_status||'active'}</span></td></tr>`).join('')
-    }</tbody></table>`;
+  // Breadcrumb
+  let html = '<div class="breadcrumb">';
+  // Check if we came from a brand detail
+  const fromBrand = navHistory.find(h => h.type === 'brand');
+  if (fromBrand) {
+    const bn = allBrands.find(b => b.id === fromBrand.id);
+    html += '<a onclick="navHistory=[];showPage(\'brands\')">Brands</a><span class="sep">›</span>';
+    html += '<a onclick="openBrandDetail(\'' + fromBrand.id + '\')">' + esc(bn?.brand_name || p.brand_name) + '</a><span class="sep">›</span>';
   } else {
-    document.getElementById('priceTable').innerHTML = '<div style="padding:40px;text-align:center;color:var(--s400)">No price data yet — run the scraper to populate</div>';
+    html += '<a onclick="navHistory=[];showPage(\'products\')">Products</a><span class="sep">›</span>';
+  }
+  html += '<span class="current">' + esc(p.model) + '</span></div>';
+
+  // Product header
+  html += '<div class="panel" style="margin-bottom:20px;padding:24px">'
+    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">'
+    + '<div style="flex:1;min-width:200px">'
+    + '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">' + esc(p.brand_name) + (p.manufacturer_name && p.manufacturer_name !== p.brand_name ? ' · ' + esc(p.manufacturer_name) : '') + '</div>'
+    + '<h2 style="font-family:Sora;font-size:22px;color:var(--navy)">' + esc(p.model) + '</h2>'
+    + (p.short_description ? '<div style="color:var(--text2);margin-top:6px;line-height:1.6">' + esc(p.short_description) + '</div>' : '')
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'
+    + '<span class="tier-pill ' + (p.status === 'active' ? 'mid' : 'entry') + '">' + esc(p.status) + '</span>'
+    + (p.energy_star ? '<span class="tier-pill ultra_luxury">⭐ Energy Star</span>' : '')
+    + (p.category ? '<span class="tier-pill entry">' + esc(p.category) + '</span>' : '')
+    + (jsonKeyCount > 0 ? '<span class="tier-pill mid">📊 ' + jsonKeyCount + ' specs in JSON</span>' : '')
+    + '</div>'
+    + '</div>'
+    + '<div style="text-align:right">'
+    + (p.msrp ? '<div style="font-family:Sora;font-weight:700;font-size:28px;color:var(--accent)">$' + Number(p.msrp).toLocaleString() + '</div>' : '')
+    + (p.map_price ? '<div style="font-size:12px;color:var(--text3)">MAP: $' + Number(p.map_price).toLocaleString() + '</div>' : '')
+    + '<div style="margin-top:8px"><div class="completeness-bar"><div class="mini-bar" style="width:80px"><div class="mini-fill" style="width:' + comp + '%;background:' + col + '"></div></div><span style="color:' + col + ';font-weight:700">' + comp + '% complete</span></div></div>'
+    + (docArr.length ? '<button class="btn" style="margin-top:10px;font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent)" id="enrichBtn" data-pid="' + p.id + '">🤖 Extract Specs from Documents</button>' : '')
+    + '<div id="enrichStatus" style="font-size:11px;color:var(--text2);margin-top:6px"></div>'
+    + '</div></div></div>';
+
+  // ── TABS (Syndigo-style) ──
+  const tabs = [
+    { id: 'specs', label: 'Main Specs', icon: '📋' },
+    { id: 'extended', label: 'Extended Specs', icon: '📊', count: p.specs_json ? Object.keys(p.specs_json).length : 0 },
+    { id: 'features', label: 'Features', icon: '✓', count: featArr.length },
+    { id: 'images', label: 'Images', icon: '🖼', count: imgArr.length },
+    { id: 'documents', label: 'Documents', icon: '📄', count: docArr.length },
+    { id: 'videos', label: 'Videos', icon: '🎬', count: vidArr.length },
+    { id: 'certs', label: 'Certifications', icon: '🏅', count: certArr.length },
+    { id: 'validation', label: 'Validation', icon: '✅' },
+  ];
+
+  html += '<div class="pd-tabs" id="pdTabs">';
+  tabs.forEach((t, i) => {
+    html += '<button class="' + (i === 0 ? 'on' : '') + '" data-tab="' + t.id + '">' + t.icon + ' ' + t.label;
+    if (t.count !== undefined) html += ' <span class="tab-count">' + t.count + '</span>';
+    html += '</button>';
+  });
+  html += '</div>';
+
+  // ── TAB: Main Specs ──
+  const mainFields = [
+    ['Brand', p.brand_name], ['Manufacturer', p.manufacturer_name], ['Model', p.model],
+    ['Series', p.series], ['Product Line', p.product_line], ['Category', p.category],
+    ['Status', p.status], ['MSRP', p.msrp ? '$' + Number(p.msrp).toLocaleString() : null],
+    ['MAP Price', p.map_price ? '$' + Number(p.map_price).toLocaleString() : null],
+    ['Sale Price', p.sale_price ? '$' + Number(p.sale_price).toLocaleString() : null],
+    ['Finish', p.finish], ['Color', p.color], ['Color Family', p.color_family],
+    ['Width', p.width_inches ? p.width_inches + '"' : null], ['Height', p.height_inches ? p.height_inches + '"' : null],
+    ['Depth', p.depth_inches ? p.depth_inches + '"' : null], ['Depth w/ Handles', p.depth_with_handles ? p.depth_with_handles + '"' : null],
+    ['Weight', p.weight_lbs ? p.weight_lbs + ' lbs' : null], ['Capacity', p.capacity_cu_ft ? p.capacity_cu_ft + ' cu ft' : null],
+    ['Voltage', p.voltage], ['Amperage', p.amperage], ['Wattage', p.wattage],
+    ['Installation', p.installation_type], ['Energy Star', p.energy_star ? 'Yes ⭐' : p.energy_star === false ? 'No' : null],
+    ['ADA Compliant', p.ada_compliant ? 'Yes' : p.ada_compliant === false ? 'No' : null],
+    ['Made In', p.made_in], ['UPC', p.upc], ['Market', p.market],
+    ['Lead Time', p.lead_time_days ? p.lead_time_days + ' days' : null],
+    ['Launched', p.launch_date], ['Discontinued', p.discontinued_date],
+    ['Source', p.source_type], ['Confidence', p.source_confidence ? p.source_confidence + '%' : null],
+    ['Version', 'v' + (p.version_number || 1)], ['Updated', p.updated_at ? new Date(p.updated_at).toLocaleDateString() : null]
+  ];
+  const filledFields = mainFields.filter(([, v]) => v != null && v !== '');
+
+  html += '<div class="pd-tab-content active" id="tab-specs">';
+  html += '<div class="panel"><div class="panel-head"><h3>Main Specifications</h3><span class="badge">' + filledFields.length + ' of ' + mainFields.length + ' fields</span></div>';
+  html += '<div class="panel-body"><div class="spec-grid">';
+  mainFields.forEach(([k, v]) => {
+    const has = v != null && v !== '';
+    html += '<div class="spec-cell' + (has ? '' : ' empty') + '"><small>' + esc(k) + '</small><div class="sv">' + (has ? esc(String(v)) : 'Missing') + '</div></div>';
+  });
+  html += '</div></div></div>';
+  if (p.long_description) html += '<div class="panel" style="margin-top:16px"><div class="panel-head"><h3>Description</h3></div><div class="panel-body"><div style="color:var(--text2);line-height:1.7;font-size:14px">' + esc(p.long_description) + '</div></div></div>';
+  html += '</div>';
+
+  // ── TAB: Extended Specs ──
+  html += '<div class="pd-tab-content" id="tab-extended">';
+  if (p.specs_json && typeof p.specs_json === 'object') {
+    const entries = Object.entries(p.specs_json).filter(([,v]) => v != null && v !== '');
+    if (entries.length) {
+      html += '<div class="panel"><div class="panel-head"><h3>Extended Specifications</h3><span class="badge">' + entries.length + ' attributes</span></div>';
+      html += '<div class="panel-body"><div class="spec-grid">';
+      entries.forEach(([k, v]) => {
+        html += '<div class="spec-cell"><small>' + esc(k.replace(/_/g, ' ')) + '</small><div class="sv">' + esc(typeof v === 'object' ? JSON.stringify(v) : String(v)) + '</div></div>';
+      });
+      html += '</div></div></div>';
+    } else html += '<div class="feed-empty">No extended specifications available.</div>';
+  } else html += '<div class="feed-empty">No extended specifications available.</div>';
+  html += '</div>';
+
+  // ── TAB: Features ──
+  html += '<div class="pd-tab-content" id="tab-features">';
+  if (featArr.length) {
+    // Group by category
+    const featGroups = {};
+    featArr.forEach(f => {
+      const cat = f.feature_category || 'General';
+      if (!featGroups[cat]) featGroups[cat] = [];
+      featGroups[cat].push(f.feature_text);
+    });
+    Object.entries(featGroups).forEach(([cat, features]) => {
+      html += '<div class="panel" style="margin-bottom:16px"><div class="panel-head"><h3>' + esc(cat) + '</h3><span class="badge">' + features.length + '</span></div>';
+      html += '<div class="panel-body"><div class="feature-list">';
+      features.forEach(f => { html += '<div class="feature-item">' + esc(f) + '</div>'; });
+      html += '</div></div></div>';
+    });
+  } else html += '<div class="feed-empty">No features recorded for this product.</div>';
+  html += '</div>';
+
+  // ── TAB: Images ──
+  html += '<div class="pd-tab-content" id="tab-images">';
+  if (imgArr.length) {
+    // Group by type, with primary images first
+    const imgGroups = {};
+    imgArr.forEach(img => {
+      const t = img.image_type || 'unknown';
+      if (!imgGroups[t]) imgGroups[t] = [];
+      imgGroups[t].push(img);
+    });
+    // Sort groups: product first, then lifestyle, then rest
+    const typeOrder = ['product','hero','front','angle','interior','detail','lifestyle','gallery','swatch','dimension_diagram','dimensions','feature_detail','product_page'];
+    const sortedTypes = Object.keys(imgGroups).sort((a,b) => {
+      const ai = typeOrder.indexOf(a), bi = typeOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    sortedTypes.forEach(type => {
+      const images = imgGroups[type];
+      html += '<div style="margin-bottom:20px"><h4 style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">' + prettyLabel(type) + ' (' + images.length + ')</h4>';
+      html += '<div class="img-gallery">';
+      images.forEach(img => {
+        const url = img.cdn_url || img.file_url;
+        const isImage = url && !url.endsWith('.pdf') && !url.endsWith('.webm');
+        html += '<div class="img-card">'
+          + '<div class="img-preview">';
+        if (isImage) {
+          html += '<img src="' + esc(url) + '" alt="' + esc(img.alt_text || p.model) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=no-preview>🖼</div>\'">';
+        } else {
+          html += '<div class="no-preview">🖼</div>';
+        }
+        html += '</div><div class="img-info">'
+          + '<div class="img-type">' + prettyLabel(img.image_type || 'photo') + (img.is_primary ? ' ★' : '') + '</div>'
+          + (img.alt_text ? '<div style="font-size:10px;color:var(--text2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px" title="' + esc(img.alt_text) + '">' + esc(img.alt_text) + '</div>' : '')
+          + (img.finish_shown ? '<div style="font-size:10px;color:var(--text3);margin-top:1px">Finish: ' + esc(img.finish_shown) + '</div>' : '')
+          + (img.angle ? '<div style="font-size:10px;color:var(--text3)">Angle: ' + esc(img.angle) + '</div>' : '')
+          + (img.width_px && img.height_px ? '<div style="font-size:10px;color:var(--text3)">' + img.width_px + '×' + img.height_px + 'px</div>' : '')
+          + (url ? '<a href="' + esc(url) + '" target="_blank" style="font-size:10px;color:var(--blue);margin-top:4px;display:block">Open Full Size →</a>' : '')
+          + '</div></div>';
+      });
+      html += '</div></div>';
+    });
+  } else html += '<div class="feed-empty">No images for this product.</div>';
+  html += '</div>';
+
+  // ── TAB: Documents ──
+  html += '<div class="pd-tab-content" id="tab-documents">';
+  if (docArr.length) {
+    const docGroups = {};
+    // Sort order for doc types
+    const docTypeOrder = ['installation_guide','owners_manual','spec_sheet','energy_guide','dimension_guide','quick_start_guide','wiring_diagram','warranty','brochure','sell_sheet','safety_info','other'];
+    docArr.forEach(d => {
+      const t = d.doc_type || 'other';
+      if (!docGroups[t]) docGroups[t] = [];
+      docGroups[t].push(d);
+    });
+    const sortedDocTypes = Object.keys(docGroups).sort((a,b) => {
+      const ai = docTypeOrder.indexOf(a), bi = docTypeOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    sortedDocTypes.forEach(type => {
+      const documents = docGroups[type];
+      html += '<div style="margin-bottom:20px"><h4 style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">' + prettyLabel(type) + ' (' + documents.length + ')</h4>';
+      html += '<div class="doc-list">';
+      documents.forEach(d => {
+        const iconClass = docIcon(d.doc_type);
+        const isPdf = d.mime_type === 'application/pdf' || (d.file_url||'').endsWith('.pdf');
+        html += '<div class="doc-row">'
+          + '<div class="doc-icon ' + iconClass + '">' + docEmoji(d.doc_type) + '</div>'
+          + '<div class="doc-details"><div class="doc-title">' + esc(d.title || d.file_name || prettyLabel(d.doc_type)) + '</div>'
+          + '<div class="doc-meta">'
+          + prettyLabel(d.doc_type)
+          + (isPdf ? ' · PDF' : d.mime_type === 'text/html' ? ' · Web Link' : '')
+          + (d.file_size_bytes ? ' · ' + (d.file_size_bytes > 1048576 ? (d.file_size_bytes/1048576).toFixed(1) + ' MB' : Math.round(d.file_size_bytes/1024) + ' KB') : '')
+          + (d.language ? ' · ' + d.language.toUpperCase() : '')
+          + '</div>'
+          + (d.description ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + esc(d.description) + '</div>' : '')
+          + '</div>'
+          + (d.file_url ? '<div class="doc-action"><a href="' + esc(d.file_url) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">' + (isPdf ? '📥 Download' : '🔗 Open') + '</a></div>' : '')
+          + '</div>';
+      });
+      html += '</div></div>';
+    });
+  } else html += '<div class="feed-empty">No documents for this product.</div>';
+  html += '</div>';
+
+  // ── TAB: Videos ──
+  html += '<div class="pd-tab-content" id="tab-videos">';
+  if (vidArr.length) {
+    // Group by type
+    const vidGroups = {};
+    vidArr.forEach(v => {
+      const t = v.video_type || 'other';
+      if (!vidGroups[t]) vidGroups[t] = [];
+      vidGroups[t].push(v);
+    });
+    Object.entries(vidGroups).forEach(([type, videos]) => {
+      html += '<div style="margin-bottom:20px"><h4 style="font-size:13px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">' + prettyLabel(type) + ' (' + videos.length + ')</h4>';
+      html += '<div class="doc-list">';
+      videos.forEach(v => {
+        const isYouTube = v.platform === 'youtube' || (v.video_url||'').includes('youtube.com') || (v.video_url||'').includes('youtu.be');
+        const watchUrl = v.video_url || v.embed_url;
+        html += '<div class="doc-row" style="gap:14px">';
+        // Thumbnail
+        if (v.thumbnail_url) {
+          html += '<div style="width:120px;height:68px;border-radius:6px;overflow:hidden;flex-shrink:0;background:var(--surface3)"><img src="' + esc(v.thumbnail_url) + '" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML=\'🎬\'" loading="lazy"></div>';
+        } else {
+          html += '<div class="doc-icon" style="background:rgba(192,38,211,.1);color:var(--pink);width:48px;height:48px;font-size:20px">🎬</div>';
+        }
+        html += '<div class="doc-details"><div class="doc-title">' + esc(v.title || prettyLabel(v.video_type || 'Video')) + '</div>'
+          + '<div class="doc-meta">'
+          + prettyLabel(v.video_type || 'video')
+          + (isYouTube ? ' · <span style="color:red;font-weight:600">▶ YouTube</span>' : v.platform ? ' · ' + prettyLabel(v.platform) : '')
+          + (v.duration_seconds ? ' · ' + Math.floor(v.duration_seconds/60) + ':' + String(v.duration_seconds%60).padStart(2,'0') : '')
+          + '</div>'
+          + (v.description ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + esc(v.description) + '</div>' : '')
+          + '</div>'
+          + (watchUrl ? '<div class="doc-action"><a href="' + esc(watchUrl) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">▶ Watch</a></div>' : '')
+          + '</div>';
+      });
+      html += '</div></div>';
+    });
+  } else html += '<div class="feed-empty">No videos for this product.</div>';
+  html += '</div>';
+
+  // ── TAB: Certifications ──
+  html += '<div class="pd-tab-content" id="tab-certs">';
+  if (certArr.length) {
+    html += '<div class="doc-list">';
+    certArr.forEach(c => {
+      html += '<div class="doc-row">'
+        + '<div class="doc-icon" style="background:rgba(26,158,86,.1);color:var(--green)">🏅</div>'
+        + '<div class="doc-details"><div class="doc-title">' + esc(c.certification_name) + '</div>'
+        + '<div class="doc-meta">' + esc(c.certification_body || '') + (c.certification_number ? ' · #' + esc(c.certification_number) : '') + '</div></div></div>';
+    });
+    html += '</div>';
+  } else html += '<div class="feed-empty">No certifications for this product.</div>';
+  html += '</div>';
+
+  // ── TAB: Validation ──
+  html += '<div class="pd-tab-content" id="tab-validation">';
+  html += '<div class="panel"><div class="panel-head"><h3>Data Validation Checklist</h3><span class="badge" style="color:' + col + '">' + comp + '% complete</span></div>';
+  html += '<div class="panel-body">';
+
+  const validationItems = [
+    { label: 'Short Description', has: !!p.short_description },
+    { label: 'Long Description', has: !!p.long_description },
+    { label: 'Category', has: !!p.category },
+    { label: 'MSRP', has: p.msrp != null },
+    { label: 'MAP Price', has: p.map_price != null },
+    { label: 'Color', has: !!p.color },
+    { label: 'Finish', has: !!p.finish },
+    { label: 'Width', has: p.width_inches != null },
+    { label: 'Height', has: p.height_inches != null },
+    { label: 'Depth', has: p.depth_inches != null },
+    { label: 'Weight', has: p.weight_lbs != null },
+    { label: 'Capacity', has: p.capacity_cu_ft != null },
+    { label: 'Voltage', has: !!p.voltage },
+    { label: 'Energy Star', has: p.energy_star != null },
+    { label: 'UPC', has: !!p.upc },
+    { label: 'Specs JSON', has: p.specs_json != null },
+    { label: 'Installation Type', has: !!p.installation_type },
+    { label: 'Made In', has: !!p.made_in },
+    { label: 'Images', has: imgArr.length > 0 },
+    { label: 'Documents', has: docArr.length > 0 },
+    { label: 'Features', has: featArr.length > 0 },
+    { label: 'Videos', has: vidArr.length > 0 },
+    { label: 'Certifications', has: certArr.length > 0 },
+  ];
+  const filled = validationItems.filter(v => v.has).length;
+  html += '<div style="margin-bottom:16px;font-size:13px;color:var(--text2)">' + filled + ' of ' + validationItems.length + ' data points present</div>';
+  html += '<div class="val-grid">';
+  validationItems.forEach(v => {
+    html += '<div class="val-item ' + (v.has ? 'has' : 'missing') + '"><span class="val-icon">' + (v.has ? '✅' : '❌') + '</span>' + v.label + '</div>';
+  });
+  html += '</div></div></div></div>';
+
+  el.innerHTML = html;
+
+  // Bind tab clicks
+  document.querySelectorAll('#pdTabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#pdTabs button').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      document.querySelectorAll('.pd-tab-content').forEach(tc => tc.classList.remove('active'));
+      document.getElementById('tab-' + btn.dataset.tab)?.classList.add('active');
+    });
+  });
+
+  // Bind enrich button
+  const enrichBtn = document.getElementById('enrichBtn');
+  if (enrichBtn) {
+    enrichBtn.addEventListener('click', async () => {
+      const pid = enrichBtn.dataset.pid;
+      const apiKey = localStorage.getItem('aiq_anthropic_key');
+      if (!apiKey) {
+        const key = prompt('Enter your Anthropic API key (stored locally, used for spec extraction):');
+        if (!key) return;
+        localStorage.setItem('aiq_anthropic_key', key);
+      }
+      await enrichProduct(pid);
+    });
   }
 }
 
-// ── Recalls ──
+// ── ENRICH FROM SPEC SHEET ──
+const ENRICH_URL = SB_URL + '/functions/v1/enrich-from-spec';
+
+async function enrichProduct(productId) {
+  const statusEl = document.getElementById('enrichStatus');
+  const btn = document.getElementById('enrichBtn');
+  const apiKey = localStorage.getItem('aiq_anthropic_key');
+  if (!apiKey) { statusEl.textContent = '❌ No API key set'; return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Extracting...'; }
+  if (statusEl) statusEl.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Fetching spec sheet and extracting with AI...';
+
+  try {
+    const resp = await fetch(ENRICH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: productId, anthropic_key: apiKey, mode: 'single' }),
+    });
+    const result = await resp.json();
+    if (result.error) {
+      if (statusEl) statusEl.textContent = '❌ ' + result.error;
+      if (btn) { btn.disabled = false; btn.textContent = '🤖 Extract Specs from Documents'; }
+      return result;
+    }
+    if (statusEl) statusEl.innerHTML = '✅ Extracted <strong>' + result.specs_extracted + ' specs</strong> and updated <strong>' + result.fields_updated + ' fields</strong>' + (result.pdf_fetched ? ' from PDF' : ' via web search');
+    if (btn) { btn.textContent = '✅ Done — Refresh to see'; btn.onclick = () => openProductDetail(productId); }
+    return result;
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '❌ Error: ' + e.message;
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Extract Specs from Documents'; }
+    return { error: e.message };
+  }
+}
+
+// ── BATCH AUTO-ENRICH ──
+async function findEnrichableProducts() {
+  try {
+    const resp = await fetch(ENRICH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'find' }),
+    });
+    return await resp.json();
+  } catch (e) {
+    return { products: [], count: 0, error: e.message };
+  }
+}
+
+let batchRunning = false;
+let batchCancelled = false;
+
+async function runBatchEnrich() {
+  const apiKey = localStorage.getItem('aiq_anthropic_key');
+  if (!apiKey) {
+    const key = prompt('Enter your Anthropic API key for batch extraction:');
+    if (!key) return;
+    localStorage.setItem('aiq_anthropic_key', key);
+  }
+
+  const panel = document.getElementById('batchEnrichPanel');
+  if (!panel) return;
+
+  batchRunning = true;
+  batchCancelled = false;
+  panel.innerHTML = '<div class="loading"><div class="spinner"></div>Finding products that need enrichment...</div>';
+
+  const { products, count, error } = await findEnrichableProducts();
+  if (error || !products?.length) {
+    panel.innerHTML = '<div class="feed-empty">' + (error || 'No products found with spec sheets needing enrichment.') + '</div>';
+    batchRunning = false;
+    return;
+  }
+
+  let processed = 0, succeeded = 0, failed = 0;
+  const total = products.length;
+
+  const renderProgress = (currentModel) => {
+    panel.innerHTML = '<div style="padding:16px">'
+      + '<div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-weight:600">Auto-Enriching Products</span><button class="btn" style="font-size:11px;padding:3px 10px" id="cancelBatch">⏹ Stop</button></div>'
+      + '<div class="prog-track" style="height:12px;margin-bottom:10px"><div class="prog-fill" style="width:' + Math.round((processed/total)*100) + '%;background:var(--accent)"></div></div>'
+      + '<div style="font-size:12px;color:var(--text2)">' + processed + ' / ' + total + ' processed · <span style="color:var(--green)">' + succeeded + ' enriched</span> · <span style="color:var(--red)">' + failed + ' failed</span></div>'
+      + (currentModel ? '<div style="font-size:11px;color:var(--text3);margin-top:4px">Processing: ' + esc(currentModel) + '</div>' : '')
+      + '</div>';
+    document.getElementById('cancelBatch')?.addEventListener('click', () => { batchCancelled = true; });
+  };
+
+  renderProgress('');
+
+  for (const p of products) {
+    if (batchCancelled) break;
+    renderProgress(p.brand_name + ' ' + p.model);
+
+    try {
+      const resp = await fetch(ENRICH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: p.id, anthropic_key: localStorage.getItem('aiq_anthropic_key'), mode: 'single' }),
+      });
+      const result = await resp.json();
+      if (result.success) succeeded++; else failed++;
+    } catch (e) { failed++; }
+    processed++;
+    renderProgress('');
+
+    // Small delay to avoid rate limits
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  batchRunning = false;
+  panel.innerHTML = '<div style="padding:16px;text-align:center">'
+    + '<div style="font-size:18px;margin-bottom:8px">' + (batchCancelled ? '⏹ Stopped' : '✅ Complete') + '</div>'
+    + '<div style="font-size:14px;color:var(--text2)">' + succeeded + ' products enriched, ' + failed + ' failed, ' + (total - processed) + ' skipped</div>'
+    + '<button class="btn" style="margin-top:12px" onclick="refreshAll()">↻ Refresh Dashboard</button>'
+    + '</div>';
+}
+window.runBatchEnrich = runBatchEnrich;
+
+// ── INTELLIGENCE FETCHERS (AI-powered with web search) ──
+const INTEL_URL = SB_URL + '/functions/v1/fetch-intelligence';
+
+function getAnthropicKey() {
+  let key = localStorage.getItem('aiq_anthropic_key');
+  if (!key) {
+    key = prompt('Enter your Anthropic API key (needed for AI intelligence search):');
+    if (key) localStorage.setItem('aiq_anthropic_key', key);
+  }
+  return key;
+}
+
+async function fetchNewIntelligence() {
+  const key = getAnthropicKey(); if (!key) return;
+  const query = document.getElementById('intelQuery')?.value;
+  if (!query) { document.getElementById('intelFetchStatus').innerHTML = '⚠️ Enter a search query first'; return; }
+  const status = document.getElementById('intelFetchStatus');
+  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Searching with AI + web search…';
+  try {
+    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, type: 'general', anthropic_key: key }) });
+    const result = await resp.json();
+    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
+    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> items, saved <strong>' + result.items_saved + '</strong> new entries';
+    if (result.items_saved > 0) { intelLoaded = false; loadIntelligence(); }
+  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+}
+window.fetchNewIntelligence = fetchNewIntelligence;
+
+async function fetchIndustryNews() {
+  const key = getAnthropicKey(); if (!key) return;
+  const status = document.getElementById('intelFetchStatus');
+  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Fetching latest industry news…';
+  try {
+    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'news', anthropic_key: key }) });
+    const result = await resp.json();
+    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
+    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> news articles, saved <strong>' + result.items_saved + '</strong> new';
+    if (result.items_saved > 0) { intelLoaded = false; loadIntelligence(); }
+  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+}
+window.fetchIndustryNews = fetchIndustryNews;
+
+async function fetchLatestRecalls() {
+  const key = getAnthropicKey(); if (!key) return;
+  const status = document.getElementById('intelFetchStatus');
+  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Scanning for new recalls…';
+  try {
+    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'recalls', anthropic_key: key }) });
+    const result = await resp.json();
+    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
+    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> recalls, saved <strong>' + result.items_saved + '</strong> new';
+    if (result.items_saved > 0) { recallsLoaded = false; loadRecalls(); }
+  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+}
+window.fetchLatestRecalls = fetchLatestRecalls;
+
+// ── INTELLIGENCE PAGE ──
+let intelLoaded = false;
+async function loadIntelligence() {
+  intelLoaded = true;
+  const [{ data: news }, { data: warranties }, { data: vendors }, { data: crossRefs }, { data: mapPols }, { data: bGroups }, { data: svcProviders }] = await Promise.all([
+    sb.from('intel_news').select('*').order('published_date', { ascending: false }).limit(50),
+    sb.from('aiq_warranty_policies').select('*').order('brand_name').limit(200),
+    sb.from('mfr_vendors').select('*').eq('status', 'active').order('name').limit(150),
+    sb.from('competitive_cross_reference').select('*').limit(250),
+    sb.from('brand_map_policies').select('*').order('brand_name').limit(50),
+    sb.from('buying_groups').select('*').order('name').limit(20),
+    sb.from('aiq_service_providers').select('*').limit(50),
+  ]);
+
+  // KPIs
+  document.getElementById('intelKpis').innerHTML =
+    '<div class="stat-card accent"><div class="label">News Articles</div><div class="value">' + (news||[]).length + '</div></div>'
+    + '<div class="stat-card purple"><div class="label">Warranty Policies</div><div class="value">' + (warranties||[]).length + '</div></div>'
+    + '<div class="stat-card green"><div class="label">Manufacturer Knowledge</div><div class="value">' + (vendors||[]).length + '</div></div>'
+    + '<div class="stat-card yellow"><div class="label">Cross-References</div><div class="value">' + (crossRefs||[]).length + '</div></div>'
+    + '<div class="stat-card pink"><div class="label">MAP Policies</div><div class="value">' + (mapPols||[]).length + '</div></div>'
+    + '<div class="stat-card"><div class="label">Buying Groups</div><div class="value">' + (bGroups||[]).length + '</div></div>';
+
+  // News
+  document.getElementById('newsCount').textContent = (news||[]).length;
+  document.getElementById('newsContent').innerHTML = (news||[]).length ?
+    '<table><thead><tr><th>Date</th><th>Headline</th><th>Company</th><th>Category</th><th>Source</th></tr></thead><tbody>'
+    + (news||[]).map(n => '<tr><td class="cat-tag">' + (n.published_date || '—') + '</td><td style="font-weight:600;max-width:350px">' + esc(n.headline) + '</td><td><span class="brand-tag">' + esc(n.company_name) + '</span></td><td class="cat-tag">' + prettyLabel(n.category) + '</td><td class="cat-tag">' + esc(n.source_name||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No news articles.</div>';
+
+  // Warranties
+  document.getElementById('warrantyCount').textContent = (warranties||[]).length;
+  document.getElementById('warrantyContent').innerHTML = (warranties||[]).length ?
+    '<table><thead><tr><th>Brand</th><th>Category</th><th>Coverage</th><th>Duration</th></tr></thead><tbody>'
+    + (warranties||[]).map(w => '<tr><td><span class="brand-tag">' + esc(w.brand_name) + '</span></td><td class="cat-tag">' + esc(w.category||w.product_type||'') + '</td><td style="max-width:300px;font-size:12px">' + esc(w.coverage_summary||w.description||'') + '</td><td style="font-weight:600">' + esc(w.duration||w.warranty_years ? (w.warranty_years||'') + ' yr' : '') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No warranty data.</div>';
+
+  // Manufacturer Knowledge (from mfr_vendors)
+  document.getElementById('mfrKnowledgeCount').textContent = (vendors||[]).length;
+  document.getElementById('mfrKnowledgeContent').innerHTML = (vendors||[]).length ?
+    '<table><thead><tr><th>Brand</th><th>Tier</th><th>Focus</th><th>Story</th><th>Selling Angles</th></tr></thead><tbody>'
+    + (vendors||[]).map(v => '<tr><td><span class="brand-tag">' + esc(v.name) + '</span></td><td><span class="tier-pill ' + esc(v.tier||'') + '">' + esc(v.tier||'') + '</span></td><td class="cat-tag" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(v.focus||'') + '</td><td style="font-size:11px;color:var(--text2);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(v.story||'') + '</td><td style="font-size:11px;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(typeof v.sellingAngles === 'object' ? JSON.stringify(v.sellingAngles) : (v.sellingAngles||'')) + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No manufacturer knowledge.</div>';
+
+  // Competitive Cross-Reference
+  document.getElementById('crossRefCount').textContent = (crossRefs||[]).length;
+  document.getElementById('crossRefContent').innerHTML = (crossRefs||[]).length ?
+    '<table><thead><tr><th>Brand A</th><th>Model A</th><th>vs</th><th>Brand B</th><th>Model B</th><th>Category</th></tr></thead><tbody>'
+    + (crossRefs||[]).map(c => '<tr><td><span class="brand-tag">' + esc(c.brand_a||c.brand_name_a||'') + '</span></td><td class="model-name">' + esc(c.model_a||c.model_number_a||'') + '</td><td style="color:var(--text3)">↔</td><td><span class="brand-tag">' + esc(c.brand_b||c.brand_name_b||'') + '</span></td><td class="model-name">' + esc(c.model_b||c.model_number_b||'') + '</td><td class="cat-tag">' + esc(c.category||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No cross-references.</div>';
+
+  // MAP Policies
+  document.getElementById('mapContent').innerHTML = (mapPols||[]).length ?
+    '<table><thead><tr><th>Brand</th><th>Policy</th></tr></thead><tbody>'
+    + (mapPols||[]).map(m => '<tr><td><span class="brand-tag">' + esc(m.brand_name) + '</span></td><td style="font-size:12px">' + esc(m.policy_summary||m.description||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No MAP policies.</div>';
+
+  // Buying Groups
+  document.getElementById('buyingContent').innerHTML = (bGroups||[]).length ?
+    '<table><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody>'
+    + (bGroups||[]).map(b => '<tr><td style="font-weight:600">' + esc(b.name) + '</td><td class="cat-tag">' + esc(b.type||b.group_type||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No buying groups.</div>';
+
+  // Service Providers
+  document.getElementById('serviceContent').innerHTML = (svcProviders||[]).length ?
+    '<table><thead><tr><th>Name</th><th>Region</th></tr></thead><tbody>'
+    + (svcProviders||[]).map(s => '<tr><td style="font-weight:600">' + esc(s.company_name||s.name||'') + '</td><td class="cat-tag">' + esc(s.region||s.service_area||'') + '</td></tr>').join('')
+    + '</tbody></table>' : '<div class="feed-empty">No service providers.</div>';
+}
+
+// ── RECALLS PAGE ──
+let recallsLoaded = false, allRecalls = [];
 async function loadRecalls() {
-  const { data, count } = await sb.from('aiq_recalls').select('*',{count:'exact'}).order('created_at',{ascending:false}).limit(30);
-  document.getElementById('recallCount').textContent = count || '0';
-  if (data && data.length) {
-    const cols = Object.keys(data[0]).filter(k => !['id','created_at','updated_at'].includes(k)).slice(0,5);
-    document.getElementById('recallTable').innerHTML = `<table><thead><tr>${cols.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')}</tr></thead><tbody>${
-      data.map(r => `<tr>${cols.map(c=>`<td>${typeof r[c]==='string'?(r[c]||'').substring(0,80):r[c]??'—'}</td>`).join('')}</tr>`).join('')
-    }</tbody></table>`;
-  }
+  recallsLoaded = true;
+  const { data } = await sb.from('aiq_recalls').select('*').order('recall_date', { ascending: false });
+  allRecalls = data || [];
+  // Populate brand filter
+  const brands = [...new Set(allRecalls.map(r => r.brand_name).filter(Boolean))].sort();
+  const sel = document.getElementById('recallBrand');
+  if (sel.options.length <= 1) brands.forEach(b => sel.insertAdjacentHTML('beforeend', '<option>' + b + '</option>'));
+  renderRecalls();
 }
 
-// ── Page routing ──
-const pageLoaders = {
-  dashboard: loadDashboard,
-  products: loadProducts,
-  brands: loadBrands,
-  categories: loadCategories,
-  prices: loadPrices,
-  recalls: loadRecalls
-};
-const loaded = {};
+function renderRecalls() {
+  const search = (document.getElementById('recallSearch')?.value || '').toLowerCase();
+  const brand = document.getElementById('recallBrand')?.value || '';
+  let list = allRecalls;
+  if (search) list = list.filter(r => (r.title||'').toLowerCase().includes(search) || (r.brand_name||'').toLowerCase().includes(search) || (r.hazard||'').toLowerCase().includes(search) || (r.product_name||'').toLowerCase().includes(search));
+  if (brand) list = list.filter(r => r.brand_name === brand);
 
-window.showPage = function(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + page)?.classList.add('active');
-  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
-  event?.target?.closest('.sb-item')?.classList.add('active');
-  const titles = {dashboard:'Dashboard',products:'Products',brands:'Brands',categories:'Categories',prices:'Retailer Prices',recalls:'Recalls',assets:'Digital Assets',cad:'CAD / BIM',retailers:'Retailers'};
-  document.getElementById('pageTitle').textContent = titles[page] || page;
-  if (pageLoaders[page] && !loaded[page]) { loaded[page] = true; pageLoaders[page](); }
+  document.getElementById('recallKpis').innerHTML =
+    '<div class="stat-card red"><div class="label">Total Recalls</div><div class="value">' + list.length + '</div><div class="sub">of ' + allRecalls.length + '</div></div>'
+    + '<div class="stat-card yellow"><div class="label">Brands Affected</div><div class="value">' + new Set(list.map(r => r.brand_name)).size + '</div></div>'
+    + '<div class="stat-card"><div class="label">With Injuries</div><div class="value">' + list.filter(r => r.injury_count > 0).length + '</div></div>';
+
+  document.getElementById('recallContent').innerHTML = list.length ?
+    '<div class="doc-list">' + list.map(r =>
+      '<div class="doc-row" style="align-items:flex-start;gap:14px">'
+      + '<div class="doc-icon pdf" style="font-size:16px">⚠️</div>'
+      + '<div class="doc-details" style="flex:1">'
+      + '<div class="doc-title">' + esc(r.title) + '</div>'
+      + '<div class="doc-meta"><span class="brand-tag">' + esc(r.brand_name) + '</span> · ' + esc(r.recall_date||'') + ' · ' + esc(r.country||'') + (r.units_affected ? ' · ' + esc(r.units_affected) + ' units' : '') + '</div>'
+      + (r.hazard ? '<div style="font-size:12px;color:var(--red);margin-top:4px">⚠️ ' + esc(r.hazard) + '</div>' : '')
+      + (r.remedy ? '<div style="font-size:12px;color:var(--green);margin-top:2px">✅ ' + esc(r.remedy) + '</div>' : '')
+      + (r.model_numbers ? '<div style="font-size:11px;color:var(--text3);margin-top:2px">Models: ' + esc(typeof r.model_numbers === 'object' ? r.model_numbers.join(', ') : r.model_numbers) + '</div>' : '')
+      + '</div>'
+      + (r.url ? '<div class="doc-action"><a href="' + esc(r.url) + '" target="_blank" class="btn" style="font-size:11px;padding:4px 12px">View →</a></div>' : '')
+      + '</div>'
+    ).join('') + '</div>'
+    : '<div class="feed-empty">No recalls match your search.</div>';
+}
+
+document.getElementById('recallSearch')?.addEventListener('input', renderRecalls);
+document.getElementById('recallBrand')?.addEventListener('change', renderRecalls);
+
+// ── UNIVERSAL SEARCH ──
+let searchDebounce = null;
+document.getElementById('universalSearch')?.addEventListener('input', e => {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => runUniversalSearch(e.target.value), 300);
+});
+
+async function runUniversalSearch(query) {
+  const el = document.getElementById('searchResults');
+  if (!query || query.length < 2) { el.innerHTML = '<div class="feed-empty">Type to search across all intelligence data.</div>'; return; }
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Searching…</div>';
+  const q = query.toLowerCase();
+  const results = [];
+
+  // Search products (use PostgREST for ilike)
+  try {
+    const orParts = ['brand_name','model','short_description','category'].map(c => c + '.ilike.*' + encodeURIComponent(q) + '*');
+    const url = SB_URL + '/rest/v1/aiq_products?select=id,brand_name,model,category,short_description&or=(' + orParts.join(',') + ')&limit=10&order=brand_name';
+    const resp = await fetch(url, { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } });
+    const prods = await resp.json();
+    (prods||[]).forEach(p => results.push({ type: '📦 Product', title: p.brand_name + ' ' + p.model, sub: p.category + (p.short_description ? ' — ' + p.short_description : ''), action: () => openProductDetail(p.id) }));
+  } catch(e) {}
+
+  // Search brands
+  const matchBrands = allBrands.filter(b => (b.brand_name||'').toLowerCase().includes(q) || (b.parent_company||'').toLowerCase().includes(q) || (b.brand_story||'').toLowerCase().includes(q));
+  matchBrands.slice(0, 5).forEach(b => results.push({ type: '🏢 Brand', title: b.brand_name, sub: (b.parent_company ? b.parent_company + ' · ' : '') + (b.brand_tier||'') + (b.brand_tagline ? ' — ' + b.brand_tagline : ''), action: () => openBrandDetail(b.id) }));
+
+  // Search recalls
+  const { data: recalls } = await sb.from('aiq_recalls').select('id,brand_name,title,hazard,recall_date').or('title.ilike.*' + q + '*,brand_name.ilike.*' + q + '*,hazard.ilike.*' + q + '*').limit(5);
+  (recalls||[]).forEach(r => results.push({ type: '⚠️ Recall', title: r.title, sub: r.brand_name + ' · ' + (r.recall_date||'') }));
+
+  // Search news
+  const { data: news } = await sb.from('intel_news').select('headline,company_name,category,published_date').or('headline.ilike.*' + q + '*,company_name.ilike.*' + q + '*').limit(5);
+  (news||[]).forEach(n => results.push({ type: '📰 News', title: n.headline, sub: n.company_name + ' · ' + (n.published_date||'') }));
+
+  // Search warranties
+  const { data: warr } = await sb.from('aiq_warranty_policies').select('brand_name,category,coverage_summary,product_type').or('brand_name.ilike.*' + q + '*,coverage_summary.ilike.*' + q + '*').limit(5);
+  (warr||[]).forEach(w => results.push({ type: '🛡️ Warranty', title: w.brand_name + ' — ' + (w.category||w.product_type||''), sub: w.coverage_summary||'' }));
+
+  // Search mfr vendors
+  const { data: vend } = await sb.from('mfr_vendors').select('name,tier,focus,story').or('name.ilike.*' + q + '*,story.ilike.*' + q + '*,focus.ilike.*' + q + '*').limit(5);
+  (vend||[]).forEach(v => results.push({ type: '🏭 Manufacturer', title: v.name, sub: (v.tier||'') + ' · ' + (v.focus||'') }));
+
+  // Search cross-references
+  const { data: xref } = await sb.from('competitive_cross_reference').select('*').or('brand_name_a.ilike.*' + q + '*,brand_name_b.ilike.*' + q + '*,model_number_a.ilike.*' + q + '*,model_number_b.ilike.*' + q + '*').limit(5);
+  (xref||[]).forEach(x => results.push({ type: '⚔️ Cross-Ref', title: (x.brand_name_a||'') + ' ' + (x.model_number_a||'') + ' vs ' + (x.brand_name_b||'') + ' ' + (x.model_number_b||''), sub: x.category||'' }));
+
+  if (!results.length) {
+    el.innerHTML = '<div class="feed-empty">No results found for "' + esc(query) + '".</div>';
+    return;
+  }
+
+  el.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:12px">' + results.length + ' results for "' + esc(query) + '"</div>'
+    + '<div class="doc-list">' + results.map((r, i) =>
+      '<div class="doc-row" style="cursor:' + (r.action ? 'pointer' : 'default') + '" ' + (r.action ? 'data-search-idx="' + i + '"' : '') + '>'
+      + '<div style="font-size:11px;color:var(--text3);width:90px;flex-shrink:0;font-weight:600">' + r.type + '</div>'
+      + '<div class="doc-details"><div class="doc-title">' + esc(r.title) + '</div>'
+      + '<div class="doc-meta">' + esc((r.sub||'').substring(0, 150)) + '</div></div></div>'
+    ).join('') + '</div>';
+
+  // Bind click actions
+  document.querySelectorAll('[data-search-idx]').forEach(row => {
+    const idx = parseInt(row.dataset.searchIdx);
+    if (results[idx]?.action) row.addEventListener('click', results[idx].action);
+  });
+}
+
+// ── Realtime feed ──
+const feedItems = [];
+function addFeed(icon, text) {
+  feedItems.unshift({icon, text, time: new Date()});
+  if (feedItems.length > 50) feedItems.pop();
+  renderFeed();
+}
+function renderFeed() {
+  const el = document.getElementById('feedList');
+  if (!feedItems.length) { el.innerHTML = '<div class="feed-empty">Waiting for changes…</div>'; return; }
+  el.innerHTML = feedItems.map(f =>
+    `<div class="feed-item"><div class="feed-icon ${f.icon}">${f.icon==='img'?'🖼':f.icon==='doc'?'📄':f.icon==='vid'?'🎬':'📦'}</div><div class="feed-text">${f.text}</div><span class="feed-time">${timeAgo(f.time)}</span></div>`
+  ).join('');
+}
+
+// ── Realtime subscriptions ──
+function setupRealtime() {
+  const ch = sb.channel('pim-dash');
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'aiq_products'}, payload => {
+    const ev = payload.eventType; const r = payload.new || payload.old || {};
+    const m = r.model || r.id?.slice(0,8) || '?'; const b = r.brand_name ? ' ('+r.brand_name+')' : '';
+    if (ev==='INSERT') addFeed('prod',`New product <strong>${m}</strong>${b}`);
+    else if (ev==='UPDATE') addFeed('prod',`Updated <strong>${m}</strong>${b}`);
+    else addFeed('prod',`Deleted <strong>${m}</strong>`);
+    scheduleRefresh();
+  });
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'pim_product_images'}, payload => {
+    const t = (payload.new||{}).image_type||'image';
+    if (payload.eventType==='INSERT') addFeed('img',`New <strong>${prettyLabel(t)}</strong> image`);
+    else addFeed('img',`Image removed`);
+    scheduleRefresh();
+  });
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'pim_product_documents'}, payload => {
+    const t = (payload.new||{}).doc_type||'document';
+    if (payload.eventType==='INSERT') addFeed('doc',`New <strong>${prettyLabel(t)}</strong>`);
+    else addFeed('doc',`Document removed`);
+    scheduleRefresh();
+  });
+  ch.on('postgres_changes',{event:'*',schema:'public',table:'pim_product_videos'}, payload => {
+    if (payload.eventType==='INSERT') addFeed('vid',`New <strong>video</strong> added`);
+    scheduleRefresh();
+  });
+  ch.subscribe(status => console.log('Realtime:', status));
+}
+
+let _rt = null;
+function scheduleRefresh() { if (_rt) clearTimeout(_rt); _rt = setTimeout(()=>refreshAll(), 2000); }
+
+// ── AUTH ──
+let pimUser = null, pimRole = null, retailerProfile = null, retailerBrands = [];
+
+async function checkAuth() {
+  const { data: { user } } = await sb.auth.getUser();
+  pimUser = user;
+  if (!user) { renderAuthBar(); return; }
+  const { data: role } = await sb.from('product_iq_platform_roles').select('role,status').eq('user_id', user.id).eq('status','active').maybeSingle();
+  if (role) pimRole = role.role;
+  const { data: rp } = await sb.from('piq_retailer_profiles').select('*').eq('user_id', user.id).maybeSingle();
+  if (rp) { retailerProfile = rp; pimRole = pimRole || 'retailer'; }
+  if (retailerProfile) {
+    const { data: rb } = await sb.from('piq_retailer_brands').select('brand_id').eq('user_id', user.id);
+    retailerBrands = (rb || []).map(r => r.brand_id);
+  }
+  if (!pimRole) {
+    const { data: bs } = await sb.from('product_iq_brand_scopes').select('brand_id').eq('organization_id', user.id).eq('status','active');
+    if (bs?.length) pimRole = 'manufacturer';
+  }
+  renderAuthBar();
+  applyAccessGates();
+}
+
+function renderAuthBar() {
+  const el = document.getElementById('authContent');
+  if (!pimUser) {
+    el.innerHTML = '<button onclick="showAuthModal(\'login\')">Sign In</button><span style="color:var(--text3);font-size:11px">Sign in for retailer or manufacturer access</span>';
+    return;
+  }
+  const roleLabels = { platform_admin:'Platform Admin', manufacturer:'Manufacturer', retailer:'Retailer', 'approved data consumer':'Data Consumer' };
+  const roleClass = pimRole === 'manufacturer' ? 'mfr' : pimRole === 'retailer' ? 'retailer' : '';
+  el.innerHTML = '<span class="user-email">' + esc(pimUser.email) + '</span>'
+    + (pimRole ? '<span class="role-chip ' + roleClass + '">' + esc(roleLabels[pimRole] || pimRole) + '</span>' : '')
+    + '<button onclick="pimSignOut()">Sign Out</button>';
+  if (pimRole === 'manufacturer' || pimRole === 'platform_admin') document.getElementById('navMfr').style.display = '';
+}
+
+function applyAccessGates() {
+  const el = document.getElementById('gateNotice');
+  if (!el) return;
+  if (pimRole === 'retailer' && retailerBrands.length) {
+    el.innerHTML = '<div class="gate-notice"><div class="gate-icon">🔒</div><div><p><strong>Retailer Access Active</strong> — You\'re viewing products from your ' + retailerBrands.length + ' carried brand' + (retailerBrands.length !== 1 ? 's' : '') + '.</p></div></div>';
+  } else if (pimRole === 'retailer') {
+    el.innerHTML = '<div class="gate-notice"><div class="gate-icon">⚠️</div><div><p><strong>No Brands Assigned</strong> — Contact your account manager to set up brand access.</p></div></div>';
+  } else el.innerHTML = '';
+}
+
+function showAuthModal(mode) {
+  const root = document.getElementById('authModalRoot');
+  root.innerHTML = '<div class="auth-modal" id="authOverlay"><div class="auth-box">'
+    + '<h2>' + (mode === 'signup' ? 'Create Account' : 'Sign In') + '</h2>'
+    + '<div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@company.com"></div>'
+    + '<div class="field"><label>Password</label><input id="authPw" type="password" placeholder="••••••••"></div>'
+    + '<div class="err" id="authErr"></div>'
+    + '<div class="btn-row"><button class="btn-ghost" onclick="closeAuthModal()">Cancel</button>'
+    + '<button class="btn-primary" id="authSubmit">' + (mode === 'signup' ? 'Create Account' : 'Sign In') + '</button></div>'
+    + '<div style="margin-top:12px;font-size:12px;color:var(--text3);text-align:center">'
+    + (mode === 'signup' ? 'Already have an account? <a href="#" onclick="event.preventDefault();showAuthModal(\'login\')">Sign in</a>'
+      : 'Need an account? <a href="#" onclick="event.preventDefault();showAuthModal(\'signup\')">Sign up</a>')
+    + '</div></div></div>';
+  document.getElementById('authOverlay').addEventListener('click', e => { if (e.target.id === 'authOverlay') closeAuthModal(); });
+  document.getElementById('authSubmit').addEventListener('click', async () => {
+    const email = document.getElementById('authEmail').value.trim();
+    const pw = document.getElementById('authPw').value;
+    if (!email || !pw) { document.getElementById('authErr').textContent = 'Email and password required.'; return; }
+    const { error } = mode === 'signup'
+      ? await sb.auth.signUp({ email, password: pw })
+      : await sb.auth.signInWithPassword({ email, password: pw });
+    if (error) { document.getElementById('authErr').textContent = error.message; return; }
+    closeAuthModal();
+    await checkAuth();
+  });
+}
+window.showAuthModal = showAuthModal;
+function closeAuthModal() { document.getElementById('authModalRoot').innerHTML = ''; }
+window.pimSignOut = async function() { await sb.auth.signOut(); pimUser = null; pimRole = null; retailerProfile = null; retailerBrands = []; renderAuthBar(); document.getElementById('navMfr').style.display = 'none'; document.getElementById('gateNotice').innerHTML = ''; };
+
+// Expose for onclick in HTML
+window.openProductDetail = openProductDetail;
+window.openBrandDetail = openBrandDetail;
+
+// ── MANUFACTURER PORTAL ──
+async function loadManufacturerPortal() {
+  const el = document.getElementById('mfrContent');
+  if (!pimUser) { el.innerHTML = '<div class="feed-empty">Sign in to access the manufacturer portal.</div>'; return; }
+  const { data: scopes } = await sb.from('product_iq_brand_scopes').select('brand_id,capabilities,status').eq('status', 'active');
+  const brandIds = (scopes || []).map(s => s.brand_id);
+  if (!brandIds.length && pimRole !== 'platform_admin') {
+    el.innerHTML = '<div class="feed-empty">No brand scopes assigned. Contact the platform admin.</div>';
+    return;
+  }
+  let brandQuery = sb.from('brand_catalog').select('id,brand_name,brand_tier,product_count,is_active');
+  if (pimRole !== 'platform_admin') brandQuery = brandQuery.in('id', brandIds);
+  const { data: brands } = await brandQuery.order('brand_name');
+  let prodQuery = sb.from('aiq_products').select('id,brand_name,model,status,approval_status,public_visible,updated_at', { count: 'exact' });
+  if (pimRole !== 'platform_admin' && brands?.length) {
+    prodQuery = prodQuery.in('brand_name', brands.map(b => b.brand_name));
+  }
+  const { data: prods, count } = await prodQuery.order('updated_at', { ascending: false }).limit(50);
+  const published = (prods || []).filter(p => p.public_visible).length;
+  const draft = (prods || []).filter(p => p.status === 'draft').length;
+  const pending = (prods || []).filter(p => p.approval_status === 'submitted' || p.approval_status === 'in_review').length;
+
+  el.innerHTML = '<div style="margin-bottom:20px"><h2 style="font-family:Sora;color:var(--navy)">🏭 Manufacturer Portal</h2><div style="color:var(--text2);font-size:13px;margin-top:4px">Manage your brand\'s products and publications.</div></div>'
+    + '<div class="stats-row">'
+    + '<div class="stat-card accent"><div class="label">Your Brands</div><div class="value">' + (brands || []).length + '</div></div>'
+    + '<div class="stat-card green"><div class="label">Products</div><div class="value">' + fmt(count || 0) + '</div></div>'
+    + '<div class="stat-card"><div class="label">Published</div><div class="value">' + published + '</div></div>'
+    + '<div class="stat-card yellow"><div class="label">Draft</div><div class="value">' + draft + '</div></div>'
+    + '<div class="stat-card purple"><div class="label">Pending Review</div><div class="value">' + pending + '</div></div>'
+    + '</div>'
+    + '<div class="panel"><div class="panel-head"><h3>Recent Products (' + (prods||[]).length + ' of ' + fmt(count||0) + ')</h3></div><div class="panel-body" style="padding:0"><div class="tbl-wrap"><table><thead><tr><th>Model</th><th>Brand</th><th>Status</th><th>Published</th><th>Updated</th><th></th></tr></thead><tbody>'
+    + ((prods||[]).length ? (prods||[]).map(p =>
+      '<tr><td class="model-name">' + esc(p.model) + '</td><td><span class="brand-tag">' + esc(p.brand_name) + '</span></td>'
+      + '<td>' + (p.status === 'active' ? '<span style="color:var(--green)">● Active</span>' : '<span style="color:var(--text3)">○ ' + esc(p.status) + '</span>') + '</td>'
+      + '<td>' + (p.public_visible ? '<span style="color:var(--green)">✓</span>' : '—') + '</td>'
+      + '<td class="cat-tag">' + new Date(p.updated_at).toLocaleDateString() + '</td>'
+      + '<td><button class="btn" style="font-size:11px;padding:4px 10px" data-toggle-pub="' + p.id + '" data-current="' + (p.public_visible ? '1' : '0') + '">' + (p.public_visible ? 'Unpublish' : 'Publish') + '</button></td></tr>'
+    ).join('') : '<tr><td colspan="6"><div class="feed-empty">No products found.</div></td></tr>')
+    + '</tbody></table></div></div></div>';
+
+  document.querySelectorAll('[data-toggle-pub]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.togglePub;
+      const nowPublished = btn.dataset.current === '1';
+      const upd = nowPublished
+        ? { public_visible: false, unpublished_at: new Date().toISOString() }
+        : { public_visible: true, published_at: new Date().toISOString(), approval_status: 'approved' };
+      await sb.from('aiq_products').update(upd).eq('id', id);
+      loadManufacturerPortal();
+    });
+  });
+}
+
+// ── RETAILER FIVE-GATE FILTER ──
+function applyRetailerFilter(products) {
+  if (pimRole !== 'retailer' || !retailerBrands.length) return products;
+  const now = new Date().toISOString().slice(0, 10);
+  return products.filter(p => {
+    if (!p.public_visible) return false;
+    if (p.launch_date && p.launch_date > now) return false;
+    if (p.discontinued_date && p.discontinued_date < now) return false;
+    if (p.brand_id && !retailerBrands.includes(p.brand_id)) return false;
+    return true;
+  });
+}
+
+// ── Init ──
+window.refreshAll = async function() {
+  await Promise.all([loadProducts(), loadCatMap(), loadImageCounts(), loadDocCounts(), loadVidCounts()]);
+  renderAll();
 };
 
-window.searchProducts = function() {
-  const q = document.getElementById('globalSearch').value.trim();
-  if (q) { showPage('products'); loaded.products = false; loadProducts(q); loaded.products = true; }
-};
-
-// Boot
-loadDashboard();
+(async () => { await window.refreshAll(); setupRealtime(); checkAuth(); })();
 </script>
 </body>
 </html>
+<!-- build 1785868119 -->
