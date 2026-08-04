@@ -450,6 +450,128 @@ function timeAgo(ts) {
   if (s < 86400) return Math.floor(s/3600) + 'h ago';
   return new Date(ts).toLocaleDateString();
 }
+// ── Parse specs_json into usable display data ──
+// Maps common JSON keys (messy scraped names) → clean display labels
+const SPEC_KEY_MAP = {
+  // Color/Finish
+  'Color': 'Color', 'color': 'Color', 'Couleur/Finition': 'Color', 'Color Family': 'Color Family',
+  // Dimensions
+  'Cutout Width': 'Width', 'Cutout Depth': 'Depth', 'Cutout Height': 'Height',
+  // Power
+  'Volts (V)': 'Voltage', 'Watts (W)': 'Wattage', 'Amperage': 'Amperage', 'Frequency (Hz)': 'Frequency',
+  'Fuel Type': 'Fuel Type', 'Plug Type': 'Plug Type',
+  // Capacity
+  'Oven Capacity': 'Capacity', 'capacity': 'Capacity', 'Total Capacity': 'Capacity',
+  // Features
+  'Air Fry': 'Air Fry', 'Self Clean (Y/N)': 'Self Clean', 'Self Clean': 'Self Clean',
+  'Convection': 'Convection', 'Convention': 'Convection', 'Sabbath Mode (Y/N)': 'Sabbath Mode',
+  'Control Type': 'Controls', 'controls': 'Controls', 'Control Elements': 'Controls',
+  'Cooking Modes': 'Cooking Modes', 'Installation Type': 'Installation', 'Construction': 'Installation',
+  // Type
+  'Burner Type': 'Burner Type', 'Type of Grate': 'Grate Type', 'Cooktop Element Style': 'Element Style',
+  'vacuum_type': 'Type', 'Product Type': 'Type', 'Oven Type': 'Type',
+  // Size
+  'Oven Size': 'Size', 'Net Weight (lbs.)': 'Weight',
+  // Series/Line
+  'series': 'Series', 'product_line': 'Product Line',
+  // General
+  'Certification': 'Certification', 'Energy Class': 'Energy Class',
+  'filters': 'Filters', 'lighting': 'Lighting', 'blower_cfm': 'CFM',
+  'ducting_options': 'Ducting', 'power_source': 'Power Source',
+  'Door Type': 'Door Type', 'Display': 'Display', 'Timer': 'Timer',
+};
+
+// Priority keys to show on cards (most useful at a glance)
+const CARD_SPEC_PRIORITY = [
+  'Color', 'Voltage', 'Fuel Type', 'Capacity', 'Installation', 'Controls',
+  'Air Fry', 'Self Clean', 'Convection', 'Type', 'CFM', 'Element Style',
+  'Wattage', 'Burner Type', 'Cooking Modes', 'Size', 'Filters', 'Lighting',
+  'Series', 'Power Source', 'Energy Class', 'Door Type', 'Frequency',
+];
+
+// Extract clean key specs from specs_json
+function extractSpecs(specsJson) {
+  if (!specsJson || typeof specsJson !== 'object') return {};
+  const result = {};
+  for (const [rawKey, value] of Object.entries(specsJson)) {
+    if (value == null || value === '' || value === 'N/A') continue;
+    // Clean the key - remove tab characters and excessive whitespace from scraped keys
+    const cleanKey = rawKey.replace(/\t+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    // Check direct map
+    if (SPEC_KEY_MAP[cleanKey]) {
+      result[SPEC_KEY_MAP[cleanKey]] = String(value).trim();
+      continue;
+    }
+    // Check if the cleaned key contains a mapped suffix (handles "Technical Details\t\tFuel Type" → "Fuel Type")
+    for (const [mapKey, mapLabel] of Object.entries(SPEC_KEY_MAP)) {
+      if (cleanKey.endsWith(mapKey) || cleanKey.includes(mapKey)) {
+        if (!result[mapLabel]) result[mapLabel] = String(value).trim();
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+// Get top N display specs for a card
+function getCardSpecs(p) {
+  const specs = [];
+  // First pull from top-level columns
+  if (p.finish) specs.push(p.finish);
+  if (p.color) specs.push(p.color);
+  if (p.voltage) specs.push(p.voltage);
+  if (p.capacity_cu_ft) specs.push(p.capacity_cu_ft + ' cu ft');
+  if (p.width_inches && p.height_inches) specs.push(p.width_inches + '×' + p.height_inches + '"');
+  if (p.energy_star) specs.push('⭐ Energy Star');
+  // Then fill from specs_json
+  if (specs.length < 5 && p.specs_json) {
+    const extracted = extractSpecs(p.specs_json);
+    for (const key of CARD_SPEC_PRIORITY) {
+      if (specs.length >= 5) break;
+      if (extracted[key]) {
+        // Don't duplicate what we already have from top-level
+        const val = extracted[key];
+        if (val.length > 30) continue; // Skip long values for cards
+        const already = specs.some(s => s.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(s.toLowerCase()));
+        if (!already) specs.push(val);
+      }
+    }
+  }
+  return specs;
+}
+
+// Count total meaningful data points (top-level + JSON)
+function calcRichComp(p) {
+  let n = 0;
+  for (const f of COMP_FIELDS) {
+    const v = p[f];
+    if (v !== null && v !== undefined && v !== '') n++;
+  }
+  // Add JSON richness
+  let jsonKeys = 0;
+  if (p.specs_json && typeof p.specs_json === 'object') {
+    jsonKeys = Object.entries(p.specs_json).filter(([,v]) => v != null && v !== '' && v !== 'N/A').length;
+  }
+  // Completeness = top-level fields filled + bonus for JSON richness
+  // Base: out of 13 fields. JSON adds up to 50% bonus (capped)
+  const basePct = Math.round((n / TOTAL_F) * 100);
+  const jsonBonus = Math.min(jsonKeys * 2, 50); // each JSON key worth 2%, max 50%
+  return Math.min(100, basePct + jsonBonus);
+}
+
+// Quick summary line from JSON
+function getSpecSummary(p) {
+  if (!p.specs_json || typeof p.specs_json !== 'object') return '';
+  const extracted = extractSpecs(p.specs_json);
+  const parts = [];
+  if (extracted['Fuel Type']) parts.push(extracted['Fuel Type']);
+  if (extracted['Capacity']) parts.push(extracted['Capacity']);
+  if (extracted['Controls']) parts.push(extracted['Controls']);
+  if (extracted['Voltage']) parts.push(extracted['Voltage']);
+  if (extracted['Installation']) parts.push(extracted['Installation']);
+  return parts.slice(0, 3).join(' · ');
+}
+
 function docIcon(type) {
   const t = (type||'').toLowerCase();
   if (t.includes('pdf') || t.includes('install') || t.includes('manual')) return 'pdf';
@@ -556,7 +678,7 @@ function renderKPIs() {
   const prods = allProducts.filter(p => !p.is_parts_accessory);
   const parts = allProducts.filter(p => p.is_parts_accessory);
   const view = filtered();
-  const avg = view.length > 0 ? Math.round(view.reduce((s,p) => s + calcComp(p), 0) / view.length) : 0;
+  const avg = view.length > 0 ? Math.round(view.reduce((s,p) => s + calcRichComp(p), 0) / view.length) : 0;
   const brands = new Set(view.map(p => p.brand_name).filter(Boolean));
   document.getElementById('kpiProducts').textContent = fmt(prods.length);
   document.getElementById('kpiProductsSub').textContent = new Set(prods.map(p=>p.category).filter(Boolean)).size + ' categories';
@@ -587,7 +709,7 @@ function renderCategories() {
   document.getElementById('catCount').textContent = sorted.length + ' categories';
   document.getElementById('catGrid').innerHTML = `<div class="cat-grid">${sorted.map(([cat, g]) => {
     const cnt = g.products.length;
-    const avg = Math.round(g.products.reduce((s,p) => s + calcComp(p), 0) / cnt);
+    const avg = Math.round(g.products.reduce((s,p) => s + calcRichComp(p), 0) / cnt);
     const withImgs = g.products.filter(p => imgCounts[p.id]).length;
     const withDocs = g.products.filter(p => docCounts[p.id]).length;
     const col = pctCol(avg);
@@ -640,7 +762,7 @@ function renderAssets() {
 
 function renderNeedsFix() {
   const prods = allProducts.filter(p => !p.is_parts_accessory).map(p => ({
-    ...p, completeness: calcComp(p), images: imgCounts[p.id] || 0, docs: docCounts[p.id] || 0
+    ...p, completeness: calcRichComp(p), images: imgCounts[p.id] || 0, docs: docCounts[p.id] || 0
   })).sort((a,b) => a.completeness - b.completeness);
   const worst = prods.slice(0, 40);
   const under50 = prods.filter(p => p.completeness < 50).length;
@@ -830,7 +952,7 @@ async function openBrandDetail(brandId) {
   const totalImgs = products.reduce((s, p) => s + (imgCounts[p.id] || 0), 0);
   const totalDocs = products.reduce((s, p) => s + (docCounts[p.id] || 0), 0);
   const totalVids = products.reduce((s, p) => s + (vidCounts[p.id] || 0), 0);
-  const avgComp = products.length ? Math.round(products.reduce((s,p) => s + calcComp(p), 0) / products.length) : 0;
+  const avgComp = products.length ? Math.round(products.reduce((s,p) => s + calcRichComp(p), 0) / products.length) : 0;
   const prodsOnly = products.filter(p => !p.is_parts_accessory);
 
   let html = '<div class="breadcrumb">'
@@ -909,22 +1031,26 @@ async function openBrandDetail(brandId) {
 
 function buildBrandProductTable(prods, highlight) {
   if (!prods.length) return '<div class="feed-empty">No products match your filters.</div>';
-  return '<table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>🖼</th><th>📄</th><th>🎬</th><th>Completeness</th></tr></thead><tbody>'
+  return '<table><thead><tr><th>Model</th><th>Category</th><th>Key Specs</th><th>MSRP</th><th>🖼</th><th>📄</th><th>Data</th></tr></thead><tbody>'
     + prods.map(p => {
-      const comp = calcComp(p);
+      const comp = calcRichComp(p);
       const col = pctCol(comp);
       const ic = imgCounts[p.id] || 0;
       const dc = docCounts[p.id] || 0;
-      const vc = vidCounts[p.id] || 0;
+      const specSnippets = getCardSpecs(p).slice(0, 3);
+      const jsonKeys = (p.specs_json && typeof p.specs_json === 'object') ? Object.keys(p.specs_json).length : 0;
       return '<tr class="bd-prod-row" data-prod-id="' + p.id + '">'
         + '<td><div class="model-name">' + esc(p.model) + '</div>'
         + (p.short_description ? '<div style="font-size:11px;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.short_description) + '</div>' : '')
         + '</td>'
         + '<td class="cat-tag">' + esc(p.category) + '</td>'
+        + '<td style="max-width:220px"><div style="display:flex;gap:4px;flex-wrap:wrap">'
+        + specSnippets.map(s => '<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:3px;color:var(--text2);white-space:nowrap">' + esc(s) + '</span>').join('')
+        + (jsonKeys > 0 ? '<span style="font-size:10px;color:var(--accent);font-weight:600">+' + jsonKeys + ' specs</span>' : '')
+        + '</div></td>'
         + '<td style="font-weight:600;color:var(--accent)">' + (p.msrp ? '$' + Number(p.msrp).toLocaleString() : '—') + '</td>'
         + '<td>' + (ic ? '<span style="color:var(--blue);font-weight:600">' + ic + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
         + '<td>' + (dc ? '<span style="color:var(--purple);font-weight:600">' + dc + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
-        + '<td>' + (vc ? '<span style="color:var(--pink);font-weight:600">' + vc + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
         + '<td><div class="completeness-bar"><div class="mini-bar"><div class="mini-fill" style="width:' + comp + '%;background:' + col + '"></div></div><span style="color:' + col + ';font-weight:600">' + comp + '%</span></div></td>'
         + '</tr>';
     }).join('')
@@ -948,13 +1074,13 @@ async function loadCatalog() {
   el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products…</div>';
 
   let q = sb.from('aiq_products')
-    .select('id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json', { count: 'exact' })
+    .select('id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs', { count: 'exact' })
     .order('brand_name').order('model');
 
   const s = prodFilters.search.trim();
   if (s) {
     const orParts = ['brand_name','model','short_description'].map(c => c+'.ilike.*'+encodeURIComponent(s)+'*');
-    const url = SB_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json&or=('+orParts.join(',')+')&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
+    const url = SB_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,sale_price,short_description,status,finish,color,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs&or=('+orParts.join(',')+')&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
     try {
       const headers = {'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON,'Prefer':'count=exact'};
       const resp = await fetch(url, {headers});
@@ -1001,23 +1127,25 @@ function renderCatalog() {
     return;
   }
   document.getElementById('prodContent').innerHTML = '<div class="prod-grid">' + prods.map(p => {
-    const comp = calcComp(p);
+    const comp = calcRichComp(p);
     const col = pctCol(comp);
-    const specs = [];
-    if (p.finish) specs.push(p.finish);
-    if (p.color) specs.push(p.color);
-    if (p.width_inches && p.height_inches) specs.push(p.width_inches+'×'+p.height_inches+'"');
-    if (p.energy_star) specs.push('⭐ Energy Star');
+    const specs = getCardSpecs(p);
+    const specSummary = getSpecSummary(p);
+    const jsonKeys = (p.specs_json && typeof p.specs_json === 'object') ? Object.keys(p.specs_json).length : 0;
     const ic = imgCounts[p.id]||0;
     const dc = docCounts[p.id]||0;
     const vc = vidCounts[p.id]||0;
+    // Use short_description, or fall back to spec summary from JSON
+    const desc = p.short_description || specSummary;
     return '<div class="prod-card" data-prod-id="'+p.id+'">'
       +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+'</div>'
       +'<div class="pc-model">'+esc(p.model||'—')+'</div>'
-      +(p.short_description?'<div class="pc-desc">'+esc(p.short_description)+'</div>':'')
+      +(desc?'<div class="pc-desc">'+esc(desc)+'</div>':'')
       +(specs.length?'<div class="pc-specs">'+specs.map(s=>'<span>'+esc(s)+'</span>').join('')+'</div>':'')
       +(p.msrp?'<div class="pc-price">$'+Number(p.msrp).toLocaleString()+'</div>':'')
-      +'<div class="pc-assets"><span>🖼 '+ic+'</span><span>📄 '+dc+'</span>'+(vc?'<span>🎬 '+vc+'</span>':'')+'</div>'
+      +'<div class="pc-assets"><span>🖼 '+ic+'</span><span>📄 '+dc+'</span>'+(vc?'<span>🎬 '+vc+'</span>':'')
+      +(jsonKeys>0?'<span style="color:var(--accent);font-weight:600">📊 '+jsonKeys+' specs</span>':'')
+      +'</div>'
       +'<div class="pc-bar"><div class="completeness-bar"><div class="mini-bar"><div class="mini-fill" style="width:'+comp+'%;background:'+col+'"></div></div><span style="color:'+col+';font-weight:600;font-size:11px">'+comp+'%</span></div></div>'
     +'</div>';
   }).join('') + '</div>';
@@ -1069,8 +1197,9 @@ async function openProductDetail(productId) {
 
   if (!p) { el.innerHTML = '<div class="feed-empty">Product not found.</div>'; return; }
 
-  const comp = calcComp(p);
+  const comp = calcRichComp(p);
   const col = pctCol(comp);
+  const jsonKeyCount = (p.specs_json && typeof p.specs_json === 'object') ? Object.entries(p.specs_json).filter(([,v]) => v != null && v !== '').length : 0;
   const imgArr = imgs || [];
   const docArr = docs || [];
   const vidArr = vids || [];
@@ -1101,6 +1230,7 @@ async function openProductDetail(productId) {
     + '<span class="tier-pill ' + (p.status === 'active' ? 'mid' : 'entry') + '">' + esc(p.status) + '</span>'
     + (p.energy_star ? '<span class="tier-pill ultra_luxury">⭐ Energy Star</span>' : '')
     + (p.category ? '<span class="tier-pill entry">' + esc(p.category) + '</span>' : '')
+    + (jsonKeyCount > 0 ? '<span class="tier-pill mid">📊 ' + jsonKeyCount + ' specs in JSON</span>' : '')
     + '</div>'
     + '</div>'
     + '<div style="text-align:right">'
