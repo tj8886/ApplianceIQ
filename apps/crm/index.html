@@ -1421,41 +1421,83 @@ function openCompanyModal(co){
     }catch(err){btnDone(btn,isNew?'Create':'Save');toast(err.message||'Save failed','err');}};
 }
 
-// ===== PRODUCTS =====
+// ===== PRODUCTS (PIM-sourced via retailer_products) =====
 async function renderProducts(){
-  const{data}=await sb.from('products').select('*, aiq_products(model,brand_name,msrp,sale_price,market,is_discontinued,is_clearance,is_end_of_life,replacement_model)').eq('organization_id',currentOrg.id).order('category');
-  const rows=data??[];
-  mainEl.innerHTML='<div class="page-head"><div><h1>📦 Products</h1><div class="sub num">'+rows.length+' models — '+rows.filter(p=>p.aiq_product_id).length+' linked to Product IQ PIM</div></div></div>'
-  +'<div class="dash-panel" style="background:#fef3c7;border:1px solid #d97706;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#92400e">⚠ Cost, margin, and stock status here are this store\'s business data. Model specs and warranty details come from Product IQ PIM once linked.</div>'
-  +'<table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Margin</th><th>Stock</th><th>PIM Link</th><th></th></tr></thead><tbody>'+(rows.map(p=>{
-    const linked=p.aiq_products;
-    const linkCell=linked
-      ?'<span class="chip g">✓ Linked</span>'+(linked.is_discontinued?'<div class="sub" style="color:#dc2626">Discontinued'+(linked.replacement_model?' → '+esc(linked.replacement_model):'')+'</div>':'')+(linked.is_clearance?'<div class="sub" style="color:#d97706">Clearance</div>':'')+(linked.sale_price?'<div class="sub">PIM sale: '+money(linked.sale_price)+'</div>':'')
-      :'<span class="chip a">⚠ Not linked</span>';
-    return '<tr><td><b>'+esc(p.brand)+' '+esc(p.model)+'</b><div class="sub">'+esc(p.name)+'</div></td><td>'+esc(p.category??'—')+'</td><td class="num">'+money(p.msrp)+'</td><td class="num">'+(p.margin_pct?p.margin_pct+'%':'—')+'</td><td>'+(p.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Order</span>')+'</td><td>'+linkCell+'</td><td>'+(linked?'<button class="btn btn-ghost btn-sm" data-unlink="'+p.id+'">Unlink</button>':'<button class="btn btn-ghost btn-sm" data-link="'+p.id+'" data-brand="'+esc(p.brand)+'" data-model="'+esc(p.model)+'">Link to PIM</button>')+'</td></tr>';
-  }).join('')||'<tr><td colspan="7" class="empty">No products yet. Products are added here when included in deals.</td></tr>')+'</tbody></table>';
-  $$('[data-link]').forEach(b=>{b.onclick=()=>openPimLinkModal(b.dataset.link,b.dataset.brand,b.dataset.model);});
-  $$('[data-unlink]').forEach(b=>{b.onclick=async()=>{if(!confirm('Unlink this product from Product IQ PIM?'))return;await sb.from('products').update({aiq_product_id:null}).eq('id',b.dataset.unlink);renderProducts();};});
+  const{data}=await sb.from('retailer_products').select('id,organization_id,aiq_product_id,dealer_cost,margin_pct,in_stock,warranty_months,notes,aiq_products(brand_name,model,short_description,category,msrp,sale_price,market,is_discontinued,is_clearance,is_end_of_life,replacement_model)').eq('organization_id',currentOrg.id).order('created_at',{ascending:true});
+  const rows=(data??[]).filter(r=>r.aiq_products);
+  const cats=[...new Set(rows.map(r=>r.aiq_products?.category).filter(Boolean))].sort();
+  const selCat=window._prodCatFilter||'';
+  const filtered=selCat?rows.filter(r=>r.aiq_products?.category===selCat):rows;
+  mainEl.innerHTML='<div class="page-head"><div><h1>📦 Products</h1><div class="sub num">'+rows.length+' models in your catalog · All sourced from Product IQ PIM</div></div><div><button class="btn btn-primary" id="addProdBtn">+ Add Product</button></div></div>'
+  +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-sm '+(selCat?'btn-ghost':'btn-primary')+'" data-cat="">All ('+rows.length+')</button>'
+  +cats.map(c=>'<button class="btn btn-sm '+(selCat===c?'btn-primary':'btn-ghost')+'" data-cat="'+esc(c)+'">'+esc(c)+' ('+rows.filter(r=>r.aiq_products?.category===c).length+')</button>').join('')+'</div>'
+  +'<table><thead><tr><th>Model</th><th>Category</th><th>MSRP</th><th>Cost</th><th>Margin</th><th>Stock</th><th>Status</th><th></th></tr></thead><tbody>'
+  +(filtered.map(rp=>{
+    const p=rp.aiq_products;
+    const margin=rp.dealer_cost&&p.msrp>0?Math.round((p.msrp-rp.dealer_cost)/p.msrp*100):(rp.margin_pct||null);
+    const statusBits=[];
+    if(p.is_discontinued)statusBits.push('<span class="chip" style="background:#fef2f2;color:#dc2626;font-size:10px">Discontinued'+(p.replacement_model?' → '+esc(p.replacement_model):'')+'</span>');
+    if(p.is_clearance)statusBits.push('<span class="chip" style="background:#fffbeb;color:#d97706;font-size:10px">Clearance</span>');
+    if(p.is_end_of_life)statusBits.push('<span class="chip" style="background:#fef2f2;color:#b91c1c;font-size:10px">EOL</span>');
+    if(p.sale_price)statusBits.push('<span class="chip" style="background:#ecfdf5;color:#059669;font-size:10px">Sale '+money(p.sale_price)+'</span>');
+    if(!statusBits.length)statusBits.push('<span class="chip g" style="font-size:10px">Active</span>');
+    return '<tr><td><b>'+esc(p.brand_name)+' '+esc(p.model)+'</b><div class="sub">'+esc(p.short_description||'')+'</div></td>'
+    +'<td>'+esc(p.category??'—')+'</td>'
+    +'<td class="num">'+money(p.msrp)+'</td>'
+    +'<td class="num">'+(rp.dealer_cost?money(rp.dealer_cost):'<span style="opacity:.4">—</span>')+'</td>'
+    +'<td class="num">'+(margin!=null?margin+'%':'<span style="opacity:.4">—</span>')+'</td>'
+    +'<td>'+(rp.in_stock?'<span class="chip g">In stock</span>':'<span class="chip a">Order</span>')+'</td>'
+    +'<td>'+statusBits.join(' ')+'</td>'
+    +'<td><button class="btn btn-ghost btn-sm" data-edit="'+rp.id+'">Edit</button> <button class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626)" data-remove="'+rp.id+'">Remove</button></td></tr>';
+  }).join('')||'<tr><td colspan="8" class="empty">No products in your catalog yet. Click "Add Product" to browse the PIM.</td></tr>')+'</tbody></table>';
+  $('#addProdBtn').onclick=openAddProductModal;
+  $$('[data-cat]').forEach(b=>{b.onclick=()=>{window._prodCatFilter=b.dataset.cat;renderProducts();};});
+  $$('[data-remove]').forEach(b=>{b.onclick=async()=>{if(!confirm('Remove this product from your catalog?'))return;await sb.from('retailer_products').delete().eq('id',b.dataset.remove);renderProducts();};});
+  $$('[data-edit]').forEach(b=>{b.onclick=()=>{const rp=rows.find(r=>r.id===b.dataset.edit);if(rp)openEditProductModal(rp);};});
 }
-async function openPimLinkModal(productId,brand,model){
-  const{data:matches}=await sb.from('aiq_products').select('id,brand_name,model,category,msrp,market').ilike('brand_name','%'+brand+'%').limit(20);
-  openModal('<h2>Link to Product IQ PIM</h2><p class="sub" style="margin-bottom:12px">Searching for "'+esc(brand)+'" — pick the matching model, or search again.</p>'
-    +'<input id="pim-link-search" placeholder="Search brand or model…" value="'+esc(brand)+' '+esc(model)+'" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px">'
-    +'<div id="pim-link-results" style="max-height:320px;overflow-y:auto">'+((matches??[]).map(m=>'<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="'+m.id+'"><b>'+esc(m.brand_name)+' '+esc(m.model)+'</b><div class="sub">'+esc(m.category??'')+' · '+esc(m.market)+' · '+money(m.msrp)+'</div></div>').join('')||'<div class="empty">No matches found.</div>')+'</div>'
-    +'<div class="sheet-actions"><button class="btn btn-ghost" id="plm_cancel">Cancel</button></div>');
-  $('#plm_cancel').onclick=closeModal;
-  const doSearch=async()=>{
-    const q2=$('#pim-link-search').value.trim();
-    const pimUrl=SUPABASE_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,market&or=(brand_name.ilike.*'+encodeURIComponent(q2)+'*,model.ilike.*'+encodeURIComponent(q2)+'*)&limit=20';
-    const pimResp=await fetch(pimUrl,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});const res=await pimResp.json();
-    $('#pim-link-results').innerHTML=(res??[]).map(m=>'<div class="rowbtn" style="padding:8px;border-bottom:1px solid var(--line,#eee);cursor:pointer" data-pim-id="'+m.id+'"><b>'+esc(m.brand_name)+' '+esc(m.model)+'</b><div class="sub">'+esc(m.category??'')+' · '+esc(m.market)+' · '+money(m.msrp)+'</div></div>').join('')||'<div class="empty">No matches found.</div>';
-    attachPimResultHandlers(productId);
+
+function openEditProductModal(rp){
+  const p=rp.aiq_products;
+  openModal('<h2>Edit Business Data</h2><p class="sub" style="margin-bottom:14px"><b>'+esc(p.brand_name)+' '+esc(p.model)+'</b> · PIM MSRP: '+money(p.msrp)+'</p>'
+  +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
+  +'<div><label class="lbl">Dealer Cost</label><input id="ep_cost" type="number" step="0.01" value="'+(rp.dealer_cost||'')+'" placeholder="e.g. 450.00" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'
+  +'<div><label class="lbl">Margin %</label><input id="ep_margin" type="number" step="0.1" value="'+(rp.margin_pct||'')+'" placeholder="Auto from cost" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px"></div>'
+  +'</div>'
+  +'<div style="margin-bottom:14px"><label class="lbl">Stock Status</label><select id="ep_stock" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px"><option value="true"'+(rp.in_stock?' selected':'')+'>In Stock</option><option value="false"'+(!rp.in_stock?' selected':'')+'>Special Order</option></select></div>'
+  +'<div style="margin-bottom:14px"><label class="lbl">Notes</label><textarea id="ep_notes" rows="2" placeholder="Internal notes…" style="width:100%;padding:8px;border:1px solid var(--line);border-radius:8px">'+(rp.notes||'')+'</textarea></div>'
+  +'<div class="sheet-actions"><button class="btn btn-ghost" id="ep_cancel">Cancel</button><button class="btn btn-primary" id="ep_save">Save</button></div>');
+  $('#ep_cancel').onclick=closeModal;
+  $('#ep_save').onclick=async()=>{
+    const cost=$('#ep_cost').value?Number($('#ep_cost').value):null;
+    const margin=$('#ep_margin').value?Number($('#ep_margin').value):null;
+    await sb.from('retailer_products').update({dealer_cost:cost,margin_pct:margin,in_stock:$('#ep_stock').value==='true',notes:$('#ep_notes').value.trim()||null}).eq('id',rp.id);
+    closeModal();renderProducts();toast('Product updated','ok');
   };
-  $('#pim-link-search').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();doSearch();}});
-  attachPimResultHandlers(productId);
 }
-function attachPimResultHandlers(productId){
-  $$('[data-pim-id]').forEach(row=>{row.onclick=async()=>{await sb.from('products').update({aiq_product_id:row.dataset.pimId}).eq('id',productId);closeModal();renderProducts();};});
+
+async function openAddProductModal(){
+  openModal('<h2>Add Product from PIM</h2><p class="sub" style="margin-bottom:12px">Search the Product IQ database to add models to your store catalog.</p>'
+  +'<input id="ap_search" placeholder="Search brand or model…" style="width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px">'
+  +'<div id="ap_results" style="max-height:360px;overflow-y:auto"><div class="empty">Type a brand or model number to search.</div></div>'
+  +'<div class="sheet-actions"><button class="btn btn-ghost" id="ap_cancel">Cancel</button></div>');
+  $('#ap_cancel').onclick=closeModal;
+  const doSearch=async()=>{
+    const q=$('#ap_search').value.trim();if(!q)return;
+    const url=SUPABASE_URL+'/rest/v1/aiq_products?select=id,brand_name,model,category,msrp,market,short_description&or=(brand_name.ilike.*'+encodeURIComponent(q)+'*,model.ilike.*'+encodeURIComponent(q)+'*)&limit=30&order=brand_name,model';
+    const resp=await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(await sb.auth.getSession()).data.session.access_token}});
+    const res=await resp.json();
+    $('#ap_results').innerHTML=(res??[]).map(m=>'<div class="rowbtn" style="padding:10px;border-bottom:1px solid var(--line,#eee);cursor:pointer;display:flex;justify-content:space-between;align-items:center" data-add-pim="'+m.id+'">'
+    +'<div><b>'+esc(m.brand_name)+' '+esc(m.model)+'</b><div class="sub">'+esc(m.category??'')+' · '+esc(m.market)+' · '+money(m.msrp)+'</div></div>'
+    +'<button class="btn btn-primary btn-sm" style="flex-shrink:0">Add</button></div>').join('')||'<div class="empty">No matching products found.</div>';
+    $$('[data-add-pim]').forEach(row=>{const btn=row.querySelector('button');btn.onclick=async(e)=>{e.stopPropagation();btn.disabled=true;btn.textContent='Adding…';
+      const{error}=await sb.from('retailer_products').upsert({organization_id:currentOrg.id,aiq_product_id:row.dataset.addPim,in_stock:true},{onConflict:'organization_id,aiq_product_id'});
+      if(error){toast(error.message,'err');btn.disabled=false;btn.textContent='Add';}
+      else{btn.textContent='✓ Added';btn.style.background='#22c55e';setTimeout(()=>{btn.textContent='Add';btn.disabled=false;btn.style.background='';},1500);}
+    };});
+  };
+  let searchTimer;$('#ap_search').addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(doSearch,350);});
+  $('#ap_search').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(searchTimer);doSearch();}});
+  $('#ap_search').focus();
 }
 
 // ===== TASKS =====
