@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product IQ — PIM Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --indigo:#4f46e5;--indigo-light:#6366f1;--indigo-dark:#4338ca;
+  --cyan:#06b6d4;--emerald:#10b981;--amber:#f59e0b;--rose:#f43f5e;
+  --navy:#0f1f3d;
+  --s50:#f8fafc;--s100:#f1f5f9;--s200:#e2e8f0;--s300:#cbd5e1;
+  --s400:#94a3b8;--s500:#64748b;--s600:#475569;--s700:#334155;--s800:#1e293b;
+  --radius:10px;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--s50);color:var(--s800);min-height:100vh;display:flex}
+a{color:var(--indigo);text-decoration:none}
+
+/* Sidebar */
+.sidebar{width:240px;background:#fff;border-right:1px solid var(--s200);display:flex;flex-direction:column;position:fixed;top:0;bottom:0;z-index:50}
+.sb-logo{padding:20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--s200)}
+.sb-logo .mark{width:32px;height:32px;background:linear-gradient(135deg,var(--indigo),var(--cyan));border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:12px}
+.sb-logo span{font-weight:700;font-size:15px;color:var(--navy)}
+.sb-nav{flex:1;padding:12px;overflow-y:auto}
+.sb-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--s400);padding:16px 12px 6px;margin-top:4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--s600);cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.sb-item:hover{background:var(--s100);color:var(--s800)}
+.sb-item.active{background:rgba(79,70,229,.08);color:var(--indigo);font-weight:600}
+.sb-item .icon{width:18px;text-align:center;font-size:14px}
+.sb-user{padding:16px;border-top:1px solid var(--s200);display:flex;align-items:center;gap:10px}
+.sb-user .avatar{width:32px;height:32px;border-radius:50%;background:var(--indigo);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.sb-user .uinfo{flex:1;min-width:0}
+.sb-user .uname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user .urole{font-size:11px;color:var(--s400)}
+.sb-user .logout{padding:4px 10px;border:1px solid var(--s200);border-radius:6px;font-size:11px;color:var(--s500);cursor:pointer;background:#fff;font-family:inherit;transition:all .15s}
+.sb-user .logout:hover{border-color:var(--rose);color:var(--rose)}
+
+/* Main */
+.main{margin-left:240px;flex:1;min-height:100vh}
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--s200);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:40}
+.topbar h2{font-size:16px;font-weight:700;color:var(--navy)}
+.topbar .search{padding:8px 14px;border:1px solid var(--s200);border-radius:8px;font-size:13px;width:300px;outline:none;font-family:inherit;background:var(--s50)}
+.topbar .search:focus{border-color:var(--indigo);background:#fff}
+.content{padding:24px}
+
+/* Dashboard */
+.dash-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--s200);border-radius:var(--radius);padding:20px}
+.stat-card .stat-num{font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-.02em}
+.stat-card .stat-label{font-size:12px;color:var(--s500);margin-top:2px}
+.stat-card .stat-change{font-size:11px;font-weight:600;margin-top:8px}
+.stat-card .stat-change.up{color:var(--emerald)}
+.stat-card .stat-change.down{color:var(--rose)}
+
+/* Tables */
+.panel{background:#fff;border:1px solid var(--s200);border-radius:var(--radius);margin-bottom:24px}
+.panel-header{padding:16px 20px;border-bottom:1px solid var(--s200);display:flex;align-items:center;justify-content:space-between}
+.panel-header h3{font-size:15px;font-weight:700;color:var(--navy)}
+.panel-header .badge{padding:3px 10px;background:var(--s100);border-radius:100px;font-size:12px;font-weight:600;color:var(--s500)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 16px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--s400);background:var(--s50);border-bottom:1px solid var(--s200)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--s100)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--s50)}
+.pill{display:inline-block;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:600}
+.pill-green{background:rgba(16,185,129,.1);color:var(--emerald)}
+.pill-blue{background:rgba(79,70,229,.1);color:var(--indigo)}
+.pill-amber{background:rgba(245,158,11,.1);color:var(--amber)}
+.pill-gray{background:var(--s100);color:var(--s500)}
+
+/* Category breakdown */
+.cat-bar{display:flex;align-items:center;gap:12px;padding:8px 0}
+.cat-bar .cat-name{width:140px;font-size:12px;font-weight:500;color:var(--s600)}
+.cat-bar .bar-track{flex:1;height:8px;background:var(--s100);border-radius:4px;overflow:hidden}
+.cat-bar .bar-fill{height:100%;border-radius:4px;background:var(--indigo);transition:width .6s}
+.cat-bar .cat-count{width:50px;text-align:right;font-size:12px;font-weight:600;color:var(--s700)}
+
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--s400);font-size:14px}
+
+/* Page views */
+.page{display:none}
+.page.active{display:block}
+
+@media(max-width:768px){
+  .sidebar{display:none}
+  .main{margin-left:0}
+  .dash-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-logo"><div class="mark">IQ</div><span>Product IQ</span></div>
+  <nav class="sb-nav">
+    <div class="sb-section">Overview</div>
+    <button class="sb-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</button>
+
+    <div class="sb-section">Catalog</div>
+    <button class="sb-item" onclick="showPage('products')"><span class="icon">📦</span> Products</button>
+    <button class="sb-item" onclick="showPage('brands')"><span class="icon">🏷️</span> Brands</button>
+    <button class="sb-item" onclick="showPage('categories')"><span class="icon">📂</span> Categories</button>
+
+    <div class="sb-section">Intelligence</div>
+    <button class="sb-item" onclick="showPage('prices')"><span class="icon">💰</span> Retailer Prices</button>
+    <button class="sb-item" onclick="showPage('recalls')"><span class="icon">⚠️</span> Recalls</button>
+
+    <div class="sb-section">Assets</div>
+    <button class="sb-item" onclick="showPage('assets')"><span class="icon">🖼️</span> Digital Assets</button>
+    <button class="sb-item" onclick="showPage('cad')"><span class="icon">📐</span> CAD / BIM</button>
+
+    <div class="sb-section">Network</div>
+    <button class="sb-item" onclick="showPage('retailers')"><span class="icon">🏪</span> Retailers</button>
+  </nav>
+  <div class="sb-user">
+    <div class="avatar" id="userAvatar">?</div>
+    <div class="uinfo"><div class="uname" id="userName">Loading...</div><div class="urole" id="userRole">—</div></div>
+    <button class="logout" onclick="doLogout()">Out</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">Dashboard</h2>
+    <input type="text" class="search" placeholder="Search products by model, brand, or category..." id="globalSearch" onkeydown="if(event.key==='Enter')searchProducts()">
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="content page active" id="page-dashboard">
+    <div class="dash-grid" id="statCards"><div class="loading">Loading stats...</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="panel">
+        <div class="panel-header"><h3>Products by Category</h3></div>
+        <div style="padding:16px 20px" id="categoryBars"><div class="loading">Loading...</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><h3>Recent Products</h3></div>
+        <div id="recentProducts"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="content page" id="page-products">
+    <div class="panel">
+      <div class="panel-header"><h3>Product Catalog</h3><span class="badge" id="productCount">—</span></div>
+      <div id="productTable"><div class="loading">Loading products...</div></div>
+    </div>
+  </div>
+
+  <!-- BRANDS -->
+  <div class="content page" id="page-brands">
+    <div class="panel">
+      <div class="panel-header"><h3>Brand Directory</h3><span class="badge" id="brandCount">—</span></div>
+      <div id="brandTable"><div class="loading">Loading brands...</div></div>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="content page" id="page-categories">
+    <div class="panel">
+      <div class="panel-header"><h3>Category Breakdown</h3></div>
+      <div style="padding:20px" id="catBreakdown"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- PRICES -->
+  <div class="content page" id="page-prices">
+    <div class="panel">
+      <div class="panel-header"><h3>Retailer Price Tracking</h3><span class="badge" id="priceCount">—</span></div>
+      <div id="priceTable"><div class="loading">Loading prices...</div></div>
+    </div>
+  </div>
+
+  <!-- RECALLS -->
+  <div class="content page" id="page-recalls">
+    <div class="panel">
+      <div class="panel-header"><h3>Active Recalls</h3><span class="badge" id="recallCount">—</span></div>
+      <div id="recallTable"><div class="loading">Loading recalls...</div></div>
+    </div>
+  </div>
+
+  <!-- ASSETS / CAD / RETAILERS — placeholders -->
+  <div class="content page" id="page-assets"><div class="panel"><div class="panel-header"><h3>Digital Asset Management</h3></div><div style="padding:40px;text-align:center;color:var(--s400)">DAM browser — coming in next build</div></div></div>
+  <div class="content page" id="page-cad"><div class="panel"><div class="panel-header"><h3>CAD / BIM Sources</h3><span class="badge">158 brands</span></div><div style="padding:40px;text-align:center;color:var(--s400)">CAD directory — coming in next build</div></div></div>
+  <div class="content page" id="page-retailers"><div class="panel"><div class="panel-header"><h3>Retailer Network</h3></div><div style="padding:40px;text-align:center;color:var(--s400)">Retailer directory — coming in next build</div></div></div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Auth check
+const { data: { session } } = await sb.auth.getSession();
+if (!session) { window.location.href = 'index.html'; }
+
+const user = session.user;
+document.getElementById('userName').textContent = user.email.split('@')[0];
+document.getElementById('userAvatar').textContent = user.email[0].toUpperCase();
+document.getElementById('userRole').textContent = 'Platform Admin';
+
+window.doLogout = async function() {
+  await sb.auth.signOut();
+  window.location.href = 'index.html';
+};
+
+// ── Dashboard ──
+async function loadDashboard() {
+  const [prodRes, brandRes, retRes, recallRes] = await Promise.all([
+    sb.from('aiq_products').select('id', { count: 'exact', head: true }),
+    sb.from('brand_catalog').select('id', { count: 'exact', head: true }),
+    sb.from('aiq_retailers').select('id', { count: 'exact', head: true }).eq('status','active'),
+    sb.from('aiq_recalls').select('id', { count: 'exact', head: true })
+  ]);
+
+  document.getElementById('statCards').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${(prodRes.count||0).toLocaleString()}</div><div class="stat-label">Products</div></div>
+    <div class="stat-card"><div class="stat-num">${brandRes.count||0}</div><div class="stat-label">Brands</div></div>
+    <div class="stat-card"><div class="stat-num">${retRes.count||0}</div><div class="stat-label">Active Retailers</div></div>
+    <div class="stat-card"><div class="stat-num">${recallRes.count||0}</div><div class="stat-label">Active Recalls</div></div>
+  `;
+
+  // Category bars
+  const { data: cats } = await sb.rpc('', {}).catch(() => ({ data: null }));
+  // fallback: query directly
+  const { data: catData } = await sb.from('aiq_products').select('category').not('category','is',null);
+  if (catData) {
+    const counts = {};
+    catData.forEach(r => { counts[r.category] = (counts[r.category]||0) + 1; });
+    const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+    const max = sorted[0]?.[1] || 1;
+    document.getElementById('categoryBars').innerHTML = sorted.map(([cat, cnt]) =>
+      `<div class="cat-bar"><span class="cat-name">${cat}</span><div class="bar-track"><div class="bar-fill" style="width:${(cnt/max*100).toFixed(1)}%"></div></div><span class="cat-count">${cnt}</span></div>`
+    ).join('');
+  }
+
+  // Recent products
+  const { data: recent } = await sb.from('aiq_products').select('brand_name,model,category,subcategory,created_at').order('created_at',{ascending:false}).limit(8);
+  if (recent) {
+    document.getElementById('recentProducts').innerHTML = `<table><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Subcategory</th></tr></thead><tbody>${
+      recent.map(r => `<tr><td>${r.brand_name}</td><td><strong>${r.model||'—'}</strong></td><td>${r.category||'—'}</td><td><span class="pill pill-blue">${r.subcategory||'—'}</span></td></tr>`).join('')
+    }</tbody></table>`;
+  }
+}
+
+// ── Products ──
+async function loadProducts(search) {
+  let q = sb.from('aiq_products').select('brand_name,model,category,subcategory,msrp,status,created_at').order('brand_name').limit(100);
+  if (search) {
+    q = sb.from('aiq_products').select('brand_name,model,category,subcategory,msrp,status,created_at')
+      .or(`model.ilike.%${search}%,brand_name.ilike.%${search}%,category.ilike.%${search}%`)
+      .order('brand_name').limit(100);
+  }
+  const { data, count } = await q;
+  const { count: total } = await sb.from('aiq_products').select('id',{count:'exact',head:true});
+  document.getElementById('productCount').textContent = `${total?.toLocaleString()||'—'} total`;
+  if (data) {
+    document.getElementById('productTable').innerHTML = `<table><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Subcategory</th><th>MSRP</th><th>Status</th></tr></thead><tbody>${
+      data.map(r => `<tr><td>${r.brand_name}</td><td><strong>${r.model||'—'}</strong></td><td>${r.category||'—'}</td><td><span class="pill pill-blue">${r.subcategory||'—'}</span></td><td>${r.msrp?'$'+Number(r.msrp).toLocaleString():'—'}</td><td><span class="pill ${r.status==='active'?'pill-green':'pill-gray'}">${r.status}</span></td></tr>`).join('')
+    }</tbody></table>`;
+  }
+}
+
+// ── Brands ──
+async function loadBrands() {
+  const { data } = await sb.from('brand_catalog').select('id,name,category,canada_website,us_website,canada_email,contact_status').order('name').limit(200);
+  document.getElementById('brandCount').textContent = data?.length || '—';
+  if (data) {
+    document.getElementById('brandTable').innerHTML = `<table><thead><tr><th>Brand</th><th>Category</th><th>Website</th><th>Contact</th><th>Status</th></tr></thead><tbody>${
+      data.map(r => `<tr><td><strong>${r.name}</strong></td><td>${r.category||'—'}</td><td>${r.canada_website||r.us_website?`<a href="${r.canada_website||r.us_website}" target="_blank">Visit</a>`:'—'}</td><td>${r.canada_email||'—'}</td><td><span class="pill ${r.contact_status==='verified'?'pill-green':'pill-gray'}">${r.contact_status||'—'}</span></td></tr>`).join('')
+    }</tbody></table>`;
+  }
+}
+
+// ── Categories ──
+async function loadCategories() {
+  const { data } = await sb.from('aiq_products').select('category,subcategory');
+  if (data) {
+    const tree = {};
+    data.forEach(r => {
+      if (!r.category) return;
+      if (!tree[r.category]) tree[r.category] = {};
+      const sc = r.subcategory || 'Uncategorized';
+      tree[r.category][sc] = (tree[r.category][sc]||0) + 1;
+    });
+    const sorted = Object.entries(tree).sort((a,b) => {
+      const ta = Object.values(a[1]).reduce((s,v)=>s+v,0);
+      const tb = Object.values(b[1]).reduce((s,v)=>s+v,0);
+      return tb - ta;
+    });
+    document.getElementById('catBreakdown').innerHTML = sorted.map(([cat, subs]) => {
+      const total = Object.values(subs).reduce((s,v)=>s+v,0);
+      const subEntries = Object.entries(subs).sort((a,b)=>b[1]-a[1]);
+      return `<div style="margin-bottom:20px"><div style="font-weight:700;font-size:14px;margin-bottom:8px">${cat} <span style="color:var(--s400);font-weight:400">(${total})</span></div>${
+        subEntries.map(([sc,cnt]) => `<div style="display:flex;align-items:center;gap:8px;padding:3px 0 3px 16px;font-size:13px;color:var(--s600)"><span style="width:200px">${sc}</span><span style="font-weight:600">${cnt}</span></div>`).join('')
+      }</div>`;
+    }).join('');
+  }
+}
+
+// ── Prices ──
+async function loadPrices() {
+  const { data, count } = await sb.from('pim_retailer_prices').select('*',{count:'exact'}).order('checked_at',{ascending:false}).limit(50);
+  document.getElementById('priceCount').textContent = count || '0';
+  if (data && data.length) {
+    document.getElementById('priceTable').innerHTML = `<table><thead><tr><th>Brand</th><th>Model</th><th>Retailer</th><th>Price</th><th>Regular</th><th>Condition</th><th>Status</th></tr></thead><tbody>${
+      data.map(r => `<tr><td>${r.brand_name}</td><td><strong>${r.model}</strong></td><td>${r.retailer_name}</td><td>${r.price?'$'+Number(r.price).toLocaleString():'—'}</td><td>${r.regular_price?'$'+Number(r.regular_price).toLocaleString():'—'}</td><td><span class="pill pill-amber">${r.condition_normalized||r.condition||'new'}</span></td><td><span class="pill pill-green">${r.listing_status||'active'}</span></td></tr>`).join('')
+    }</tbody></table>`;
+  } else {
+    document.getElementById('priceTable').innerHTML = '<div style="padding:40px;text-align:center;color:var(--s400)">No price data yet — run the scraper to populate</div>';
+  }
+}
+
+// ── Recalls ──
+async function loadRecalls() {
+  const { data, count } = await sb.from('aiq_recalls').select('*',{count:'exact'}).order('created_at',{ascending:false}).limit(30);
+  document.getElementById('recallCount').textContent = count || '0';
+  if (data && data.length) {
+    const cols = Object.keys(data[0]).filter(k => !['id','created_at','updated_at'].includes(k)).slice(0,5);
+    document.getElementById('recallTable').innerHTML = `<table><thead><tr>${cols.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')}</tr></thead><tbody>${
+      data.map(r => `<tr>${cols.map(c=>`<td>${typeof r[c]==='string'?(r[c]||'').substring(0,80):r[c]??'—'}</td>`).join('')}</tr>`).join('')
+    }</tbody></table>`;
+  }
+}
+
+// ── Page routing ──
+const pageLoaders = {
+  dashboard: loadDashboard,
+  products: loadProducts,
+  brands: loadBrands,
+  categories: loadCategories,
+  prices: loadPrices,
+  recalls: loadRecalls
+};
+const loaded = {};
+
+window.showPage = function(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
+  event?.target?.closest('.sb-item')?.classList.add('active');
+  const titles = {dashboard:'Dashboard',products:'Products',brands:'Brands',categories:'Categories',prices:'Retailer Prices',recalls:'Recalls',assets:'Digital Assets',cad:'CAD / BIM',retailers:'Retailers'};
+  document.getElementById('pageTitle').textContent = titles[page] || page;
+  if (pageLoaders[page] && !loaded[page]) { loaded[page] = true; pageLoaders[page](); }
+};
+
+window.searchProducts = function() {
+  const q = document.getElementById('globalSearch').value.trim();
+  if (q) { showPage('products'); loaded.products = false; loadProducts(q); loaded.products = true; }
+};
+
+// Boot
+loadDashboard();
+</script>
+</body>
+</html>
