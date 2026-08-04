@@ -383,10 +383,20 @@ const SUPABASE_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Check if already logged in
-const { data: { session } } = await sb.auth.getSession();
-if (session) {
-  window.location.href = 'pim.html';
+// Check if already logged in — clear stale tokens if they fail
+try {
+  const { data: { session }, error } = await sb.auth.getSession();
+  if (error) {
+    // Stale tokens from old key — clear them
+    await sb.auth.signOut();
+    localStorage.removeItem('sb-fumwwhyozeouoqscolke-auth-token');
+  } else if (session) {
+    window.location.href = 'pim.html';
+  }
+} catch(e) {
+  // Clear any corrupt auth state
+  await sb.auth.signOut().catch(()=>{});
+  localStorage.removeItem('sb-fumwwhyozeouoqscolke-auth-token');
 }
 
 window.doLogin = async function() {
