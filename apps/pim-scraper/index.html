@@ -466,14 +466,15 @@ async function autoSaveIfEnabled(result) {
 async function saveToPim(idx){
   const r=scrapeResults[idx];if(!r?.data)return;
   const d=r.data;logEntry('Saving '+r.brand+' '+r.model+'…');
+  const num=v=>{if(v==null||v==='')return null;if(typeof v==='number')return v;const s=String(v).replace(/[^\d.\-\/]/g,'');const m=s.match(/[\d.]+/);return m?parseFloat(m[0]):null};
   const{data:br}=await sb.from('brand_catalog').select('id').ilike('brand_name',r.brand).maybeSingle();
   const rec={
     organization_id:'00000000-0000-0000-0000-000000000002',
     brand_name:d.brand_name||r.brand,manufacturer_name:d.manufacturer_name||d.brand_name||r.brand,
     model:d.model||r.model,category:normalizeCategory(d.category),short_description:d.short_description||d.product_name||null,
-    msrp:d.msrp||null,price_currency:d.currency||'CAD',color:d.color||null,finish:d.finish||null,
-    width_inches:d.width_inches||null,height_inches:d.height_inches||null,depth_inches:d.depth_inches||null,
-    weight_lbs:d.weight_lbs||null,capacity_cu_ft:d.capacity_cu_ft||null,voltage:d.voltage||null,
+    msrp:num(d.msrp),price_currency:d.currency||'CAD',color:d.color||null,finish:d.finish||null,
+    width_inches:num(d.width_inches),height_inches:num(d.height_inches),depth_inches:num(d.depth_inches),
+    weight_lbs:num(d.weight_lbs),capacity_cu_ft:num(d.capacity_cu_ft),voltage:d.voltage||null,
     energy_star:d.energy_star||null,specs_json:d.specs||null,
     source_type:'scraper_v2',source_reference:d.source_url||r.url||null,
     source_confidence:r.tier_used===1?0.95:r.tier_used===2?0.80:0.65,
