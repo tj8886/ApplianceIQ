@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.3-2026-08-04"/>
-<!-- VERSION: PIM Scraper v3.3 — Saved sources + auto-save -->
+<meta name="aiq-version" content="pim-scraper-v3.4-2026-08-04"/>
+<!-- VERSION: PIM Scraper v3.4 — Enrich all + re-scrape PIM -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.3</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.4</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -1579,12 +1579,28 @@ function renderEnrich() {
 
   const products=brandIntel.products;
   const lowComp=products.filter(p=>completeness(p)<50).length;
+  const anyIncomplete=products.filter(p=>completeness(p)<100).length;
+  const withSource=products.filter(p=>p.source_reference).length;
   const filled=Object.values(enResults).reduce((s,r)=>s+(r.filled||0),0);
   const avgComp=products.length>0?Math.round(products.reduce((s,p)=>s+completeness(p),0)/products.length):0;
 
-  h+='<div class="controls">';
-  if(isProcessing)h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button><span style="font-size:12px;color:var(--txt2)">Avg completeness: '+avgComp+'% · '+filled+' fields filled this session · ⏳ Processing…</span>';
-  else h+='<button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(lowComp===0?'disabled':'')+'>🧩 Auto-fill '+lowComp+' Incomplete Products</button><span style="font-size:12px;color:var(--txt2)">Avg completeness: '+avgComp+'% · '+filled+' fields filled this session</span>';
+  h+='<div class="stats-row">';
+  h+='<div class="stat-card"><div class="label">Avg Completeness</div><div class="value '+(avgComp>=70?'green':avgComp>=40?'amber':'red')+'">'+avgComp+'%</div></div>';
+  h+='<div class="stat-card"><div class="label">Incomplete</div><div class="value '+(anyIncomplete>0?'amber':'green')+'">'+anyIncomplete+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Under 50%</div><div class="value '+(lowComp>0?'red':'green')+'">'+lowComp+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Have Source URL</div><div class="value">'+withSource+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Fields Filled</div><div class="value green">'+filled+'</div></div>';
+  h+='</div>';
+
+  h+='<div class="controls" style="gap:8px">';
+  if(isProcessing){
+    h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button>';
+    h+='<span style="font-size:12px;color:var(--txt2)">⏳ Processing…</span>';
+  } else {
+    h+='<button class="btn btn-primary" onclick="window.S.enEnrichLow()" '+(lowComp===0?'disabled':'')+'>🧩 Fill Under 50% ('+lowComp+')</button>';
+    h+='<button class="btn btn-primary" style="background:var(--blue)" onclick="window.S.enEnrichAll()" '+(anyIncomplete===0?'disabled':'')+'>🧩 Fill ALL Incomplete ('+anyIncomplete+')</button>';
+    h+='<button class="btn btn-secondary" onclick="window.S.enRescrapeAll()" '+(withSource===0?'disabled':'')+'>🔄 Re-scrape PIM for Updates ('+withSource+')</button>';
+  }
   h+='</div>';
 
   h+='<div class="log-panel'+(Object.keys(enResults).length>0?' show':'')+'" id="scrapeLog"></div>';
@@ -2140,7 +2156,98 @@ window.S = {
     }
     isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};renderTab();
   },
-  enPreview(pid){
+  async enEnrichAll(){
+    if(!brandIntel)return;
+    const incomplete=brandIntel.products.filter(p=>completeness(p)<100);
+    if(!incomplete.length){logEntry('All products are 100% complete!','ok');return}
+    isProcessing=true;stopRequested=false;
+    scrapeProgress={current:0,total:incomplete.length,label:'Enrich All'};
+    logEntry('Enriching ALL '+incomplete.length+' incomplete products…','ok');
+    renderTab();
+    let totalFilled=0;
+    for(let i=0;i<incomplete.length;i++){
+      if(stopRequested){logEntry('⏹ Stopped after '+i+'/'+incomplete.length,'err');break}
+      scrapeProgress.current=i+1;updateHeaderProgress();
+      const r=await enrichOne(incomplete[i]);
+      enResults[incomplete[i].id]=r;
+      if(r.filled>0){
+        totalFilled+=r.filled;
+        // Auto-save enrichments
+        await window.S.enSave(incomplete[i].id);
+      }
+      if(i%10===0)renderTab(); // update UI every 10
+      await new Promise(r=>setTimeout(r,500));
+    }
+    logEntry('✅ Enrichment complete: '+totalFilled+' fields filled across '+incomplete.length+' products','ok');
+    isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};
+    // Reload brand intel to reflect changes
+    await loadBrandIntel(selectedBrand);
+  },
+  async enRescrapeAll(){
+    if(!brandIntel)return;
+    const withSource=brandIntel.products.filter(p=>p.source_reference);
+    if(!withSource.length){logEntry('No products have source URLs to re-scrape','err');return}
+    isProcessing=true;stopRequested=false;
+    scrapeProgress={current:0,total:withSource.length,label:'Re-scrape'};
+    logEntry('🔄 Re-scraping '+withSource.length+' products from their source URLs…','ok');
+    renderTab();
+    let updated=0,unchanged=0;
+    for(let i=0;i<withSource.length;i++){
+      if(stopRequested){logEntry('⏹ Stopped after '+i+'/'+withSource.length,'err');break}
+      scrapeProgress.current=i+1;updateHeaderProgress();
+      const p=withSource[i];
+      logEntry('Re-scraping: '+p.model+' → '+p.source_reference);
+      // Scrape the source URL
+      let liveData=await callTier1({url:p.source_reference});
+      if(!liveData||(!liveData.found&&!liveData._partial)){
+        liveData=await callTier1({query:p.brand_name+' '+p.model,market:p.market||'CA'});
+      }
+      if(!liveData||(!liveData.found&&!liveData._partial)){
+        logEntry('  → could not reach source','err');unchanged++;continue;
+      }
+      // Compare and update changed fields
+      const updates={};
+      const checkFields={short_description:'short_description',msrp:'msrp',color:'color',finish:'finish',
+        width_inches:'width_inches',height_inches:'height_inches',depth_inches:'depth_inches',
+        weight_lbs:'weight_lbs',capacity_cu_ft:'capacity_cu_ft',voltage:'voltage',energy_star:'energy_star'};
+      for(const[dbField,scrapeField] of Object.entries(checkFields)){
+        const live=liveData[scrapeField];
+        if(live!==undefined&&live!==null&&live!==''&&String(live)!==String(p[dbField]||'')){
+          updates[dbField]=live;
+        }
+      }
+      // Fill any missing fields
+      for(const[dbField,scrapeField] of Object.entries(checkFields)){
+        if((p[dbField]===null||p[dbField]===undefined||p[dbField]==='')&&liveData[scrapeField]){
+          updates[dbField]=liveData[scrapeField];
+        }
+      }
+      // Update specs
+      if(liveData.specs&&typeof liveData.specs==='object'&&Object.keys(liveData.specs).length>0){
+        const existing=typeof p.specs_json==='string'?JSON.parse(p.specs_json||'{}'):(p.specs_json||{});
+        const merged={...existing,...liveData.specs};
+        if(JSON.stringify(merged)!==JSON.stringify(existing))updates.specs_json=merged;
+      }
+      // Update features
+      if(liveData.features&&liveData.features.length>0&&!p.features_html){
+        updates.features_html='<ul>'+liveData.features.map(f=>'<li>'+f+'</li>').join('')+'</ul>';
+      }
+      // Update description
+      if(liveData.product_description&&!p.long_description){
+        updates.long_description=liveData.product_description;
+      }
+      if(Object.keys(updates).length>0){
+        updates.source_extracted_at=new Date().toISOString();
+        const{error}=await sb.from('aiq_products').update(updates).eq('id',p.id);
+        if(error){logEntry('  → update error: '+error.message,'err')}
+        else{updated++;logEntry('  → updated '+Object.keys(updates).length+' fields ✓','ok')}
+      }else{unchanged++;logEntry('  → no changes','ok')}
+      await new Promise(r=>setTimeout(r,300));
+    }
+    logEntry('✅ Re-scrape done: '+updated+' updated, '+unchanged+' unchanged','ok');
+    isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};
+    await loadBrandIntel(selectedBrand);
+  },
     const r=enResults[pid];if(!r)return;
     const p=r.product;
     document.getElementById('modalTitle').textContent='Enrich: '+p.brand_name+' '+p.model;
