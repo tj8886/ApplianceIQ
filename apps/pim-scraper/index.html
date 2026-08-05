@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3-2026-08-04"/>
-<!-- VERSION: PIM Scraper v3 — Built 2026-08-04 — DO NOT REPLACE WITH V1 -->
+<meta name="aiq-version" content="pim-scraper-v3.1-2026-08-04"/>
+<!-- VERSION: PIM Scraper v3.1 — Built 2026-08-04 — Parallel scraping, resume, accessories fix -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.1</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -626,16 +626,21 @@ async function discoverBrand(brandName) {
 }
 
 /* ═══ APPLIANCE RELEVANCE FILTER ═══ */
-const EXCLUDE_TERMS = ['bathroom fan','bath fan','ceiling fan','air purifier','humidifier','dehumidifier','water heater','water cooler','water dispenser','furnace','air conditioner','thermostat','toaster','blender','kettle','food processor','stand mixer','coffee maker','slow cooker','vacuum','floor care','iron press','steamer iron','hair dryer','shaver','replacement part','handle kit','knob kit','trim kit','filler panel','stacking kit','door panel kit','hose kit','bracket kit','gasket kit','element kit','filter pack','pedestal kit','wok ring','touch-up paint','descaler kit'];
+// Only exclude truly non-appliance items. Parts & accessories (handles, filters, trim kits, etc.)
+// ARE relevant — they get scraped and classified as 'parts_accessories' by classifySegment()
+const EXCLUDE_TERMS = ['bathroom fan','bath fan','ceiling fan','air purifier','humidifier','dehumidifier','water heater','water cooler','water dispenser','furnace','air conditioner','thermostat','toaster','blender','kettle','food processor','stand mixer','coffee maker','slow cooker','vacuum','floor care','iron press','steamer iron','hair dryer','shaver'];
+const ACCESSORY_TERMS = ['replacement part','handle kit','knob kit','trim kit','filler panel','stacking kit','door panel kit','hose kit','bracket kit','gasket kit','element kit','filter pack','pedestal kit','wok ring','touch-up paint','descaler kit','water filter','door panel','handle','grate set','drip pan','storage drawer','crisper','shelf','rack','light bulb','cleaner'];
 const INCLUDE_TERMS = ['refrigerat','freezer','range','oven','cooktop','rangetop','dishwasher','washer','dryer','laundry','microwave','hood','range hood','wine','beverage','ice maker','garbage disposal','trash compact','warming drawer','grill','smoker','pizza oven','undercounter','freestanding','slide-in','built-in','french door','side-by-side','front load','top load','convection','induction'];
 let appliancesOnly = true;
 
 function classifyRelevance(data) {
   if (!appliancesOnly) return { relevant: true };
   const title = ((data.product_name||'') + ' ' + (data.category||'')).toLowerCase();
-  // Check INCLUDE first — if it's clearly an appliance, it IS relevant regardless of description words
+  // Check INCLUDE first — if it's clearly an appliance, it IS relevant
   for (const term of INCLUDE_TERMS) { if (title.includes(term)) return { relevant: true }; }
-  // Then check EXCLUDE against title only (not description, which contains feature words like sensor/drawer/element)
+  // Accessories ARE relevant — classify as accessory but still scrape
+  for (const term of ACCESSORY_TERMS) { if (title.includes(term)) return { relevant: true, accessory: true }; }
+  // Only exclude truly non-appliance items
   for (const term of EXCLUDE_TERMS) { if (title.includes(term)) return { relevant: false, reason: term }; }
   return { relevant: true };
 }
@@ -1151,19 +1156,28 @@ function renderDiscover(){
     const newOnes=dr.results.filter(r=>!r.in_pim);
     const existing=dr.results.filter(r=>r.in_pim);
 
+    // Check localStorage for previously scraped URLs (resume cache)
+    let resumedCount=0;
+    try{
+      const saved=JSON.parse(localStorage.getItem('aiq_scraped_'+selectedBrand)||'{}');
+      if(saved.urls&&saved.brand===selectedBrand)resumedCount=saved.urls.filter(u=>newOnes.some(r=>r.url===u)).length;
+    }catch(_){}
+
     h+='<div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap">';
     h+='<span style="font-size:14px;font-weight:700">Discovered '+dr.total+' URLs</span>';
     h+='<span class="tier-badge t1">'+newOnes.length+' new</span>';
     h+='<span class="tier-badge tu">'+existing.length+' in PIM</span>';
     if(dr.filtered_count>0)h+='<span style="font-size:11px;color:var(--txt2)">'+dr.filtered_count+' non-appliance filtered out</span>';
     if(dr.has_sitemap)h+='<span style="font-size:11px;color:var(--txt2)">via sitemap</span>';
-    const scrapedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url)).length;
+    const scrapedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url&&sr.status!=='pending')).length;
+    const totalDone=Math.max(scrapedCount,resumedCount);
     const unsavedDisc=newOnes.filter(r=>{const sr=scrapeResults.find(s=>s.url===r.url);return sr&&sr.data&&!sr._saved}).length;
-    if(scrapedCount>0)h+='<span style="font-size:11px;color:var(--accent)">'+scrapedCount+' scraped</span>';
+    if(totalDone>0)h+='<span style="font-size:11px;color:var(--accent)">'+totalDone+' scraped'+(resumedCount>scrapedCount?' ('+resumedCount+' cached)':'')+'</span>';
     h+='<div style="margin-left:auto;display:flex;gap:8px">';
+    if(resumedCount>0)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.clearResumeCache()" title="Clear cached progress to re-scrape all">🔄 Reset Cache</button>';
     if(unsavedDisc>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveAll()">💾 Save All ('+unsavedDisc+')</button>';
     if(isProcessing)h+='<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="window.S.requestStop()"'+(stopRequested?' disabled':'')+'>⏹ '+(stopRequested?'Stopping…':'Stop')+'</button>';
-    else if(newOnes.length>scrapedCount)h+='<button class="btn btn-sm btn-primary" onclick="window.S.scrapeDiscovered()">🚀 Scrape '+(newOnes.length-scrapedCount)+' Remaining</button>';
+    else{const remaining=newOnes.length-totalDone;if(remaining>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.scrapeDiscovered()">🚀 Scrape '+remaining+' Remaining</button>';else h+='<span style="font-size:12px;color:var(--accent);font-weight:600">✅ All done</span>';}
     h+='</div></div>';
 
     if(newOnes.length>0){
@@ -1171,12 +1185,15 @@ function renderDiscover(){
       for(let i=0;i<newOnes.length;i++){
         const r=newOnes[i];
         const scraped=scrapeResults.find(sr=>sr.url===r.url);
+        // Check localStorage cache for previously scraped
+        let cachedDone=false;
+        if(!scraped){try{const saved=JSON.parse(localStorage.getItem('aiq_scraped_'+selectedBrand)||'{}');if(saved.urls&&saved.urls.includes(r.url))cachedDone=true}catch(_){}}
         const domain=r.url.match(/\/\/([^/]+)/)?.[1]||'';
-        h+='<tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="'+esc(r.url)+'" target="_blank" style="color:var(--blue);font-size:12px">'+esc(domain+'/…'+(r.url.split('/').pop()||''))+'</a></td>';
+        h+='<tr style="'+(cachedDone?'opacity:.5':'')+'"><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="'+esc(r.url)+'" target="_blank" style="color:var(--blue);font-size:12px">'+esc(domain+'/…'+(r.url.split('/').pop()||''))+'</a></td>';
         h+='<td class="model-cell">'+(r.model?esc(r.model):'<span style="color:var(--txt2)">—</span>')+'</td>';
         h+='<td style="font-size:11px;color:var(--txt2)">'+r.source+'</td>';
         h+='<td>';
-        if(scraped){
+        if(scraped&&!scraped._resumed){
           const sc=scraped.status==='ok'?'ok':scraped.status==='partial'?'partial':scraped.status==='fail'?'fail':'pending';
           h+='<span class="completeness '+(sc==='ok'?'high':sc==='partial'?'med':'low')+'">';
           if(sc==='pending')h+='⏳ scraping';
@@ -1186,15 +1203,17 @@ function renderDiscover(){
             h+='⚠ '+(fd.length?fd.join(', '):'basic data');
           } else h+='✕ failed';
           h+='</span>';
+        } else if(cachedDone||scraped?._resumed){
+          h+='<span style="font-size:11px;color:var(--txt2)">✓ previously scraped</span>';
         } else {
           h+='<span style="font-size:11px;color:var(--txt2)">ready</span>';
         }
         h+='</td><td>';
-        if(!scraped){
+        if(!scraped&&!cachedDone){
           h+='<button class="btn btn-sm btn-secondary" onclick="window.S.scrapeUrl(\''+esc(r.url).replace(/'/g,"\\'")+'\')">Scrape</button>';
-        } else if(scraped.data && !scraped._saved){
+        } else if(scraped&&scraped.data && !scraped._saved){
           h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+scrapeResults.indexOf(scraped)+')">Save</button>';
-        } else if(scraped._saved){
+        } else if((scraped&&scraped._saved)||cachedDone){
           h+='<span style="font-size:11px;color:var(--accent)">✓</span>';
         }
         h+='</td></tr>';
@@ -1437,6 +1456,7 @@ window.S = {
   toggleAuto(){autoSave=!autoSave},
   toggleAppliancesOnly(){appliancesOnly=!appliancesOnly;if(selectedBrand&&currentTab==='discover')discoverBrand(selectedBrand);else renderTab()},
   clearResults(){scrapeResults=[];logEntries=[];sessionCostTotal=0;document.getElementById('sessionCost').textContent='$0.00';renderTab()},
+  clearResumeCache(){if(selectedBrand){localStorage.removeItem('aiq_scraped_'+selectedBrand);logEntry('Resume cache cleared for '+selectedBrand,'ok');scrapeResults=scrapeResults.filter(r=>!r._resumed);renderTab()}},
   rediscover(){if(selectedBrand)discoverBrand(selectedBrand)},
 
   async doScrape(){
@@ -1467,18 +1487,60 @@ window.S = {
   requestStop(){stopRequested=true;logEntry('⏹ Stop requested — finishing current item…','err');renderTab()},
   async scrapeDiscovered(){
     if(!discoverResults||isProcessing)return;
-    const newOnes=discoverResults.results.filter(r=>!r.in_pim && !scrapeResults.find(sr=>sr.url===r.url));
-    if(newOnes.length===0){alert('All URLs already scraped');return}
+
+    // ── Resume support: load previously scraped URLs from localStorage ──
+    const storageKey='aiq_scraped_'+selectedBrand;
+    let scrapedUrls=new Set();
+    try{
+      const saved=JSON.parse(localStorage.getItem(storageKey)||'{}');
+      if(saved.urls&&saved.brand===selectedBrand){
+        scrapedUrls=new Set(saved.urls);
+        // Mark already-scraped items so they show status in the table
+        for(const url of scrapedUrls){
+          if(!scrapeResults.find(sr=>sr.url===url)){
+            scrapeResults.push({brand:selectedBrand,model:'',status:'ok',data:null,tier_used:0,cost:0,url,_saved:true,_resumed:true});
+          }
+        }
+      }
+    }catch(_){}
+
+    // Filter: not in PIM, not already scraped this session, not in localStorage
+    const newOnes=discoverResults.results.filter(r=>
+      !r.in_pim &&
+      !scrapeResults.find(sr=>sr.url===r.url && sr.status!=='pending') &&
+      !scrapedUrls.has(r.url)
+    );
+    if(newOnes.length===0){logEntry('All '+discoverResults.results.length+' URLs already scraped or in PIM ✓','ok');renderTab();return}
+    logEntry(newOnes.length+' remaining to scrape ('+scrapedUrls.size+' resumed from previous run, '+discoverResults.results.filter(r=>r.in_pim).length+' in PIM)','ok');
+
     isProcessing=true;stopRequested=false;
     scrapeProgress={current:0,total:newOnes.length,label:'Discover'};
     renderTab();
-    for(let i=0;i<newOnes.length;i++){
-      if(stopRequested){logEntry('⏹ Stopped after '+i+'/'+newOnes.length,'err');break}
-      scrapeProgress.current=i+1;updateHeaderProgress();
-      const result=await smartScrape(selectedBrand||'Unknown',newOnes[i].model||'',newOnes[i].url);
-      await autoSaveIfEnabled(result);
-      if(i<newOnes.length-1)await new Promise(r=>setTimeout(r,1000));
-    }
+
+    // ── Parallel scraping: 3 concurrent ──
+    const CONCURRENCY=3;
+    let idx=0;
+    const processNext=async()=>{
+      while(idx<newOnes.length&&!stopRequested){
+        const i=idx++;
+        scrapeProgress.current=i+1;updateHeaderProgress();
+        const item=newOnes[i];
+        const result=await smartScrape(selectedBrand||'Unknown',item.model||'',item.url);
+        await autoSaveIfEnabled(result);
+        // Persist scraped URL to localStorage for resume
+        scrapedUrls.add(item.url);
+        try{localStorage.setItem(storageKey,JSON.stringify({brand:selectedBrand,urls:[...scrapedUrls],updated:Date.now()}))}catch(_){}
+        // Brief pause to avoid hammering APIs
+        await new Promise(r=>setTimeout(r,300));
+      }
+    };
+    // Launch CONCURRENCY workers
+    const workers=[];
+    for(let w=0;w<Math.min(CONCURRENCY,newOnes.length);w++)workers.push(processNext());
+    await Promise.all(workers);
+
+    if(stopRequested)logEntry('⏹ Stopped at '+scrapeProgress.current+'/'+newOnes.length+' — will resume next time','err');
+    else logEntry('✅ All '+newOnes.length+' URLs scraped!','ok');
     isProcessing=false;stopRequested=false;
     scrapeProgress={current:0,total:0,label:''};
     renderTab();
