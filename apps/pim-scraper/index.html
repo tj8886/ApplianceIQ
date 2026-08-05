@@ -260,6 +260,187 @@ function normalizeCategory(raw){
   for(const c of known){if(low===c.toLowerCase())return c}
   return raw;
 } // from discover-brand edge function
+
+// ── SUBCATEGORY CLASSIFIER — matches today's canonical taxonomy ──
+const SUBCAT_RULES={
+  'Ranges':[
+    {re:/dual\s*fuel/i,slide:/slide.?in/i,fs:'Dual Fuel Freestanding',si:'Dual Fuel Slide-In'},
+    {re:/induction/i,slide:/slide.?in/i,fs:'Induction Freestanding',si:'Induction Slide-In'},
+    {re:/\bgas\b/i,slide:/slide.?in/i,fs:'Gas Freestanding',si:'Gas Slide-In'},
+    {re:/electric|radiant|coil|smooth/i,slide:/slide.?in/i,fs:'Electric Freestanding',si:'Electric Slide-In'},
+    {re:/professional|pro.?style|48.?inch|60.?inch/i,fs:'Professional'}
+  ],
+  'Refrigerators':[
+    {re:/french\s*door|4.?door|quad/i,v:'French Door'},
+    {re:/side.?by.?side/i,v:'Side-by-Side'},
+    {re:/top\s*(freezer|mount)/i,v:'Top Freezer'},
+    {re:/bottom\s*(freezer|mount)/i,v:'Bottom Freezer'},
+    {re:/column|all.?(fridge|refrigerator)/i,v:'Column / All Fridge'},
+    {re:/built.?in.*flush|integrated|panel.?ready/i,v:'Built-In Flush'},
+    {re:/built.?in/i,v:'Built-In Protruded'},
+    {re:/counter.?depth/i,v:'Counter-Depth'},
+    {re:/compact|mini|bar\s*fridge|under.?counter/i,v:'Compact / Mini'}
+  ],
+  'Dishwashers':[
+    {re:/18.?inch|18"/i,v:'18" Built-In'},{re:/drawer/i,v:'Drawer'},
+    {re:/panel.?ready/i,v:'Panel-Ready'},{re:/./,v:'24" Built-In'}
+  ],
+  'Freezers':[
+    {re:/chest/i,v:'Chest'},{re:/upright/i,v:'Upright'},{re:/column/i,v:'Column Freezer'},
+    {re:/convertible/i,v:'Convertible'},{re:/under.?counter/i,v:'Undercounter Freezer'}
+  ],
+  'Washers':[
+    {re:/front\s*load/i,v:'Front Load'},{re:/top\s*load/i,v:'Top Load'},{re:/compact|24.?inch/i,v:'Compact'}
+  ],
+  'Dryers':[
+    {re:/heat\s*pump|ventless/i,v:'Heat Pump / Ventless'},{re:/\bgas\b/i,v:'Gas Vented'},
+    {re:/compact|24.?inch/i,v:'Compact'},{re:/./,v:'Electric Vented'}
+  ],
+  'Cooktops':[
+    {re:/induction/i,v:'Induction'},{re:/\bgas\b/i,v:'Gas'},{re:/electric|radiant/i,v:'Electric Radiant'}
+  ],
+  'Wall Ovens':[
+    {re:/combination|combo|micro/i,v:'Combination Wall Oven'},{re:/double/i,v:'Double Wall Oven'},
+    {re:/steam/i,v:'Steam Oven'},{re:/warming\s*drawer/i,v:'Warming Drawer'},{re:/./,v:'Single Wall Oven'}
+  ],
+  'Microwaves':[
+    {re:/over.?the.?range|otr/i,v:'Over-the-Range Microwave'},{re:/drawer/i,v:'Drawer'},
+    {re:/built.?in/i,v:'Built-In'},{re:/./,v:'Countertop'}
+  ],
+  'Ventilation':[
+    {re:/island/i,v:'Island'},{re:/chimney/i,v:'Chimney'},{re:/downdraft/i,v:'Downdraft'},
+    {re:/insert|custom|liner/i,v:'Insert / Custom Hood'},{re:/wall.?mount/i,v:'Wall-Mount'},
+    {re:/bathroom|bath\s*fan/i,v:'Bathroom Fan'},{re:/air\s*exchanger|hrv|erv/i,v:'Air Exchanger'},
+    {re:/professional|pro/i,v:'Professional'},{re:/./,v:'Under-Cabinet'}
+  ],
+  'Wine & Beverage':[
+    {re:/kegerator/i,v:'Kegerator'},{re:/beverage/i,v:'Beverage Center'},
+    {re:/humidor|cigar/i,v:'Cigar Humidor'},{re:/./,v:'Wine Cooler'}
+  ],
+  'Air Conditioners':[
+    {re:/mini.?split|ductless/i,v:'Mini Split / Ductless'},{re:/window/i,v:'Window'},
+    {re:/portable/i,v:'Portable'},{re:/through.?the.?wall|thru.?wall/i,v:'Through-the-Wall'},
+    {re:/dehumidifier/i,v:'Dehumidifier'},{re:/purifier/i,v:'Air Purifier'},
+    {re:/heater/i,v:'Heater'},{re:/\bfan\b/i,v:'Fan'}
+  ]
+};
+function classifySubcategory(d,category){
+  if(d.subcategory)return d.subcategory; // AI provided it directly
+  if(!category)return null;
+  const rules=SUBCAT_RULES[category];if(!rules)return null;
+  const text=[d.product_name,d.short_description,d.installation_type,d.series,
+    d.specs&&typeof d.specs==='object'?Object.entries(d.specs).map(([k,v])=>k+' '+v).join(' '):''
+  ].filter(Boolean).join(' ');
+  for(const rule of rules){
+    if(rule.re.test(text)){
+      if(rule.slide)return rule.slide.test(text)?rule.si:rule.fs;
+      return rule.v||rule.fs;
+    }
+  }
+  return null;
+}
+
+// ── CONDITION NORMALIZER — maps retailer labels to listing_condition enum ──
+function normalizeCondition(raw){
+  if(!raw)return 'new';
+  const s=String(raw).toLowerCase();
+  if(/open\s*box|opened/i.test(s))return 'open_box';
+  if(/refurb/i.test(s))return 'refurbished';
+  if(/floor\s*model|display|demo/i.test(s))return 'floor_model';
+  if(/scratch|dent/i.test(s))return 'scratch_dent';
+  if(/clearance|closeout|close.?out/i.test(s))return 'clearance';
+  if(/end\s*of\s*life|eol|last\s*chance/i.test(s))return 'end_of_life';
+  if(/discontinued/i.test(s))return 'discontinued';
+  if(/return/i.test(s))return 'returned';
+  if(/\bused\b|pre.?owned/i.test(s))return 'used';
+  if(/as.?is|no\s*warranty/i.test(s))return 'as_is';
+  if(/sale|promo|deal|special/i.test(s))return 'sale';
+  return 'new';
+}
+
+// ── SAVE PRICE LISTING — delivers into pim_retailer_prices lifecycle system ──
+// Upserts on (brand_name, model, retailer_name, condition_normalized, country)
+// Logs every change to pim_price_changes. Manages first/last seen + miss counters.
+async function savePriceListing(product,retailer,listing,runId,runStats){
+  const condNorm=normalizeCondition(listing.condition);
+  const now=new Date().toISOString();
+  const rec={
+    product_id:product.id||null,
+    brand_name:selectedBrand,model:product.model,
+    retailer_name:retailer.retailer_name,retailer_url:retailer.website||null,
+    product_url:listing.product_url||null,
+    price:Number(listing.price),
+    regular_price:listing.regular_price?Number(listing.regular_price):null,
+    on_sale:!!listing.on_sale,in_stock:listing.in_stock!==false,
+    condition:listing.condition||'New',condition_raw:listing.condition||null,
+    condition_normalized:condNorm,
+    listing_status:listing.in_stock===false?'out_of_stock':'active',
+    quantity_available:listing.quantity_available||null,
+    country:psMarket,price_currency:psMarket==='CA'?'CAD':'USD',
+    checked_at:now,last_seen_at:now,consecutive_misses:0,
+    scrape_run_id:runId
+  };
+  try{
+    // Check for existing listing (same model+retailer+condition+country)
+    const{data:existing}=await sb.from('pim_retailer_prices')
+      .select('id,price,regular_price,in_stock,condition_normalized,condition_raw,listing_status')
+      .eq('brand_name',rec.brand_name).eq('model',rec.model)
+      .eq('retailer_name',rec.retailer_name).eq('condition_normalized',condNorm)
+      .eq('country',psMarket).maybeSingle();
+
+    const{data:saved,error}=await sb.from('pim_retailer_prices')
+      .upsert(rec,{onConflict:'brand_name,model,retailer_name,condition_normalized,country'})
+      .select('id').maybeSingle();
+    if(error){logEntry('Price save err: '+error.message,'err');return false}
+
+    // Log the change
+    const changes=[];
+    if(!existing){
+      changes.push({change_type:'new_listing',new_price:rec.price,new_regular_price:rec.regular_price,new_condition:condNorm,new_condition_raw:rec.condition_raw,new_in_stock:rec.in_stock});
+      runStats.new_listings++;
+    }else{
+      runStats.updated++;
+      const oldP=Number(existing.price),newP=rec.price;
+      if(oldP!==newP){
+        changes.push({change_type:newP<oldP?'price_drop':'price_increase',old_price:oldP,new_price:newP,price_delta:newP-oldP,price_delta_percent:oldP>0?Math.round(((newP-oldP)/oldP)*1000)/10:null});
+        runStats.price_changed++;
+      }
+      if(existing.in_stock===false&&rec.in_stock)changes.push({change_type:'back_in_stock',old_in_stock:false,new_in_stock:true});
+      if(existing.in_stock!==false&&!rec.in_stock)changes.push({change_type:'out_of_stock',old_in_stock:true,new_in_stock:false});
+      if((existing.condition_raw||'')!==(rec.condition_raw||''))changes.push({change_type:'condition_change',old_condition:existing.condition_normalized,new_condition:condNorm,old_condition_raw:existing.condition_raw,new_condition_raw:rec.condition_raw});
+    }
+    if(changes.length&&saved?.id){
+      await sb.from('pim_price_changes').insert(changes.map(c=>({...c,retailer_price_id:saved.id,scrape_run_id:runId})));
+    }
+    return true;
+  }catch(e){logEntry('Price save exception: '+e.message,'err');return false}
+}
+
+// ── ARCHIVE SWEEP — call after a full retailer scrape to age out missing listings ──
+// Increments misses for active listings not seen in this run; archives past threshold.
+async function archiveMissingListings(retailerName,runId,missThreshold=3){
+  try{
+    const cutoff=new Date(Date.now()-60*1000).toISOString(); // anything not touched this run
+    const{data:missing}=await sb.from('pim_retailer_prices')
+      .select('id,consecutive_misses')
+      .eq('retailer_name',retailerName).eq('brand_name',selectedBrand)
+      .eq('listing_status','active').lt('last_seen_at',cutoff);
+    if(!missing||!missing.length)return{missed:0,archived:0};
+    let archived=0;
+    for(const m of missing){
+      const misses=(m.consecutive_misses||0)+1;
+      if(misses>=missThreshold){
+        await sb.from('pim_retailer_prices').update({consecutive_misses:misses,listing_status:'archived',archived_at:new Date().toISOString()}).eq('id',m.id);
+        await sb.from('pim_price_changes').insert({retailer_price_id:m.id,scrape_run_id:runId,change_type:'archived'});
+        archived++;
+      }else{
+        await sb.from('pim_retailer_prices').update({consecutive_misses:misses}).eq('id',m.id);
+      }
+    }
+    return{missed:missing.length,archived};
+  }catch(e){return{missed:0,archived:0}}
+}
+
 let discoverLoading = false;
 
 // Price Sync state
@@ -312,7 +493,7 @@ async function callTier2(partial,fallback){
   const key=localStorage.getItem('aiq_google_key');
   if(!key){logEntry('Tier 2 skip: no Google key','err');return null}
   logEntry('Tier 2 → '+geminiModel+'…');
-  const sys='You extract appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string like "120V"), amperage (number), wattage (number), energy_star (boolean), installation_type (string like "Freestanding" or "Built-in"), series (string), upc (string), specs (object of ADDITIONAL key-value pairs NOT already in top-level fields — do NOT duplicate voltage/dimensions/color/capacity here), images (array of {url,type}), availability, features (array of strings), documents (array of {url,title,doc_type}). IMPORTANT: Put dimensions, voltage, amperage, wattage, capacity, color, finish, energy_star, installation_type as TOP-LEVEL fields, not inside specs. The specs object is only for additional specs like noise level, cycles, fuel type, controls, etc. Omit fields you do not know. Return ONLY the JSON object, no other text.';
+  const sys='You extract appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description, category, subcategory (specific type: French Door, Side-by-Side, Top Freezer, Gas Freestanding, Gas Slide-In, Electric Freestanding, Induction Slide-In, Dual Fuel Freestanding, Front Load, Top Load, Under-Cabinet, Chimney, Island, Chest, Upright, Countertop, Over-the-Range, Drawer, Single Wall Oven, Double Wall Oven, etc), msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string like "120V"), amperage (number), wattage (number), energy_star (boolean), installation_type (string like "Freestanding" or "Built-in"), series (string), upc (string), specs (object of ADDITIONAL key-value pairs NOT already in top-level fields — do NOT duplicate voltage/dimensions/color/capacity here), images (array of {url,type}), availability, features (array of strings), documents (array of {url,title,doc_type}). IMPORTANT: Put dimensions, voltage, amperage, wattage, capacity, color, finish, energy_star, installation_type as TOP-LEVEL fields, not inside specs. The specs object is only for additional specs like noise level, cycles, fuel type, controls, etc. Omit fields you do not know. Return ONLY the JSON object, no other text.';
   const usr=partial?'Partial data:\n'+JSON.stringify(partial,null,2)+'\n\nFill in missing fields.':'Extract appliance product data:\n'+(fallback||'').substring(0,8000);
   try{
     const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+key,{
@@ -340,7 +521,7 @@ async function callTier3(partial,fallback,mo){
   if(!key){logEntry('Tier 3 skip: no OpenAI key','err');return null}
   const model=mo||aiModel;
   logEntry('Tier 3 → '+model+'…');
-  const sys='You extract appliance product data. Return ONLY JSON: brand_name, model, product_name, short_description, category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type (string), series (string), upc (string), specs (object of ADDITIONAL specs not already in top-level fields), images (arr), features (arr). Put dimensions/voltage/color as top-level fields, NOT inside specs. Omit unknowns.';
+  const sys='You extract appliance product data. Return ONLY JSON: brand_name, model, product_name, short_description, category, subcategory (specific type like French Door or Gas Freestanding), msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type (string), series (string), upc (string), specs (object of ADDITIONAL specs not already in top-level fields), images (arr), features (arr). Put dimensions/voltage/color as top-level fields, NOT inside specs. Omit unknowns.';
   const usr=partial?'Partial:\n'+JSON.stringify(partial,null,2)+'\n\nFill gaps.':'Extract:\n'+(fallback||'').substring(0,8000);
   try{
     const body={model,temperature:0.1,response_format:{type:'json_object'},messages:[{role:'system',content:sys},{role:'user',content:usr}]};
@@ -543,7 +724,7 @@ async function saveToPim(idx){
   const rec={
     organization_id:'00000000-0000-0000-0000-000000000002',
     brand_name:d.brand_name||r.brand,manufacturer_name:d.manufacturer_name||d.brand_name||r.brand,
-    model:d.model||r.model,category:normalizeCategory(d.category),short_description:d.short_description||d.product_name||null,
+    model:d.model||r.model,category:normalizeCategory(d.category),subcategory:classifySubcategory(d,normalizeCategory(d.category)),short_description:d.short_description||d.product_name||null,
     msrp:num(d.msrp),price_currency:d.currency||'CAD',color:d.color||null,finish:d.finish||null,
     width_inches:num(d.width_inches),height_inches:num(d.height_inches),depth_inches:num(d.depth_inches),
     weight_lbs:num(d.weight_lbs),capacity_cu_ft:num(d.capacity_cu_ft),voltage:d.voltage||null,
@@ -1099,10 +1280,12 @@ function renderPriceSync() {
       }
       const tl=TL[r.tier_used]||TL[0];
       const srcIcon=r.source_name==='Manufacturer'?'🏭':'🏪';
-      h+='<tr><td class="model-cell">'+esc(p.model)+'</td>';
+      const condBadge=r.condition_normalized&&r.condition_normalized!=='new'?'<span style="display:inline-block;padding:1px 7px;border-radius:100px;font-size:10px;font-weight:600;background:rgba(245,158,11,.12);color:#d97706;margin-left:6px">'+esc(r.condition_normalized.replace(/_/g,' '))+'</span>':'';
+      const savedBadge=r._saved?'<span style="font-size:10px;color:var(--accent);margin-left:4px" title="Saved to price tracker">✓ tracked</span>':'';
+      h+='<tr><td class="model-cell">'+esc(p.model)+condBadge+'</td>';
       h+='<td>'+(msrp?'$'+msrp.toLocaleString():'—')+'</td>';
-      h+='<td style="font-size:12px">'+srcIcon+' '+esc(r.source_name)+'</td>';
-      h+='<td style="font-weight:600">'+(live!==null?'$'+live.toLocaleString():'<span style="color:var(--red)">not found</span>')+'</td>';
+      h+='<td style="font-size:12px">'+srcIcon+' '+esc(r.source_name)+savedBadge+'</td>';
+      h+='<td style="font-weight:600">'+(live!==null?'$'+live.toLocaleString()+(r.regular_price&&r.regular_price>live?' <span style="text-decoration:line-through;color:var(--text3);font-size:11px">$'+Number(r.regular_price).toLocaleString()+'</span>':''):'<span style="color:var(--red)">not found</span>')+'</td>';
       h+='<td>'+dh+'</td>';
       h+='<td><span class="tier-badge '+tl.cls+'">T'+r.tier_used+'</span></td></tr>';
     }
@@ -1383,6 +1566,18 @@ window.S = {
     if(!brandIntel||isProcessing||psSelectedRetailers.size===0)return;
     const selected=psRetailers.filter(r=>r.country===psMarket&&psSelectedRetailers.has(r.website));
     isProcessing=true;stopRequested=false;renderTab();
+
+    // ── Create scrape run for lifecycle tracking ──
+    const runNames=selected.map(r=>r.retailer_name).join(', ');
+    const{data:run}=await sb.from('pim_scrape_runs').insert({
+      retailer_name:runNames.substring(0,200),country:psMarket,
+      scrape_type:'price_check',status:'running',ai_model:'multi-tier'
+    }).select('id').single();
+    const runId=run?.id||null;
+    let runStats={found:0,new_listings:0,updated:0,price_changed:0};
+
+    const PRICE_PROMPT=' Return JSON with: price (current selling price, number), regular_price (was/list price if shown, number), on_sale (boolean), in_stock (boolean), condition (exact label shown e.g. "Open Box - Excellent", "Refurbished", "Clearance", "Floor Model", or "New" if regular listing), product_url (direct link), quantity_available (number if shown). Extract the condition label EXACTLY as the retailer displays it.';
+
     for(const retailer of selected){
       if(stopRequested){logEntry('⏹ Stopped','err');break}
       for(const p of brandIntel.products.slice(0,30)){
@@ -1391,29 +1586,46 @@ window.S = {
         const query=selectedBrand+' '+p.model;
         const siteQuery=query+' site:'+retailer.website;
 
-        let price=null;let tierUsed=1;let cost=0;
+        let listing=null;let tierUsed=1;let cost=0;
         const t1=await callTier1({query:siteQuery,market:psMarket});
-        if(t1){price=t1.msrp||t1.price||null}
+        if(t1&&(t1.msrp||t1.price)){listing={price:t1.price||t1.msrp,regular_price:t1.regular_price||null,on_sale:!!t1.on_sale,in_stock:t1.in_stock!==false,condition:t1.condition||null,product_url:t1.product_url||t1.source_url||null}}
 
-        if(price===null&&localStorage.getItem('aiq_google_key')){
-          const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+'). Return JSON with msrp field.');
-          if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
+        if(!listing&&localStorage.getItem('aiq_google_key')){
+          const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+').'+PRICE_PROMPT);
+          if(t2&&(t2.price||t2.msrp)){listing={price:t2.price||t2.msrp,regular_price:t2.regular_price||null,on_sale:!!t2.on_sale,in_stock:t2.in_stock!==false,condition:t2.condition||null,product_url:t2.product_url||null,quantity_available:t2.quantity_available||null};tierUsed=2;cost=t2._cost||0}
         }
 
-        if(price===null&&retailer.scrape_tier<=2&&localStorage.getItem('aiq_openai_key')){
-          const t3=await callTier3({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+'). Return JSON with msrp field.');
-          if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
+        if(!listing&&retailer.scrape_tier<=2&&localStorage.getItem('aiq_openai_key')){
+          const t3=await callTier3({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+').'+PRICE_PROMPT);
+          if(t3&&(t3.price||t3.msrp)){listing={price:t3.price||t3.msrp,regular_price:t3.regular_price||null,on_sale:!!t3.on_sale,in_stock:t3.in_stock!==false,condition:t3.condition||null,product_url:t3.product_url||null,quantity_available:t3.quantity_available||null};tierUsed=3;cost=t3._cost||0}
         }
 
-        if(price===null&&localStorage.getItem('aiq_anthropic_key')){
-          const t4=await callTier4(query+' price '+retailer.retailer_name+' '+retailer.website,brandSourceMap[selectedBrand]);
-          if(t4&&t4.msrp){price=t4.msrp;tierUsed=4;cost=t4._cost||0}
+        if(!listing&&localStorage.getItem('aiq_anthropic_key')){
+          const t4=await callTier4(query+' price '+retailer.retailer_name+' '+retailer.website+PRICE_PROMPT,brandSourceMap[selectedBrand]);
+          if(t4&&(t4.price||t4.msrp)){listing={price:t4.price||t4.msrp,regular_price:t4.regular_price||null,on_sale:!!t4.on_sale,in_stock:t4.in_stock!==false,condition:t4.condition||null,product_url:t4.product_url||null};tierUsed=4;cost=t4._cost||0}
         }
 
-        psResults.push({product:p,live_price:price?Number(price):null,source_name:retailer.retailer_name,source_site:retailer.website,tier_used:tierUsed,cost});
+        // ── Save to lifecycle tables immediately ──
+        let saveStatus=null;
+        if(listing&&listing.price){
+          runStats.found++;
+          saveStatus=await savePriceListing(p,retailer,listing,runId,runStats);
+        }
+
+        psResults.push({product:p,live_price:listing?Number(listing.price):null,regular_price:listing?.regular_price?Number(listing.regular_price):null,condition:listing?.condition||null,condition_normalized:listing?normalizeCondition(listing.condition):null,in_stock:listing?listing.in_stock:null,source_name:retailer.retailer_name,source_site:retailer.website,tier_used:tierUsed,cost,_saved:saveStatus});
         renderTab();
         await new Promise(r=>setTimeout(r,500));
       }
+    }
+
+    // ── Close scrape run ──
+    if(runId){
+      await sb.from('pim_scrape_runs').update({
+        status:'completed',completed_at:new Date().toISOString(),
+        products_found:runStats.found,products_new:runStats.new_listings,
+        products_updated:runStats.updated,products_price_changed:runStats.price_changed
+      }).eq('id',runId);
+      logEntry('Run complete: '+runStats.found+' found, '+runStats.new_listings+' new, '+runStats.price_changed+' price changes','ok');
     }
     isProcessing=false;stopRequested=false;renderTab();
   },
