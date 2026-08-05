@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IQ Training System — ApplianceIQ</title>
+<title>IQ Academy — ApplianceIQ</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231e3a5f'/><text x='50' y='68' text-anchor='middle' font-family='Arial' font-weight='800' font-size='42' fill='white'>IQ</text></svg>" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -22,10 +23,9 @@ body{min-height:100vh;overflow-x:hidden}
 a{color:var(--accent);text-decoration:none}
 .hidden{display:none!important}
 .mono{font-family:'JetBrains Mono',monospace}
-::-webkit-scrollbar{width:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
+/* LOGIN */
 #login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#f0f5f7 0%,#e0eff5 50%,#d5eaef 100%)}
 .login-box{width:100%;max-width:380px;padding:40px 32px;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 8px 32px rgba(30,58,95,.08)}
 .login-box h1{font-size:24px;font-weight:800;margin-bottom:4px;color:var(--navy)}
@@ -37,29 +37,34 @@ a{color:var(--accent);text-decoration:none}
 .login-box button:hover{background:var(--accent2);transform:translateY(-1px)}
 .login-box .error{color:var(--red);font-size:12px;margin-bottom:12px;display:none}
 
+/* APP SHELL */
 #app{min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(30,58,95,.04)}
-.topbar-left{display:flex;align-items:center;gap:12px}
-.topbar-logo{font-size:16px;font-weight:800;color:var(--navy)}
-.topbar-breadcrumb{display:flex;align-items:center;gap:6px;color:var(--text2);font-size:13px}
-.topbar-breadcrumb span{cursor:pointer;transition:color .2s}
-.topbar-breadcrumb span:hover{color:var(--accent)}
-.topbar-breadcrumb .sep{color:var(--text3);font-size:11px}
-.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(30,58,95,.04);gap:12px}
+.topbar-left{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.topbar-logo{font-size:16px;font-weight:800;color:var(--navy);cursor:pointer}
+.topbar-center{display:flex;align-items:center;gap:2px;overflow-x:auto;flex:1;justify-content:center}
+.topbar-center::-webkit-scrollbar{display:none}
+.tab-btn{background:none;border:none;color:var(--text3);font-size:12px;padding:8px 12px;cursor:pointer;font-weight:600;letter-spacing:.3px;transition:all .2s;border-bottom:2px solid transparent;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.topbar-right{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .notif-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;color:var(--text2);font-size:16px;transition:all .2s}
 .notif-btn:hover{background:var(--surface3);color:var(--text)}
 .notif-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 .user-btn{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all .2s}
 .user-btn:hover{background:var(--surface3);color:var(--text)}
 
+/* BOTTOM NAV */
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:100;box-shadow:0 -1px 3px rgba(30,58,95,.04)}
 .bottom-nav-inner{display:flex;justify-content:space-around;align-items:center}
-.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 12px;cursor:pointer;color:var(--text3);font-size:10px;font-weight:600;transition:color .2s}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;cursor:pointer;color:var(--text3);font-size:10px;font-weight:600;transition:color .2s}
 .bnav-item.active{color:var(--accent)}
-.bnav-item span{font-size:20px}
+.bnav-item span{font-size:18px}
 
+/* MAIN CONTENT */
 .main{max-width:1200px;margin:0 auto;padding:20px}
 
+/* DASHBOARD */
 .dash-header{margin-bottom:24px}
 .dash-header h2{font-size:28px;font-weight:800;color:var(--navy);margin-bottom:4px}
 .dash-header p{color:var(--text2);font-size:14px}
@@ -72,11 +77,16 @@ a{color:var(--accent);text-decoration:none}
 .stat-card.green .value{color:var(--green)}
 .stat-card.gold .value{color:var(--gold)}
 
+/* SECTION HEADERS */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-header h3{font-size:18px;font-weight:700;color:var(--navy)}
+.section-header .see-all{font-size:13px;color:var(--accent);cursor:pointer;font-weight:500}
+
+/* ZONE MAP */
 .zone-map{display:flex;gap:12px;margin-bottom:28px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory}
 .zone-card{flex:0 0 220px;scroll-snap-align:start;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(30,58,95,.04)}
 .zone-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(13,148,136,.1)}
-.zone-card.locked{opacity:.5;cursor:default}
-.zone-card.locked:hover{border-color:var(--border);transform:none;box-shadow:none}
+.zone-card.locked{opacity:.5;cursor:default}.zone-card.locked:hover{border-color:var(--border);transform:none;box-shadow:none}
 .zone-card.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 16px rgba(13,148,136,.12)}
 .zone-card .zone-num{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
 .zone-card h3{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:4px}
@@ -86,10 +96,7 @@ a{color:var(--accent);text-decoration:none}
 .zone-card .zone-pct{font-size:11px;color:var(--text3);margin-top:6px;font-weight:600}
 .zone-card .lock-icon{position:absolute;top:12px;right:12px;font-size:16px;color:var(--text3)}
 
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.section-header h3{font-size:18px;font-weight:700;color:var(--navy)}
-.section-header .see-all{font-size:13px;color:var(--accent);cursor:pointer;font-weight:500}
-
+/* LANES & DECKS */
 .lanes-container{display:grid;gap:16px;margin-bottom:28px}
 .lane-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(30,58,95,.04)}
 .lane-card:hover{border-color:var(--accent);box-shadow:0 4px 12px rgba(13,148,136,.08)}
@@ -101,6 +108,7 @@ a{color:var(--accent);text-decoration:none}
 .lane-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px;transition:width .5s}
 .lane-progress-text{font-size:12px;font-weight:600;color:var(--text2);min-width:40px;text-align:right}
 
+/* DECK LIST & CARD PLAYER */
 .deck-list{display:grid;gap:10px;margin-bottom:24px}
 .deck-row{display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all .2s;box-shadow:0 1px 2px rgba(30,58,95,.03)}
 .deck-row:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(13,148,136,.08)}
@@ -150,6 +158,7 @@ a{color:var(--accent);text-decoration:none}
 .player-nav .next-btn:hover{background:var(--accent2);transform:translateY(-1px)}
 .player-nav .next-btn.finish{background:var(--green)}
 
+/* NOTIFICATIONS PANEL */
 #notif-panel{display:none;position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100vw;background:#fff;border-left:1px solid var(--border);z-index:150;overflow-y:auto;box-shadow:-4px 0 16px rgba(30,58,95,.08)}
 .notif-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:1}
 .notif-header h3{font-size:16px;font-weight:700;color:var(--navy)}
@@ -164,6 +173,7 @@ a{color:var(--accent);text-decoration:none}
 .notif-content p{font-size:12px;color:var(--text2);line-height:1.4}
 .notif-content .notif-time{font-size:11px;color:var(--text3);margin-top:4px}
 
+/* BADGES */
 .badges-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:28px}
 .badge-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;transition:all .2s;box-shadow:0 1px 2px rgba(30,58,95,.03)}
 .badge-card:hover{border-color:var(--accent);transform:translateY(-2px)}
@@ -172,6 +182,7 @@ a{color:var(--accent);text-decoration:none}
 .badge-icon{font-size:32px;margin-bottom:8px}
 .badge-card h5{font-size:12px;font-weight:600;color:var(--navy);line-height:1.3}
 
+/* BRANDS */
 .brand-filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
 .brand-filter{padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .2s}
 .brand-filter.active{background:var(--accent-glow);border-color:var(--accent);color:var(--accent)}
@@ -186,7 +197,7 @@ a{color:var(--accent);text-decoration:none}
 .brand-card .brand-tier.ultra_luxury{color:#7e22ce}
 .brand-card .brand-parent{font-size:12px;color:var(--text3)}
 
-/* ── LIVE PRACTICE SCORER ── */
+/* RECORDER / HUMAN TO HUMAN */
 .recorder-panel{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px}
 .recorder-header{padding:20px 24px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,#f0fdf9,#ecfeff)}
 .recorder-header h3{font-size:18px;font-weight:800;color:var(--navy);margin-bottom:4px}
@@ -201,24 +212,11 @@ a{color:var(--accent);text-decoration:none}
 .rec-timer{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--text2)}
 .rec-controls{display:flex;gap:12px;margin-bottom:20px}
 .rec-btn{padding:12px 28px;border-radius:var(--radius-xs);font-size:14px;font-weight:700;border:none;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:8px}
-.rec-btn.start{background:var(--accent);color:#fff}
-.rec-btn.start:hover{background:var(--accent2);transform:translateY(-1px)}
-.rec-btn.stop{background:#dc2626;color:#fff}
-.rec-btn.stop:hover{background:#b91c1c}
-.rec-btn.score{background:var(--navy);color:#fff}
-.rec-btn.score:hover{background:var(--navy-light);transform:translateY(-1px)}
+.rec-btn.start{background:var(--accent);color:#fff}.rec-btn.start:hover{background:var(--accent2);transform:translateY(-1px)}
+.rec-btn.stop{background:#dc2626;color:#fff}.rec-btn.stop:hover{background:#b91c1c}
+.rec-btn.score{background:var(--navy);color:#fff}.rec-btn.score:hover{background:var(--navy-light);transform:translateY(-1px)}
 .rec-btn:disabled{opacity:.4;cursor:default;transform:none}
 .transcript-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;max-height:300px;overflow-y:auto;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text)}
-.transcript-box .turn{margin-bottom:8px;padding:8px 12px;border-radius:8px}
-.transcript-box .turn.rep{background:rgba(13,148,136,.06);border-left:3px solid var(--accent)}
-.transcript-box .turn.cust{background:rgba(30,58,95,.04);border-left:3px solid var(--navy)}
-.turn-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
-.turn-label.rep{color:var(--accent)}
-.turn-label.cust{color:var(--navy)}
-.role-toggle{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:var(--radius-xs);overflow:hidden;width:fit-content}
-.role-toggle button{padding:8px 20px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;background:var(--surface2);color:var(--text2)}
-.role-toggle button.active-rep{background:var(--accent);color:#fff}
-.role-toggle button.active-cust{background:var(--navy);color:#fff}
 .scorecard{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:24px}
 .scorecard-header{padding:20px 24px;background:linear-gradient(135deg,var(--navy),#2c5282);color:#fff}
 .scorecard-header h3{font-size:20px;font-weight:800;margin-bottom:4px}
@@ -231,7 +229,7 @@ a{color:var(--accent);text-decoration:none}
 .score-row .score-val{font-size:16px;font-weight:800;min-width:40px;text-align:right}
 .score-feedback{padding:16px 24px;font-size:13px;line-height:1.6;color:var(--text2);border-top:1px solid var(--border);background:var(--surface2)}
 
-/* ── ROLEPLAY / AI COACH ── */
+/* AI COACH / CHAT */
 .coach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px}
 .coach-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(30,58,95,.04)}
 .coach-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 6px 20px rgba(13,148,136,.12)}
@@ -262,17 +260,141 @@ a{color:var(--accent);text-decoration:none}
 .topic-pill{padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .2s}
 .topic-pill:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
 
+/* CURRICULUM VIEW */
+#curriculum-view{display:none;position:fixed;inset:0;z-index:180;background:var(--bg)}
+.curr-layout{display:flex;height:100vh}
+.curr-sidebar{width:300px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}
+.curr-sidebar-search{padding:14px;border-bottom:1px solid var(--border)}
+.curr-sidebar-search input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);padding:8px 12px;font-size:12px;outline:none;color:var(--text)}
+.curr-sidebar-search input:focus{border-color:var(--accent)}
+.curr-sidebar-nav{flex:1;overflow-y:auto;padding-bottom:20px}
+.vol-group{border-bottom:1px solid var(--border)}
+.vol-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:background .15s;user-select:none}
+.vol-header:hover,.vol-header.active{background:var(--accent-glow)}
+.vol-num{font-size:9px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;font-weight:600;flex-shrink:0;width:36px}
+.vol-title{font-size:12px;color:var(--text);flex:1;font-weight:600;line-height:1.3}
+.vol-chevron{font-size:16px;color:var(--text3);transition:transform .2s;flex-shrink:0}
+.vol-chevron.open{transform:rotate(90deg)}
+.vol-chapters{display:none}.vol-chapters.open{display:block}
+.ch-item{display:flex;align-items:flex-start;gap:10px;padding:9px 16px 9px 24px;cursor:pointer;transition:background .15s;border-left:2px solid transparent}
+.ch-item:hover{background:var(--accent-glow)}
+.ch-item.active{background:rgba(13,148,136,.08);border-left-color:var(--accent)}
+.ch-item.completed .ch-title{color:var(--text3)}
+.ch-check{width:14px;height:14px;border:1px solid rgba(13,148,136,.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent);margin-top:2px}
+.ch-item.completed .ch-check{background:rgba(13,148,136,.1);border-color:var(--accent)}
+.ch-title{font-size:12px;color:var(--text);line-height:1.4}
+.curr-reader{flex:1;overflow-y:auto;padding:32px;background:var(--bg)}
+.curr-reader-inner{max-width:780px;margin:0 auto}
+.curr-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#fff;border-bottom:1px solid var(--border)}
+.curr-topbar .back-btn{display:flex;align-items:center;gap:6px;color:var(--text2);cursor:pointer;font-size:14px;font-weight:500;transition:color .2s}
+.curr-topbar .back-btn:hover{color:var(--accent)}
+.curr-topbar .progress-pill{font-size:12px;color:var(--accent);font-weight:600;background:var(--accent-glow);padding:4px 12px;border-radius:20px}
+.chapter-header{margin-bottom:32px}
+.chapter-vol-label{font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px}
+.chapter-title{font-size:28px;font-weight:800;color:var(--navy);line-height:1.3;margin-bottom:12px}
+.chapter-intro{font-size:15px;color:var(--text2);line-height:1.7}
+.section-block{margin-bottom:32px}
+.section-block .section-title{font-size:18px;font-weight:700;color:var(--navy);margin-bottom:12px}
+.section-block .section-content{font-size:15px;line-height:1.8;color:var(--text)}
+.section-block .section-content p{margin-bottom:14px}
+.section-block .section-content ul,.section-block .section-content ol{margin:12px 0 14px 24px}
+.section-block .section-content li{margin-bottom:6px}
+.section-block .section-content strong{color:var(--navy);font-weight:700}
+.btn-complete{display:block;width:100%;max-width:320px;margin:24px auto;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-complete:hover{background:var(--accent2)}
+.btn-complete.done{background:var(--green)}
+.btn-ai-trainer{display:block;width:fit-content;margin:24px auto;padding:12px 24px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-ai-trainer:hover{background:var(--navy-light);transform:translateY(-1px)}
+.chapter-actions{margin-top:32px}
+.nav-pair{display:flex;justify-content:space-between;gap:12px;margin-bottom:16px}
+.btn-nav{padding:10px 20px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-nav:hover{border-color:var(--accent);color:var(--accent)}
+
+/* VENDOR GRID */
+.vendor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:24px}
+.vendor-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(30,58,95,.04)}
+.vendor-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 16px rgba(13,148,136,.1)}
+.vendor-card-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.vendor-logo{width:44px;height:44px;background:var(--navy);color:#fff;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
+.vendor-tier{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;background:var(--accent-glow);padding:2px 8px;border-radius:4px}
+.vendor-name{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:2px}
+.vendor-tagline{font-size:12px;color:var(--text2);margin-bottom:6px}
+.vendor-focus{font-size:12px;color:var(--text3);line-height:1.4}
+.vendor-card-foot{font-size:11px;color:var(--accent);font-weight:600;margin-top:10px}
+.vendor-back{background:none;border:none;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;margin-bottom:20px;padding:0}
+.vendor-detail-head{display:flex;align-items:center;gap:20px;margin-bottom:28px}
+.vendor-logo.lg{width:72px;height:72px;font-size:22px;border-radius:var(--radius)}
+.vendor-detail-name{font-size:24px;font-weight:800;color:var(--navy)}
+.vendor-detail-tagline{font-size:14px;color:var(--text2);font-style:italic}
+.vendor-section{margin-bottom:28px}
+.vendor-section-title{font-size:14px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px}
+.vendor-story{font-size:14px;line-height:1.8;color:var(--text)}
+.vendor-fit{font-size:14px;line-height:1.7;color:var(--text)}
+.vendor-angles{list-style:none;padding:0;font-size:14px;line-height:1.7;color:var(--text)}
+.vendor-angles li{padding:4px 0;border-bottom:1px solid var(--border)}
+.vendor-angles li:last-child{border:none}
+.vendor-twocol{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+.vendor-spec-list{display:grid;gap:8px}
+.vendor-spec-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-xs);font-size:13px}
+.vendor-spec-item.has-link{cursor:pointer;transition:all .2s}
+.vendor-spec-item.has-link:hover{border-color:var(--accent);background:var(--accent-glow)}
+.vendor-spec-model{font-weight:600;color:var(--navy)}
+.vendor-spec-note{font-size:11px;color:var(--text3)}
+.vendor-spec-badge{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase}
+.vendor-spec-badge.open{color:var(--accent)}
+
+/* COMPARE VIEW */
+.compare-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .2s;margin-bottom:10px}
+.compare-card.open{border-color:var(--accent)}
+.compare-header{padding:16px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.compare-brands{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.compare-brands span{font-size:11px;background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:20px;color:var(--text3)}
+
+/* FILTER BUTTONS */
+.filter-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
+.filter-btn{padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .2s}
+.filter-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--accent)}
+
+/* AI TRAINER PANEL */
+#ai-panel{position:fixed;top:0;right:0;bottom:0;width:420px;max-width:100vw;background:#fff;border-left:1px solid var(--border);box-shadow:-16px 0 50px rgba(30,58,95,.1);z-index:250;display:none;flex-direction:column;transform:translateX(100%);transition:transform .25s ease}
+#ai-panel.open{display:flex;transform:translateX(0)}
+.ai-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.ai-head-title{font-size:15px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px}
+.ai-close{background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;padding:4px 8px;border-radius:4px}
+.ai-close:hover{background:var(--surface2);color:var(--text)}
+.ai-context{padding:10px 18px;font-size:12px;color:var(--text2);border-bottom:1px solid var(--border);background:var(--surface2)}
+.ai-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.ai-msg{padding:12px 16px;border-radius:14px;font-size:14px;line-height:1.6;max-width:90%}
+.ai-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.ai-msg.assistant{background:var(--surface2);color:var(--text);align-self:flex-start;border-bottom-left-radius:4px}
+.ai-msg.thinking{color:var(--text3);font-style:italic}
+.ai-suggest{display:flex;gap:6px;padding:10px 18px;flex-wrap:wrap;border-top:1px solid var(--border)}
+.ai-sg{padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .2s}
+.ai-sg:hover{border-color:var(--accent);color:var(--accent)}
+.ai-inputbar{display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
+.ai-input{flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:20px;font-size:14px;color:var(--text);outline:none}
+.ai-input:focus{border-color:var(--accent)}
+.ai-send{width:40px;height:40px;background:var(--accent);color:#fff;border:none;border-radius:50%;font-size:16px;cursor:pointer;transition:all .2s}
+.ai-send:hover{background:var(--accent2)}
+.ai-send:disabled{opacity:.5;cursor:default}
+
+/* MOBILE RESPONSIVE */
 @media(max-width:768px){
   .dash-grid{grid-template-columns:1fr}
   .zone-map{flex-direction:column}
   .zone-card{flex:none;width:100%}
   .main{padding:16px}
-  .topbar{padding:10px 16px}
+  .topbar{padding:8px 12px}
+  .topbar-center{display:none}
   .bottom-nav{display:block}
+  body{padding-bottom:64px}
   .brand-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
   .badges-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
   #notif-panel{width:100%}
-  body{padding-bottom:64px}
+  .vendor-twocol{grid-template-columns:1fr;gap:20px}
+  .vendor-detail-head{flex-direction:column;gap:14px}
+  .curr-sidebar{display:none}
+  #ai-panel{width:100vw;border-left:none}
 }
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .fade-in{animation:fadeIn .3s ease}
@@ -280,31 +402,41 @@ a{color:var(--accent);text-decoration:none}
 .slide-in{animation:slideIn .25s ease}
 .loading-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)}
 </style>
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
+<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
-    <h1>IQ Training</h1>
+    <h1>IQ Academy</h1>
     <p>ApplianceIQ Intelligence Group</p>
     <div class="error" id="login-error"></div>
     <label>Email</label>
-    <input type="email" id="login-email" placeholder="your@email.com" value="">
+    <input type="email" id="login-email" placeholder="your@email.com">
     <label>Password</label>
-    <input type="password" id="login-pass" placeholder="••••••••" value="">
+    <input type="password" id="login-pass" placeholder="••••••••">
     <button onclick="doLogin()">Sign In</button>
   </div>
 </div>
 
-<!-- ── APP ── -->
+<!-- APP SHELL -->
 <div id="app" class="hidden">
-  <!-- Top Bar -->
   <div class="topbar">
     <div class="topbar-left">
-      <div class="topbar-logo">IQ Training</div>
-      <div class="topbar-breadcrumb" id="breadcrumb"></div>
+      <div class="topbar-logo" onclick="navTo('dashboard')">IQ Academy</div>
+    </div>
+    <div class="topbar-center" id="tab-bar">
+      <button class="tab-btn active" data-tab="dashboard" onclick="navTo('dashboard')">Home</button>
+      <button class="tab-btn" data-tab="curriculum" onclick="navTo('curriculum')">Curriculum</button>
+      <button class="tab-btn" data-tab="brands" onclick="navTo('brands')">Brands</button>
+      <button class="tab-btn" data-tab="vendors" onclick="navTo('vendors')">Vendors</button>
+      <button class="tab-btn" data-tab="compare" onclick="navTo('compare')">Between Brands</button>
+      <button class="tab-btn" data-tab="roleplay" onclick="navTo('roleplay')">Coach</button>
+      <button class="tab-btn" data-tab="serviceiq" onclick="navTo('serviceiq')">Service IQ</button>
+      <button class="tab-btn" data-tab="scorecard" onclick="navTo('scorecard')">Daily Five</button>
+      <button class="tab-btn" data-tab="badges" onclick="navTo('badges')">Badges</button>
     </div>
     <div class="topbar-right">
       <div class="notif-btn" onclick="toggleNotifs()">🔔<div class="notif-badge hidden" id="notif-count">0</div></div>
@@ -312,24 +444,47 @@ a{color:var(--accent);text-decoration:none}
     </div>
   </div>
 
-  <!-- Main Content -->
   <div class="main" id="main-content"></div>
 
-  <!-- Bottom Nav -->
   <div class="bottom-nav">
     <div class="bottom-nav-inner">
-      <div class="bnav-item active" onclick="navTo('dashboard')"><span>🏠</span>Home</div>
-      <div class="bnav-item" onclick="navTo('roleplay')"><span>🎤</span>Coach</div>
-      <div class="bnav-item" onclick="navTo('brands')"><span>🏷️</span>Brands</div>
-      <div class="bnav-item" onclick="navTo('badges')"><span>🏅</span>Badges</div>
+      <div class="bnav-item active" data-tab="dashboard" onclick="navTo('dashboard')"><span>🏠</span>Home</div>
+      <div class="bnav-item" data-tab="curriculum" onclick="navTo('curriculum')"><span>📚</span>Learn</div>
+      <div class="bnav-item" data-tab="roleplay" onclick="navTo('roleplay')"><span>🎤</span>Coach</div>
+      <div class="bnav-item" data-tab="brands" onclick="navTo('brands')"><span>🏷️</span>Brands</div>
+      <div class="bnav-item" data-tab="badges" onclick="navTo('badges')"><span>🏅</span>More</div>
     </div>
   </div>
 </div>
 
-<!-- Card Player (overlay) -->
+<!-- CARD PLAYER (overlay) -->
 <div id="card-player"></div>
 
-<!-- Notifications Panel -->
+<!-- CURRICULUM VIEW (overlay) -->
+<div id="curriculum-view">
+  <div class="curr-topbar">
+    <div class="back-btn" onclick="closeCurriculum()">← Back to Academy</div>
+    <div class="progress-pill" id="curr-progress-pill">0 / 0 chapters</div>
+  </div>
+  <div class="curr-layout">
+    <div class="curr-sidebar">
+      <div class="curr-sidebar-search">
+        <input type="text" id="curr-search" placeholder="Search chapters..." oninput="filterCurrSidebar(this.value)">
+      </div>
+      <div class="curr-sidebar-nav" id="curr-sidebar-nav"></div>
+    </div>
+    <div class="curr-reader" id="curr-reader">
+      <div class="curr-reader-inner" id="curr-reader-inner">
+        <div style="text-align:center;padding:80px 20px">
+          <h2 style="font-size:24px;font-weight:800;color:var(--navy);margin-bottom:8px">Welcome to the Curriculum</h2>
+          <p style="color:var(--text2);font-size:14px;max-width:480px;margin:0 auto">18 volumes · 147 chapters · From foundations to leadership. Select a chapter from the sidebar to begin.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS PANEL -->
 <div id="notif-panel">
   <div class="notif-header">
     <h3>Notifications</h3>
@@ -338,14 +493,32 @@ a{color:var(--accent);text-decoration:none}
   <div class="notif-list" id="notif-list"></div>
 </div>
 
+<!-- AI TRAINER PANEL -->
+<div id="ai-panel">
+  <div class="ai-head">
+    <div class="ai-head-title"><span style="color:var(--accent)">✦</span> AI Trainer</div>
+    <button class="ai-close" onclick="closeTrainer()">✕</button>
+  </div>
+  <div class="ai-context" id="ai-context">—</div>
+  <div class="ai-msgs" id="ai-msgs"></div>
+  <div class="ai-suggest">
+    <button class="ai-sg" onclick="trainerAsk('Summarize this lesson in 5 bullet points')">Summarize</button>
+    <button class="ai-sg" onclick="trainerAsk('Explain the hardest concept simply')">Simplify</button>
+    <button class="ai-sg" onclick="trainerAsk('Give me a real floor example')">Example</button>
+    <button class="ai-sg" onclick="trainerAsk('Quiz me with 3 questions')">Quiz me</button>
+  </div>
+  <div class="ai-inputbar">
+    <input class="ai-input" id="ai-input" placeholder="Ask about this lesson…" onkeydown="if(event.key==='Enter')sendTrainer()">
+    <button class="ai-send" id="ai-send" onclick="sendTrainer()">➤</button>
+  </div>
+</div>
+
 <!-- SCRIPTS -->
 <script>
-// ── GLOBAL NAV (must be in regular script, not module) ──
-let currentView = 'dashboard';
-let currentZone = null;
-let currentLane = null;
-let currentDeck = null;
-let viewHistory = [];
+// ── GLOBAL NAV (regular script, not module) ──
+var currentView = 'dashboard';
+var currentZone = null, currentLane = null, currentDeck = null;
+var viewHistory = [];
 
 function navTo(view, data) {
   if (currentView !== view) viewHistory.push({ view: currentView, zone: currentZone, lane: currentLane });
@@ -355,38 +528,49 @@ function navTo(view, data) {
     if (data.lane !== undefined) currentLane = data.lane;
     if (data.deck !== undefined) currentDeck = data.deck;
   }
+  // Curriculum opens as overlay
+  if (view === 'curriculum') { openCurriculumView(); return; }
   renderView();
-  updateBnav();
+  updateTabs();
 }
 
 function goBack() {
-  const prev = viewHistory.pop();
-  if (prev) {
-    currentView = prev.view;
-    currentZone = prev.zone;
-    currentLane = prev.lane;
-    renderView();
-    updateBnav();
-  }
+  var prev = viewHistory.pop();
+  if (prev) { currentView = prev.view; currentZone = prev.zone; currentLane = prev.lane; renderView(); updateTabs(); }
 }
 
-function updateBnav() {
-  document.querySelectorAll('.bnav-item').forEach((el, i) => {
-    const tabs = ['dashboard','roleplay','brands','badges'];
-    el.classList.toggle('active', tabs[i] === currentView);
-  });
+function updateTabs() {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === currentView); });
+  document.querySelectorAll('.bnav-item').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === currentView); });
 }
 
 function toggleNotifs() {
-  const p = document.getElementById('notif-panel');
+  var p = document.getElementById('notif-panel');
   if (p.style.display === 'block') { p.style.display = 'none'; }
-  else { p.style.display = 'block'; p.classList.add('slide-in'); loadNotifications(); }
+  else { p.style.display = 'block'; p.classList.add('slide-in'); if (typeof loadNotifications === 'function') loadNotifications(); }
 }
 
 function doLogout() {
   if (window._supabase) window._supabase.auth.signOut();
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login-screen').style.display = 'flex';
+}
+
+function showToast(msg) {
+  var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 4000);
+}
+
+function openCurriculumView() {
+  document.getElementById('curriculum-view').style.display = 'block';
+  if (typeof renderCurrSidebar === 'function') renderCurrSidebar();
+  updateTabs();
+}
+
+function closeCurriculum() {
+  document.getElementById('curriculum-view').style.display = 'none';
+  currentView = 'dashboard';
+  updateTabs();
 }
 </script>
 
@@ -398,24 +582,28 @@ const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const sb = createClient(SB_URL, SB_KEY);
 window._supabase = sb;
 
-// ── STATE ──
-let S = {
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
+var S = {
   user: null,
-  zones: [],
-  lanes: [],
-  courses: [],
-  decks: [],
-  cards: [],
-  badges: [],
-  earnedBadges: [],
-  notifications: [],
-  productCards: [],
-  completedDecks: new Set(),
-  completedCards: new Set(),
-  repProgress: {}
+  // IQ Training data
+  zones: [], lanes: [], courses: [], decks: [], cards: [],
+  badges: [], earnedBadges: [], notifications: [],
+  productCards: [], completedDecks: new Set(), completedCards: new Set(),
+  // Academy data
+  volumes: [], chapters: [], completedChapterIds: new Set(),
+  quizzes: [], quizScores: {},
+  vendors: [], vendorMeta: {},
+  brandCatalog: [], brandTrainingCards: {}, brandProgress: {},
+  brandCertifications: {}, orgBrandAssignments: {},
+  compareData: null,
+  serviceTemplates: [],
+  currentOrg: null, roleplayPersonas: []
 };
 
-// ── PILLAR CONSTANTS ──
 var pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ' };
 var pillarIcons = { sales_iq:'💰', product_iq:'🔧', brand_iq:'🏷️', leadership_iq:'👑' };
 var pillarColors = { sales_iq:'#6366f1', product_iq:'#06b6d4', brand_iq:'#f59e0b', leadership_iq:'#a855f7' };
@@ -426,388 +614,455 @@ var pillarDescs = {
   leadership_iq:'From seller to leader. Hiring, coaching, training systems, P&L, metrics, and culture building.'
 };
 
-// ── AUTH ──
+var coaches = {
+  tj: { name:'TJ', avatar:'👔', role:'Sales Coach', desc:'Floor strategy, closing, mindset. 20 years in appliance retail.', color:'#1e3a5f' },
+  natalie: { name:'Natalie', avatar:'📋', role:'Product Knowledge', desc:'Specs, features, competitive cross-reference. Walking encyclopedia.', color:'#0891b2' },
+  caden: { name:'Caden', avatar:'🎓', role:'Trainer', desc:'Enthusiastic explainer. Loves breaking down complex topics simply.', color:'#059669' },
+  katrina: { name:'Katrina', avatar:'💝', role:'Service Consultant', desc:'Deeply empathetic. Customer experience, difficult situations, emotional IQ.', color:'#d946ef' },
+  asher: { name:'Asher', avatar:'🔧', role:'Installation Expert', desc:'Codes, delivery, measurements, hookups. By the book, every time.', color:'#d97706' },
+  leah: { name:'Leah', avatar:'🎨', role:'Design Consultant', desc:'Kitchen design, aesthetics, finishes, panel-ready, color matching.', color:'#e11d48' }
+};
+var rpState = { coach: null, messages: [], loading: false, context: null, mode: null };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════════════════════════
 window.doLogin = async function() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  const errEl = document.getElementById('login-error');
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   if (!email || !pass) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  var { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   S.user = data.user;
   await initApp();
 };
 
-// Check existing session
-const { data: { session } } = await sb.auth.getSession();
-if (session) {
-  S.user = session.user;
-  await initApp();
-}
+var { data: { session } } = await sb.auth.getSession();
+if (session) { S.user = session.user; await initApp(); }
 
 async function initApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.remove('hidden');
   try {
-    await Promise.all([loadZones(), loadCourses(), loadBadgesData(), loadNotifications()]);
-    console.log('Data loaded:', S.zones.length, 'zones,', S.courses.length, 'courses,', S.badges.length, 'badges,', S.notifications.length, 'notifs');
+    await Promise.all([
+      loadZones(), loadCourses(), loadBadgesData(), loadNotifications(),
+      loadCurriculum(), loadVendors(), loadBrandCatalog(), loadRoleplayPersonas()
+    ]);
+    console.log('Loaded:', S.zones.length, 'zones,', S.courses.length, 'courses,',
+      S.volumes.length, 'volumes,', S.chapters.length, 'chapters,',
+      S.vendors.length, 'vendors,', S.brandCatalog.length, 'brands');
   } catch(e) { console.error('Init error:', e); }
   renderView();
 }
 
-// ── DATA LOADERS ──
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA LOADERS — IQ Training
+// ══════════════════════════════════════════════════════════════════════════════
 async function loadZones() {
-  const { data } = await sb.from('iq_zones').select('*').order('zone_number');
+  var { data } = await sb.from('iq_zones').select('*').order('zone_number');
   S.zones = data || [];
-  const { data: lanes } = await sb.from('iq_lanes').select('*').order('zone_id').order('sort_order');
+  var { data: lanes } = await sb.from('iq_lanes').select('*').order('zone_id').order('sort_order');
   S.lanes = lanes || [];
 }
 
 async function loadCourses() {
-  const { data } = await sb.from('iq_courses').select('id,pillar,course_key,name,subtitle,icon,brand_id,zone_level,category,sort_order').order('pillar').order('sort_order');
+  var { data } = await sb.from('iq_courses').select('id,pillar,course_key,name,subtitle,icon,brand_id,zone_level,category,sort_order').order('pillar').order('sort_order');
   S.courses = data || [];
 }
 
 async function loadDecksForLane(laneId) {
-  const { data } = await sb.from('iq_decks').select('*').eq('lane_id', laneId).order('sort_order');
+  var { data } = await sb.from('iq_decks').select('*').eq('lane_id', laneId).order('sort_order');
   S.decks = data || [];
 }
 
 async function loadCardsForDeck(deckId) {
-  const { data } = await sb.from('iq_cards').select('*').eq('deck_id', deckId).order('sort_order');
+  var { data } = await sb.from('iq_cards').select('*').eq('deck_id', deckId).order('sort_order');
   S.cards = data || [];
 }
 
 async function loadBadgesData() {
-  const { data } = await sb.from('iq_badges').select('id,badge_key,badge_type,name,description,icon,color,pillar,brand_id,course_id').order('badge_type').order('sort_order');
+  var { data } = await sb.from('iq_badges').select('id,badge_key,badge_type,name,description,icon,color,pillar,brand_id,course_id').order('badge_type').order('sort_order');
   S.badges = data || [];
 }
 
-async function loadNotifications() {
-  var { data } = await sb.from('iq_notifications').select('*').order('created_at', { ascending: false }).limit(30);
-  S.notifications = data || [];
-  
-  // Enrich with deck routing info for new_deck notifications
-  if (S.notifications.length) {
-    var courseIds = S.notifications.filter(function(n) { return n.course_id; }).map(function(n) { return n.course_id; });
-    if (courseIds.length) {
-      var { data: decks } = await sb.from('iq_decks').select('id,course_id,lane_id').in('course_id', courseIds);
-      var { data: lanes } = await sb.from('iq_lanes').select('id,zone_id').in('id', (decks||[]).map(function(d) { return d.lane_id; }));
-      var laneMap = {};
-      (lanes||[]).forEach(function(l) { laneMap[l.id] = l; });
-      var deckMap = {};
-      (decks||[]).forEach(function(d) { deckMap[d.course_id] = d; });
-      S.notifications.forEach(function(n) {
-        if (n.course_id && deckMap[n.course_id]) {
-          n._deck_id = deckMap[n.course_id].id;
-          n._lane_id = deckMap[n.course_id].lane_id;
-          n._zone_id = laneMap[deckMap[n.course_id].lane_id] ? laneMap[deckMap[n.course_id].lane_id].zone_id : null;
-        }
-      });
-    }
-  }
+async function loadBrandProducts(brandId) {
+  var { data } = await sb.from('iq_product_cards').select('*').eq('brand_id', brandId).order('card_type').order('title');
+  return data || [];
+}
 
+// ══════════════════════════════════════════════════════════════════════════════
+// DATA LOADERS — Academy
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadCurriculum() {
+  var { data: vols } = await sb.from('academy_volumes').select('*').order('sort_order');
+  var { data: chs } = await sb.from('academy_chapters').select('*').order('sort_order');
+  S.volumes = vols || [];
+  S.chapters = chs || [];
+  // Load progress
+  if (S.user) {
+    var { data: prog } = await sb.from('academy_progress').select('chapter_id').eq('user_id', S.user.id);
+    S.completedChapterIds = new Set((prog||[]).map(function(r){ return r.chapter_id; }));
+  }
+  // Load quizzes
+  try {
+    var { data: qd } = await sb.from('academy_quizzes').select('volume_id,questions').order('volume_id');
+    S.quizzes = (qd||[]).map(function(r){ return { vol: r.volume_id, questions: r.questions }; });
+  } catch(e) { S.quizzes = []; }
+  // Load quiz scores
+  if (S.user) {
+    try {
+      var { data: qs } = await sb.from('academy_quiz_scores').select('*').eq('user_id', S.user.id);
+      (qs||[]).forEach(function(r){ S.quizScores[r.vol] = { score:r.score, total:r.total, ts:r.updated_at }; });
+    } catch(e) {}
+  }
+  updateCurrProgressPill();
+}
+
+function updateCurrProgressPill() {
+  var real = S.chapters.filter(function(c){ return c.chapter_number >= 1; });
+  var done = real.filter(function(c){ return S.completedChapterIds.has(c.id); }).length;
+  var el = document.getElementById('curr-progress-pill');
+  if (el) el.textContent = done + ' / ' + real.length + ' chapters';
+}
+
+async function loadVendors() {
+  try {
+    var { data } = await sb.from('mfr_vendors').select('*').order('name');
+    S.vendors = data || [];
+  } catch(e) { S.vendors = []; }
+}
+
+async function loadBrandCatalog() {
+  try {
+    var { data: brands } = await sb.from('brand_catalog').select('*').eq('is_active', true).order('brand_name');
+    S.brandCatalog = brands || [];
+    var { data: cards } = await sb.from('brand_training_cards').select('*').order('brand_id');
+    S.brandTrainingCards = {};
+    (cards || []).forEach(function(c){ S.brandTrainingCards[c.brand_id] = c; });
+    if (S.user) {
+      var { data: prog } = await sb.from('academy_brand_progress').select('brand_id, level, module_key').eq('user_id', S.user.id);
+      S.brandProgress = {};
+      (prog || []).forEach(function(p){ if (!S.brandProgress[p.brand_id]) S.brandProgress[p.brand_id] = []; S.brandProgress[p.brand_id].push(p.level + ':' + p.module_key); });
+      var { data: certs } = await sb.from('academy_brand_certifications').select('*').eq('user_id', S.user.id);
+      S.brandCertifications = {};
+      (certs||[]).forEach(function(c){ S.brandCertifications[c.brand_id] = c; });
+      var { data: assigns } = await sb.from('organization_brands').select('brand_id,assignment_type');
+      S.orgBrandAssignments = {};
+      (assigns||[]).forEach(function(a){ S.orgBrandAssignments[a.brand_id] = a.assignment_type; });
+    }
+  } catch(e) { console.error('Brand catalog load error:', e); }
+}
+
+async function loadRoleplayPersonas() {
+  if (!S.user) return;
+  try {
+    var { data: member } = await sb.from('organization_members').select('organization_id').eq('user_id', S.user.id).maybeSingle();
+    if (!member) return;
+    var { data: org } = await sb.from('organizations').select('*').eq('id', member.organization_id).maybeSingle();
+    S.currentOrg = org;
+    var { data: personas } = await sb.from('ai_personas').select('persona_name,persona_role,avatar_emoji,tone').eq('organization_id', org.id).eq('active', true);
+    S.roleplayPersonas = personas || [];
+  } catch(e) { console.error('Persona load error:', e); }
+}
+
+async function loadNotifications() {
+  // Load from both notification systems
+  var iqNotifs = [], acNotifs = [];
+  try {
+    var { data: iq } = await sb.from('iq_notifications').select('*').order('created_at', { ascending: false }).limit(20);
+    iqNotifs = (iq||[]).map(function(n){ n._source = 'iq'; return n; });
+  } catch(e) {}
+  try {
+    var { data: ac } = await sb.from('academy_notifications').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false }).limit(20);
+    acNotifs = (ac||[]).map(function(n){ n._source = 'academy'; return n; });
+  } catch(e) {}
+  S.notifications = iqNotifs.concat(acNotifs).sort(function(a,b){ return new Date(b.created_at) - new Date(a.created_at); }).slice(0, 30);
   renderNotifPanel();
-  var unread = S.notifications.filter(function(n) { return !n.is_read; }).length;
+  var unread = S.notifications.filter(function(n){ return !n.is_read; }).length;
   var badge = document.getElementById('notif-count');
   if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
   else { badge.classList.add('hidden'); }
 }
 window.loadNotifications = loadNotifications;
 
-async function loadBrandProducts(brandId) {
-  const { data } = await sb.from('iq_product_cards').select('*').eq('brand_id', brandId).order('card_type').order('title');
-  return data || [];
+async function loadCompareData() {
+  if (S.compareData) return S.compareData;
+  var { data, error } = await sb.from('competitive_cross_reference')
+    .select('*, brand1:brand_catalog!competitive_cross_reference_brand1_id_fkey(brand_name), brand2:brand_catalog!competitive_cross_reference_brand2_id_fkey(brand_name), brand3:brand_catalog!competitive_cross_reference_brand3_id_fkey(brand_name), brand4:brand_catalog!competitive_cross_reference_brand4_id_fkey(brand_name), brand5:brand_catalog!competitive_cross_reference_brand5_id_fkey(brand_name), brand6:brand_catalog!competitive_cross_reference_brand6_id_fkey(brand_name)')
+    .order('category').order('tier');
+  if (error) {
+    var r2 = await sb.from('competitive_cross_reference').select('*').order('category').order('tier');
+    S.compareData = r2.data || [];
+  } else { S.compareData = data || []; }
+  return S.compareData;
 }
 
-// ── RENDERERS ──
+async function loadServiceTemplates() {
+  if (S.serviceTemplates.length) return;
+  try {
+    var { data } = await sb.from('service_iq_templates').select('*').order('category').order('sort_order');
+    S.serviceTemplates = data || [];
+  } catch(e) { S.serviceTemplates = []; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MAIN VIEW ROUTER
+// ══════════════════════════════════════════════════════════════════════════════
 function renderView() {
-  const mc = document.getElementById('main-content');
-  const bc = document.getElementById('breadcrumb');
+  var mc = document.getElementById('main-content');
   switch(currentView) {
-    case 'dashboard': renderDashboard(mc); bc.innerHTML = ''; break;
-    case 'pillar': renderPillar(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [pillarLabels[currentDeck] || currentDeck]); break;
-    case 'course': renderCourse(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [pillarLabels[window._currentCourse?.pillar] || 'Course', 'pillar', window._currentCourse?.pillar], [window._currentCourse?.name || 'Course']); break;
-    case 'roleplay': renderRoleplay(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Training Arena']); break;
-    case 'zone': renderZone(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [S.zones.find(z=>z.id===currentZone)?.name]); break;
-    case 'lane': renderLane(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], [S.zones.find(z=>z.id===currentZone)?.name,'zone',{zone:currentZone}], [S.lanes.find(l=>l.id===currentLane)?.name]); break;
-    case 'brands': renderBrands(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brand IQ']); break;
-    case 'badges': renderBadges(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Badges']); break;
-    case 'notifications': renderNotifPage(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Notifications']); break;
-    case 'brand-detail': renderBrandDetail(mc); bc.innerHTML = crumb(['Dashboard','dashboard'], ['Brand IQ','brands'], [currentDeck?.name || 'Brand']); break;
+    case 'dashboard': renderDashboard(mc); break;
+    case 'pillar': renderPillar(mc); break;
+    case 'course': renderCourse(mc); break;
+    case 'roleplay': renderRoleplay(mc); break;
+    case 'zone': renderZone(mc); break;
+    case 'lane': renderLane(mc); break;
+    case 'brands': renderBrands(mc); break;
+    case 'badges': renderBadges(mc); break;
+    case 'notifications': renderNotifPage(mc); break;
+    case 'brand-detail': renderBrandDetail(mc); break;
+    case 'vendors': renderVendorsView(mc); break;
+    case 'vendor-detail': renderVendorDetail(mc); break;
+    case 'compare': renderCompareView(mc); break;
+    case 'serviceiq': renderServiceIQ(mc); break;
+    case 'scorecard': renderDailyFive(mc); break;
   }
   mc.classList.add('fade-in');
-  setTimeout(() => mc.classList.remove('fade-in'), 300);
-};
-
+  setTimeout(function(){ mc.classList.remove('fade-in'); }, 300);
+}
 window.renderView = renderView;
 
-function crumb(...parts) {
-  return parts.map((p, i) => {
-    if (p.length === 1) return '<span>' + esc(p[0]) + '</span>';
-    if (p.length === 2) return '<span onclick="navTo(\'' + p[1] + '\')">' + esc(p[0]) + '</span>';
-    if (p.length === 3) return '<span onclick="navTo(\'' + p[1] + '\',' + JSON.stringify(p[2]) + ')">' + esc(p[0]) + '</span>';
-    return '';
-  }).join('<span class="sep">›</span>');
-}
-
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
 function renderDashboard(el) {
   var totalCards = 307;
   var pillars = ['sales_iq','product_iq','brand_iq','leadership_iq'];
   var pillarCounts = {};
-  pillars.forEach(function(p) { pillarCounts[p] = S.courses.filter(function(c) { return c.pillar === p; }).length; });
+  pillars.forEach(function(p){ pillarCounts[p] = S.courses.filter(function(c){ return c.pillar === p; }).length; });
 
   var pillarHtml = pillars.map(function(p) {
-    var count = pillarCounts[p];
-    var col = pillarColors[p];
+    var count = pillarCounts[p]; var col = pillarColors[p];
     var clickAction = p === 'brand_iq' ? "navTo('brands')" : "navTo('pillar',{deck:'" + p + "'})";
     return '<div class="zone-card" style="border-top:3px solid ' + col + '" onclick="' + clickAction + '">'
       + '<div style="font-size:28px;margin-bottom:8px">' + pillarIcons[p] + '</div>'
       + '<h3>' + pillarLabels[p] + '</h3>'
       + '<div class="zone-desc">' + pillarDescs[p] + '</div>'
-      + '<div style="margin-top:12px;font-size:13px;font-weight:600;color:' + col + '">' + count + ' courses</div>'
-      + '</div>';
+      + '<div style="margin-top:12px;font-size:13px;font-weight:600;color:' + col + '">' + count + ' courses</div></div>';
   }).join('');
+
+  var chapDone = S.chapters.filter(function(c){ return S.completedChapterIds.has(c.id); }).length;
+  var chapTotal = S.chapters.filter(function(c){ return c.chapter_number >= 1; }).length;
 
   var zoneHtml = S.zones.map(function(z) {
     var isLocked = z.zone_number > 2;
-    var isCurrent = z.zone_number <= 2;
     var pct = z.zone_number === 1 ? 100 : (z.zone_number === 2 ? 15 : 0);
-    var descs = ['Days 1-14: Culture, floor basics, vocabulary','Weeks 3-10: Sales process, product deep dive, brands, competitive','Months 4-8: Advanced selling, specialization prep','Months 9-18: Category or brand mastery','Month 18+: Leadership, mentoring, continuous growth'];
-    return '<div class="zone-card ' + (isLocked?'locked':'') + (isCurrent&&z.zone_number===2?' current':'') + '" onclick="' + (isLocked?'':'navTo(\'zone\',{zone:'+z.id+'})') + '">'
+    return '<div class="zone-card ' + (isLocked?'locked':'') + (z.zone_number===2?' current':'') + '" onclick="' + (isLocked?'':'navTo(\'zone\',{zone:'+z.id+'})') + '">'
       + (isLocked?'<div class="lock-icon">🔒</div>':'')
       + '<div class="zone-num">Zone ' + z.zone_number + '</div>'
       + '<h3>' + esc(z.name) + '</h3>'
-      + '<div class="zone-desc">' + descs[z.zone_number-1] + '</div>'
       + '<div class="zone-progress"><div class="zone-progress-fill" style="width:'+pct+'%"></div></div>'
-      + '<div class="zone-pct">' + pct + '% complete</div>'
-      + '</div>';
+      + '<div class="zone-pct">' + pct + '% complete</div></div>';
   }).join('');
 
-  var recentNotifs = S.notifications.slice(0, 5).map(function(n) {
-    var action = '';
-    if (n.course_id) action = "navTo('zone',{zone:2})";
-    else if (n.brand_id) action = "navTo('brands')";
-    else if (n.notification_type === 'new_competitive_entry') action = "navTo('zone',{zone:2})";
-    else action = "navTo('notifications')";
-    return '<div class="notif-item ' + (!n.is_read?'unread':'') + '" onclick="' + action + '">'
-    + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
-    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
-  }).join('') || '<p style="color:var(--text3);text-align:center;padding:20px;font-size:13px">No notifications yet</p>';
-
-  el.innerHTML = '<div class="dash-header"><h2>Your Training</h2><p>Four pillars. Five zones. One system to master appliance sales.</p></div>'
+  el.innerHTML = '<div class="dash-header"><h2>Your Academy</h2><p>Four pillars. Five zones. 18 volumes. One system to master appliance sales.</p></div>'
     + '<div class="dash-grid">'
-    + '<div class="stat-card accent"><div class="label">Cards Completed</div><div class="value">' + S.completedCards.size + '</div><div class="sub">of ' + totalCards + ' total</div></div>'
-    + '<div class="stat-card green"><div class="label">Current Zone</div><div class="value">2</div><div class="sub">The Build</div></div>'
-    + '<div class="stat-card gold"><div class="label">Badges Earned</div><div class="value">' + S.earnedBadges.length + '</div><div class="sub">of ' + S.badges.length + ' available</div></div>'
+    + '<div class="stat-card accent"><div class="label">Cards Completed</div><div class="value">' + S.completedCards.size + '</div><div class="sub">of ' + totalCards + ' training cards</div></div>'
+    + '<div class="stat-card green"><div class="label">Curriculum</div><div class="value">' + chapDone + '</div><div class="sub">of ' + chapTotal + ' chapters</div></div>'
+    + '<div class="stat-card gold"><div class="label">Badges</div><div class="value">' + S.earnedBadges.length + '</div><div class="sub">of ' + S.badges.length + ' available</div></div>'
     + '</div>'
+    // Curriculum CTA
+    + '<div style="background:linear-gradient(135deg,var(--accent),#059669);border-radius:var(--radius);padding:24px;margin-bottom:20px;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(13,148,136,.15)" onclick="navTo(\'curriculum\')" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">'
+    + '<div style="display:flex;align-items:center;gap:16px"><div style="font-size:36px">📚</div><div>'
+    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Full Curriculum — ' + S.volumes.length + ' Volumes · ' + chapTotal + ' Chapters</h3>'
+    + '<p style="font-size:13px;color:rgba(255,255,255,.8)">From foundations to leadership. Detailed lessons with AI trainer, quizzes, and completion tracking.</p>'
+    + '</div><div style="color:rgba(255,255,255,.5);font-size:24px;margin-left:auto">›</div></div></div>'
+    // Coach CTA
     + '<div style="background:linear-gradient(135deg,var(--navy),#2c5282);border-radius:var(--radius);padding:24px;margin-bottom:28px;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(30,58,95,.15)" onclick="navTo(\'roleplay\')" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">'
     + '<div style="display:flex;align-items:center;gap:16px"><div style="font-size:36px">🎤</div><div>'
-    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Beat the Bot &amp; Human to Human Challenge</h3>'
-    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">Go 1-on-1 against AI or record a live practice session for AI scoring. Type or talk — you pick the role.</p>'
-    + '</div><div style="color:rgba(255,255,255,.5);font-size:24px;margin-left:auto">&#8250;</div></div></div>'
+    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Training Arena — Beat the Bot & AI Roleplay</h3>'
+    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">Go 1-on-1 against AI, practice with the edge-function roleplay (KPI scoring), or record a live session.</p>'
+    + '</div><div style="color:rgba(255,255,255,.5);font-size:24px;margin-left:auto">›</div></div></div>'
+    // Four Pillars
     + '<div class="section-header"><h3>The Four Pillars</h3></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px">' + pillarHtml + '</div>'
+    // Zone Map
     + '<div class="section-header"><h3>Your Progression — Zone Map</h3></div>'
     + '<div class="zone-map">' + zoneHtml + '</div>'
-    + '<div class="section-header"><h3>Recent Notifications</h3><span class="see-all" onclick="navTo(\'notifications\')">See all</span></div>'
-    + '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + recentNotifs + '</div>';
+    // Quick Links
+    + '<div class="section-header"><h3>Quick Access</h3></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:28px">'
+    + '<div class="brand-card" onclick="navTo(\'vendors\')"><h4>🏢 Vendors</h4><div class="brand-parent">' + S.vendors.length + ' brands</div></div>'
+    + '<div class="brand-card" onclick="navTo(\'compare\')"><h4>⚔️ Between Brands</h4><div class="brand-parent">Competitive intel</div></div>'
+    + '<div class="brand-card" onclick="navTo(\'serviceiq\')"><h4>❤️ Service IQ</h4><div class="brand-parent">Templates & lookup</div></div>'
+    + '<div class="brand-card" onclick="navTo(\'scorecard\')"><h4>📊 Daily Five</h4><div class="brand-parent">Track your numbers</div></div>'
+    + '</div>'
+    // Leaderboard placeholder
+    + '<div id="dash-leaderboard"></div>';
+  // Load leaderboard async
+  loadLeaderboard();
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// PILLAR / ZONE / LANE / COURSE / CARD PLAYER — from IQ Training
+// ══════════════════════════════════════════════════════════════════════════════
 function renderPillar(el) {
   var pillar = currentDeck;
   if (!pillar || !pillarLabels[pillar]) { navTo('dashboard'); return; }
-  var courses = S.courses.filter(function(c) { return c.pillar === pillar; });
+  var courses = S.courses.filter(function(c){ return c.pillar === pillar; });
   var col = pillarColors[pillar];
-  var lanes = S.lanes.filter(function(l) { return l.pillar === pillar; });
-
   var coursesHtml = courses.map(function(c) {
-    var clickAction = '';
-    if (pillar === 'brand_iq') {
-      clickAction = "navTo('brand-detail',{deck:" + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + "})";
-    } else {
-      clickAction = "openCourse(" + c.id + ")";
-    }
+    var clickAction = pillar === 'brand_iq'
+      ? "navTo('brand-detail',{deck:" + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + "})"
+      : "openCourse(" + c.id + ")";
     return '<div class="deck-row" onclick="' + clickAction + '">'
       + '<div class="deck-num" style="background:' + col + '22;color:' + col + '">' + (c.icon || pillarIcons[pillar]) + '</div>'
       + '<div class="deck-info"><h5>' + esc(c.name) + '</h5><p>' + esc(c.subtitle || '') + '</p></div>'
-      + '<div style="color:var(--text3);font-size:16px">&#8250;</div>'
-      + '</div>';
+      + '<div style="color:var(--text3);font-size:16px">›</div></div>';
   }).join('');
-
-  var lanesHtml = lanes.length ? '<div class="section-header" style="margin-top:24px"><h3>Training Lanes</h3></div>'
-    + '<div class="lanes-container">' + lanes.map(function(l) {
-      var zone = S.zones.find(function(z) { return z.id === l.zone_id; });
-      return '<div class="lane-card" onclick="navTo(\'lane\',{zone:' + l.zone_id + ',lane:' + l.id + '})">'
-        + '<div class="lane-tag" style="background:' + col + '22;color:' + col + '">' + (zone ? 'Zone ' + zone.zone_number : '') + '</div>'
-        + '<h4>' + esc(l.name) + '</h4>'
-        + '<div class="lane-desc">' + esc(l.description || '') + '</div>'
-        + '</div>';
-    }).join('') + '</div>' : '';
-
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
-    + '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;background:' + col + '15;border:2px solid ' + col + ';border-radius:var(--radius)">' + pillarIcons[pillar] + '</div>'
-    + '<div><h2 style="font-size:24px;font-weight:800">' + pillarLabels[pillar] + '</h2>'
-    + '<p style="color:var(--text2);font-size:13px">' + courses.length + ' courses · ' + pillarDescs[pillar].substring(0,80) + '...</p></div></div>'
-    + lanesHtml
-    + '<div class="section-header" style="margin-top:24px"><h3>All Courses (' + courses.length + ')</h3></div>'
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()">'
+    + '<span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back</span></div>'
+    + '<div class="dash-header"><h2>' + pillarIcons[pillar] + ' ' + pillarLabels[pillar] + '</h2><p>' + courses.length + ' courses</p></div>'
     + '<div class="deck-list">' + coursesHtml + '</div>';
 }
 
 function renderZone(el) {
-  const zone = S.zones.find(z => z.id === currentZone);
+  var zone = S.zones.find(function(z){ return z.id === currentZone; });
   if (!zone) { navTo('dashboard'); return; }
-  const zoneLanes = S.lanes.filter(l => l.zone_id === currentZone);
-  const laneTagColors = { sales_iq:'var(--accent2)', product_iq:'var(--cyan)', brand_iq:'var(--gold)', leadership_iq:'#a855f7' };
-
-  const lanesHtml = zoneLanes.map(l => {
-    const pct = 0;
-    const tagCol = laneTagColors[l.pillar] || 'var(--accent)';
+  var zoneLanes = S.lanes.filter(function(l){ return l.zone_id === currentZone; });
+  var lanesHtml = zoneLanes.map(function(l) {
     return '<div class="lane-card" onclick="navTo(\'lane\',{zone:'+currentZone+',lane:'+l.id+'})">'
-      + '<div class="lane-tag" style="background:' + tagCol + '22;color:' + tagCol + '">' + (pillarLabels[l.pillar]||l.pillar) + '</div>'
+      + '<div class="lane-tag">' + (pillarLabels[l.pillar]||l.pillar) + '</div>'
       + '<h4>' + esc(l.name) + '</h4>'
-      + '<div class="lane-desc">' + esc(l.description||'') + '</div>'
-      + '<div class="lane-progress"><div class="lane-progress-bar"><div class="lane-progress-fill" style="width:'+pct+'%"></div></div><div class="lane-progress-text">'+pct+'%</div></div>'
-      + '</div>';
+      + '<div class="lane-desc">' + esc(l.description||'') + '</div></div>';
   }).join('') || '<p style="color:var(--text3);padding:20px;text-align:center">No lanes in this zone yet</p>';
-
-  el.innerHTML = '<div class="dash-header"><h2>' + esc(zone.name) + '</h2><p>Zone ' + zone.zone_number + ' — ' + zoneLanes.length + ' learning lanes</p></div>'
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back</span></div>'
+    + '<div class="dash-header"><h2>' + esc(zone.name) + '</h2><p>Zone ' + zone.zone_number + ' — ' + zoneLanes.length + ' learning lanes</p></div>'
     + '<div class="lanes-container">' + lanesHtml + '</div>';
 }
 
 async function renderLane(el) {
-  const lane = S.lanes.find(l => l.id === currentLane);
+  var lane = S.lanes.find(function(l){ return l.id === currentLane; });
   if (!lane) { goBack(); return; }
   el.innerHTML = '<div class="loading-spinner"></div>';
   await loadDecksForLane(currentLane);
-
-  const decksHtml = S.decks.map(d => {
-    const done = S.completedDecks.has(d.id);
+  var decksHtml = S.decks.map(function(d) {
+    var done = S.completedDecks.has(d.id);
     return '<div class="deck-row ' + (done?'completed':'') + '" onclick="openDeck('+d.id+')">'
       + '<div class="deck-num">' + (done?'✓':d.deck_number) + '</div>'
-      + '<div class="deck-info"><h5>' + esc(d.title) + '</h5><p>' + esc(d.description||'').substring(0,80) + (d.description && d.description.length > 80 ? '...' : '') + '</p></div>'
-      + '<div class="deck-meta"><div class="time">⏱ ' + (d.estimated_minutes||5) + 'min</div></div>'
-      + '</div>';
-  }).join('') || '<p style="color:var(--text3);padding:20px;text-align:center">No decks in this lane yet</p>';
-
-  el.innerHTML = '<div class="dash-header"><h2>' + esc(lane.name) + '</h2><p>' + esc(lane.description||'') + '</p></div>'
+      + '<div class="deck-info"><h5>' + esc(d.title) + '</h5><p>' + esc((d.description||'').substring(0,80)) + '</p></div>'
+      + '<div class="deck-meta"><div>⏱ ' + (d.estimated_minutes||5) + 'min</div></div></div>';
+  }).join('') || '<p style="color:var(--text3);padding:20px;text-align:center">No decks yet</p>';
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back</span></div>'
+    + '<div class="dash-header"><h2>' + esc(lane.name) + '</h2><p>' + esc(lane.description||'') + '</p></div>'
     + '<div class="deck-list">' + decksHtml + '</div>';
 }
 
+async function openCourse(courseId) {
+  var course = S.courses.find(function(c){ return c.id === courseId; });
+  if (!course) return;
+  window._currentCourse = course;
+  var { data } = await sb.from('iq_decks').select('*').eq('course_id', courseId).order('sort_order');
+  window._courseDecks = data || [];
+  currentView = 'course'; renderView(); updateTabs();
+}
+window.openCourse = openCourse;
+
+function renderCourse(el) {
+  var course = window._currentCourse;
+  var decks = window._courseDecks || [];
+  if (!course) { navTo('dashboard'); return; }
+  var col = pillarColors[course.pillar] || 'var(--accent)';
+  var decksHtml = decks.length ? decks.map(function(d) {
+    return '<div class="deck-row" onclick="openDeck(' + d.id + ')">'
+      + '<div class="deck-num">' + d.deck_number + '</div>'
+      + '<div class="deck-info"><h5>' + esc(d.title) + '</h5><p>' + esc((d.description || '').substring(0, 100)) + '</p></div>'
+      + '<div class="deck-meta">⏱ ' + (d.estimated_minutes || 5) + 'min</div></div>';
+  }).join('') : '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:32px;text-align:center">'
+    + '<p style="font-size:15px;color:var(--text2);margin-bottom:12px">No lessons built for this course yet.</p>'
+    + '<button onclick="startChat(\'caden\',\'Teach me about ' + esc(course.name).replace(/'/g,'') + '\')" style="margin-top:16px;padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:600;cursor:pointer">Ask AI Coach</button></div>';
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back</span></div>'
+    + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
+    + '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;background:' + col + '15;border:2px solid ' + col + ';border-radius:var(--radius)">' + (course.icon || '📘') + '</div>'
+    + '<div><h2 style="font-size:24px;font-weight:800;color:var(--navy)">' + esc(course.name) + '</h2>'
+    + '<p style="color:var(--text2);font-size:13px">' + esc(course.subtitle || '') + ' · ' + decks.length + ' lessons</p></div></div>'
+    + '<div class="deck-list">' + decksHtml + '</div>';
+}
+
+// Card player — same as original IQ Training
 async function openDeck(deckId) {
-  const player = document.getElementById('card-player');
+  var player = document.getElementById('card-player');
   player.style.display = 'block';
   player.innerHTML = '<div class="loading-spinner" style="margin-top:40vh"></div>';
   await loadCardsForDeck(deckId);
-  const deck = S.decks.find(d => d.id === deckId);
-  window._playerState = { deckId, cardIndex: 0, cards: S.cards, deck };
+  var deck = S.decks.find(function(d){ return d.id === deckId; });
+  window._playerState = { deckId: deckId, cardIndex: 0, cards: S.cards, deck: deck };
   renderCard();
 }
 window.openDeck = openDeck;
 
 function renderCard() {
-  const ps = window._playerState;
+  var ps = window._playerState;
   if (!ps || !ps.cards.length) return;
-  const card = ps.cards[ps.cardIndex];
-  const total = ps.cards.length;
-  const pct = ((ps.cardIndex + 1) / total) * 100;
-  const typeIcons = { fact:'📘', script:'📝', demo:'🎯', versus:'⚔️', scenario:'🎭', quiz:'❓' };
-  const coachNames = { tj:'TJ', natalie:'Natalie', caden:'Caden', katrina:'Katrina', asher:'Asher', leah:'Leah' };
-
-  let body = '';
+  var card = ps.cards[ps.cardIndex];
+  var total = ps.cards.length;
+  var pct = ((ps.cardIndex + 1) / total) * 100;
+  var typeIcons = { fact:'📘', script:'📝', demo:'🎯', versus:'⚔️', scenario:'🎭', quiz:'❓' };
+  var coachNames = { tj:'TJ', natalie:'Natalie', caden:'Caden', katrina:'Katrina', asher:'Asher', leah:'Leah' };
+  var body = '';
   if (card.card_type === 'quiz') {
-    const opts = card.options || [];
+    var opts = card.options || [];
     body = '<div class="card-front">' + esc(card.front||'') + '</div>'
-      + '<div class="quiz-options">' + opts.map((o,i) =>
-        '<div class="quiz-opt" onclick="checkQuiz(this,\'' + esc(card.correct_option||'').replace(/'/g,"\\'") + '\')">' + esc(o) + '</div>'
-      ).join('') + '</div>';
+      + '<div class="quiz-options">' + opts.map(function(o){ return '<div class="quiz-opt" onclick="checkQuiz(this,\'' + esc(card.correct_option||'').replace(/'/g,"\\'") + '\')">' + esc(o) + '</div>'; }).join('') + '</div>';
   } else if (card.back) {
     body = '<div class="card-front">' + esc(card.front||'') + '</div>'
       + '<div class="card-back" id="card-back">' + esc(card.back) + '</div>'
-      + '<div class="reveal-btn" id="reveal-btn" onclick="document.getElementById(\'card-back\').classList.add(\'show\');this.style.display=\'none\'">Reveal Answer ↓</div>';
+      + '<div class="reveal-btn" onclick="document.getElementById(\'card-back\').classList.add(\'show\');this.style.display=\'none\'">Reveal Answer ↓</div>';
   } else {
     body = '<div class="card-front">' + esc(card.front||'') + '</div>';
   }
-
-  const isLast = ps.cardIndex === total - 1;
-  const isFirst = ps.cardIndex === 0;
-
+  var isLast = ps.cardIndex === total - 1;
+  var isFirst = ps.cardIndex === 0;
   document.getElementById('card-player').innerHTML =
-    '<div class="player-header">'
-    + '<div class="back-btn" onclick="closePlayer()">← Back</div>'
-    + '<div class="deck-title">' + esc(ps.deck?.title||'Deck') + '</div>'
-    + '<div class="card-counter">' + (ps.cardIndex+1) + '/' + total + '</div></div>'
+    '<div class="player-header"><div class="back-btn" onclick="closePlayer()">← Back</div><div class="deck-title">' + esc(ps.deck?.title||'Deck') + '</div><div class="card-counter">' + (ps.cardIndex+1) + '/' + total + '</div></div>'
     + '<div class="player-progress"><div class="player-progress-fill" style="width:'+pct+'%"></div></div>'
     + '<div class="card-stage"><div class="card-container fade-in">'
     + '<div><span class="card-type-badge ' + card.card_type + '">' + (typeIcons[card.card_type]||'📄') + ' ' + card.card_type + '</span>'
     + '<span class="coach-tag">🎤 ' + (coachNames[card.coach]||card.coach||'Coach') + '</span></div>'
-    + '<div class="card-title">' + esc(card.title) + '</div>'
-    + body
+    + '<div class="card-title">' + esc(card.title) + '</div>' + body
     + '<div class="player-nav">'
     + (isFirst ? '<div></div>' : '<button class="prev-btn" onclick="prevCard()">← Previous</button>')
     + '<button class="next-btn' + (isLast?' finish':'') + '" onclick="nextCard()">' + (isLast?'✓ Complete Deck':'Next →') + '</button>'
     + '</div></div></div>';
-};
-
+}
 window.renderCard = renderCard;
 
-function checkQuiz(el, correct) {
-  const opts = el.parentElement.querySelectorAll('.quiz-opt');
-  opts.forEach(o => {
-    o.classList.add('disabled');
-    if (o.textContent === correct) o.classList.add('correct');
-    else if (o === el && o.textContent !== correct) o.classList.add('wrong');
-  });
-};
+function checkQuiz(el, correct) { el.parentElement.querySelectorAll('.quiz-opt').forEach(function(o){ o.classList.add('disabled'); if(o.textContent===correct) o.classList.add('correct'); else if(o===el&&o.textContent!==correct) o.classList.add('wrong'); }); }
+function nextCard() { var ps = window._playerState; if(ps.cardIndex<ps.cards.length-1){ps.cardIndex++;renderCard();}else{S.completedDecks.add(ps.deckId);closePlayer();renderView();} }
+function prevCard() { var ps = window._playerState; if(ps.cardIndex>0){ps.cardIndex--;renderCard();} }
+function closePlayer() { document.getElementById('card-player').style.display='none'; window._playerState=null; }
+window.checkQuiz=checkQuiz; window.nextCard=nextCard; window.prevCard=prevCard; window.closePlayer=closePlayer;
 
-function nextCard() {
-  const ps = window._playerState;
-  if (ps.cardIndex < ps.cards.length - 1) {
-    ps.cardIndex++;
-    renderCard();
-  } else {
-    S.completedDecks.add(ps.deckId);
-    closePlayer();
-    renderView();
-  }
-}
-
-function prevCard() {
-  const ps = window._playerState;
-  if (ps.cardIndex > 0) { ps.cardIndex--; renderCard(); }
-}
-
-function closePlayer() {
-  document.getElementById('card-player').style.display = 'none';
-  window._playerState = null;
-}
-
-window.checkQuiz = checkQuiz;
-window.nextCard = nextCard;
-window.prevCard = prevCard;
-window.closePlayer = closePlayer;
-
+// ══════════════════════════════════════════════════════════════════════════════
+// BRANDS — from IQ Training (156 brands via iq_courses)
+// ══════════════════════════════════════════════════════════════════════════════
 function renderBrands(el) {
-  const brandCourses = S.courses.filter(c => c.pillar === 'brand_iq').sort((a,b) => a.name.localeCompare(b.name));
-  const tiers = ['all','entry','mid','luxury','ultra_luxury'];
-  const tierLabels = { all:'All', entry:'Entry', mid:'Mid', luxury:'Luxury', ultra_luxury:'Ultra-Luxury' };
+  var brandCourses = S.courses.filter(function(c){ return c.pillar === 'brand_iq'; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var tiers = ['all','entry','mid','luxury','ultra_luxury'];
+  var tierLabels = { all:'All', entry:'Entry', mid:'Mid', luxury:'Luxury', ultra_luxury:'Ultra-Luxury' };
   window._brandFilter = window._brandFilter || 'all';
-
-  const filtered = window._brandFilter === 'all' ? brandCourses : brandCourses.filter(c => c.category === window._brandFilter);
-
-  const filtersHtml = tiers.map(t =>
-    '<div class="brand-filter ' + (window._brandFilter===t?'active':'') + '" onclick="window._brandFilter=\'' + t + '\';renderView()">' + tierLabels[t] + ' (' + (t==='all'?brandCourses.length:brandCourses.filter(c=>c.category===t).length) + ')</div>'
-  ).join('');
-
-  const cardsHtml = filtered.map(c =>
-    '<div class="brand-card" onclick="navTo(\'brand-detail\',{deck:' + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + '})">'
-    + '<h4>' + esc(c.name) + '</h4>'
-    + '<div class="brand-tier ' + (c.category||'mid') + '">' + (c.category||'mid').replace('_',' ') + '</div>'
-    + '<div class="brand-parent">' + esc(c.subtitle||'') + '</div>'
-    + '</div>'
-  ).join('');
-
+  var filtered = window._brandFilter === 'all' ? brandCourses : brandCourses.filter(function(c){ return c.category === window._brandFilter; });
+  var filtersHtml = tiers.map(function(t){
+    return '<div class="brand-filter ' + (window._brandFilter===t?'active':'') + '" onclick="window._brandFilter=\'' + t + '\';renderView()">' + tierLabels[t] + ' (' + (t==='all'?brandCourses.length:brandCourses.filter(function(c){return c.category===t;}).length) + ')</div>';
+  }).join('');
+  var cardsHtml = filtered.map(function(c){
+    return '<div class="brand-card" onclick="navTo(\'brand-detail\',{deck:' + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + '})">'
+      + '<h4>' + esc(c.name) + '</h4>'
+      + '<div class="brand-tier ' + (c.category||'mid') + '">' + (c.category||'mid').replace('_',' ') + '</div>'
+      + '<div class="brand-parent">' + esc(c.subtitle||'') + '</div></div>';
+  }).join('');
   el.innerHTML = '<div class="dash-header"><h2>Brand IQ</h2><p>156 brands — know every one on your floor</p></div>'
     + '<div class="brand-filters">' + filtersHtml + '</div>'
     + '<div class="brand-grid">' + cardsHtml + '</div>';
@@ -818,796 +1073,821 @@ async function renderBrandDetail(el) {
   if (!brand) { navTo('brands'); return; }
   el.innerHTML = '<div class="loading-spinner"></div>';
   var products = await loadBrandProducts(brand.brand_id);
-  var intro = products.find(function(p) { return p.card_type === 'brand_intro'; });
-  var spotlights = products.filter(function(p) { return p.card_type === 'product_spotlight'; });
-
-  // Build category icon map
-  var catIcons = { refrigeration:'🧊', cooking:'🔥', laundry:'👕', dishwashers:'🍽', ventilation:'💨', 'wall ovens':'🔲', microwaves:'📡', outdoor:'🌿', 'warming drawers':'♨️', coffee:'☕' };
-  var catColors = { refrigeration:'#0891b2', cooking:'#dc2626', laundry:'#7c3aed', dishwashers:'#059669', ventilation:'#64748b', 'wall ovens':'#d97706', microwaves:'#0d9488', outdoor:'#16a34a' };
-
-  // Brand intro section
+  var intro = products.find(function(p){ return p.card_type === 'brand_intro'; });
+  var spotlights = products.filter(function(p){ return p.card_type === 'product_spotlight'; });
   var introHtml = '';
   if (intro && intro.content) {
     var c = intro.content;
-    var cats = c.product_categories || [];
-    var catPills = cats.map(function(cat) {
-      var icon = catIcons[cat.toLowerCase()] || '📦';
-      var color = catColors[cat.toLowerCase()] || 'var(--accent)';
-      return '<div style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:' + color + '10;border:1px solid ' + color + '30;border-radius:8px"><span style="font-size:18px">' + icon + '</span><span style="font-size:13px;font-weight:600;color:' + color + '">' + esc(cat) + '</span></div>';
-    }).join('');
-
     introHtml = '<div style="background:linear-gradient(135deg,var(--navy),#2c5282);border-radius:var(--radius);padding:28px;margin-bottom:24px;color:#fff">'
       + '<div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">'
-      + (c.logo_url ? '<img src="' + esc(c.logo_url) + '" alt="' + esc(c.brand_name||brand.name) + '" style="width:64px;height:64px;object-fit:contain;background:#fff;border-radius:12px;padding:8px" onerror="this.style.display=\'none\'">' : '')
+      + (c.logo_url ? '<img src="' + esc(c.logo_url) + '" alt="' + esc(brand.name) + '" style="width:64px;height:64px;object-fit:contain;background:#fff;border-radius:12px;padding:8px" onerror="this.style.display=\'none\'">' : '')
       + '<div><h2 style="font-size:26px;font-weight:900;margin-bottom:4px">' + esc(c.brand_name || brand.name) + '</h2>'
       + (c.brand_tagline ? '<p style="color:var(--accent2);font-size:16px;font-weight:600;font-style:italic">"' + esc(c.brand_tagline) + '"</p>' : '')
       + '</div></div>'
       + (c.brand_story ? '<p style="font-size:15px;line-height:1.8;color:rgba(255,255,255,.85);margin-bottom:16px">' + esc(c.brand_story) + '</p>' : '')
-      + '<div style="display:flex;flex-wrap:wrap;gap:20px;font-size:14px;color:rgba(255,255,255,.7);margin-bottom:16px">'
+      + '<div style="display:flex;flex-wrap:wrap;gap:20px;font-size:14px;color:rgba(255,255,255,.7)">'
       + (c.founded_year ? '<div>🏛 Founded <strong style="color:#fff">' + esc(c.founded_year) + '</strong></div>' : '')
       + (c.headquarters ? '<div>📍 <strong style="color:#fff">' + esc(c.headquarters) + '</strong></div>' : '')
       + (c.parent_company ? '<div>🏢 <strong style="color:#fff">' + esc(c.parent_company) + '</strong></div>' : '')
-      + '</div></div>'
-      + (cats.length ? '<div style="margin-bottom:24px"><h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:12px">What They Make — Categories on Your Floor</h3><div style="display:flex;flex-wrap:wrap;gap:8px">' + catPills + '</div></div>' : '');
+      + '</div></div>';
   }
-
-  // Rep quick-reference card
-  var quickRef = '<div style="background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius);padding:20px;margin-bottom:24px">'
-    + '<h3 style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:8px">💡 Rep Quick Reference</h3>'
-    + '<div style="font-size:14px;line-height:1.7;color:var(--text)">'
-    + '<strong>When a customer asks about ' + esc(brand.name) + ':</strong> '
-    + (intro && intro.content && intro.content.brand_tagline ? '"' + esc(intro.content.brand_tagline) + '" — ' : '')
-    + 'They compete in ' + spotlights.length + ' products across our PIM. '
-    + (intro && intro.content && intro.content.brand_tier ? 'Positioned as <strong>' + esc(intro.content.brand_tier) + ' tier</strong>. ' : '')
-    + (intro && intro.content && intro.content.parent_company ? 'Part of the <strong>' + esc(intro.content.parent_company) + '</strong> family.' : '')
-    + '</div></div>';
-
-  // Products as selling guides
   var productsHtml = spotlights.length ? spotlights.map(function(p) {
     var c = p.content || {};
-    var specs = c.specs_json || {};
-    var desc = c.short_description || '';
-    var colors = c.available_colors;
-    var colorsStr = '';
-    if (colors && typeof colors === 'object') {
-      if (Array.isArray(colors)) colorsStr = colors.join(', ');
-      else colorsStr = Object.keys(colors).join(', ');
-    } else if (typeof colors === 'string') { colorsStr = colors; }
-
-    // Build selling points from specs
     var sellingPoints = [];
-    if (c.capacity_cu_ft) sellingPoints.push('📏 ' + c.capacity_cu_ft + ' cu ft capacity');
-    if (c.width_inches) sellingPoints.push('📐 ' + c.width_inches + '" wide');
-    if (c.voltage) sellingPoints.push('⚡ ' + c.voltage + 'V');
+    if (c.capacity_cu_ft) sellingPoints.push('📏 ' + c.capacity_cu_ft + ' cu ft');
+    if (c.width_inches) sellingPoints.push('📐 ' + c.width_inches + '"');
     if (c.installation_type) sellingPoints.push('🔧 ' + c.installation_type);
-    if (c.finish) sellingPoints.push('✨ ' + c.finish + ' finish');
-    if (c.energy_star) sellingPoints.push('🌿 ENERGY STAR certified');
-    if (colorsStr) sellingPoints.push('🎨 Available in: ' + colorsStr);
-    if (desc) sellingPoints.push('📋 ' + desc.substring(0, 120) + (desc.length > 120 ? '...' : ''));
-
-    var statusBadge = '';
-    if (p.is_discontinued) statusBadge = '<span style="display:inline-block;padding:3px 10px;background:rgba(220,38,38,.1);color:var(--red);font-size:11px;font-weight:700;border-radius:4px;margin-left:8px">DISCONTINUED</span>';
-    if (p.is_clearance) statusBadge = '<span style="display:inline-block;padding:3px 10px;background:rgba(217,119,6,.1);color:var(--gold);font-size:11px;font-weight:700;border-radius:4px;margin-left:8px">CLEARANCE</span>';
-
-    // Find any image or video from product data
-    var imgUrl = c.image_url || c.cover_image_url || c.thumbnail_url || (specs && specs.image_url) || null;
-    var vidUrl = c.video_url || (specs && specs.video_url) || null;
-
-    var mediaHtml = '';
-    if (vidUrl) {
-      mediaHtml = '<div style="margin-bottom:12px;border-radius:8px;overflow:hidden;background:#000">'
-        + '<video controls style="width:100%;max-height:240px;display:block" poster="' + esc(imgUrl || '') + '">'
-        + '<source src="' + esc(vidUrl) + '" type="video/mp4">'
-        + '</video></div>';
-    } else if (imgUrl) {
-      mediaHtml = '<div style="margin-bottom:12px"><img src="' + esc(imgUrl) + '" alt="' + esc(c.model || '') + '" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;background:var(--surface2)" onerror="this.parentElement.style.display=\'none\'"></div>';
-    }
-
+    if (c.energy_star) sellingPoints.push('🌿 ENERGY STAR');
+    var imgUrl = c.image_url || c.cover_image_url || c.thumbnail_url || null;
     return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:0 1px 3px rgba(30,58,95,.04)">'
-      + mediaHtml
+      + (imgUrl ? '<div style="margin-bottom:12px"><img src="' + esc(imgUrl) + '" style="width:100%;max-height:220px;object-fit:contain;border-radius:8px;background:var(--surface2)" onerror="this.parentElement.style.display=\'none\'"></div>' : '')
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">'
-      + '<div><h4 style="font-size:16px;font-weight:800;color:var(--navy)">' + esc(c.model || p.title) + statusBadge + '</h4>'
-      + '<div style="font-size:13px;color:var(--text2);margin-top:2px">' + esc(c.category || '') + (c.product_line ? ' — ' + esc(c.product_line) : '') + (c.series ? ' — ' + esc(c.series) : '') + '</div></div>'
-      + (c.msrp ? '<div style="text-align:right"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">MSRP</div><div style="font-size:20px;font-weight:800;color:var(--navy)">$' + Number(c.msrp).toLocaleString() + '</div></div>' : '')
+      + '<div><h4 style="font-size:16px;font-weight:800;color:var(--navy)">' + esc(c.model || p.title) + '</h4>'
+      + '<div style="font-size:13px;color:var(--text2);margin-top:2px">' + esc(c.category || '') + '</div></div>'
+      + (c.msrp ? '<div style="font-size:20px;font-weight:800;color:var(--navy)">$' + Number(c.msrp).toLocaleString() + '</div>' : '')
       + '</div>'
-      + (sellingPoints.length ? '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' + sellingPoints.map(function(sp) { return '<div style="font-size:13px;color:var(--text2);line-height:1.5">' + esc(sp) + '</div>'; }).join('') + '</div>' : '')
+      + (sellingPoints.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + sellingPoints.map(function(sp){ return '<span style="font-size:12px;color:var(--text2);background:var(--surface2);padding:2px 8px;border-radius:4px">' + esc(sp) + '</span>'; }).join('') + '</div>' : '')
       + '</div>';
-  }).join('') : '<p style="color:var(--text3);padding:20px;text-align:center;font-size:13px">No products in PIM yet for this brand</p>';
+  }).join('') : '<p style="color:var(--text3);text-align:center;padding:20px">No products in PIM yet</p>';
 
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()">'
-    + '<span style="color:var(--text2);font-size:18px">&#8592;</span><div><h2 style="font-size:24px;font-weight:800;color:var(--navy)">' + esc(brand.name) + '</h2><p style="color:var(--text2);font-size:13px">' + esc(brand.subtitle||'') + '</p></div></div>'
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back to Brands</span></div>'
     + introHtml
-    + quickRef
-    + '<div class="section-header"><h3>Product Selling Guide (' + spotlights.length + ' in PIM)</h3></div>'
-    + '<div style="display:grid;gap:12px;margin-bottom:32px">' + productsHtml + '</div>'
-    + '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center">'
-    + '<p style="font-size:14px;color:var(--text2);margin-bottom:12px">Want to practice selling ' + esc(brand.name) + ' products?</p>'
-    + '<button onclick="startChat(\'natalie\',\'I have a customer interested in ' + esc(brand.name) + ' products. Help me position the brand and recommend the right products.\',\'coach\')" style="padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:600;cursor:pointer">Practice with AI Coach</button>'
-    + '</div>';
+    + '<div class="section-header"><h3>Products — Selling Guides</h3></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">' + productsHtml + '</div>';
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// BADGES
+// ══════════════════════════════════════════════════════════════════════════════
 function renderBadges(el) {
-  const types = { zone_gate:'Zone Gates', pillar_cert:'Pillar Certifications', brand_cert:'Brand Certifications', course_cert:'Course Completions', streak:'Streaks', milestone:'Milestones' };
-  let html = '<div class="dash-header"><h2>Badges & Certifications</h2><p>' + S.badges.length + ' total badges — ' + S.earnedBadges.length + ' earned</p></div>';
-  
-  for (const [type, label] of Object.entries(types)) {
-    const badges = S.badges.filter(b => b.badge_type === type);
-    if (!badges.length) continue;
-    const subset = type === 'brand_cert' ? badges.slice(0, 24) : badges;
-    html += '<div class="section-header"><h3>' + label + ' (' + badges.length + ')</h3></div>'
-      + '<div class="badges-grid">' + subset.map(b => {
-        const earned = S.earnedBadges.includes(b.id);
-        return '<div class="badge-card ' + (earned?'earned':'locked') + '">'
-          + '<div class="badge-icon">' + (b.icon||'🏅') + '</div>'
+  var types = ['pillar','zone','course','brand','milestone','streak'];
+  var typeLabels = { pillar:'Pillar Certifications', zone:'Zone Gates', course:'Course Badges', brand:'Brand Certifications', milestone:'Milestones', streak:'Streaks' };
+  var grouped = {};
+  types.forEach(function(t){ grouped[t] = S.badges.filter(function(b){ return b.badge_type === t; }); });
+  var html = types.map(function(t) {
+    if (!grouped[t].length) return '';
+    return '<div class="section-header"><h3>' + typeLabels[t] + ' (' + grouped[t].length + ')</h3></div>'
+      + '<div class="badges-grid">' + grouped[t].map(function(b) {
+        var earned = S.earnedBadges.find(function(e){ return e.badge_id === b.id; });
+        return '<div class="badge-card ' + (earned ? 'earned' : 'locked') + '">'
+          + '<div class="badge-icon">' + (b.icon || '🏅') + '</div>'
           + '<h5>' + esc(b.name) + '</h5></div>';
       }).join('') + '</div>';
-    if (type === 'brand_cert' && badges.length > 24) {
-      html += '<p style="color:var(--text3);font-size:13px;margin-bottom:24px;text-align:center">+ ' + (badges.length - 24) + ' more brand certifications</p>';
+  }).join('');
+  el.innerHTML = '<div class="dash-header"><h2>Badges & Certifications</h2><p>' + S.badges.length + ' badges — ' + S.earnedBadges.length + ' earned</p></div>' + html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// VENDORS — from Academy
+// ══════════════════════════════════════════════════════════════════════════════
+function vendorInitials(name) {
+  var clean = name.replace(/[^A-Za-z0-9 ]/g,'');
+  var parts = clean.split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0].substring(0,2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function renderVendorsView(el) {
+  window._vendorFilter = window._vendorFilter || 'All';
+  var tiers = ['All'].concat(Array.from(new Set(S.vendors.map(function(v){ return v.tier; }).filter(Boolean))));
+  var list = window._vendorFilter === 'All' ? S.vendors : S.vendors.filter(function(v){ return v.tier === window._vendorFilter; });
+  var filtersHtml = tiers.map(function(t){
+    return '<div class="filter-btn ' + (window._vendorFilter===t?'active':'') + '" onclick="window._vendorFilter=\'' + t + '\';renderView()">' + t + '</div>';
+  }).join('');
+  var cardsHtml = list.map(function(v){
+    return '<div class="vendor-card" onclick="navTo(\'vendor-detail\',{deck:\'' + v.id + '\'})">'
+      + '<div class="vendor-card-top"><div class="vendor-logo">' + vendorInitials(v.name) + '</div><span class="vendor-tier">' + (v.tier||'') + '</span></div>'
+      + '<div class="vendor-name">' + esc(v.name) + '</div>'
+      + '<div class="vendor-tagline">' + esc(v.tagline||'') + '</div>'
+      + '<div class="vendor-focus">' + esc(v.focus||'') + '</div>'
+      + '<div class="vendor-card-foot">' + ((v.specGuides||[]).length) + ' spec guides →</div></div>';
+  }).join('');
+  el.innerHTML = '<div class="dash-header"><h2>🏢 Vendor Library</h2><p>' + S.vendors.length + ' brands — specs, stories, selling angles, and service data</p></div>'
+    + '<div class="filter-bar">' + filtersHtml + '</div>'
+    + '<div class="vendor-grid">' + cardsHtml + '</div>';
+}
+
+function renderVendorDetail(el) {
+  var v = S.vendors.find(function(x){ return x.id === currentDeck; });
+  if (!v) { navTo('vendors'); return; }
+  el.innerHTML = '<button class="vendor-back" onclick="goBack()">← All vendors</button>'
+    + '<div class="vendor-detail-head"><div class="vendor-logo lg">' + vendorInitials(v.name) + '</div><div>'
+    + '<div class="vendor-detail-name">' + esc(v.name) + '</div>'
+    + '<div class="vendor-detail-tagline">' + esc(v.tagline||'') + '</div>'
+    + '<div style="margin-top:6px"><span class="vendor-tier">' + esc(v.tier||'') + '</span> <span style="font-size:12px;color:var(--text3)">' + esc(v.focus||'') + '</span></div></div></div>'
+    + (v.story ? '<div class="vendor-section"><div class="vendor-section-title">The Story</div><p class="vendor-story">' + esc(v.story) + '</p></div>' : '')
+    + '<div class="vendor-twocol">'
+    + '<div class="vendor-section"><div class="vendor-section-title">Who it\'s right for</div><p class="vendor-fit">' + esc(v.rightFor||'Details coming soon.') + '</p></div>'
+    + '<div class="vendor-section"><div class="vendor-section-title">Selling angles</div><ul class="vendor-angles">' + ((v.sellingAngles||[]).map(function(a){ return '<li>' + esc(a) + '</li>'; }).join('')||'<li>Details coming soon.</li>') + '</ul></div></div>'
+    + ((v.specGuides||[]).length ? '<div class="vendor-section"><div class="vendor-section-title">Spec Guides</div><div class="vendor-spec-list">'
+      + v.specGuides.map(function(s){ return s.url
+        ? '<a href="' + esc(s.url) + '" target="_blank" rel="noopener" class="vendor-spec-item has-link"><div><div class="vendor-spec-model">' + esc(s.model) + '</div>' + (s.note?'<div class="vendor-spec-note">'+esc(s.note)+'</div>':'') + '</div><span class="vendor-spec-badge open">Open spec ↗</span></a>'
+        : '<div class="vendor-spec-item"><div><div class="vendor-spec-model">' + esc(s.model) + '</div></div><span class="vendor-spec-badge">Link pending</span></div>';
+      }).join('') + '</div></div>' : '')
+    + '<div id="vendor-service-data" style="margin-top:24px"><div class="loading-spinner"></div></div>';
+  // Load service IQ data for this vendor async
+  loadVendorServiceData(v.name);
+}
+
+async function loadVendorServiceData(vendorName) {
+  var el = document.getElementById('vendor-service-data');
+  if (!el) return;
+  try {
+    var { data: contacts } = await sb.from('aiq_vendor_contacts').select('*').ilike('brand_name', '%' + vendorName + '%');
+    var { data: warranties } = await sb.from('aiq_warranty_policies').select('*').ilike('brand_name', '%' + vendorName + '%');
+    var { data: recalls } = await sb.from('aiq_recalls').select('*').ilike('brand_name', '%' + vendorName + '%').order('recall_date', { ascending: false });
+    var html = '';
+    if ((contacts||[]).length) {
+      html += '<div class="vendor-section"><div class="vendor-section-title">❤️ Service Contacts</div>'
+        + (contacts||[]).map(function(c){ return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;margin-bottom:8px"><strong>' + esc(c.contact_name||'') + '</strong> — ' + esc(c.contact_role||'') + '<br><span style="font-size:12px;color:var(--text2)">' + esc(c.phone||'') + ' · ' + esc(c.email||'') + '</span></div>'; }).join('') + '</div>';
     }
-  }
-  el.innerHTML = html;
+    if ((warranties||[]).length) {
+      html += '<div class="vendor-section"><div class="vendor-section-title">📋 Warranty Policies</div>'
+        + (warranties||[]).map(function(w){ return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);padding:12px;margin-bottom:8px"><strong>' + esc(w.category||'') + '</strong> — ' + esc(w.warranty_term||'') + '<br><span style="font-size:12px;color:var(--text2)">' + esc(w.coverage_details||'') + '</span></div>'; }).join('') + '</div>';
+    }
+    if ((recalls||[]).length) {
+      html += '<div class="vendor-section"><div class="vendor-section-title">⚠️ Active Recalls</div>'
+        + (recalls||[]).map(function(r){ return '<div style="background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.2);border-radius:var(--radius-xs);padding:12px;margin-bottom:8px"><strong style="color:var(--red)">' + esc(r.model||'') + '</strong> — ' + esc(r.reason||'') + '<br><span style="font-size:12px;color:var(--text2)">' + esc(r.recall_date||'') + '</span></div>'; }).join('') + '</div>';
+    }
+    el.innerHTML = html || '<p style="color:var(--text3);font-size:13px">No service data found for this vendor.</p>';
+  } catch(e) { el.innerHTML = ''; }
 }
 
-function renderNotifPage(el) {
-  var unread = S.notifications.filter(function(n) { return !n.is_read; }).length;
-  var notifsHtml = S.notifications.map(function(n, i) {
-    var action = getNotifAction(n);
-    var actionLabel = getNotifLabel(n);
-    return '<div class="notif-item ' + (!n.is_read ? 'unread' : '') + '" style="cursor:pointer" onclick="clickNotif(' + i + ')">'
-      + '<div class="notif-icon">' + (n.icon || '📢') + '</div>'
-      + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body || '') + '</p>'
-      + (actionLabel ? '<div style="margin-top:4px"><span style="font-size:11px;font-weight:600;color:var(--accent);text-decoration:underline">' + actionLabel + ' &#8250;</span></div>' : '')
-      + '<div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
-  }).join('') || '<p style="color:var(--text3);text-align:center;padding:40px;font-size:13px">No notifications yet</p>';
+// ══════════════════════════════════════════════════════════════════════════════
+// BETWEEN BRANDS (Compare) — from Academy
+// ══════════════════════════════════════════════════════════════════════════════
+var _compareFilter = 'all';
+var _compareOpenId = null;
 
-  el.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
-    + '<div><h2 style="font-size:28px;font-weight:800;color:var(--navy)">Notifications</h2><p style="color:var(--text2);font-size:14px">' + S.notifications.length + ' alerts' + (unread ? ' · ' + unread + ' unread' : '') + '</p></div>'
-    + '<div style="display:flex;gap:8px">'
-    + (unread ? '<button onclick="markAllRead()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:13px;font-weight:600;cursor:pointer">Mark All Read</button>' : '')
-    + '<button onclick="clearAllNotifs()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:var(--radius-xs);font-size:13px;font-weight:600;cursor:pointer">Clear All</button>'
-    + '</div></div>'
-    + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + notifsHtml + '</div>';
-}
+async function renderCompareView(el) {
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  var data = await loadCompareData();
+  var categories = Array.from(new Set(data.map(function(d){ return d.category; }))).sort();
+  var tiers = Array.from(new Set(data.map(function(d){ return d.tier; }))).sort();
+  var filtered = _compareFilter === 'all' ? data : data.filter(function(d){ return d.tier === _compareFilter || d.category === _compareFilter; });
 
-function getNotifAction(n) {
-  if (n._deck_id) return "openDeck(" + n._deck_id + ")";
-  if (n._lane_id) return "navTo('lane',{zone:" + (n._zone_id||2) + ",lane:" + n._lane_id + "})";
-  if (n.notification_type === 'new_deck') return "navTo('zone',{zone:2})";
-  if (n.brand_id) return "navTo('brands')";
-  if (n.notification_type === 'new_product' || n.notification_type === 'product_discontinued' || n.notification_type === 'product_clearance') return "navTo('brands')";
-  if (n.notification_type === 'new_competitive_entry') return "navTo('zone',{zone:2})";
-  if (n.notification_type === 'new_course') return "navTo('brands')";
-  return "navTo('dashboard')";
-}
-
-function getNotifLabel(n) {
-  if (n._deck_id) return "Open this lesson";
-  if (n._lane_id) return "Go to lane";
-  if (n.notification_type === 'new_deck') return "Go to Zone 2: The Build";
-  if (n.notification_type === 'new_course') return "View in Brand IQ";
-  if (n.brand_id || n.notification_type === 'new_product') return "View in Brand IQ";
-  if (n.notification_type === 'product_discontinued' || n.notification_type === 'product_clearance') return "View in Brand IQ";
-  if (n.notification_type === 'new_competitive_entry') return "View competitive intel";
-  return "Go to dashboard";
-}
-
-async function clickNotif(index) {
-  var n = S.notifications[index];
-  if (!n) return;
-  // Mark as read
-  if (!n.is_read) {
-    n.is_read = true;
-    sb.from('iq_notifications').update({ is_read: true, read_at: new Date().toISOString() }).eq('id', n.id).then(function() {});
-    var unread = S.notifications.filter(function(n) { return !n.is_read; }).length;
-    var badge = document.getElementById('notif-count');
-    if (unread > 0) { badge.textContent = unread > 9 ? '9+' : unread; badge.classList.remove('hidden'); }
-    else { badge.classList.add('hidden'); }
-  }
-  // Navigate
-  var action = getNotifAction(n);
-  if (action) {
-    eval(action);
-  }
-}
-window.clickNotif = clickNotif;
-
-async function markAllRead() {
-  var ids = S.notifications.filter(function(n) { return !n.is_read; }).map(function(n) { return n.id; });
-  if (!ids.length) return;
-  S.notifications.forEach(function(n) { n.is_read = true; });
-  sb.from('iq_notifications').update({ is_read: true, read_at: new Date().toISOString() }).in('id', ids).then(function() {});
-  var badge = document.getElementById('notif-count');
-  badge.classList.add('hidden');
-  renderView();
-}
-window.markAllRead = markAllRead;
-
-async function clearAllNotifs() {
-  var ids = S.notifications.map(function(n) { return n.id; });
-  if (!ids.length) return;
-  sb.from('iq_notifications').delete().in('id', ids).then(function() {});
-  S.notifications = [];
-  var badge = document.getElementById('notif-count');
-  badge.classList.add('hidden');
-  renderView();
-}
-window.clearAllNotifs = clearAllNotifs;
-
-function renderNotifPanel() {
-  const list = document.getElementById('notif-list');
-  if (!list) return;
-  list.innerHTML = S.notifications.slice(0, 20).map(n =>
-    '<div class="notif-item ' + (!n.is_read?'unread':'') + '">'
-    + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
-    + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>'
-  ).join('') || '<p style="color:var(--text3);text-align:center;padding:40px;font-size:13px">No notifications</p>';
-}
-
-// ── UTILS ──
-// ── AI ROLEPLAY / COACHING ──
-var coaches = {
-  tj: { name:'TJ', avatar:'👔', role:'Sales Coach', desc:'Floor strategy, closing, mindset. 20 years in appliance retail.', color:'#1e3a5f' },
-  natalie: { name:'Natalie', avatar:'📋', role:'Product Knowledge', desc:'Specs, features, competitive cross-reference. Walking encyclopedia.', color:'#0891b2' },
-  caden: { name:'Caden', avatar:'🎓', role:'Trainer', desc:'Enthusiastic explainer. Loves breaking down complex topics simply.', color:'#059669' },
-  katrina: { name:'Katrina', avatar:'💝', role:'Service Consultant', desc:'Deeply empathetic. Customer experience, difficult situations, emotional IQ.', color:'#d946ef' },
-  asher: { name:'Asher', avatar:'🔧', role:'Installation Expert', desc:'Codes, delivery, measurements, hookups. By the book, every time.', color:'#d97706' },
-  leah: { name:'Leah', avatar:'🎨', role:'Design Consultant', desc:'Kitchen design, aesthetics, finishes, panel-ready, color matching.', color:'#e11d48' }
-};
-var rpState = { coach: null, messages: [], loading: false, context: null };
-
-async function openCourse(courseId) {
-  var course = S.courses.find(function(c) { return c.id === courseId; });
-  if (!course) return;
-  window._currentCourse = course;
-  // Load decks for this course
-  var { data } = await sb.from('iq_decks').select('*').eq('course_id', courseId).order('sort_order');
-  window._courseDecks = data || [];
-  currentView = 'course';
-  renderView();
-}
-window.openCourse = openCourse;
-
-function renderCourse(el) {
-  var course = window._currentCourse;
-  var decks = window._courseDecks || [];
-  if (!course) { navTo('dashboard'); return; }
-
-  var col = pillarColors[course.pillar] || 'var(--accent)';
-  var pillarName = pillarLabels[course.pillar] || course.pillar;
-
-  var decksHtml = decks.length ? decks.map(function(d) {
-    var done = S.completedDecks.has(d.id);
-    return '<div class="deck-row ' + (done ? 'completed' : '') + '" onclick="openDeck(' + d.id + ')">'
-      + '<div class="deck-num">' + (done ? '✓' : d.deck_number) + '</div>'
-      + '<div class="deck-info"><h5>' + esc(d.title) + '</h5><p>' + esc((d.description || '').substring(0, 100)) + (d.description && d.description.length > 100 ? '...' : '') + '</p></div>'
-      + '<div class="deck-meta"><div class="time">⏱ ' + (d.estimated_minutes || 5) + 'min</div></div>'
-      + '</div>';
-  }).join('') : '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:32px;text-align:center">'
-    + '<p style="font-size:15px;color:var(--text2);margin-bottom:12px">No lessons built for this course yet.</p>'
-    + '<p style="font-size:13px;color:var(--text3)">Content is being developed — check back soon or ask the AI Coach about this topic.</p>'
-    + '<button onclick="startChat(\'caden\',\'Teach me about ' + esc(course.name).replace(/'/g, '') + '\')" style="margin-top:16px;padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:600;cursor:pointer">Ask AI Coach About This</button>'
+  var tierFilters = '<div class="filter-bar">'
+    + '<div class="filter-btn ' + (_compareFilter==='all'?'active':'') + '" onclick="_compareFilter=\'all\';renderView()">All (' + data.length + ')</div>'
+    + tiers.map(function(t){ return '<div class="filter-btn ' + (_compareFilter===t?'active':'') + '" onclick="_compareFilter=\'' + t + '\';renderView()">' + t + '</div>'; }).join('')
+    + '</div>'
+    + '<div class="filter-bar">'
+    + categories.map(function(c){ var cnt = data.filter(function(d){ return d.category === c; }).length; return '<div class="filter-btn ' + (_compareFilter===c?'active':'') + '" onclick="_compareFilter=\'' + c.replace(/'/g,"\\'") + '\';renderView()" style="font-size:11px">' + c + ' (' + cnt + ')</div>'; }).join('')
     + '</div>';
 
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="navTo(\'pillar\',{deck:\'' + course.pillar + '\'})">'
-    + '<span style="color:var(--text2);font-size:18px">&#8592;</span>'
-    + '<span style="color:var(--text2);font-size:14px">Back to ' + esc(pillarName) + '</span></div>'
-    + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:24px">'
-    + '<div style="width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;background:' + col + '15;border:2px solid ' + col + ';border-radius:var(--radius)">' + (course.icon || pillarIcons[course.pillar] || '📘') + '</div>'
-    + '<div><h2 style="font-size:24px;font-weight:800;color:var(--navy)">' + esc(course.name) + '</h2>'
-    + '<p style="color:var(--text2);font-size:13px">' + esc(course.subtitle || pillarName) + ' · ' + decks.length + ' lessons</p></div></div>'
-    + '<div class="section-header"><h3>Lessons</h3></div>'
-    + '<div class="deck-list">' + decksHtml + '</div>';
-}
-
-function renderRoleplay(el) {
-  if (rpState.coach && rpState.messages.length > 0) {
-    renderChat(el);
-    return;
-  }
-  if (window._scorecard) {
-    renderScorecard(el);
-    return;
-  }
-
-  var coachHtml = Object.keys(coaches).map(function(k) {
-    var c = coaches[k];
-    return '<div class="coach-card" onclick="startChat(\'' + k + '\')">'
-      + '<div class="coach-avatar">' + c.avatar + '</div>'
-      + '<h4>' + c.name + '</h4>'
-      + '<p style="color:' + c.color + ';font-weight:600;margin-bottom:4px">' + c.role + '</p>'
-      + '<p>' + c.desc + '</p></div>';
+  var rowsHtml = filtered.map(function(row) {
+    var brands = [];
+    for (var i = 1; i <= 6; i++) {
+      var bn = row['brand' + i];
+      var bName = (bn && typeof bn === 'object' && bn.brand_name) ? bn.brand_name : null;
+      if (row['brand' + i + '_model']) brands.push({ name: bName || '—', model: row['brand' + i + '_model'] || '', notes: row['brand' + i + '_notes'] || '' });
+    }
+    var isOpen = _compareOpenId === row.id;
+    var tierColor = row.tier === 'Luxury' ? '#a78bfa' : row.tier === 'Premium' ? '#60a5fa' : row.tier === 'Mid-Range' ? '#34d399' : '#94a3b8';
+    return '<div class="compare-card' + (isOpen ? ' open' : '') + '">'
+      + '<div class="compare-header" onclick="_compareOpenId=_compareOpenId===\'' + row.id + '\'?null:\'' + row.id + '\';renderView()">'
+      + '<div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+      + '<span style="font-size:11px;font-weight:700;color:' + tierColor + ';background:' + tierColor + '15;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">' + esc(row.tier) + '</span>'
+      + (row.price_range ? '<span style="font-size:11px;color:var(--text3)">' + esc(row.price_range) + '</span>' : '') + '</div>'
+      + '<h3 style="font-size:16px;font-weight:700;color:var(--navy);margin:0">' + esc(row.category) + '</h3>'
+      + '<div class="compare-brands">' + brands.map(function(b){ return '<span>' + esc(b.name) + '</span>'; }).join('') + '</div></div>'
+      + '<span style="font-size:18px;transition:transform .2s;transform:rotate(' + (isOpen?'180':'0') + 'deg);color:var(--text3)">▼</span></div>'
+      + (isOpen ? '<div style="padding:0 20px 20px;border-top:1px solid var(--border)">'
+        + (row.comparison_notes ? '<p style="font-size:13px;color:var(--accent);font-style:italic;margin:12px 0 16px;padding:10px 14px;background:var(--accent-glow);border-radius:8px;border-left:3px solid var(--accent)">💡 ' + esc(row.comparison_notes) + '</p>' : '')
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'
+        + brands.map(function(b, idx) {
+            var colors = ['#3b82f6','#06b6d4','#8b5cf6','#f59e0b','#ef4444','#10b981'];
+            var cc = colors[idx % colors.length];
+            return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;border-top:3px solid ' + cc + '">'
+              + '<h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:2px">' + esc(b.name) + '</h4>'
+              + '<p style="font-size:12px;font-weight:600;color:' + cc + ';margin-bottom:8px;word-break:break-word">' + esc(b.model) + '</p>'
+              + '<p style="font-size:12px;color:var(--text2);line-height:1.6">' + esc(b.notes) + '</p></div>';
+          }).join('') + '</div></div>' : '') + '</div>';
   }).join('');
 
-  // Live Practice Scorer
+  el.innerHTML = '<div class="dash-header"><h2>⚔️ Between Brands</h2><p>Head-to-head competitive matchups across every category and price tier</p></div>'
+    + tierFilters
+    + '<div style="display:flex;flex-direction:column;gap:10px">' + rowsHtml + '</div>'
+    + '<div style="margin-top:32px;padding:20px;background:var(--accent-glow);border:1px solid var(--accent);border-radius:var(--radius);text-align:center">'
+    + '<p style="font-size:13px;color:var(--text2)">📊 <b>' + data.length + '</b> matchups across <b>' + categories.length + '</b> categories and <b>' + tiers.length + '</b> tiers</p></div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SERVICE IQ — from Academy
+// ══════════════════════════════════════════════════════════════════════════════
+async function renderServiceIQ(el) {
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  await loadServiceTemplates();
+  // Service chapters (Vols 17-18)
+  var serviceVols = S.volumes.filter(function(v){ return v.vol_number >= 17; });
+  var serviceChs = S.chapters.filter(function(c){
+    return serviceVols.some(function(v){ return v.id === c.volume_id; });
+  });
+
+  var categories = Array.from(new Set(S.serviceTemplates.map(function(t){ return t.category; })));
+  window._siqCat = window._siqCat || 'all';
+  var filteredTemplates = window._siqCat === 'all' ? S.serviceTemplates : S.serviceTemplates.filter(function(t){ return t.category === window._siqCat; });
+
+  var templateHtml = filteredTemplates.map(function(t) {
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      + '<h4 style="font-size:14px;font-weight:700;color:var(--navy)">' + esc(t.template_name||t.title||'') + '</h4>'
+      + '<button onclick="navigator.clipboard.writeText(this.closest(\'div\').querySelector(\'.tmpl-body\').textContent);showToast(\'Copied!\')" style="font-size:11px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--accent);font-weight:600">Copy</button></div>'
+      + '<div class="tmpl-body" style="font-size:13px;color:var(--text2);line-height:1.7;white-space:pre-line">' + esc(t.body||t.template_body||'') + '</div>'
+      + (t.usage_notes ? '<div style="font-size:11px;color:var(--text3);margin-top:8px;font-style:italic">💡 ' + esc(t.usage_notes) + '</div>' : '') + '</div>';
+  }).join('');
+
+  var chHtml = serviceChs.map(function(c) {
+    var vol = serviceVols.find(function(v){ return v.id === c.volume_id; });
+    return '<div class="deck-row" onclick="navTo(\'curriculum\')">'
+      + '<div class="deck-num" style="background:rgba(217,70,239,.1);color:#d946ef">' + c.chapter_number + '</div>'
+      + '<div class="deck-info"><h5>' + esc(c.title) + '</h5><p>Volume ' + (vol?vol.vol_number:'') + '</p></div></div>';
+  }).join('');
+
+  el.innerHTML = '<div class="dash-header"><h2>❤️ Service IQ</h2><p>Brand service lookup, communication templates, and service training</p></div>'
+    // Templates section
+    + '<div class="section-header"><h3>Communication Templates (' + S.serviceTemplates.length + ')</h3></div>'
+    + '<div class="filter-bar">'
+    + '<div class="filter-btn ' + (window._siqCat==='all'?'active':'') + '" onclick="window._siqCat=\'all\';renderView()">All</div>'
+    + categories.map(function(cat){ return '<div class="filter-btn ' + (window._siqCat===cat?'active':'') + '" onclick="window._siqCat=\'' + cat.replace(/'/g,"\\'") + '\';renderView()">' + esc(cat) + '</div>'; }).join('')
+    + '</div>'
+    + templateHtml
+    // Service chapters
+    + '<div class="section-header" style="margin-top:32px"><h3>Service Training Chapters</h3></div>'
+    + '<div class="deck-list">' + chHtml + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DAILY FIVE SCORECARD — from Academy
+// ══════════════════════════════════════════════════════════════════════════════
+var SC_FIELDS = [
+  ['opportunities','Opportunities','Real selling conversations'],
+  ['captures','Captures','Contact + situation + next-touch date'],
+  ['asks','Asks','Actual closing attempts'],
+  ['touches','Touches','Follow-up contacts made'],
+  ['attach_presentations','Attach Presentations','Complete quote walks'],
+  ['sales','Sales','Closed today']
+];
+
+async function renderDailyFive(el) {
+  var today = new Date().toISOString().slice(0,10);
+  var row = null;
+  try {
+    var { data } = await sb.from('academy_daily_metrics').select('*').eq('user_id', S.user.id).eq('metric_date', today).maybeSingle();
+    row = data;
+  } catch(e) {}
+
+  var fieldsHtml = SC_FIELDS.map(function(f) {
+    var val = row ? (row[f[0]] || 0) : 0;
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;align-items:center;gap:16px">'
+      + '<div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--navy)">' + f[1] + '</div><div style="font-size:11px;color:var(--text3)">' + f[2] + '</div></div>'
+      + '<div style="display:flex;align-items:center;gap:8px">'
+      + '<button onclick="updateDailyMetric(\'' + f[0] + '\',-1)" style="width:32px;height:32px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:16px;cursor:pointer;color:var(--text2)">−</button>'
+      + '<span style="font-size:24px;font-weight:800;color:var(--navy);min-width:36px;text-align:center" id="sc-' + f[0] + '">' + val + '</span>'
+      + '<button onclick="updateDailyMetric(\'' + f[0] + '\',1)" style="width:32px;height:32px;background:var(--accent);border:none;border-radius:6px;font-size:16px;cursor:pointer;color:#fff">+</button>'
+      + '</div></div>';
+  }).join('');
+
+  el.innerHTML = '<div class="dash-header"><h2>📊 The Daily Five</h2><p>Track your daily selling activities — ' + today + '</p></div>'
+    + '<div style="display:grid;gap:10px">' + fieldsHtml + '</div>';
+}
+
+async function updateDailyMetric(field, delta) {
+  var el = document.getElementById('sc-' + field);
+  if (!el) return;
+  var current = parseInt(el.textContent) || 0;
+  var newVal = Math.max(0, current + delta);
+  el.textContent = newVal;
+  var today = new Date().toISOString().slice(0,10);
+  var upsertData = { user_id: S.user.id, metric_date: today };
+  upsertData[field] = newVal;
+  try {
+    await sb.from('academy_daily_metrics').upsert(upsertData, { onConflict: 'user_id,metric_date' });
+  } catch(e) { console.error('Metric save error:', e); }
+}
+window.updateDailyMetric = updateDailyMetric;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LEADERBOARD — from Academy
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadLeaderboard() {
+  var el = document.getElementById('dash-leaderboard');
+  if (!el || !S.user) return;
+  try {
+    var { data: member } = await sb.from('organization_members').select('organization_id').eq('user_id', S.user.id).maybeSingle();
+    if (!member) { el.innerHTML = ''; return; }
+    var { data: members } = await sb.from('organization_members').select('user_id').eq('organization_id', member.organization_id);
+    if (!members || members.length < 2) { el.innerHTML = ''; return; }
+    var userIds = members.map(function(m){ return m.user_id; });
+    var { data: profileData } = await sb.from('profiles').select('user_id, full_name').in('user_id', userIds);
+    var profileMap = {};
+    (profileData || []).forEach(function(p){ profileMap[p.user_id] = p.full_name; });
+    var { data: chProgress } = await sb.from('academy_progress').select('user_id').in('user_id', userIds);
+    var { data: brProgress } = await sb.from('academy_brand_progress').select('user_id').in('user_id', userIds);
+    var scores = {};
+    userIds.forEach(function(uid){ scores[uid] = { chapters: 0, brands: 0, total: 0 }; });
+    (chProgress || []).forEach(function(r){ if (scores[r.user_id]) scores[r.user_id].chapters++; });
+    (brProgress || []).forEach(function(r){ if (scores[r.user_id]) scores[r.user_id].brands++; });
+    Object.values(scores).forEach(function(s){ s.total = s.chapters + s.brands; });
+    var ranked = members.map(function(m){ return { userId: m.user_id, name: profileMap[m.user_id] || 'Team Member', chapters: scores[m.user_id].chapters, brands: scores[m.user_id].brands, total: scores[m.user_id].total }; }).sort(function(a,b){ return b.total - a.total; });
+    if (!ranked.length || ranked[0].total === 0) { el.innerHTML = ''; return; }
+    var medals = ['🥇','🥈','🥉'];
+    el.innerHTML = '<div class="section-header"><h3>🏆 Team Leaderboard</h3></div>'
+      + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">'
+      + ranked.slice(0,10).map(function(r, i) {
+        var isMe = r.userId === S.user.id;
+        return '<div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);' + (isMe?'background:var(--accent-glow)':'') + '">'
+          + '<span style="font-size:18px;width:28px;text-align:center">' + (i < 3 ? medals[i] : '<span style="font-size:13px;font-weight:700;color:var(--text3)">' + (i+1) + '</span>') + '</span>'
+          + '<div style="flex:1"><div style="font-size:13px;font-weight:' + (isMe?'800':'600') + ';color:var(--navy)">' + esc(r.name) + (isMe?' <span style="font-size:10px;color:var(--accent)">(you)</span>':'') + '</div></div>'
+          + '<div style="display:flex;gap:16px;font-size:11px;color:var(--text3)"><span>' + r.chapters + ' ch</span><span>' + r.brands + ' brand</span></div>'
+          + '<div style="font-size:16px;font-weight:800;color:var(--accent);min-width:40px;text-align:right">' + r.total + '</div></div>';
+      }).join('') + '</div>';
+  } catch(e) { el.innerHTML = ''; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CURRICULUM — Sidebar + Chapter Reader (from Academy)
+// ══════════════════════════════════════════════════════════════════════════════
+function renderCurrSidebar() {
+  var nav = document.getElementById('curr-sidebar-nav');
+  if (!nav) return;
+  nav.innerHTML = S.volumes.map(function(vol) {
+    var volChs = S.chapters.filter(function(c){ return c.volume_id === vol.id && c.chapter_number >= 1; });
+    var doneCount = volChs.filter(function(c){ return S.completedChapterIds.has(c.id); }).length;
+    return '<div class="vol-group">'
+      + '<div class="vol-header" onclick="toggleVolume(this)">'
+      + '<span class="vol-num">V' + vol.vol_number + '</span>'
+      + '<span class="vol-title">' + esc(vol.title) + '</span>'
+      + '<span style="font-size:10px;color:var(--accent);margin-right:4px">' + doneCount + '/' + volChs.length + '</span>'
+      + '<span class="vol-chevron">›</span></div>'
+      + '<div class="vol-chapters">' + volChs.map(function(ch) {
+        var done = S.completedChapterIds.has(ch.id);
+        return '<div class="ch-item ' + (done?'completed':'') + '" data-slug="' + ch.slug + '" onclick="loadChapter(\'' + ch.slug + '\',' + vol.id + ')">'
+          + '<div class="ch-check">' + (done?'✓':'') + '</div>'
+          + '<div class="ch-title">' + esc(ch.title) + '</div></div>';
+      }).join('') + '</div></div>';
+  }).join('');
+}
+window.renderCurrSidebar = renderCurrSidebar;
+
+function toggleVolume(el) {
+  el.classList.toggle('active');
+  var chevron = el.querySelector('.vol-chevron');
+  chevron.classList.toggle('open');
+  var chapters = el.nextElementSibling;
+  chapters.classList.toggle('open');
+}
+window.toggleVolume = toggleVolume;
+
+function filterCurrSidebar(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.ch-item').forEach(function(el) {
+    var title = el.querySelector('.ch-title').textContent.toLowerCase();
+    el.style.display = !q || title.includes(q) ? '' : 'none';
+  });
+  if (q) document.querySelectorAll('.vol-chapters').forEach(function(el){ el.classList.add('open'); el.previousElementSibling.querySelector('.vol-chevron').classList.add('open'); });
+}
+window.filterCurrSidebar = filterCurrSidebar;
+
+function formatContent(content) {
+  if (!content) return '';
+  return content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/^/, '<p>') + '</p>';
+}
+
+async function loadChapter(slug, volId) {
+  var vol = S.volumes.find(function(v){ return v.id === volId; });
+  var inner = document.getElementById('curr-reader-inner');
+  inner.innerHTML = '<div class="loading-spinner"></div>';
+  document.getElementById('curr-reader').scrollTop = 0;
+  document.querySelectorAll('.ch-item').forEach(function(i){ i.classList.toggle('active', i.dataset.slug === slug); });
+  window._currentSlug = slug;
+
+  try {
+    var res = await fetch('content/' + slug + '.json');
+    if (!res.ok) throw new Error('Content not found');
+    var data = await res.json();
+    var ch = S.chapters.find(function(c){ return c.slug === slug; });
+    var isComplete = ch && S.completedChapterIds.has(ch.id);
+    var real = S.chapters.filter(function(c){ return c.chapter_number >= 1; });
+    var idx = real.findIndex(function(c){ return c.slug === slug; });
+    var prev = idx > 0 ? real[idx-1] : null;
+    var next = idx < real.length-1 ? real[idx+1] : null;
+    var prevVol = prev ? S.volumes.find(function(v){ return v.id === prev.volume_id; }) : null;
+    var nextVol = next ? S.volumes.find(function(v){ return v.id === next.volume_id; }) : null;
+
+    inner.innerHTML = '<div class="chapter-header">'
+      + '<div class="chapter-vol-label">Volume ' + (data.vol||'') + ' — ' + esc(vol?.title||'') + '</div>'
+      + '<h1 class="chapter-title">' + esc(data.title) + '</h1>'
+      + (data.intro ? '<p class="chapter-intro">' + esc(data.intro) + '</p>' : '') + '</div>'
+      + (data.sections||[]).map(function(s) {
+        return '<div class="section-block"><h2 class="section-title">' + esc(s.title) + '</h2><div class="section-content">' + formatContent(s.content) + '</div></div>';
+      }).join('')
+      + '<button class="btn-ai-trainer" onclick="openTrainer()"><span style="color:var(--accent)">✦</span> Ask AI Trainer</button>'
+      + '<div class="chapter-actions"><div class="nav-pair">'
+      + (prev ? '<button class="btn-nav" onclick="loadChapter(\'' + prev.slug + '\',' + (prevVol?prevVol.id:'null') + ')">← Previous</button>' : '<span></span>')
+      + (next ? '<button class="btn-nav" onclick="loadChapter(\'' + next.slug + '\',' + (nextVol?nextVol.id:'null') + ')">Next →</button>' : '')
+      + '</div>'
+      + (ch ? '<button class="btn-complete ' + (isComplete?'done':'') + '" onclick="toggleChapterComplete(\'' + ch.id + '\',\'' + slug + '\')" id="complete-btn">' + (isComplete?'✓ Completed':'Mark as Complete') + '</button>' : '')
+      + '</div>';
+    window._currentChapterData = data;
+  } catch(e) {
+    inner.innerHTML = '<div style="text-align:center;padding:60px;color:var(--red)">Could not load chapter. Please try again.</div>';
+  }
+}
+window.loadChapter = loadChapter;
+
+async function toggleChapterComplete(chId, slug) {
+  var btn = document.getElementById('complete-btn');
+  if (S.completedChapterIds.has(chId)) {
+    S.completedChapterIds.delete(chId);
+    await sb.from('academy_progress').delete().eq('user_id', S.user.id).eq('chapter_id', chId);
+    if (btn) { btn.textContent = 'Mark as Complete'; btn.classList.remove('done'); }
+  } else {
+    S.completedChapterIds.add(chId);
+    await sb.from('academy_progress').insert({ user_id: S.user.id, chapter_id: chId });
+    if (btn) { btn.textContent = '✓ Completed'; btn.classList.add('done'); }
+  }
+  updateCurrProgressPill();
+  renderCurrSidebar();
+  var chItem = document.querySelector('.ch-item[data-slug="' + slug + '"]');
+  if (chItem) chItem.classList.toggle('completed', S.completedChapterIds.has(chId));
+}
+window.toggleChapterComplete = toggleChapterComplete;
+
+// ── AI TRAINER (Netlify function) ──
+var TRAINER = { open:false, sessionId:null, slug:null, ctx:null, lessonText:'', history:[] };
+
+function openTrainer() {
+  var slug = window._currentSlug;
+  var ch = S.chapters.find(function(c){ return c.slug === slug; });
+  var vol = ch ? S.volumes.find(function(v){ return v.id === ch.volume_id; }) : null;
+  TRAINER.ctx = { volume: vol ? 'Volume ' + vol.vol_number + ' — ' + vol.title : '', chapter: ch ? ch.title : slug };
+  TRAINER.slug = slug;
+  var d = window._currentChapterData;
+  TRAINER.lessonText = d ? (d.title + '\n' + (d.intro||'') + '\n\n' + (d.sections||[]).map(function(s){ return '## ' + s.title + '\n' + s.content; }).join('\n\n')).slice(0,24000) : '';
+  document.getElementById('ai-context').innerHTML = '<b>' + esc(TRAINER.ctx.volume) + '</b><br>' + esc(TRAINER.ctx.chapter);
+  var panel = document.getElementById('ai-panel');
+  panel.classList.add('open'); panel.style.display = 'flex';
+  TRAINER.open = true;
+  TRAINER.history = [];
+  document.getElementById('ai-msgs').innerHTML = '';
+  trainerRender({ msg_role:'assistant', content:'Hi — I can see you\'re on "' + (TRAINER.ctx.chapter||'this lesson') + '". Ask me anything about this lesson, or tap a quick action below.' });
+}
+window.openTrainer = openTrainer;
+
+function closeTrainer() {
+  document.getElementById('ai-panel').classList.remove('open');
+  setTimeout(function(){ document.getElementById('ai-panel').style.display='none'; TRAINER.open=false; }, 250);
+  TRAINER.open = false;
+}
+window.closeTrainer = closeTrainer;
+
+function trainerRender(m) {
+  var box = document.getElementById('ai-msgs');
+  var el = document.createElement('div');
+  el.className = 'ai-msg ' + (m.msg_role === 'user' ? 'user' : 'assistant');
+  el.textContent = m.content;
+  box.appendChild(el); box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+function trainerAsk(q) { document.getElementById('ai-input').value = q; sendTrainer(); }
+window.trainerAsk = trainerAsk;
+
+async function sendTrainer() {
+  var input = document.getElementById('ai-input');
+  var q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  var userMsg = { msg_role:'user', content:q };
+  TRAINER.history.push(userMsg); trainerRender(userMsg);
+  var thinking = trainerRender({ msg_role:'assistant', content:'Thinking…' });
+  thinking.classList.add('thinking');
+  try {
+    var resp = await fetch('/.netlify/functions/ai-trainer', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ context: TRAINER.ctx, lessonText: TRAINER.lessonText, messages: TRAINER.history.map(function(m){ return { role: m.msg_role, content: m.content }; }) })
+    });
+    var data = await resp.json();
+    thinking.remove();
+    var replyText = data.reply || data.error || 'Sorry — the AI Trainer could not answer just now.';
+    var aiMsg = { msg_role:'assistant', content:replyText };
+    TRAINER.history.push(aiMsg); trainerRender(aiMsg);
+  } catch(e) { thinking.remove(); trainerRender({ msg_role:'assistant', content:'Connection problem — please try again.' }); }
+}
+window.sendTrainer = sendTrainer;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ROLEPLAY & AI COACH — Merged (IQ Training Beat the Bot + Academy edge function)
+// ══════════════════════════════════════════════════════════════════════════════
+function renderRoleplay(el) {
+  if (rpState.coach && rpState.messages.length > 0) { renderChat(el); return; }
+  if (window._scorecard) { renderScorecardResult(el); return; }
+  var coachHtml = Object.keys(coaches).map(function(k) {
+    var c = coaches[k];
+    return '<div class="coach-card" onclick="startChat(\'' + k + '\')"><div class="coach-avatar">' + c.avatar + '</div><h4>' + c.name + '</h4><p style="color:' + c.color + ';font-weight:600;margin-bottom:4px">' + c.role + '</p><p>' + c.desc + '</p></div>';
+  }).join('');
+
+  // Recorder
   var recState = window._recState || { recording: false, transcript: '', timer: 0 };
   var hasTranscript = recState.transcript && recState.transcript.trim().length > 0;
-
-  var practiceHtml = '<div class="recorder-panel">'
-    + '<div class="recorder-header"><h3>🤝 The Human to Human Challenge</h3><p>Two people practice a live sales interaction. AI listens, figures out who is the rep and who is the customer, then scores against all 12 selling categories.</p></div>'
+  var practiceHtml = '<div class="recorder-panel"><div class="recorder-header"><h3>🤝 The Human to Human Challenge</h3><p>Two people practice a live sales interaction. AI listens, figures out who is the rep and who is the customer, then scores against all 12 selling categories.</p></div>'
     + '<div class="recorder-body">'
-    + '<div class="rec-status"><div class="rec-dot ' + (recState.recording ? 'recording' : (hasTranscript ? 'done' : '')) + '"></div>'
-    + '<div class="rec-status-text">' + (recState.recording ? 'Listening... just talk naturally' : (hasTranscript ? 'Session captured' : 'Ready — hit record and start your practice')) + '</div>'
+    + '<div class="rec-status"><div class="rec-dot ' + (recState.recording?'recording':(hasTranscript?'done':'')) + '"></div>'
+    + '<div class="rec-status-text">' + (recState.recording?'Listening... just talk naturally':(hasTranscript?'Session captured':'Ready — hit record')) + '</div>'
     + '<div class="rec-timer" id="rec-timer">' + formatTime(recState.timer) + '</div></div>'
     + '<div class="rec-controls">'
-    + (recState.recording
-      ? '<button class="rec-btn stop" onclick="stopRecording()">⏹ Stop Recording</button>'
-      : '<button class="rec-btn start" onclick="startRecording()">🎙 Start Recording</button>')
-    + '<button class="rec-btn score" onclick="scoreSession()"' + (!hasTranscript ? ' disabled' : '') + '>📊 Score This Session</button>'
-    + (hasTranscript ? '<button class="rec-btn" style="background:var(--surface3);color:var(--text2)" onclick="clearRecording()">Clear</button>' : '')
-    + '</div>'
-    + '<div class="transcript-box" id="transcript-box">' + (hasTranscript ? '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>' : '<p style="color:var(--text3);text-align:center;padding:20px">Hit record, then practice your pitch. Both people just talk — the AI will figure out who is the rep and who is the customer when it scores.</p>') + '</div>'
-    + '</div></div>';
+    + (recState.recording ? '<button class="rec-btn stop" onclick="stopRecording()">⏹ Stop</button>' : '<button class="rec-btn start" onclick="startRecording()">🎙 Start Recording</button>')
+    + '<button class="rec-btn score" onclick="scoreSession()"' + (!hasTranscript?' disabled':'') + '>📊 Score</button>'
+    + (hasTranscript?'<button class="rec-btn" style="background:var(--surface3);color:var(--text2)" onclick="clearRecording()">Clear</button>':'') + '</div>'
+    + '<div class="transcript-box" id="transcript-box">' + (hasTranscript ? '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>' : '<p style="color:var(--text3);text-align:center;padding:20px">Hit record, then practice your pitch.</p>') + '</div></div></div>';
 
-  el.innerHTML = '<div class="dash-header"><h2>Training Arena</h2><p>Beat the Bot or challenge a teammate. Type or talk — AI scores everything.</p></div>'
-    + practiceHtml
-    + '<div class="dash-header" style="margin-top:24px"><h2>🤖 Beat the Bot</h2><p>Go 1-on-1 against the AI. You pick the role — type or talk your way through it.</p></div>'
+  // Edge-function roleplay (from Academy)
+  var edgeRpHtml = '';
+  if (S.currentOrg && S.roleplayPersonas.length) {
+    edgeRpHtml = '<div class="section-header" style="margin-top:28px"><h3>🎬 AI Roleplay with KPI Scoring</h3></div>'
+      + '<p style="color:var(--text2);font-size:13px;margin-bottom:16px">Practice with the AI roleplay engine. Pick a scenario, get real-time KPI scores and coaching feedback on every response.</p>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px">'
+      + '<div class="coach-card" style="border-top:3px solid var(--accent)" onclick="showEdgeRoleplayPicker(\'cold_call\')"><div class="coach-avatar">📞</div><h4>Cold Call</h4><p>Customer picks up the phone</p></div>'
+      + '<div class="coach-card" style="border-top:3px solid var(--cyan)" onclick="showEdgeRoleplayPicker(\'follow_up\')"><div class="coach-avatar">🔄</div><h4>Follow Up</h4><p>Reconnect after a visit</p></div>'
+      + '<div class="coach-card" style="border-top:3px solid var(--gold)" onclick="showEdgeRoleplayPicker(\'objection_handling\')"><div class="coach-avatar">🛡️</div><h4>Objections</h4><p>Customer pushes back on price</p></div>'
+      + '<div class="coach-card" style="border-top:3px solid var(--green)" onclick="showEdgeRoleplayPicker(\'product_demo\')"><div class="coach-avatar">🎯</div><h4>Product Demo</h4><p>Walk through features live</p></div></div>';
+  }
+
+  el.innerHTML = '<div class="dash-header"><h2>Training Arena</h2><p>Beat the Bot, practice roleplay with KPI scoring, or challenge a teammate.</p></div>'
+    + practiceHtml + edgeRpHtml
+    + '<div class="section-header" style="margin-top:28px"><h3>🤖 Beat the Bot</h3></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px">'
-    + '<div class="coach-card" style="border-top:3px solid var(--accent)" onclick="startChat(\'tj\',null,\'ai_customer\')"><div class="coach-avatar">🛒</div><h4>AI is the Customer</h4><p style="color:var(--accent);font-weight:600">You practice selling</p><p>AI plays a realistic customer with objections, budget concerns, and curveballs. You sell.</p></div>'
-    + '<div class="coach-card" style="border-top:3px solid var(--navy)" onclick="startChat(\'tj\',null,\'ai_rep\')"><div class="coach-avatar">👔</div><h4>AI is the Rep</h4><p style="color:var(--navy);font-weight:600">Watch & learn</p><p>You play the customer. AI demonstrates the perfect 10-step sales process so you can see how it is done.</p></div>'
-    + '<div class="coach-card" style="border-top:3px solid var(--green)" onclick="startChat(\'tj\')"><div class="coach-avatar">🎤</div><h4>Coach Q&A</h4><p style="color:var(--green);font-weight:600">Ask anything</p><p>Pick a coaching persona and ask questions, get scripts, discuss strategy. Live PIM data in every answer.</p></div>'
-    + '</div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--accent)" onclick="startChat(\'tj\',null,\'ai_customer\')"><div class="coach-avatar">🛒</div><h4>AI is the Customer</h4><p style="color:var(--accent);font-weight:600">You practice selling</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--navy)" onclick="startChat(\'tj\',null,\'ai_rep\')"><div class="coach-avatar">👔</div><h4>AI is the Rep</h4><p style="color:var(--navy);font-weight:600">Watch & learn</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--green)" onclick="startChat(\'tj\')"><div class="coach-avatar">🎤</div><h4>Coach Q&A</h4><p style="color:var(--green);font-weight:600">Ask anything</p></div></div>'
     + '<div class="section-header"><h3>Pick a Coach for Q&A</h3></div>'
     + '<div class="coach-grid">' + coachHtml + '</div>'
     + '<div class="section-header"><h3>Quick Scenarios</h3></div>'
     + '<div class="topic-pills">'
     + '<div class="topic-pill" onclick="startChat(\'tj\',\'Customer says they found it cheaper online\')">Price objection</div>'
     + '<div class="topic-pill" onclick="startChat(\'natalie\',\'Compare induction vs gas cooktops\')">Induction vs gas</div>'
-    + '<div class="topic-pill" onclick="startChat(\'tj\',\'Walk me through the 10-step sales process\')">10-step process</div>'
+    + '<div class="topic-pill" onclick="startChat(\'tj\',\'Walk me through the 11-step sales process\')">11-step process</div>'
     + '<div class="topic-pill" onclick="startChat(\'asher\',\'Makeup air requirements in Alberta\')">Makeup air codes</div>'
-    + '<div class="topic-pill" onclick="startChat(\'natalie\',\'What dishwasher should I recommend for an open-concept kitchen?\')">Quiet dishwashers</div>'
     + '<div class="topic-pill" onclick="startChat(\'katrina\',\'Customer is frustrated about a delayed delivery\')">Difficult customer</div>'
-    + '<div class="topic-pill" onclick="startChat(\'leah\',\'Help me design a luxury kitchen column layout\')">Kitchen column design</div>'
-    + '<div class="topic-pill" onclick="startChat(\'caden\',\'Explain heat pump dryers to me like I am new\')">Heat pump dryers</div>'
-    + '</div>';
+    + '<div class="topic-pill" onclick="startChat(\'leah\',\'Help me design a luxury kitchen column layout\')">Kitchen column design</div></div>';
 }
 
-function formatTime(s) {
-  var m = Math.floor(s / 60);
-  var sec = s % 60;
-  return (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
-}
-
-function startRecording() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('Speech recognition requires Chrome or Edge browser.');
-    return;
-  }
-  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var recognition = new SpeechRec();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'en-CA';
-
-  var recState = { recording: true, transcript: '', timer: 0 };
-  window._recState = recState;
-  window._recognition = recognition;
-
-  window._recInterval = setInterval(function() {
-    recState.timer++;
-    var timerEl = document.getElementById('rec-timer');
-    if (timerEl) timerEl.textContent = formatTime(recState.timer);
-  }, 1000);
-
-  recognition.onresult = function(event) {
-    var final_text = '';
-    for (var i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        final_text += event.results[i][0].transcript;
-      }
-    }
-    if (final_text.trim()) {
-      recState.transcript += (recState.transcript ? ' ' : '') + final_text.trim();
-      var box = document.getElementById('transcript-box');
-      if (box) {
-        box.innerHTML = '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>';
-        box.scrollTop = box.scrollHeight;
-      }
-    }
-  };
-
-  recognition.onerror = function(e) {
-    if (e.error === 'no-speech') return;
-    console.log('Speech error:', e.error);
-  };
-
-  recognition.onend = function() {
-    if (recState.recording) recognition.start();
-  };
-
-  recognition.start();
-  renderView();
-}
-window.startRecording = startRecording;
-
-function stopRecording() {
-  var recState = window._recState;
-  if (!recState) return;
-  recState.recording = false;
-  if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); }
-  if (window._recInterval) clearInterval(window._recInterval);
-  window._recState = recState;
-  renderView();
-}
-window.stopRecording = stopRecording;
-
-function clearRecording() {
-  if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); }
-  if (window._recInterval) clearInterval(window._recInterval);
-  window._recState = { recording: false, transcript: '', timer: 0 };
-  window._scorecard = null;
-  renderView();
-}
-window.clearRecording = clearRecording;
-
-async function scoreSession() {
-  var recState = window._recState;
-  if (!recState || !recState.transcript || recState.transcript.trim().length < 20) return;
-
-  var mc = document.getElementById('main-content');
-  mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2);font-size:15px;font-weight:500">Analyzing ' + formatTime(recState.timer) + ' of practice...</p><p style="color:var(--text3);font-size:13px;margin-top:8px">AI is identifying the rep vs customer and scoring against 12 categories</p></div>';
-
-  var scorePrompt = 'You are the ApplianceIQ Sales Scoring AI. You analyze recorded practice sales sessions for appliance retail.\n\n'
-    + 'Below is a transcript of a practice session between a sales rep and a customer (or someone playing the customer). The transcript is NOT labeled by speaker — YOU must figure out from context who is the sales rep and who is the customer based on their language, questions, and behavior.\n\n'
-    + 'Score the SALES REP performance on EACH of the following categories (0-10 each). Return ONLY valid JSON, no markdown, no preamble.\n\n'
-    + 'SCORING CATEGORIES:\n'
-    + '1. greeting — Was the greeting warm, non-commission, inviting? Did they give the customer space?\n'
-    + '2. rapport — Did they find a human connection? Renovation, lifestyle, personal details?\n'
-    + '3. discovery — Did they ask about needs, pain points, timeline, budget, decision-makers?\n'
-    + '4. product_selection — Did they narrow to 2-3 options matched to needs? Rule of Three?\n'
-    + '5. lifestyle_demo — Did they paint a lifestyle picture? Get the customer to imagine the product in their life?\n'
-    + '6. value_building — Did they justify price with cost-per-use, longevity, service value?\n'
-    + '7. objection_handling — Did they acknowledge, empathize, redirect? Not fight?\n'
-    + '8. closing — Did they ask for the sale? Assumptive or alternative close?\n'
-    + '9. complete_ticket — Did they mention protection plans, accessories, delivery, installation?\n'
-    + '10. followup — Did they mention follow-up, referrals, business card, next steps?\n'
-    + '11. cross_selling — Did they suggest complementary products (hood with range, pedestal with washer)?\n'
-    + '12. product_knowledge — Did the rep demonstrate accurate specs, features, comparisons?\n\n'
-    + 'ALSO PROVIDE:\n'
-    + '- overall_score: weighted average out of 100\n'
-    + '- summary: 2-3 sentence overall assessment\n'
-    + '- top_strength: the single best thing the rep did\n'
-    + '- top_improvement: the single biggest area to work on\n'
-    + '- specific_feedback: object with a 1-sentence coaching note per category\n\n'
-    + 'If a category was not observed in the conversation, score it 0 and note "Not observed in this session" in feedback.\n\n'
-    + 'RETURN FORMAT (JSON only, no wrapping):\n'
-    + '{"scores":{"greeting":7,"rapport":8,"discovery":6,"product_selection":5,"lifestyle_demo":4,"value_building":6,"objection_handling":7,"closing":3,"complete_ticket":2,"followup":1,"cross_selling":3,"product_knowledge":7},"overall_score":52,"summary":"...","top_strength":"...","top_improvement":"...","specific_feedback":{"greeting":"...","rapport":"...","discovery":"...","product_selection":"...","lifestyle_demo":"...","value_building":"...","objection_handling":"...","closing":"...","complete_ticket":"...","followup":"...","cross_selling":"...","product_knowledge":"..."}}\n\n'
-    + 'TRANSCRIPT OF PRACTICE SESSION:\n' + recState.transcript;
-
+// Edge-function roleplay (from Academy)
+async function showEdgeRoleplayPicker(scenario) {
+  if (!S.currentOrg) { showToast('Organization not loaded'); return; }
+  var coachName = S.roleplayPersonas[0]?.persona_name || 'TJ';
+  var { data: { session: authSession } } = await sb.auth.getSession();
+  showToast('Starting roleplay...');
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    var res = await fetch(SB_URL + '/functions/v1/ai-roleplay', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: scorePrompt }]
-      })
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+      body: JSON.stringify({ action: 'start', scenario_type: scenario, organization_id: S.currentOrg.id, persona_name: coachName })
     });
-    var data = await resp.json();
-    var text = data.content ? data.content.map(function(b) { return b.text || ''; }).join('') : '';
-    var clean = text.replace(/```json|```/g, '').trim();
-    window._scorecard = JSON.parse(clean);
-    window._scorecard._transcript = recState.transcript;
-    window._scorecard._duration = recState.timer;
-  } catch(e) {
-    console.error('Score error:', e);
-    window._scorecard = { scores: {}, overall_score: 0, summary: 'Scoring failed — please try again.', top_strength: '', top_improvement: '', specific_feedback: {} };
+    var data = await res.json();
+    if (!data.ok) { showToast('Failed: ' + (data.error||'Unknown')); return; }
+    window._edgeRpSession = data.session_id;
+    window._edgeRpCoach = coachName;
+    // Open modal
+    var modal = document.createElement('div');
+    modal.id = 'rpSessionModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML = '<div style="background:#fff;border-radius:16px;width:100%;max-width:680px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(30,58,95,.2)">'
+      + '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center"><div style="font-weight:800;font-size:16px;flex:1;color:var(--navy)">' + scenario.replace(/_/g,' ') + '</div><div style="font-size:12px;color:var(--text2)">Coach: ' + esc(coachName) + '</div></div>'
+      + '<div id="rpChat" style="flex:1;overflow-y:auto;padding:16px;background:var(--bg);min-height:300px">'
+      + (data.customer_response ? '<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%"><div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px">🧑 Customer</div><div style="font-size:14px;line-height:1.5;color:var(--text)">' + esc(data.customer_response) + '</div></div>' : '')
+      + '</div>'
+      + '<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:8px">'
+      + '<input id="rpInput" type="text" placeholder="Your response..." style="flex:1;padding:10px 16px;border:1px solid var(--border);border-radius:10px;font-size:14px;outline:none">'
+      + '<button onclick="sendEdgeRp()" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px">Send</button>'
+      + '<button onclick="endEdgeRp()" style="padding:10px 20px;background:#fff;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-weight:600;color:var(--text3);font-size:13px">End</button></div></div>';
+    document.body.appendChild(modal);
+    document.getElementById('rpInput').focus();
+    document.getElementById('rpInput').addEventListener('keydown', function(e){ if(e.key==='Enter'){e.preventDefault();sendEdgeRp();} });
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+window.showEdgeRoleplayPicker = showEdgeRoleplayPicker;
+
+async function sendEdgeRp() {
+  var input = document.getElementById('rpInput'), msg = input.value.trim();
+  if (!msg) return; input.value = '';
+  var chat = document.getElementById('rpChat');
+  chat.innerHTML += '<div style="background:var(--navy);color:#fff;border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%;margin-left:auto;border-bottom-right-radius:4px"><div style="font-size:11px;opacity:.7;margin-bottom:4px">You</div><div style="font-size:14px;line-height:1.5">' + esc(msg) + '</div></div>';
+  chat.innerHTML += '<div id="rpThinking" style="color:var(--text3);font-size:13px;padding:8px">Thinking...</div>';
+  chat.scrollTop = chat.scrollHeight;
+  var { data: { session: authSession } } = await sb.auth.getSession();
+  var res = await fetch(SB_URL + '/functions/v1/ai-roleplay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+    body: JSON.stringify({ session_id: window._edgeRpSession, action: 'message', rep_message: msg, persona_name: window._edgeRpCoach })
+  });
+  var data = await res.json();
+  var thinking = document.getElementById('rpThinking');
+  if (thinking) thinking.remove();
+  if (data.customer_response) {
+    chat.innerHTML += '<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%;border-bottom-left-radius:4px"><div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px">🧑 Customer</div><div style="font-size:14px;line-height:1.5;color:var(--text)">' + esc(data.customer_response) + '</div></div>';
   }
-  renderView();
+  if (data.kpi_scores || data.coaching_tip) {
+    var fbHtml = '<div style="background:rgba(13,148,136,.06);border:1px solid var(--accent);border-radius:14px;padding:14px;margin-bottom:10px;font-size:13px">';
+    if (data.kpi_scores) {
+      fbHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+      Object.entries(data.kpi_scores).forEach(function(kv){ var color = kv[1] >= 7 ? 'var(--green)' : kv[1] >= 5 ? 'var(--gold)' : 'var(--red)'; fbHtml += '<span style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:3px 8px"><b style="color:'+color+'">' + kv[1] + '</b>/10 ' + kv[0] + '</span>'; });
+      fbHtml += '</div>';
+    }
+    if (data.coaching_tip) fbHtml += '<div style="color:var(--navy)">💡 ' + esc(data.coaching_tip) + '</div>';
+    fbHtml += '</div>';
+    chat.innerHTML += fbHtml;
+  }
+  chat.scrollTop = chat.scrollHeight;
+  document.getElementById('rpInput').focus();
 }
-window.scoreSession = scoreSession;
+window.sendEdgeRp = sendEdgeRp;
 
-function renderScorecard(el) {
-  var sc = window._scorecard;
-  if (!sc) { renderRoleplay(el); return; }
-
-  var categories = [
-    { key:'greeting', label:'The Greeting', icon:'👋' },
-    { key:'rapport', label:'Building Rapport', icon:'🤝' },
-    { key:'discovery', label:'Needs Discovery', icon:'🔍' },
-    { key:'product_selection', label:'Product Selection', icon:'🎯' },
-    { key:'lifestyle_demo', label:'Lifestyle Demo', icon:'✋' },
-    { key:'value_building', label:'Building Value', icon:'💎' },
-    { key:'objection_handling', label:'Objection Handling', icon:'🛡' },
-    { key:'closing', label:'Closing', icon:'🤝' },
-    { key:'complete_ticket', label:'Complete Ticket', icon:'📋' },
-    { key:'followup', label:'Follow-Up & Referrals', icon:'📞' },
-    { key:'cross_selling', label:'Cross-Selling', icon:'🔗' },
-    { key:'product_knowledge', label:'Product Knowledge', icon:'📚' }
-  ];
-
-  var overall = sc.overall_score || 0;
-  var scoreColor = overall >= 80 ? 'var(--green)' : (overall >= 60 ? 'var(--gold)' : 'var(--red)');
-
-  var rowsHtml = categories.map(function(c) {
-    var val = (sc.scores && sc.scores[c.key]) || 0;
-    var pct = val * 10;
-    var barColor = val >= 8 ? 'var(--green)' : (val >= 6 ? 'var(--accent)' : (val >= 4 ? 'var(--gold)' : 'var(--red)'));
-    var feedback = (sc.specific_feedback && sc.specific_feedback[c.key]) || '';
-    return '<div class="score-row"><div class="score-label">' + c.icon + ' ' + c.label + '</div>'
-      + '<div class="score-bar"><div class="score-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>'
-      + '<div class="score-val" style="color:' + barColor + '">' + val + '</div></div>'
-      + (feedback ? '<div class="score-feedback">' + esc(feedback) + '</div>' : '');
-  }).join('');
-
-  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer" onclick="window._scorecard=null;renderView()">'
-    + '<span style="color:var(--text2);font-size:18px">&#8592;</span><span style="color:var(--text2);font-size:14px">Back to Coach</span></div>'
-    + '<div class="scorecard">'
-    + '<div class="scorecard-header"><h3>Practice Session Scorecard</h3>'
-    + '<p style="opacity:.75;font-size:13px">' + (sc._duration ? formatTime(sc._duration) + ' session' : '') + '</p>'
-    + '<div class="total-score" style="color:' + scoreColor + '">' + overall + '<span style="font-size:20px;opacity:.6">/100</span></div></div>'
-    + rowsHtml
-    + '<div style="padding:20px 24px;border-top:1px solid var(--border)">'
-    + '<p style="font-size:14px;line-height:1.7;color:var(--text);margin-bottom:12px"><strong>' + esc(sc.summary || '') + '</strong></p>'
-    + (sc.top_strength ? '<p style="font-size:13px;color:var(--green);margin-bottom:6px">💪 <strong>Top strength:</strong> ' + esc(sc.top_strength) + '</p>' : '')
-    + (sc.top_improvement ? '<p style="font-size:13px;color:var(--gold)">📈 <strong>Work on:</strong> ' + esc(sc.top_improvement) + '</p>' : '')
-    + '</div></div>';
+async function endEdgeRp() {
+  var { data: { session: authSession } } = await sb.auth.getSession();
+  var res = await fetch(SB_URL + '/functions/v1/ai-roleplay', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authSession.access_token },
+    body: JSON.stringify({ session_id: window._edgeRpSession, action: 'end', persona_name: window._edgeRpCoach })
+  });
+  var data = await res.json();
+  var chat = document.getElementById('rpChat');
+  var summaryHtml = '<div style="background:rgba(5,150,105,.06);border:2px solid var(--green);border-radius:14px;padding:22px;margin:12px 0;text-align:center">'
+    + '<div style="font-size:32px;font-weight:800;color:var(--green)">' + ((data.session_score||0).toFixed(1)) + '/10</div>'
+    + '<div style="font-size:13px;color:var(--text3);margin:4px 0 14px">Session Score</div>';
+  if (data.kpi_scores) {
+    summaryHtml += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:14px">';
+    Object.entries(data.kpi_scores).forEach(function(kv){ var color = kv[1] >= 7 ? 'var(--green)' : kv[1] >= 5 ? 'var(--gold)' : 'var(--red)'; summaryHtml += '<span style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:13px"><b style="color:'+color+'">' + (typeof kv[1]==='number'?kv[1]:'-') + '</b> ' + kv[0] + '</span>'; });
+    summaryHtml += '</div>';
+  }
+  if (data.feedback) summaryHtml += '<div style="font-size:14px;line-height:1.5;color:var(--text);text-align:left;margin-top:8px">' + esc(data.feedback) + '</div>';
+  summaryHtml += '<button onclick="document.getElementById(\'rpSessionModal\').remove()" style="margin-top:16px;padding:10px 24px;background:var(--navy);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700">Done</button></div>';
+  chat.innerHTML += summaryHtml;
+  chat.scrollTop = chat.scrollHeight;
 }
+window.endEdgeRp = endEdgeRp;
 
+// Beat the Bot chat (from IQ Training — uses Anthropic API directly)
 function renderChat(el) {
   var c = coaches[rpState.coach];
-  var mode = rpState.mode || 'coach'; // coach, ai_customer, ai_rep
-  var modeLabel = mode === 'ai_customer' ? 'AI is the Customer — you sell' : (mode === 'ai_rep' ? 'AI is the Rep — you are the customer' : c.role);
-  var inputMode = rpState.inputMode || 'type'; // type, voice
-  var isListening = rpState.listening || false;
-
   var msgsHtml = rpState.messages.map(function(m) {
-    if (m.role === 'assistant') {
-      var label = mode === 'ai_customer' ? '🛒 Customer' : (mode === 'ai_rep' ? '👔 Sales Rep' : c.avatar + ' ' + c.name);
-      return '<div class="chat-msg coach"><div class="msg-name">' + label + '</div>' + formatMsg(m.content) + '</div>';
-    } else {
-      return '<div class="chat-msg user">' + esc(m.content) + '</div>';
-    }
+    if (m.role === 'user') return '<div class="chat-msg user">' + esc(m.content) + '</div>';
+    return '<div class="chat-msg coach"><div class="msg-name">' + (c?c.name:'Coach') + '</div>' + esc(m.content) + '</div>';
   }).join('');
-  if (rpState.loading) {
-    msgsHtml += '<div class="chat-msg coach typing">Thinking...</div>';
-  }
-
-  var inputHtml = '<div class="chat-input-bar">'
-    + '<div style="display:flex;gap:4px;margin-right:4px">'
-    + '<button onclick="toggleInputMode(\'type\')" style="padding:6px 10px;border:none;border-radius:12px;font-size:16px;cursor:pointer;background:' + (inputMode === 'type' ? 'var(--accent)' : 'var(--surface3)') + ';color:' + (inputMode === 'type' ? '#fff' : 'var(--text3)') + '" title="Type">⌨️</button>'
-    + '<button onclick="toggleInputMode(\'voice\')" style="padding:6px 10px;border:none;border-radius:12px;font-size:16px;cursor:pointer;background:' + (inputMode === 'voice' ? 'var(--accent)' : 'var(--surface3)') + ';color:' + (inputMode === 'voice' ? '#fff' : 'var(--text3)') + '" title="Voice">🎙</button>'
-    + '</div>';
-
-  if (inputMode === 'type') {
-    inputHtml += '<input type="text" id="chat-input" placeholder="Type your message..." onkeydown="if(event.key===\'Enter\')sendMsg()">'
-      + '<button onclick="sendMsg()" id="chat-send-btn"' + (rpState.loading ? ' disabled' : '') + '>Send</button>';
-  } else {
-    inputHtml += '<div style="flex:1;display:flex;align-items:center;gap:8px">'
-      + '<div id="voice-status" style="font-size:13px;color:' + (isListening ? 'var(--accent)' : 'var(--text3)') + ';font-weight:500">' + (isListening ? '🔴 Listening... tap Stop when done' : 'Tap Start to speak') + '</div></div>'
-      + (isListening
-        ? '<button onclick="stopVoiceInput()" style="padding:10px 20px;background:#dc2626;color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer">Stop</button>'
-        : '<button onclick="startVoiceInput()" style="padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer"' + (rpState.loading ? ' disabled' : '') + '>Start</button>');
-  }
-  inputHtml += '</div>';
-
-  el.innerHTML = '<div class="chat-container">'
-    + '<div class="chat-header"><div class="chat-header-avatar">' + c.avatar + '</div>'
-    + '<div class="chat-header-info"><h4>' + (mode === 'coach' ? c.name : (mode === 'ai_customer' ? 'Sales Practice' : 'Watch & Learn')) + '</h4><p>' + modeLabel + '</p></div>'
-    + '<div class="chat-close" onclick="endChat()">End</div></div>'
-    + '<div class="chat-messages" id="chat-msgs">' + msgsHtml + '</div>'
-    + inputHtml
-    + '</div>';
-
-  var msgBox = document.getElementById('chat-msgs');
-  if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
-  if (inputMode === 'type') { var inp = document.getElementById('chat-input'); if (inp) inp.focus(); }
-}
-
-function toggleInputMode(mode) {
-  if (rpState.listening) stopVoiceInput();
-  rpState.inputMode = mode;
-  renderView();
-}
-window.toggleInputMode = toggleInputMode;
-
-function startVoiceInput() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('Speech recognition requires Chrome or Edge.');
-    return;
-  }
-  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var rec = new SpeechRec();
-  rec.continuous = true;
-  rec.interimResults = true;
-  rec.lang = 'en-CA';
-  window._chatVoice = rec;
-  window._chatVoiceText = '';
-  rpState.listening = true;
-  renderView();
-
-  rec.onresult = function(event) {
-    var text = '';
-    for (var i = 0; i < event.results.length; i++) {
-      text += event.results[i][0].transcript;
-    }
-    window._chatVoiceText = text;
-    var status = document.getElementById('voice-status');
-    if (status) status.textContent = '🔴 "' + text.substring(0, 60) + (text.length > 60 ? '...' : '') + '"';
-  };
-  rec.onerror = function(e) { if (e.error !== 'no-speech') console.log('Voice error:', e.error); };
-  rec.onend = function() { if (rpState.listening) rec.start(); };
-  rec.start();
-}
-window.startVoiceInput = startVoiceInput;
-
-function stopVoiceInput() {
-  rpState.listening = false;
-  if (window._chatVoice) { window._chatVoice.onend = null; window._chatVoice.stop(); }
-  var text = (window._chatVoiceText || '').trim();
-  if (text) {
-    rpState.messages.push({ role: 'user', content: text });
-    window._chatVoiceText = '';
-    renderView();
-    callCoach();
-  } else {
-    renderView();
-  }
-}
-window.stopVoiceInput = stopVoiceInput;
-
-function formatMsg(text) {
-  if (!text) return '';
-  return esc(text).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  el.innerHTML = '<div class="chat-container"><div class="chat-header"><div class="chat-header-avatar">' + (c?c.avatar:'🤖') + '</div><div class="chat-header-info"><h4>' + (c?c.name:'Coach') + '</h4><p>' + (c?c.role:'') + '</p></div><div class="chat-close" onclick="endChat()">✕</div></div>'
+    + '<div class="chat-messages" id="chat-messages">' + msgsHtml + (rpState.loading?'<div class="chat-msg coach typing">Thinking...</div>':'') + '</div>'
+    + '<div class="chat-input-bar"><input id="chat-input" placeholder="Type your message..." onkeydown="if(event.key===\'Enter\')sendMsg()"><button onclick="sendMsg()" ' + (rpState.loading?'disabled':'') + '>Send</button></div></div>';
+  var msgs = document.getElementById('chat-messages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
 
 async function startChat(coachKey, initialMsg, mode) {
   rpState.coach = coachKey;
   rpState.messages = [];
   rpState.loading = false;
-  rpState.context = null;
-  rpState.mode = mode || 'coach';
-  rpState.inputMode = 'type';
-  rpState.listening = false;
-
-  // Load live context from Supabase
+  rpState.mode = mode || null;
+  // Load PIM context
   try {
     var contextParts = [];
-    var prodRes = await sb.from('aiq_products').select('brand_name,model,category,msrp,sale_price,specs_json,short_description').limit(30);
-    if (prodRes.data) {
-      contextParts.push('LIVE PIM PRODUCTS (' + prodRes.data.length + ' sample):\n' + prodRes.data.map(function(p) {
-        return '- ' + (p.brand_name||'') + ' ' + (p.model||'') + ' (' + (p.category||'') + ') MSRP: $' + (p.msrp||'N/A');
-      }).join('\n'));
-    }
+    var prodRes = await sb.from('aiq_products').select('brand_name,model,category,msrp,sale_price,short_description').limit(30);
+    if (prodRes.data) contextParts.push('LIVE PIM PRODUCTS (' + prodRes.data.length + '):\n' + prodRes.data.map(function(p){ return '- ' + (p.brand_name||'') + ' ' + (p.model||'') + ' (' + (p.category||'') + ') $' + (p.msrp||'N/A'); }).join('\n'));
     var ccrRes = await sb.from('competitive_cross_reference').select('category,tier,comparison_notes').limit(20);
-    if (ccrRes.data) {
-      contextParts.push('COMPETITIVE CROSS-REFERENCE (' + ccrRes.data.length + ' sample):\n' + ccrRes.data.map(function(c) {
-        return '- [' + (c.category||'') + '] ' + (c.comparison_notes||'').substring(0,150);
-      }).join('\n'));
-    }
-    var brandRes = await sb.from('brand_catalog').select('brand_name,brand_tier,parent_company,brand_tagline').eq('is_active',true).limit(30);
-    if (brandRes.data) {
-      contextParts.push('BRANDS (' + brandRes.data.length + ' sample):\n' + brandRes.data.map(function(b) {
-        return '- ' + b.brand_name + ' (' + (b.brand_tier||'mid') + ') — ' + (b.parent_company||'Independent');
-      }).join('\n'));
-    }
+    if (ccrRes.data) contextParts.push('COMPETITIVE INTEL (' + ccrRes.data.length + '):\n' + ccrRes.data.map(function(c){ return '- [' + (c.category||'') + '] ' + (c.comparison_notes||'').substring(0,150); }).join('\n'));
     rpState.context = contextParts.join('\n\n');
-  } catch(e) {
-    console.error('Context load error:', e);
-    rpState.context = 'Live data unavailable.';
-  }
+  } catch(e) { rpState.context = 'Live data unavailable.'; }
 
-  // For AI customer mode, send opening scenario
-  if (rpState.mode === 'ai_customer' && !initialMsg) {
-    initialMsg = 'Start a roleplay. You are a customer walking into an appliance store. Pick a realistic scenario (reno, replacement, browsing, etc.) and open the conversation as the customer would. I am the sales rep.';
-  }
-  if (rpState.mode === 'ai_rep' && !initialMsg) {
-    initialMsg = 'Start a roleplay. You are an expert appliance sales rep. I am a customer walking into the store. Greet me and begin the sales process. I will respond as the customer.';
-  }
-
-  if (initialMsg) {
-    rpState.messages.push({ role: 'user', content: initialMsg });
-    currentView = 'roleplay';
-    renderView();
-    await callCoach();
-  } else {
-    currentView = 'roleplay';
-    renderView();
-  }
+  if (rpState.mode === 'ai_customer' && !initialMsg) initialMsg = 'Start a roleplay. You are a customer walking into an appliance store. Pick a realistic scenario and open the conversation as the customer would. I am the sales rep.';
+  if (rpState.mode === 'ai_rep' && !initialMsg) initialMsg = 'Start a roleplay. You are an expert appliance sales rep. I am a customer walking in. Greet me and begin the sales process.';
+  if (initialMsg) { rpState.messages.push({ role: 'user', content: initialMsg }); currentView = 'roleplay'; renderView(); await callCoach(); }
+  else { currentView = 'roleplay'; renderView(); }
 }
 window.startChat = startChat;
 
 async function sendMsg() {
   var input = document.getElementById('chat-input');
   if (!input || !input.value.trim() || rpState.loading) return;
-  var msg = input.value.trim();
-  input.value = '';
-  rpState.messages.push({ role: 'user', content: msg });
-  renderView();
-  await callCoach();
+  rpState.messages.push({ role: 'user', content: input.value.trim() });
+  input.value = ''; renderView(); await callCoach();
 }
 window.sendMsg = sendMsg;
 
 async function callCoach() {
-  rpState.loading = true;
-  renderView();
-
+  rpState.loading = true; renderView();
   var c = coaches[rpState.coach];
   var sysPrompt = '';
-
   if (rpState.mode === 'ai_customer') {
-    sysPrompt = 'You are a CUSTOMER in an appliance store. You are roleplaying with a sales rep who is practicing their skills.\n\n'
-      + 'RULES:\n'
-      + '- Stay in character as a realistic Canadian customer at ALL times\n'
-      + '- Be a believable shopper — have a backstory, budget concerns, preferences, and realistic objections\n'
-      + '- Mix behaviors: sometimes be easy, sometimes be difficult, sometimes bring up online prices, sometimes mention your spouse needs to agree\n'
-      + '- React naturally to what the rep says — if they do great discovery, open up more. If they push too hard, get defensive\n'
-      + '- Throw realistic curveballs: "I saw this cheaper on Amazon", "I need to talk to my wife first", "We are just looking today"\n'
-      + '- Use Canadian references (mention cities, stores, renovation projects)\n'
-      + '- Keep responses SHORT (2-4 sentences) like a real customer would speak\n'
-      + '- Reference real products and prices from the data below when relevant\n\n'
-      + 'LIVE PRODUCT DATA:\n' + (rpState.context || 'No data loaded.');
+    sysPrompt = 'You are a CUSTOMER in an appliance store. Stay in character as a realistic Canadian customer. Keep responses SHORT (2-4 sentences). Reference real products from data below.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
   } else if (rpState.mode === 'ai_rep') {
-    sysPrompt = 'You are an EXPERT APPLIANCE SALES REP demonstrating best practices. The user is playing the customer.\n\n'
-      + 'RULES:\n'
-      + '- Demonstrate the ApplianceIQ 10-step sales process perfectly\n'
-      + '- Show proper greeting (warm, non-commission), rapport building, needs discovery, product selection (rule of 3), lifestyle demo, value building, objection handling, closing, complete ticket (warranties, accessories), and follow-up\n'
-      + '- Use real product specs, MSRPs, and competitive knowledge from the data below\n'
-      + '- Show how to cross-sell (hood with range, pedestal with washer, protection plans)\n'
-      + '- Be the example of what a perfect rep looks like\n'
-      + '- Keep responses concise but thorough — show the technique, explain WHY in brackets [coaching note: this builds trust]\n'
-      + '- Reference Canadian context (CAD pricing, building codes, EnerGuide)\n\n'
-      + 'LIVE PRODUCT DATA:\n' + (rpState.context || 'No data loaded.');
+    sysPrompt = 'You are an EXPERT APPLIANCE SALES REP demonstrating the 11-step sales process. Show techniques with [coaching notes]. Use real specs and prices.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
   } else {
-    sysPrompt = 'You are ' + c.name + ', ' + c.role + ' at ApplianceIQ — a training platform for appliance sales reps in Canada.\n\n'
-      + 'PERSONA: ' + c.desc + '\n\n'
-      + 'RULES:\n'
-      + '- Stay in character as ' + c.name + ' at ALL times\n'
-      + '- Keep responses concise (2-4 paragraphs max) — sales reps are busy\n'
-      + '- Use real product data, specs, and prices from the context below when relevant\n'
-      + '- Give actionable scripts, not theory\n'
-      + '- If roleplaying a customer scenario, play both sides — coach the rep through it\n'
-      + '- Reference Canadian context (pricing in CAD, building codes, EnerGuide)\n'
-      + '- When you disagree with another coach approach, say so briefly\n\n'
-      + 'LIVE DATA FROM PIM:\n' + (rpState.context || 'No data loaded.');
+    sysPrompt = 'You are ' + c.name + ', ' + c.role + ' at ApplianceIQ.\nPERSONA: ' + c.desc + '\nKeep responses concise (2-4 paragraphs). Use real product data. Give actionable scripts. Canadian context.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
   }
-
-  var apiMessages = rpState.messages.map(function(m) { return { role: m.role, content: m.content }; });
-
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: sysPrompt,
-        messages: apiMessages
-      })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sysPrompt, messages: rpState.messages.map(function(m){ return { role: m.role, content: m.content }; }) })
     });
     var data = await resp.json();
-    var reply = data.content ? data.content.map(function(b) { return b.text || ''; }).join('') : 'Sorry, I could not generate a response.';
+    var reply = data.content ? data.content.map(function(b){ return b.text || ''; }).join('') : 'Sorry, could not generate a response.';
     rpState.messages.push({ role: 'assistant', content: reply });
-  } catch(e) {
-    console.error('Coach API error:', e);
-    rpState.messages.push({ role: 'assistant', content: 'Connection error — please try again.' });
-  }
-
-  rpState.loading = false;
-  renderView();
+  } catch(e) { rpState.messages.push({ role: 'assistant', content: 'Connection error — please try again.' }); }
+  rpState.loading = false; renderView();
 }
 
-function endChat() {
-  rpState.coach = null;
-  rpState.messages = [];
-  rpState.loading = false;
-  rpState.context = null;
-  renderView();
-}
+function endChat() { rpState.coach = null; rpState.messages = []; rpState.loading = false; rpState.context = null; rpState.mode = null; renderView(); }
 window.endChat = endChat;
 
-function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+// Human to Human recorder (from IQ Training)
+function formatTime(s) { var m = Math.floor(s/60); var sec = s%60; return (m<10?'0':'')+m+':'+(sec<10?'0':'')+sec; }
 
+function startRecording() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { alert('Speech recognition requires Chrome or Edge.'); return; }
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognition = new SpeechRec(); recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-CA';
+  var recState = { recording: true, transcript: '', timer: 0 };
+  window._recState = recState; window._recognition = recognition;
+  window._recInterval = setInterval(function(){ recState.timer++; var t = document.getElementById('rec-timer'); if(t) t.textContent = formatTime(recState.timer); }, 1000);
+  recognition.onresult = function(event) { var ft = ''; for (var i = event.resultIndex; i < event.results.length; i++) { if (event.results[i].isFinal) ft += event.results[i][0].transcript; } if (ft.trim()) { recState.transcript += (recState.transcript ? ' ' : '') + ft.trim(); var box = document.getElementById('transcript-box'); if (box) { box.innerHTML = '<p style="white-space:pre-line">' + esc(recState.transcript) + '</p>'; box.scrollTop = box.scrollHeight; } } };
+  recognition.onerror = function(e) { if (e.error === 'no-speech') return; };
+  recognition.onend = function() { if (recState.recording) recognition.start(); };
+  recognition.start(); renderView();
+}
+window.startRecording = startRecording;
+
+function stopRecording() { var recState = window._recState; if (!recState) return; recState.recording = false; if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); } if (window._recInterval) clearInterval(window._recInterval); renderView(); }
+window.stopRecording = stopRecording;
+
+function clearRecording() { if (window._recognition) { window._recognition.onend = null; window._recognition.stop(); } if (window._recInterval) clearInterval(window._recInterval); window._recState = { recording: false, transcript: '', timer: 0 }; window._scorecard = null; renderView(); }
+window.clearRecording = clearRecording;
+
+async function scoreSession() {
+  var recState = window._recState;
+  if (!recState || !recState.transcript || recState.transcript.trim().length < 20) return;
+  var mc = document.getElementById('main-content');
+  mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2)">Analyzing ' + formatTime(recState.timer) + ' of practice...</p></div>';
+  var scorePrompt = 'You are the ApplianceIQ Sales Scoring AI. Analyze this recorded sales practice session for appliance retail.\n\nIdentify who is the sales rep and who is the customer. Score across 12 categories (1-10): Greeting/Rapport, Needs Discovery, Product Knowledge, Feature-Benefit Selling, Objection Handling, Cross-Selling, Closing Technique, Follow-Up Setup, Product Demo, Value Building, Customer Engagement, Professionalism.\n\nRespond in JSON only: {"scores":{"Greeting":8,...},"total":85,"feedback":"...","rep_identified":"...","customer_identified":"..."}\n\nTranscript:\n' + recState.transcript;
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: scorePrompt }] })
+    });
+    var data = await resp.json();
+    var text = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : '{}';
+    var clean = text.replace(/```json|```/g, '').trim();
+    window._scorecard = JSON.parse(clean);
+  } catch(e) { window._scorecard = { scores: {}, total: 0, feedback: 'Could not parse results.' }; }
+  renderView();
+}
+window.scoreSession = scoreSession;
+
+function renderScorecardResult(el) {
+  var sc = window._scorecard;
+  if (!sc) { renderRoleplay(el); return; }
+  var scoresHtml = Object.entries(sc.scores||{}).map(function(kv) {
+    var color = kv[1] >= 8 ? 'var(--green)' : kv[1] >= 6 ? 'var(--gold)' : 'var(--red)';
+    return '<div class="score-row"><div class="score-label">' + esc(kv[0]) + '</div><div class="score-bar"><div class="score-bar-fill" style="width:' + (kv[1]*10) + '%;background:' + color + '"></div></div><div class="score-val" style="color:' + color + '">' + kv[1] + '</div></div>';
+  }).join('');
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="clearRecording()"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">New Session</span></div>'
+    + '<div class="scorecard"><div class="scorecard-header"><h3>Session Scorecard</h3><div class="total-score">' + (sc.total||0) + '/120</div></div>'
+    + scoresHtml + '</div>'
+    + (sc.feedback ? '<div class="score-feedback">' + esc(sc.feedback) + '</div>' : '');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════════════════════
+function renderNotifPanel() {
+  var list = document.getElementById('notif-list');
+  if (!list) return;
+  list.innerHTML = S.notifications.slice(0, 20).map(function(n) {
+    return '<div class="notif-item ' + (!n.is_read?'unread':'') + '">'
+      + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
+      + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
+  }).join('') || '<p style="color:var(--text3);text-align:center;padding:40px;font-size:13px">No notifications</p>';
+}
+
+function renderNotifPage(el) {
+  var notifsHtml = S.notifications.map(function(n, i) {
+    return '<div class="notif-item ' + (!n.is_read?'unread':'') + '">'
+      + '<div class="notif-icon">' + (n.icon||'📢') + '</div>'
+      + '<div class="notif-content"><h5>' + esc(n.title) + '</h5><p>' + esc(n.body||'') + '</p><div class="notif-time">' + timeAgo(n.created_at) + '</div></div></div>';
+  }).join('') || '<p style="color:var(--text3);text-align:center;padding:40px">No notifications</p>';
+  el.innerHTML = '<div class="dash-header"><h2>Notifications</h2><p>' + S.notifications.length + ' notifications</p></div>'
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">' + notifsHtml + '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════════════════════
 function timeAgo(ts) {
   if (!ts) return '';
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60000);
+  var diff = Date.now() - new Date(ts).getTime();
+  var mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return mins + 'm ago';
-  const hrs = Math.floor(mins / 60);
+  var hrs = Math.floor(mins / 60);
   if (hrs < 24) return hrs + 'h ago';
-  const days = Math.floor(hrs / 24);
-  return days + 'd ago';
+  return Math.floor(hrs / 24) + 'd ago';
 }
 </script>
 </body>
