@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.1-2026-08-04"/>
-<!-- VERSION: PIM Scraper v3.1 — Built 2026-08-04 — Parallel scraping, resume, accessories fix -->
+<meta name="aiq-version" content="pim-scraper-v3.2-2026-08-04"/>
+<!-- VERSION: PIM Scraper v3.2 — Category page scraping + auto-save -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.1</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.2</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -662,6 +662,120 @@ function classifySegment(data) {
 }
 
 /* ═══ SMART SCRAPE ═══ */
+
+/* ── CATEGORY PAGE DETECTION — extracts product URLs from listing pages ── */
+async function extractProductUrls(url,brand){
+  try{
+    // Heuristic: category pages often have these path patterns
+    const lu=url.toLowerCase();
+    const isCategoryLikely=/\/(category|categories|products|collection|collections|models|lineup|series|all-|shop\/)/.test(lu)
+      || /\/(refrigerat|dishwash|range|washer|dryer|cooktop|oven|microwave|freezer|hood|laundry|wine|beverage)/.test(lu)
+      || lu.endsWith('/') && (lu.split('/').filter(Boolean).length <= 6);
+
+    // Fetch page HTML
+    logEntry('Checking if URL is a category page…');
+    const resp=await fetch(SB_URL+'/functions/v1/free-extract',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({url,raw_text_only:true})
+    });
+    const raw=await resp.json();
+    const html=raw?.text||raw?.raw_text||raw?.html||'';
+    if(html.length<200){logEntry('Page too short — treating as single product');return null}
+
+    // Extract all same-domain links from the HTML
+    const urlObj=new URL(url);
+    const domain=urlObj.hostname;
+    const links=new Set();
+    // Match href="..." patterns
+    const hrefRx=/href=["']([^"']+)["']/gi;
+    let m;
+    while((m=hrefRx.exec(html))!==null){
+      let href=m[1];
+      if(href.startsWith('/'))href=urlObj.origin+href;
+      try{
+        const linkUrl=new URL(href);
+        if(linkUrl.hostname===domain||linkUrl.hostname==='www.'+domain||domain==='www.'+linkUrl.hostname){
+          links.add(linkUrl.href.split('?')[0].split('#')[0]); // strip query/hash
+        }
+      }catch(_){}
+    }
+
+    // Filter for product-like URLs (not the category page itself, not nav/footer links)
+    const skipPaths=['/about','/contact','/careers','/blog','/news','/press','/faq','/support',
+      '/warranty','/registration','/privacy','/terms','/legal','/sitemap','/search',
+      '/company','/media','/investor','/history','/locations','/store-locator',
+      '/rebate','/financing','/promotions','/compare','/how-to','/recipe','/login','/account',
+      '/cart','/checkout','/wishlist','/cookie','/accessibility'];
+    const categoryPaths=['/category/','/categories/','/collection/','/collections/','/shop/','/all-','/lineup/'];
+
+    const productLinks=[];
+    for(const link of links){
+      const path=new URL(link).pathname.toLowerCase();
+      // Skip the original URL itself
+      if(link===url||link===url+'/'||link+'/'===url)continue;
+      // Skip nav/footer/utility pages
+      if(skipPaths.some(s=>path.includes(s)))continue;
+      // Skip other category pages (we want products, not sub-categories... unless they're deeper)
+      if(categoryPaths.some(s=>path.includes(s))&&path.split('/').filter(Boolean).length<=3)continue;
+      // Product pages tend to have longer, more specific paths
+      const segments=path.split('/').filter(Boolean);
+      if(segments.length<2)continue; // too short, probably homepage or section
+      // Look for model-number-like patterns in the URL
+      const lastSeg=segments[segments.length-1];
+      const hasModelPattern=/[A-Z]{2,}[\d]|[\d]{2,}[A-Z]|^[A-Z0-9-]{5,}$/i.test(lastSeg);
+      const hasProductPath=/product|model|item|spec|detail|p\//i.test(path);
+      // Accept if it looks product-like
+      if(hasModelPattern||hasProductPath||segments.length>=3){
+        // Try to extract model from URL
+        const modelGuess=lastSeg.replace(/\.html?$/i,'').replace(/-/g,' ').toUpperCase();
+        productLinks.push({url:link,model:hasModelPattern?modelGuess.replace(/\s/g,''):''});
+      }
+    }
+
+    // If we found multiple product links, this IS a category page
+    if(productLinks.length>=2){
+      logEntry('📂 Category page: '+productLinks.length+' product URLs extracted from '+links.size+' total links','ok');
+      return productLinks;
+    }
+
+    // Fallback: if the page has very few links but looks like a category, try Gemini/GPT to find products
+    if(isCategoryLikely&&html.length>1000&&productLinks.length<2){
+      logEntry('Category heuristic matched but only '+productLinks.length+' product links found — trying AI extraction…');
+      const gkey=localStorage.getItem('aiq_google_key');
+      if(gkey){
+        try{
+          const aiResp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+gkey,{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              systemInstruction:{parts:[{text:'Extract all individual product page URLs from this HTML page. Return ONLY a JSON array of objects: [{url, model}]. The URLs should be direct links to individual product detail pages, NOT category or listing pages. If no product links found, return empty array [].'}]},
+              contents:[{parts:[{text:'Extract product URLs from this '+brand+' category page ('+url+'):\n\n'+html.substring(0,12000)}]}],
+              generationConfig:{responseMimeType:'application/json',temperature:0.1,maxOutputTokens:3000}
+            })
+          });
+          const aiData=await aiResp.json();
+          const txt=aiData.candidates?.[0]?.content?.parts?.[0]?.text||'';
+          const parsed=JSON.parse(txt.replace(/```json\s*|```/g,'').trim());
+          const cost=((aiData.usageMetadata?.promptTokenCount||0)*0.0000003+(aiData.usageMetadata?.candidatesTokenCount||0)*0.0000025);
+          addCost(cost);
+          if(Array.isArray(parsed)&&parsed.length>=2){
+            // Normalize relative URLs
+            const normalized=parsed.map(p=>{
+              let purl=p.url||'';
+              if(purl.startsWith('/'))purl=urlObj.origin+purl;
+              return{url:purl,model:p.model||''};
+            }).filter(p=>p.url.startsWith('http'));
+            logEntry('AI extracted '+normalized.length+' product URLs · $'+cost.toFixed(4),'cost');
+            return normalized;
+          }
+        }catch(e){logEntry('AI extraction error: '+e.message,'err')}
+      }
+    }
+
+    // Not a category page — return null to treat as single product
+    return null;
+  }catch(e){logEntry('Category check error: '+e.message,'err');return null}
+}
+
 async function smartScrape(brand,model,url){
   const t=tier(brand)||4;
   const bi=brandSourceMap[brand]||null;
@@ -1235,7 +1349,7 @@ function renderDiscover(){
   h+='<button class="btn btn-primary" onclick="window.S.doScrape()" '+(isProcessing?'disabled':'')+'>🔍 Scrape</button>';
   h+='</div>';
   h+='<div class="controls" style="margin-top:-8px">';
-  h+='<div class="field"><label>Or paste a URL</label><input type="text" id="urlInput" placeholder="https://…" style="min-width:420px"/></div>';
+  h+='<div class="field"><label>Or paste a URL (product page or category page)</label><input type="text" id="urlInput" placeholder="https://www.bosch-home.com/us/en/category/refrigerators/french-door/…" style="min-width:420px"/></div>';
   h+='<button class="btn btn-secondary" onclick="window.S.doUrlScrape()" '+(isProcessing?'disabled':'')+'>Scrape URL</button>';
   h+='</div></details>';
 
@@ -1473,15 +1587,73 @@ window.S = {
     if(!url||!url.startsWith('http')){alert('Paste a valid URL');return}
     const brand=selectedBrand||'Unknown';
     isProcessing=true;renderTab();
-    const result=await smartScrape(brand,'',url);
-    await autoSaveIfEnabled(result);
+
+    // ── Detect if this is a category/listing page vs a single product ──
+    const productUrls=await extractProductUrls(url,brand);
+    if(productUrls&&productUrls.length>1){
+      // Category page — scrape all products found
+      logEntry('📂 Category page detected — found '+productUrls.length+' product links','ok');
+      scrapeProgress={current:0,total:productUrls.length,label:'Category'};
+      stopRequested=false;
+      const CONCURRENCY=3;
+      let idx=0;
+      const processNext=async()=>{
+        while(idx<productUrls.length&&!stopRequested){
+          const i=idx++;
+          scrapeProgress.current=i+1;updateHeaderProgress();
+          const pu=productUrls[i];
+          const result=await smartScrape(brand,pu.model||'',pu.url);
+          classifyResult(result);
+          if(result.data&&result._relevant!==false){
+            const ri=scrapeResults.indexOf(result);
+            if(ri>=0)await saveToPim(ri);
+          }
+          await new Promise(r=>setTimeout(r,300));
+        }
+      };
+      const workers=[];
+      for(let w=0;w<Math.min(CONCURRENCY,productUrls.length);w++)workers.push(processNext());
+      await Promise.all(workers);
+      logEntry('✅ Category scrape done: '+productUrls.length+' products','ok');
+      scrapeProgress={current:0,total:0,label:''};
+    } else {
+      // Single product page — scrape + auto-save
+      const result=await smartScrape(brand,'',url);
+      classifyResult(result);
+      if(result.data&&result._relevant!==false){
+        const ri=scrapeResults.indexOf(result);
+        if(ri>=0)await saveToPim(ri);
+        logEntry('Auto-saved ✓','ok');
+      }
+    }
     isProcessing=false;renderTab();
   },
   async scrapeUrl(url){
     if(isProcessing)return;
     isProcessing=true;renderTab();
-    const result=await smartScrape(selectedBrand||'Unknown','',url);
-    await autoSaveIfEnabled(result);
+
+    // Check for category page
+    const brand=selectedBrand||'Unknown';
+    const productUrls=await extractProductUrls(url,brand);
+    if(productUrls&&productUrls.length>1){
+      logEntry('📂 Category page — found '+productUrls.length+' products','ok');
+      scrapeProgress={current:0,total:productUrls.length,label:'Category'};
+      stopRequested=false;
+      for(let i=0;i<productUrls.length&&!stopRequested;i++){
+        scrapeProgress.current=i+1;updateHeaderProgress();
+        const pu=productUrls[i];
+        const result=await smartScrape(brand,pu.model||'',pu.url);
+        classifyResult(result);
+        if(result.data&&result._relevant!==false){const ri=scrapeResults.indexOf(result);if(ri>=0)await saveToPim(ri)}
+        await new Promise(r=>setTimeout(r,300));
+      }
+      scrapeProgress={current:0,total:0,label:''};
+    } else {
+      // Single product — scrape + auto-save
+      const result=await smartScrape(brand,'',url);
+      classifyResult(result);
+      if(result.data&&result._relevant!==false){const ri=scrapeResults.indexOf(result);if(ri>=0)await saveToPim(ri);logEntry('Auto-saved ✓','ok')}
+    }
     isProcessing=false;renderTab();
   },
   requestStop(){stopRequested=true;logEntry('⏹ Stop requested — finishing current item…','err');renderTab()},
