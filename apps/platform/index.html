@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ApplianceIQ Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --navy-950: #0a0f1e;
+  --navy-900: #0f172a;
+  --navy-800: #1e293b;
+  --navy-700: #334155;
+  --navy-600: #475569;
+  --navy-500: #64748b;
+  --navy-400: #94a3b8;
+  --navy-300: #cbd5e1;
+  --navy-200: #e2e8f0;
+  --navy-100: #f1f5f9;
+  --navy-50:  #f8fafc;
+
+  --teal-700: #0f766e;
+  --teal-600: #0d9488;
+  --teal-500: #14b8a6;
+  --teal-400: #2dd4bf;
+  --teal-300: #5eead4;
+  --teal-200: #99f6e4;
+  --teal-100: #ccfbf1;
+
+  --amber-500: #f59e0b;
+  --amber-400: #fbbf24;
+  --red-500: #ef4444;
+  --green-500: #22c55e;
+  --green-400: #4ade80;
+
+  --sidebar-w: 260px;
+  --topbar-h: 56px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+  --transition: 180ms ease;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--navy-50);
+  color: var(--navy-800);
+  -webkit-font-smoothing: antialiased;
+}
+button { cursor: pointer; font-family: inherit; }
+input, select { font-family: inherit; }
+
+/* ============================================================
+   AUTH SCREEN
+   ============================================================ */
+#auth-screen {
+  display: flex;
+  height: 100vh;
+  background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-900) 50%, var(--teal-700) 100%);
+}
+.auth-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+}
+.auth-left::before {
+  content: '';
+  position: absolute;
+  top: -200px; right: -200px;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(13,148,136,.15) 0%, transparent 70%);
+}
+.auth-left::after {
+  content: '';
+  position: absolute;
+  bottom: -150px; left: -150px;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(13,148,136,.1) 0%, transparent 70%);
+}
+.auth-brand {
+  position: relative; z-index: 1;
+  text-align: center;
+  max-width: 480px;
+}
+.auth-brand h1 {
+  font-size: 42px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+}
+.auth-brand h1 span { color: var(--teal-400); }
+.auth-brand p {
+  font-size: 18px;
+  color: var(--navy-400);
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+.auth-stats {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+}
+.auth-stat {
+  text-align: center;
+}
+.auth-stat .num {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--teal-400);
+}
+.auth-stat .label {
+  font-size: 12px;
+  color: var(--navy-500);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+.auth-right {
+  width: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 40px 32px;
+  box-shadow: var(--shadow-lg);
+}
+.auth-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 4px;
+}
+.auth-card .subtitle {
+  font-size: 14px;
+  color: var(--navy-500);
+  margin-bottom: 28px;
+}
+.form-group {
+  margin-bottom: 18px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-700);
+  margin-bottom: 6px;
+}
+.form-group input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--navy-200);
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--navy-800);
+  transition: border var(--transition);
+  outline: none;
+}
+.form-group input:focus {
+  border-color: var(--teal-500);
+  box-shadow: 0 0 0 3px rgba(13,148,136,.1);
+}
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: var(--teal-600);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  transition: background var(--transition);
+}
+.btn-primary:hover { background: var(--teal-700); }
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+.auth-toggle {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--navy-500);
+}
+.auth-toggle a {
+  color: var(--teal-600);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.auth-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: var(--red-500);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: none;
+}
+
+/* ============================================================
+   PLATFORM LAYOUT
+   ============================================================ */
+#platform {
+  display: none;
+  height: 100vh;
+}
+.platform-layout {
+  display: flex;
+  height: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--navy-950);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width var(--transition);
+  z-index: 100;
+}
+.sidebar-brand {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.sidebar-brand h1 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+.sidebar-brand h1 span { color: var(--teal-400); }
+.sidebar-brand .org-name {
+  font-size: 11px;
+  color: var(--navy-500);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 8px;
+}
+.sidebar-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy-600);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: 12px 12px 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--navy-400);
+  cursor: pointer;
+  transition: all var(--transition);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+.nav-item:hover {
+  background: rgba(255,255,255,.05);
+  color: var(--navy-200);
+}
+.nav-item.active {
+  background: rgba(13,148,136,.15);
+  color: var(--teal-400);
+}
+.nav-item .icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.nav-item .badge {
+  margin-left: auto;
+  background: var(--teal-600);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.nav-item.locked { opacity: .35; cursor: default; }
+.nav-item.locked::after {
+  content: '🔒';
+  margin-left: auto;
+  font-size: 12px;
+}
+
+/* Sidebar user */
+.sidebar-user {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-user .avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--teal-700);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.sidebar-user .info {
+  flex: 1;
+  min-width: 0;
+}
+.sidebar-user .name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--navy-200);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-user .role {
+  font-size: 11px;
+  color: var(--navy-500);
+}
+.sidebar-user .logout-btn {
+  background: none;
+  border: none;
+  color: var(--navy-500);
+  font-size: 16px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all var(--transition);
+}
+.sidebar-user .logout-btn:hover { color: var(--red-500); background: rgba(239,68,68,.1); }
+
+/* Main area */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.topbar {
+  height: var(--topbar-h);
+  background: #fff;
+  border-bottom: 1px solid var(--navy-200);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: var(--navy-600);
+  padding: 4px;
+}
+.topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.credits-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--navy-100);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-700);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.credits-badge:hover { background: var(--navy-200); }
+.credits-badge .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green-500);
+}
+.credits-badge.low .dot { background: var(--amber-500); }
+.credits-badge.empty .dot { background: var(--red-500); }
+.plan-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--teal-100);
+  color: var(--teal-700);
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.content iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ============================================================
+   DASHBOARD VIEW (home)
+   ============================================================ */
+#view-dashboard {
+  padding: 32px;
+  overflow-y: auto;
+  height: 100%;
+}
+.dash-header {
+  margin-bottom: 32px;
+}
+.dash-header h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--navy-900);
+  margin-bottom: 4px;
+}
+.dash-header p {
+  font-size: 14px;
+  color: var(--navy-500);
+}
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--navy-200);
+}
+.stat-card .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-500);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.stat-card .value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--navy-900);
+  margin: 6px 0 2px;
+}
+.stat-card .sub {
+  font-size: 12px;
+  color: var(--navy-500);
+}
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.module-card {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--navy-200);
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+}
+.module-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--teal-300);
+  transform: translateY(-2px);
+}
+.module-card.locked {
+  opacity: .5;
+  cursor: default;
+}
+.module-card.locked:hover {
+  transform: none;
+  border-color: var(--navy-200);
+  box-shadow: var(--shadow-sm);
+}
+.module-card .mc-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+.module-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 4px;
+}
+.module-card p {
+  font-size: 13px;
+  color: var(--navy-500);
+  line-height: 1.5;
+}
+.module-card .mc-price {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teal-600);
+}
+.module-card .mc-lock {
+  position: absolute;
+  top: 16px; right: 16px;
+  font-size: 14px;
+}
+.module-card .mc-included {
+  position: absolute;
+  top: 14px; right: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  background: var(--teal-100);
+  color: var(--teal-700);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   SETTINGS VIEW
+   ============================================================ */
+#view-settings {
+  padding: 32px;
+  overflow-y: auto;
+  height: 100%;
+  display: none;
+}
+.settings-section {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--navy-200);
+  margin-bottom: 20px;
+  max-width: 800px;
+}
+.settings-section h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 4px;
+}
+.settings-section .desc {
+  font-size: 13px;
+  color: var(--navy-500);
+  margin-bottom: 20px;
+}
+.plan-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--navy-50);
+  border-radius: var(--radius);
+  border: 1px solid var(--navy-200);
+  margin-bottom: 16px;
+}
+.plan-current .plan-info h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+.plan-current .plan-info p {
+  font-size: 13px;
+  color: var(--navy-500);
+  margin-top: 2px;
+}
+.btn-outline {
+  padding: 8px 16px;
+  border: 1.5px solid var(--teal-600);
+  background: none;
+  color: var(--teal-600);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+.btn-outline:hover {
+  background: var(--teal-600);
+  color: #fff;
+}
+.seat-usage {
+  margin-top: 16px;
+}
+.seat-bar-wrap {
+  background: var(--navy-100);
+  border-radius: 6px;
+  height: 10px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+.seat-bar {
+  height: 100%;
+  background: var(--teal-600);
+  border-radius: 6px;
+  transition: width .4s ease;
+}
+.seat-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--navy-500);
+}
+.credit-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.credit-pack {
+  border: 1.5px solid var(--navy-200);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.credit-pack:hover {
+  border-color: var(--teal-500);
+  background: var(--teal-100);
+}
+.credit-pack .cp-credits {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--navy-900);
+}
+.credit-pack .cp-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--teal-600);
+  margin-top: 4px;
+}
+.credit-pack .cp-unit {
+  font-size: 11px;
+  color: var(--navy-500);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   UPGRADE MODAL
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  max-width: 960px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 36px;
+  box-shadow: var(--shadow-lg);
+}
+.modal h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--navy-900);
+  margin-bottom: 4px;
+}
+.modal .modal-sub {
+  font-size: 14px;
+  color: var(--navy-500);
+  margin-bottom: 24px;
+}
+.modal-close {
+  position: absolute;
+  top: 16px; right: 20px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--navy-500);
+}
+.billing-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.billing-toggle span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy-500);
+}
+.billing-toggle span.active { color: var(--navy-900); }
+.toggle-switch {
+  width: 48px; height: 26px;
+  background: var(--navy-300);
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.toggle-switch.on { background: var(--teal-600); }
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--transition);
+}
+.toggle-switch.on::after { transform: translateX(22px); }
+.save-pill {
+  background: var(--green-500);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+.plan-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+.plan-card {
+  border: 2px solid var(--navy-200);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  position: relative;
+  transition: all var(--transition);
+}
+.plan-card.popular { border-color: var(--teal-500); }
+.plan-card.popular::before {
+  content: 'Most Popular';
+  position: absolute;
+  top: -11px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--teal-600);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 3px 12px;
+  border-radius: 10px;
+}
+.plan-card h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy-900);
+}
+.plan-card .plan-tagline {
+  font-size: 12px;
+  color: var(--navy-500);
+  margin-top: 2px;
+  margin-bottom: 16px;
+}
+.plan-card .plan-price {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--navy-900);
+}
+.plan-card .plan-price .currency { font-size: 20px; vertical-align: top; }
+.plan-card .plan-price .period {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--navy-500);
+}
+.plan-card .plan-seat-note {
+  font-size: 12px;
+  color: var(--navy-500);
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+.plan-card .plan-features {
+  list-style: none;
+  margin-bottom: 20px;
+}
+.plan-card .plan-features li {
+  font-size: 13px;
+  color: var(--navy-700);
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.plan-card .plan-features li::before {
+  content: '✓';
+  color: var(--teal-600);
+  font-weight: 700;
+  font-size: 14px;
+}
+.plan-card .btn-select {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid var(--teal-600);
+  background: none;
+  color: var(--teal-600);
+  transition: all var(--transition);
+}
+.plan-card .btn-select:hover,
+.plan-card.popular .btn-select {
+  background: var(--teal-600);
+  color: #fff;
+}
+.plan-card.popular .btn-select:hover {
+  background: var(--teal-700);
+}
+
+/* Seat tier selector */
+.seat-tiers {
+  display: flex;
+  gap: 8px;
+  margin: 24px 0 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.seat-tier {
+  padding: 8px 16px;
+  border: 1.5px solid var(--navy-200);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-600);
+  background: none;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.seat-tier.active {
+  border-color: var(--teal-500);
+  background: var(--teal-100);
+  color: var(--teal-700);
+}
+.seat-tier .discount {
+  color: var(--green-500);
+  margin-left: 4px;
+}
+
+/* ============================================================
+   MODULE FRAME (iframe container)
+   ============================================================ */
+#module-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: none;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0; bottom: 0;
+    z-index: 200;
+    transition: left .25s ease;
+  }
+  .sidebar.open { left: 0; }
+  .hamburger { display: block; }
+  .auth-left { display: none; }
+  .auth-right { width: 100%; padding: 24px; }
+  .modal { padding: 24px; }
+  .plan-cards { grid-template-columns: 1fr; }
+  #view-dashboard { padding: 20px; }
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    z-index: 150;
+    display: none;
+  }
+  .mobile-overlay.open { display: block; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     AUTH SCREEN
+     ============================================================ -->
+<div id="auth-screen">
+  <div class="auth-left">
+    <div class="auth-brand">
+      <h1>Appliance<span>IQ</span></h1>
+      <p>The intelligence platform built for appliance retail professionals. One login, every tool.</p>
+      <div class="auth-stats">
+        <div class="auth-stat"><div class="num">156</div><div class="label">Brands</div></div>
+        <div class="auth-stat"><div class="num">10</div><div class="label">Modules</div></div>
+        <div class="auth-stat"><div class="num">412</div><div class="label">Locations</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-card">
+      <h2 id="auth-title">Welcome back</h2>
+      <p class="subtitle" id="auth-subtitle">Sign in to your platform</p>
+      <div class="auth-error" id="auth-error"></div>
+      <div id="auth-form">
+        <div class="form-group" id="name-group" style="display:none">
+          <label>Full Name</label>
+          <input type="text" id="auth-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="auth-email" placeholder="you@company.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="auth-password" placeholder="••••••••">
+        </div>
+        <button class="btn-primary" id="auth-submit" onclick="handleAuth()">Sign In</button>
+      </div>
+      <div class="auth-toggle">
+        <span id="auth-toggle-text">Don't have an account?</span>
+        <a id="auth-toggle-link" onclick="toggleAuthMode()">Create one</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PLATFORM SHELL
+     ============================================================ -->
+<div id="platform">
+  <div class="mobile-overlay" id="mobile-overlay" onclick="closeSidebar()"></div>
+  <div class="platform-layout">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <h1>Appliance<span>IQ</span></h1>
+        <div class="org-name" id="sidebar-org">Intelligence Group</div>
+      </div>
+      <div class="sidebar-nav">
+        <div class="sidebar-section-label">Navigation</div>
+        <button class="nav-item active" onclick="showDashboard()" data-module="dashboard">
+          <span class="icon">🏠</span> Dashboard
+        </button>
+        <div class="sidebar-section-label">Modules</div>
+        <div id="module-nav"></div>
+        <div class="sidebar-section-label">System</div>
+        <button class="nav-item" onclick="showSettings()" data-module="settings">
+          <span class="icon">⚙️</span> Settings & Billing
+        </button>
+      </div>
+      <div class="sidebar-user">
+        <div class="avatar" id="user-avatar">TJ</div>
+        <div class="info">
+          <div class="name" id="user-name">Loading...</div>
+          <div class="role" id="user-role">Admin</div>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()" title="Sign out">⏻</button>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <div class="main-area">
+      <div class="topbar">
+        <div class="topbar-left">
+          <button class="hamburger" onclick="toggleSidebar()">☰</button>
+          <span class="topbar-title" id="topbar-title">Dashboard</span>
+        </div>
+        <div class="topbar-right">
+          <div class="credits-badge" id="credits-badge" onclick="showSettings()">
+            <span class="dot"></span>
+            <span id="credits-count">5,000 AI credits</span>
+          </div>
+          <div class="plan-badge" id="plan-badge">Trial</div>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- Dashboard -->
+        <div id="view-dashboard">
+          <div class="dash-header">
+            <h2 id="dash-greeting">Good morning</h2>
+            <p>Your platform at a glance</p>
+          </div>
+          <div class="dash-stats" id="dash-stats"></div>
+          <div class="sidebar-section-label" style="padding:0 0 12px;font-size:13px;color:var(--navy-700)">Your Modules</div>
+          <div class="module-grid" id="module-grid"></div>
+        </div>
+
+        <!-- Settings -->
+        <div id="view-settings">
+          <div class="dash-header">
+            <h2>Settings & Billing</h2>
+            <p>Manage your subscription, seats, and AI credits</p>
+          </div>
+
+          <div class="settings-section">
+            <h3>Current Plan</h3>
+            <p class="desc">Your subscription and billing details</p>
+            <div class="plan-current" id="plan-current">
+              <div class="plan-info">
+                <h4 id="settings-plan-name">Trial</h4>
+                <p id="settings-plan-detail">14-day free trial • All modules</p>
+              </div>
+              <button class="btn-outline" onclick="openUpgradeModal()">Change Plan</button>
+            </div>
+            <div class="seat-usage">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:600;color:var(--navy-700)">Seat Usage</span>
+                <span style="font-size:13px;color:var(--navy-500)" id="seat-count">1 / 1 seats used</span>
+              </div>
+              <div class="seat-bar-wrap">
+                <div class="seat-bar" id="seat-bar" style="width:100%"></div>
+              </div>
+              <div class="seat-labels">
+                <span>Solo plan</span>
+                <span><a href="#" style="color:var(--teal-600);font-weight:600;text-decoration:none" onclick="openUpgradeModal()">Add seats</a></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>AI Credits</h3>
+            <p class="desc">Credits are used for AI coaching, email composition, roleplay, and data scraping</p>
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+              <div>
+                <div style="font-size:32px;font-weight:800;color:var(--navy-900)" id="settings-credits">5,000</div>
+                <div style="font-size:13px;color:var(--navy-500)">credits remaining this period</div>
+              </div>
+            </div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy-700);margin-bottom:8px">Buy additional credits</div>
+            <div class="credit-cards" id="credit-packs"></div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Seat Pricing</h3>
+            <p class="desc">Volume discounts applied automatically based on total seats</p>
+            <div id="seat-tier-table"></div>
+          </div>
+        </div>
+
+        <!-- Module iframe -->
+        <iframe id="module-frame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     UPGRADE MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="upgrade-modal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" onclick="closeUpgradeModal()">✕</button>
+    <h2>Choose Your Plan</h2>
+    <p class="modal-sub">All plans include a 14-day free trial. Scale as you grow.</p>
+
+    <div class="billing-toggle">
+      <span class="active" id="lbl-monthly">Monthly</span>
+      <div class="toggle-switch" id="billing-toggle" onclick="toggleBilling()"></div>
+      <span id="lbl-annual">Annual</span>
+      <span class="save-pill">Save 20%</span>
+    </div>
+
+    <div class="seat-tiers" id="seat-tier-pills"></div>
+
+    <div class="plan-cards" id="plan-cards" style="margin-top:20px"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3ODM4NjQsImV4cCI6MjA2MzM1OTg2NH0.1GaaVj0OzKONZYBjiagJCx8PqKEP9jbTSYNqKbgJKx8';
+const sb = createClient(SB_URL, SB_KEY);
+
+// ── State ──────────────────────────────────────────────────
+let state = {
+  user: null,
+  modules: [],
+  plans: [],
+  planModules: [],
+  seatTiers: [],
+  creditPacks: [],
+  subscription: null,
+  aiCredits: null,
+  billingAnnual: false,
+  selectedTier: 'solo',
+  activeView: 'dashboard',
+  activeModuleKey: null,
+};
+
+// ── Auth ───────────────────────────────────────────────────
+let isSignup = false;
+
+window.toggleAuthMode = function() {
+  isSignup = !isSignup;
+  document.getElementById('auth-title').textContent = isSignup ? 'Create account' : 'Welcome back';
+  document.getElementById('auth-subtitle').textContent = isSignup ? 'Start your 14-day free trial' : 'Sign in to your platform';
+  document.getElementById('auth-submit').textContent = isSignup ? 'Create Account' : 'Sign In';
+  document.getElementById('name-group').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('auth-toggle-text').textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
+  document.getElementById('auth-toggle-link').textContent = isSignup ? 'Sign in' : 'Create one';
+  hideError();
+};
+
+function showError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+window.handleAuth = async function() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn = document.getElementById('auth-submit');
+  if (!email || !password) return showError('Enter email and password');
+  btn.disabled = true;
+  btn.textContent = isSignup ? 'Creating...' : 'Signing in...';
+  hideError();
+
+  try {
+    let result;
+    if (isSignup) {
+      const name = document.getElementById('auth-name').value.trim();
+      result = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+    } else {
+      result = await sb.auth.signInWithPassword({ email, password });
+    }
+    if (result.error) throw result.error;
+    state.user = result.data.user;
+    await initPlatform();
+  } catch (e) {
+    showError(e.message || 'Authentication failed');
+  }
+  btn.disabled = false;
+  btn.textContent = isSignup ? 'Create Account' : 'Sign In';
+};
+
+// Enter key
+document.getElementById('auth-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.handleAuth();
+});
+
+window.handleLogout = async function() {
+  await sb.auth.signOut();
+  document.getElementById('platform').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  state.user = null;
+};
+
+// ── Init ───────────────────────────────────────────────────
+async function initPlatform() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('platform').style.display = 'block';
+
+  // Load catalog data in parallel
+  const [modRes, planRes, pmRes, tierRes, packRes] = await Promise.all([
+    sb.from('platform_modules').select('*').eq('is_active', true).order('display_order'),
+    sb.from('platform_plans').select('*').eq('is_active', true).order('display_order'),
+    sb.from('platform_plan_modules').select('*'),
+    sb.from('platform_seat_tiers').select('*').order('display_order'),
+    sb.from('platform_ai_credit_packs').select('*').eq('is_active', true).order('display_order'),
+  ]);
+
+  state.modules = modRes.data || [];
+  state.plans = planRes.data || [];
+  state.planModules = pmRes.data || [];
+  state.seatTiers = tierRes.data || [];
+  state.creditPacks = packRes.data || [];
+
+  // Load org subscription (if exists)
+  const { data: subs } = await sb.from('platform_subscriptions').select('*').limit(1);
+  state.subscription = subs?.[0] || null;
+
+  // Load AI credits
+  const { data: credits } = await sb.from('platform_ai_credits').select('*').limit(1);
+  state.aiCredits = credits?.[0] || null;
+
+  renderUI();
+}
+
+// ── Rendering ──────────────────────────────────────────────
+function renderUI() {
+  renderUserInfo();
+  renderSidebar();
+  renderDashboard();
+  renderSettings();
+  renderTopbar();
+}
+
+function renderUserInfo() {
+  const u = state.user;
+  const name = u?.user_metadata?.full_name || u?.email?.split('@')[0] || 'User';
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  document.getElementById('user-name').textContent = name;
+  document.getElementById('user-avatar').textContent = initials;
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('dash-greeting').textContent = `${greeting}, ${name.split(' ')[0]}`;
+}
+
+function getActiveModules() {
+  const sub = state.subscription;
+  if (!sub || sub.status === 'trial') return state.modules; // trial = all modules
+  const planId = sub.plan_id;
+  const planModuleIds = state.planModules.filter(pm => pm.plan_id === planId).map(pm => pm.module_id);
+  return state.modules.filter(m => planModuleIds.includes(m.id));
+}
+
+function isModuleLocked(mod) {
+  const active = getActiveModules();
+  return !active.find(m => m.id === mod.id);
+}
+
+function renderSidebar() {
+  const nav = document.getElementById('module-nav');
+  nav.innerHTML = state.modules.map(m => {
+    const locked = isModuleLocked(m);
+    return `<button class="nav-item ${locked ? 'locked' : ''}" data-module="${m.key}"
+              onclick="${locked ? '' : `window.loadModule('${m.key}')`}">
+      <span class="icon">${m.icon}</span> ${m.name}
+    </button>`;
+  }).join('');
+}
+
+function renderDashboard() {
+  const sub = state.subscription;
+  const plan = sub ? state.plans.find(p => p.id === sub.plan_id) : null;
+  const activeModules = getActiveModules();
+  const credits = state.aiCredits;
+  const creditsRemaining = credits ? (credits.credits_included + credits.credits_bonus - credits.credits_used_this_period) : 5000;
+
+  // Stats
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="label">Plan</div>
+      <div class="value">${plan?.name || 'Trial'}</div>
+      <div class="sub">${sub?.status === 'trial' ? '14-day free trial' : (sub?.billing_cycle || 'monthly')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Active Modules</div>
+      <div class="value">${activeModules.length}</div>
+      <div class="sub">of ${state.modules.length} available</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Seats</div>
+      <div class="value">${sub?.used_seats || 1} / ${sub?.total_seats || 1}</div>
+      <div class="sub">${sub?.seat_tier_key || 'solo'} tier</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">AI Credits</div>
+      <div class="value">${creditsRemaining.toLocaleString()}</div>
+      <div class="sub">remaining this period</div>
+    </div>
+  `;
+
+  // Module grid
+  document.getElementById('module-grid').innerHTML = state.modules.map(m => {
+    const locked = isModuleLocked(m);
+    const included = !locked;
+    return `<div class="module-card ${locked ? 'locked' : ''}" onclick="${locked ? 'window.openUpgradeModal()' : `window.loadModule('${m.key}')`}">
+      <div class="mc-icon">${m.icon}</div>
+      <h3>${m.name}</h3>
+      <p>${m.description || ''}</p>
+      <div class="mc-price">${locked ? '$' + (m.monthly_price_cents / 100) + '/seat/mo a la carte' : ''}</div>
+      ${locked ? '<div class="mc-lock">🔒</div>' : '<div class="mc-included">Included</div>'}
+    </div>`;
+  }).join('');
+}
+
+function renderTopbar() {
+  const sub = state.subscription;
+  const plan = sub ? state.plans.find(p => p.id === sub.plan_id) : null;
+  const credits = state.aiCredits;
+  const remaining = credits ? (credits.credits_included + credits.credits_bonus - credits.credits_used_this_period) : 5000;
+
+  document.getElementById('plan-badge').textContent = plan?.name || 'Trial';
+  document.getElementById('credits-count').textContent = remaining.toLocaleString() + ' AI credits';
+
+  const badge = document.getElementById('credits-badge');
+  badge.classList.remove('low', 'empty');
+  if (remaining <= 0) badge.classList.add('empty');
+  else if (remaining < 500) badge.classList.add('low');
+}
+
+function renderSettings() {
+  const sub = state.subscription;
+  const plan = sub ? state.plans.find(p => p.id === sub.plan_id) : null;
+  const credits = state.aiCredits;
+  const remaining = credits ? (credits.credits_included + credits.credits_bonus - credits.credits_used_this_period) : 5000;
+
+  document.getElementById('settings-plan-name').textContent = plan?.name || 'Trial';
+  document.getElementById('settings-plan-detail').textContent = sub?.status === 'trial'
+    ? '14-day free trial • All modules'
+    : `${(sub?.billing_cycle || 'monthly')} billing • ${getActiveModules().length} modules`;
+
+  const used = sub?.used_seats || 1;
+  const total = sub?.total_seats || 1;
+  document.getElementById('seat-count').textContent = `${used} / ${total} seats used`;
+  document.getElementById('seat-bar').style.width = `${(used / total) * 100}%`;
+  document.getElementById('settings-credits').textContent = remaining.toLocaleString();
+
+  // Credit packs
+  document.getElementById('credit-packs').innerHTML = state.creditPacks.map(p => `
+    <div class="credit-pack" onclick="alert('Stripe integration coming soon — pack: ${p.name}')">
+      <div class="cp-credits">${p.credits.toLocaleString()}</div>
+      <div class="cp-price">$${(p.price_cents / 100).toFixed(0)}</div>
+      <div class="cp-unit">$${((p.price_cents / 100) / p.credits * 1000).toFixed(1)} per 1K credits</div>
+    </div>
+  `).join('');
+
+  // Seat tiers
+  document.getElementById('seat-tier-table').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--navy-200);border-radius:var(--radius);overflow:hidden;margin-top:8px">
+      <div style="background:var(--navy-100);padding:10px 14px;font-size:12px;font-weight:700;color:var(--navy-600)">Tier</div>
+      <div style="background:var(--navy-100);padding:10px 14px;font-size:12px;font-weight:700;color:var(--navy-600)">Seats</div>
+      <div style="background:var(--navy-100);padding:10px 14px;font-size:12px;font-weight:700;color:var(--navy-600)">Discount</div>
+      ${state.seatTiers.map(t => `
+        <div style="background:#fff;padding:10px 14px;font-size:13px;font-weight:600;color:var(--navy-800)">${t.name}</div>
+        <div style="background:#fff;padding:10px 14px;font-size:13px;color:var(--navy-600)">${t.min_seats}${t.max_seats ? '–' + t.max_seats : '+'}</div>
+        <div style="background:#fff;padding:10px 14px;font-size:13px;color:${parseFloat(t.discount_pct) > 0 ? 'var(--green-500)' : 'var(--navy-600)'};font-weight:600">${parseFloat(t.discount_pct) > 0 ? t.discount_pct + '% off' : 'Full price'}</div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ── Module Loading ─────────────────────────────────────────
+window.loadModule = function(key) {
+  const mod = state.modules.find(m => m.key === key);
+  if (!mod || isModuleLocked(mod)) return;
+  if (!mod.app_url) {
+    alert(`${mod.name} is embedded in other modules and doesn't have a standalone URL yet.`);
+    return;
+  }
+
+  state.activeView = 'module';
+  state.activeModuleKey = key;
+
+  // Update nav active state
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navBtn = document.querySelector(`.nav-item[data-module="${key}"]`);
+  if (navBtn) navBtn.classList.add('active');
+
+  // Update topbar
+  document.getElementById('topbar-title').textContent = mod.name;
+
+  // Hide dashboard/settings, show iframe
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-settings').style.display = 'none';
+  const frame = document.getElementById('module-frame');
+  frame.style.display = 'block';
+
+  // Pass auth token via hash for the module to pick up
+  const session = JSON.parse(localStorage.getItem(`sb-fumwwhyozeouoqscolke-auth-token`) || '{}');
+  const token = session?.access_token || '';
+  frame.src = mod.app_url + (token ? '#aiq_token=' + token : '');
+
+  closeSidebar();
+};
+
+// ── Dashboard / Settings nav ──────────────────────────────
+window.showDashboard = function() {
+  state.activeView = 'dashboard';
+  state.activeModuleKey = null;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-module="dashboard"]').classList.add('active');
+  document.getElementById('topbar-title').textContent = 'Dashboard';
+  document.getElementById('view-dashboard').style.display = 'block';
+  document.getElementById('view-settings').style.display = 'none';
+  document.getElementById('module-frame').style.display = 'none';
+  document.getElementById('module-frame').src = '';
+  closeSidebar();
+};
+
+window.showSettings = function() {
+  state.activeView = 'settings';
+  state.activeModuleKey = null;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-module="settings"]').classList.add('active');
+  document.getElementById('topbar-title').textContent = 'Settings & Billing';
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-settings').style.display = 'block';
+  document.getElementById('module-frame').style.display = 'none';
+  document.getElementById('module-frame').src = '';
+  closeSidebar();
+};
+
+// ── Upgrade Modal ──────────────────────────────────────────
+window.openUpgradeModal = function() {
+  document.getElementById('upgrade-modal').classList.add('open');
+  renderUpgradeModal();
+};
+window.closeUpgradeModal = function() {
+  document.getElementById('upgrade-modal').classList.remove('open');
+};
+
+window.toggleBilling = function() {
+  state.billingAnnual = !state.billingAnnual;
+  const toggle = document.getElementById('billing-toggle');
+  toggle.classList.toggle('on', state.billingAnnual);
+  document.getElementById('lbl-monthly').classList.toggle('active', !state.billingAnnual);
+  document.getElementById('lbl-annual').classList.toggle('active', state.billingAnnual);
+  renderUpgradeModal();
+};
+
+function renderUpgradeModal() {
+  // Seat tier pills
+  document.getElementById('seat-tier-pills').innerHTML = state.seatTiers.filter(t => t.key !== 'enterprise').map(t => `
+    <button class="seat-tier ${state.selectedTier === t.key ? 'active' : ''}" onclick="window.selectTier('${t.key}')">
+      ${t.name} (${t.min_seats}${t.max_seats ? '–' + t.max_seats : '+'})
+      ${parseFloat(t.discount_pct) > 0 ? `<span class="discount">-${t.discount_pct}%</span>` : ''}
+    </button>
+  `).join('');
+
+  const tier = state.seatTiers.find(t => t.key === state.selectedTier);
+  const discount = tier ? (1 - parseFloat(tier.discount_pct) / 100) : 1;
+
+  // Plan cards
+  const visiblePlans = state.plans.filter(p => p.key !== 'enterprise');
+  document.getElementById('plan-cards').innerHTML = visiblePlans.map(p => {
+    const base = state.billingAnnual ? p.annual_monthly_price_cents : p.monthly_price_cents;
+    const price = Math.round(base * discount);
+    const modules = state.planModules.filter(pm => pm.plan_id === p.id);
+    const modNames = modules.map(pm => {
+      const m = state.modules.find(mod => mod.id === pm.module_id);
+      return m ? m.name : '';
+    }).filter(Boolean);
+
+    return `<div class="plan-card ${p.is_popular ? 'popular' : ''}">
+      <h4>${p.name}</h4>
+      <div class="plan-tagline">${p.tagline || ''}</div>
+      <div class="plan-price">
+        <span class="currency">$</span>${(price / 100).toFixed(0)}<span class="period"> /seat/mo</span>
+      </div>
+      <div class="plan-seat-note">${state.billingAnnual ? 'billed annually' : 'billed monthly'} • ${p.ai_credits_per_seat.toLocaleString()} AI credits/seat</div>
+      <ul class="plan-features">
+        ${modNames.map(n => `<li>${n}</li>`).join('')}
+        <li>${p.ai_credits_per_seat.toLocaleString()} AI credits/seat/mo</li>
+      </ul>
+      <button class="btn-select" onclick="alert('Stripe checkout coming soon — plan: ${p.name}')">
+        Select ${p.name}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+window.selectTier = function(key) {
+  state.selectedTier = key;
+  renderUpgradeModal();
+};
+
+// ── Sidebar mobile ─────────────────────────────────────────
+window.toggleSidebar = function() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('mobile-overlay').classList.toggle('open');
+};
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('mobile-overlay').classList.remove('open');
+}
+window.closeSidebar = closeSidebar;
+
+// ── Boot ───────────────────────────────────────────────────
+(async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    state.user = session.user;
+    await initPlatform();
+  }
+})();
+</script>
+</body>
+</html>
