@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.4-2026-08-04"/>
-<!-- VERSION: PIM Scraper v3.4 — Enrich all + re-scrape PIM -->
+<meta name="aiq-version" content="pim-scraper-v3.5-2026-08-04"/>
+<!-- VERSION: PIM Scraper v3.5 — Brand content capture + auto-skip useless URLs -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.4</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.5</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -805,22 +805,100 @@ async function extractProductUrls(url,brand){
   }catch(e){logEntry('Category check error: '+e.message,'err');return null}
 }
 
+/* ── BRAND CONTENT CAPTURE — saves support/care/repair articles to pim_brand_content ── */
+async function saveBrandContent(brand,url,contentType){
+  try{
+    // Check if already saved
+    const{data:existing}=await sb.from('pim_brand_content').select('id').eq('url',url).maybeSingle();
+    if(existing)return; // already captured
+
+    // Fetch page text
+    let title='',summary='',rawText='',productCategory=null,keywords=[];
+    try{
+      const resp=await fetch(SB_URL+'/functions/v1/free-extract',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url,raw_text_only:true})
+      });
+      const raw=await resp.json();
+      rawText=(raw?.text||raw?.raw_text||'').substring(0,50000);
+
+      // Extract title from page
+      const titleMatch=rawText.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if(titleMatch)title=titleMatch[1].trim();
+      if(!title){
+        // Try from URL path
+        const segs=new URL(url).pathname.split('/').filter(Boolean);
+        title=segs.slice(-2).join(' — ').replace(/-/g,' ');
+      }
+
+      // Detect product category from URL
+      const catMap={refrigerat:'Refrigerators',dishwash:'Dishwashers',washer:'Washers',
+        dryer:'Dryers',range:'Ranges',oven:'Wall Ovens',cooktop:'Cooktops',
+        microwave:'Microwaves',hood:'Ventilation',freezer:'Freezers',
+        laundry:'Laundry',ice:'Ice Makers',wine:'Wine & Beverage',grill:'Outdoor Grills'};
+      const lu=url.toLowerCase();
+      for(const[k,v]of Object.entries(catMap)){if(lu.includes(k)){productCategory=v;break}}
+
+      // Extract keywords from URL path
+      const pathWords=new URL(url).pathname.split(/[/-]/).filter(w=>w.length>3&&!/^(com|www|html|htm|the|and|for|not)$/.test(w));
+      keywords=pathWords.slice(0,10);
+
+      // Simple summary from first meaningful text
+      const textOnly=rawText.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+      if(textOnly.length>100)summary=textOnly.substring(0,500).trim()+'…';
+    }catch(_){}
+
+    // Save to pim_brand_content
+    await sb.from('pim_brand_content').upsert({
+      brand_name:brand,url,title:title||url.split('/').pop(),
+      content_type:contentType,product_category:productCategory,
+      summary,keywords,raw_text:rawText.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').substring(0,30000),
+      scraped_at:new Date().toISOString(),status:'active'
+    },{onConflict:'url',ignoreDuplicates:true});
+  }catch(e){logEntry('Content save error: '+e.message,'err')}
+}
+
 async function smartScrape(brand,model,url){
   const t=tier(brand)||4;
   const bi=brandSourceMap[brand]||null;
   const r={brand,model,status:'pending',data:null,tier_used:0,cost:0,url};
   scrapeResults.push(r);renderTab();
 
-  // Pre-filter: skip URLs that are obviously not product pages
+  // Pre-filter: separate truly useless URLs from valuable service/care content
   if(url){
     const lu=url.toLowerCase();
-    const skipPatterns=['/about','/contact','/careers','/blog','/news','/press','/faq','/support',
-      '/warranty','/registration','/privacy','/terms','/cookie','/legal','/sitemap','/search',
+    // Truly useless — skip forever, auto-delete from discovery
+    const SKIP_FOREVER=['/careers','/privacy','/terms','/cookie','/legal','/sitemap','/search',
       '/company-profile','/environmental','/recycling','/sustainability','/csr','/corporate',
-      '/media','/investor','/annual-report','/history','/our-story','/locations','/store-locator',
-      '/rebate','/financing','/promotions','/compare','/how-to','/recipe','/tips','/guide'];
-    if(skipPatterns.some(p=>lu.includes(p))){
-      r.status='fail';logEntry('Skip non-product URL: '+url,'err');renderTab();return r;
+      '/investor','/annual-report','/our-story','/locations','/store-locator',
+      '/rebate','/financing','/promotions','/login','/account','/cart','/checkout',
+      '/wishlist','/accessibility','/media-room','/press-release','/registration',
+      '/newsletter','/unsubscribe','/social','/share','/print'];
+    if(SKIP_FOREVER.some(p=>lu.includes(p))){
+      r.status='fail';r._autoSkip=true;renderTab();return r;
+    }
+    // Valuable content — capture to pim_brand_content instead of skipping
+    const CONTENT_PATTERNS=[
+      {match:['/support','/selfhelp','/self-help','/troubleshoot','/repair','/fix','/error-code','/fault'],type:'repair'},
+      {match:['/care','/maintenance','/cleaning','/clean-','/maintain'],type:'care_maintenance'},
+      {match:['/how-to','/howto','/tips','/advice','/guide'],type:'how_to'},
+      {match:['/install','/installation-guide','/setup'],type:'installation_guide'},
+      {match:['/faq','/frequently-asked','/questions'],type:'faq'},
+      {match:['/recipe'],type:'recipe'},
+      {match:['/about','/contact','/news','/blog','/press'],type:null} // skip these silently
+    ];
+    for(const pat of CONTENT_PATTERNS){
+      if(pat.match.some(p=>lu.includes(p))){
+        if(pat.type){
+          // Valuable content — save to pim_brand_content
+          await saveBrandContent(brand,url,pat.type);
+          r.status='ok';r._contentSaved=true;r._contentType=pat.type;
+          logEntry('📖 Saved '+pat.type.replace(/_/g,' ')+': '+url.split('/').slice(-2).join('/'),'ok');
+        } else {
+          r.status='fail';r._autoSkip=true;
+        }
+        renderTab();return r;
+      }
     }
   }
 
@@ -1312,10 +1390,15 @@ function renderDiscover(){
     h+='<span class="tier-badge tu">'+existing.length+' in PIM</span>';
     if(dr.filtered_count>0)h+='<span style="font-size:11px;color:var(--txt2)">'+dr.filtered_count+' non-appliance filtered out</span>';
     if(dr.has_sitemap)h+='<span style="font-size:11px;color:var(--txt2)">via sitemap</span>';
-    const scrapedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url&&sr.status!=='pending')).length;
-    const totalDone=Math.max(scrapedCount,resumedCount);
-    const unsavedDisc=newOnes.filter(r=>{const sr=scrapeResults.find(s=>s.url===r.url);return sr&&sr.data&&!sr._saved}).length;
-    if(totalDone>0)h+='<span style="font-size:11px;color:var(--accent)">'+totalDone+' scraped'+(resumedCount>scrapedCount?' ('+resumedCount+' cached)':'')+'</span>';
+    const scrapedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url&&sr.status!=='pending'&&!sr._autoSkip&&!sr._contentSaved)).length;
+    const contentCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url&&sr._contentSaved)).length;
+    const skippedCount=newOnes.filter(r=>scrapeResults.find(sr=>sr.url===r.url&&sr._autoSkip)).length;
+    const totalDone=Math.max(scrapedCount+contentCount+skippedCount,resumedCount);
+    const unsavedDisc=newOnes.filter(r=>{const sr=scrapeResults.find(s=>s.url===r.url);return sr&&sr.data&&!sr._saved&&!sr._contentSaved&&!sr._autoSkip}).length;
+    if(scrapedCount>0)h+='<span style="font-size:11px;color:var(--accent)">'+scrapedCount+' scraped</span>';
+    if(contentCount>0)h+='<span style="font-size:11px;color:var(--blue)">📖 '+contentCount+' content saved</span>';
+    if(skippedCount>0)h+='<span style="font-size:11px;color:var(--txt2)">'+skippedCount+' auto-skipped</span>';
+    if(resumedCount>totalDone)h+='<span style="font-size:11px;color:var(--txt2)">('+resumedCount+' cached)</span>';
     h+='<div style="margin-left:auto;display:flex;gap:8px">';
     if(resumedCount>0)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.clearResumeCache()" title="Clear cached progress to re-scrape all">🔄 Reset Cache</button>';
     if(unsavedDisc>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveAll()">💾 Save All ('+unsavedDisc+')</button>';
@@ -1336,7 +1419,11 @@ function renderDiscover(){
         h+='<td class="model-cell">'+(r.model?esc(r.model):'<span style="color:var(--txt2)">—</span>')+'</td>';
         h+='<td style="font-size:11px;color:var(--txt2)">'+r.source+'</td>';
         h+='<td>';
-        if(scraped&&!scraped._resumed){
+        if(scraped&&scraped._contentSaved){
+          h+='<span class="completeness high">📖 '+esc((scraped._contentType||'content').replace(/_/g,' '))+'</span>';
+        } else if(scraped&&scraped._autoSkip){
+          h+='<span style="font-size:11px;color:var(--txt2);opacity:.5">auto-skipped</span>';
+        } else if(scraped&&!scraped._resumed){
           const sc=scraped.status==='ok'?'ok':scraped.status==='partial'?'partial':scraped.status==='fail'?'fail':'pending';
           h+='<span class="completeness '+(sc==='ok'?'high':sc==='partial'?'med':'low')+'">';
           if(sc==='pending')h+='⏳ scraping';
@@ -1352,7 +1439,11 @@ function renderDiscover(){
           h+='<span style="font-size:11px;color:var(--txt2)">ready</span>';
         }
         h+='</td><td>';
-        if(!scraped&&!cachedDone){
+        if(scraped&&scraped._contentSaved){
+          h+='<span style="font-size:11px;color:var(--accent)">📖 saved</span>';
+        } else if(scraped&&scraped._autoSkip){
+          h+='<span style="font-size:10px;color:var(--txt2)">—</span>';
+        } else if(!scraped&&!cachedDone){
           h+='<button class="btn btn-sm btn-secondary" onclick="window.S.scrapeUrl(\''+esc(r.url).replace(/'/g,"\\'")+'\')">Scrape</button>';
         } else if(scraped&&scraped.data && !scraped._saved){
           h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+scrapeResults.indexOf(scraped)+')">Save</button>';
