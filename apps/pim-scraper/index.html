@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.2-2026-08-04"/>
-<!-- VERSION: PIM Scraper v3.2 — Category page scraping + auto-save -->
+<meta name="aiq-version" content="pim-scraper-v3.3-2026-08-04"/>
+<!-- VERSION: PIM Scraper v3.3 — Saved sources + auto-save -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
 <style>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.2</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.3</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -659,6 +659,35 @@ function classifySegment(data) {
   if (/\btoaster\b|blender|kettle|food processor|stand mixer|coffee maker|slow cooker|waffle|bread maker|juicer/.test(name)) return 'small_appliance';
   // Default
   return 'major_appliance';
+}
+
+/* ═══ SAVED SOURCES ═══ */
+function timeAgo(ts){
+  const diff=Date.now()-new Date(ts).getTime();
+  const mins=Math.floor(diff/60000);
+  if(mins<1)return 'just now';
+  if(mins<60)return mins+'m ago';
+  const hrs=Math.floor(mins/60);
+  if(hrs<24)return hrs+'h ago';
+  const days=Math.floor(hrs/24);
+  if(days<30)return days+'d ago';
+  return Math.floor(days/30)+'mo ago';
+}
+
+function getSavedSources(brand){
+  try{return JSON.parse(localStorage.getItem('aiq_sources_'+brand)||'[]')}catch(_){return[]}
+}
+
+function saveCategorySource(brand,url,productsFound){
+  const sources=getSavedSources(brand);
+  // Try to generate a readable label from the URL
+  const pathParts=new URL(url).pathname.split('/').filter(Boolean);
+  const label=pathParts.slice(-3).join(' › ').replace(/-/g,' ');
+  const existing=sources.findIndex(s=>s.url===url);
+  const entry={url,label,lastScraped:new Date().toISOString(),productsFound:productsFound||0};
+  if(existing>=0)sources[existing]=entry;
+  else sources.push(entry);
+  localStorage.setItem('aiq_sources_'+brand,JSON.stringify(sources));
 }
 
 /* ═══ SMART SCRAPE ═══ */
@@ -1342,8 +1371,38 @@ function renderDiscover(){
     }
   }
 
+  // ── Saved Category Sources (persistent, re-scrapable) ──
+  if(selectedBrand){
+    let sources=[];
+    try{sources=JSON.parse(localStorage.getItem('aiq_sources_'+selectedBrand)||'[]')}catch(_){}
+    h+='<div style="margin-top:12px;margin-bottom:8px">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+    h+='<span style="font-size:13px;font-weight:700">📂 Saved Sources'+(sources.length?' ('+sources.length+')':'')+'</span>';
+    h+='<div style="display:flex;gap:6px">';
+    if(sources.length>0&&!isProcessing)h+='<button class="btn btn-sm btn-primary" onclick="window.S.rescrapeAllSources()">🔄 Re-scrape All</button>';
+    h+='<button class="btn btn-sm btn-secondary" onclick="window.S.addSourceUrl()">+ Add URL</button>';
+    h+='</div></div>';
+    if(sources.length>0){
+      h+='<div style="display:flex;flex-direction:column;gap:4px">';
+      for(let si=0;si<sources.length;si++){
+        const s=sources[si];
+        const ago=s.lastScraped?timeAgo(s.lastScraped):'never';
+        h+='<div style="display:flex;align-items:center;gap:8px;background:var(--surface);padding:8px 12px;border-radius:var(--radius);border:1px solid var(--line)">';
+        h+='<span style="font-size:12px;color:var(--blue);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="'+esc(s.url)+'" target="_blank" style="color:var(--blue);text-decoration:none">'+esc(s.label||s.url)+'</a></span>';
+        h+='<span style="font-size:10px;color:var(--txt2);white-space:nowrap">'+(s.productsFound?s.productsFound+' products · ':'')+ago+'</span>';
+        h+='<button class="btn btn-sm btn-secondary" onclick="window.S.rescrapeSource('+si+')" '+(isProcessing?'disabled':'')+' style="padding:4px 10px;font-size:11px">🔄</button>';
+        h+='<button class="btn btn-sm" onclick="window.S.removeSource('+si+')" style="padding:4px 8px;font-size:11px;color:var(--red);background:none;border:none;cursor:pointer">✕</button>';
+        h+='</div>';
+      }
+      h+='</div>';
+    } else {
+      h+='<div style="font-size:12px;color:var(--txt2);padding:8px 0">Paste a category URL below and it will be saved here for re-scraping later</div>';
+    }
+    h+='</div>';
+  }
+
   // Manual entry section (collapsible)
-  h+='<details style="margin-top:8px"><summary style="font-size:12px;color:var(--txt2);cursor:pointer;font-weight:600">Manual model / URL entry</summary>';
+  h+='<details style="margin-top:8px"'+(selectedBrand&&(!discoverResults||!discoverResults.results)?' open':'')+' ><summary style="font-size:12px;color:var(--txt2);cursor:pointer;font-weight:600">Manual model / URL entry</summary>';
   h+='<div class="controls" style="margin-top:10px">';
   h+='<div class="field"><label>Model Number</label><input type="text" id="modelInput" placeholder="e.g. LRMVS3006S" onkeydown="if(event.key===\'Enter\')window.S.doScrape()"/></div>';
   h+='<button class="btn btn-primary" onclick="window.S.doScrape()" '+(isProcessing?'disabled':'')+'>🔍 Scrape</button>';
@@ -1571,6 +1630,62 @@ window.S = {
   toggleAppliancesOnly(){appliancesOnly=!appliancesOnly;if(selectedBrand&&currentTab==='discover')discoverBrand(selectedBrand);else renderTab()},
   clearResults(){scrapeResults=[];logEntries=[];sessionCostTotal=0;document.getElementById('sessionCost').textContent='$0.00';renderTab()},
   clearResumeCache(){if(selectedBrand){localStorage.removeItem('aiq_scraped_'+selectedBrand);logEntry('Resume cache cleared for '+selectedBrand,'ok');scrapeResults=scrapeResults.filter(r=>!r._resumed);renderTab()}},
+  addSourceUrl(){
+    const url=prompt('Paste a category or product listing URL:');
+    if(!url||!url.startsWith('http')||!selectedBrand)return;
+    saveCategorySource(selectedBrand,url,0);
+    logEntry('Source saved: '+url,'ok');renderTab();
+  },
+  removeSource(idx){
+    const sources=getSavedSources(selectedBrand);
+    if(idx>=0&&idx<sources.length){sources.splice(idx,1);localStorage.setItem('aiq_sources_'+selectedBrand,JSON.stringify(sources));renderTab()}
+  },
+  async rescrapeSource(idx){
+    const sources=getSavedSources(selectedBrand);
+    if(idx<0||idx>=sources.length||isProcessing)return;
+    const src=sources[idx];
+    logEntry('🔄 Re-scraping source: '+src.url);
+    // Trigger the URL scrape which handles category detection + auto-save
+    document.getElementById('urlInput')&&(document.getElementById('urlInput').value=src.url);
+    await window.S.doUrlScrape.call(window.S);
+  },
+  async rescrapeAllSources(){
+    if(isProcessing||!selectedBrand)return;
+    const sources=getSavedSources(selectedBrand);
+    if(!sources.length){logEntry('No saved sources','err');return}
+    logEntry('🔄 Re-scraping '+sources.length+' saved sources…','ok');
+    for(let i=0;i<sources.length;i++){
+      if(stopRequested)break;
+      logEntry('Source '+(i+1)+'/'+sources.length+': '+sources[i].label);
+      // Temporarily set the URL input
+      const fakeInput={value:sources[i].url};
+      const brand=selectedBrand||'Unknown';
+      isProcessing=true;renderTab();
+      const productUrls=await extractProductUrls(sources[i].url,brand);
+      if(productUrls&&productUrls.length>1){
+        logEntry('📂 '+productUrls.length+' products found','ok');
+        saveCategorySource(brand,sources[i].url,productUrls.length);
+        scrapeProgress={current:0,total:productUrls.length,label:'Source '+(i+1)};
+        const CONCURRENCY=3;let pidx=0;
+        const processNext=async()=>{
+          while(pidx<productUrls.length&&!stopRequested){
+            const pi=pidx++;scrapeProgress.current=pi+1;updateHeaderProgress();
+            const pu=productUrls[pi];
+            const result=await smartScrape(brand,pu.model||'',pu.url);
+            classifyResult(result);
+            if(result.data&&result._relevant!==false){const ri=scrapeResults.indexOf(result);if(ri>=0)await saveToPim(ri)}
+            await new Promise(r=>setTimeout(r,300));
+          }
+        };
+        const workers=[];
+        for(let w=0;w<Math.min(CONCURRENCY,productUrls.length);w++)workers.push(processNext());
+        await Promise.all(workers);
+      }
+      scrapeProgress={current:0,total:0,label:''};
+    }
+    isProcessing=false;stopRequested=false;renderTab();
+    logEntry('✅ All sources re-scraped','ok');
+  },
   rediscover(){if(selectedBrand)discoverBrand(selectedBrand)},
 
   async doScrape(){
@@ -1615,6 +1730,8 @@ window.S = {
       for(let w=0;w<Math.min(CONCURRENCY,productUrls.length);w++)workers.push(processNext());
       await Promise.all(workers);
       logEntry('✅ Category scrape done: '+productUrls.length+' products','ok');
+      // Save this URL as a re-scrapable source
+      saveCategorySource(brand,url,productUrls.length);
       scrapeProgress={current:0,total:0,label:''};
     } else {
       // Single product page — scrape + auto-save
@@ -1637,6 +1754,7 @@ window.S = {
     const productUrls=await extractProductUrls(url,brand);
     if(productUrls&&productUrls.length>1){
       logEntry('📂 Category page — found '+productUrls.length+' products','ok');
+      saveCategorySource(brand,url,productUrls.length);
       scrapeProgress={current:0,total:productUrls.length,label:'Category'};
       stopRequested=false;
       for(let i=0;i<productUrls.length&&!stopRequested;i++){
