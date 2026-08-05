@@ -432,6 +432,7 @@ a{color:var(--accent);text-decoration:none}
       <button class="tab-btn" data-tab="sales_iq" onclick="navTo('pillar',{deck:'sales_iq'})">Sales IQ</button>
       <button class="tab-btn" data-tab="product_iq" onclick="navTo('pillar',{deck:'product_iq'})">Product IQ</button>
       <button class="tab-btn" data-tab="brand_iq" onclick="navTo('brands')">Brand IQ</button>
+      <button class="tab-btn" data-tab="service_iq" onclick="navTo('pillar',{deck:'service_iq'})">Service IQ</button>
       <button class="tab-btn" data-tab="leadership_iq" onclick="navTo('pillar',{deck:'leadership_iq'})">Leadership IQ</button>
       <button class="tab-btn" data-tab="roleplay" onclick="navTo('roleplay')">Coach</button>
       <button class="tab-btn" data-tab="tools" onclick="navTo('tools')">Tools</button>
@@ -579,14 +580,15 @@ var S = {
   currentOrg: null, roleplayPersonas: []
 };
 
-var pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ' };
-var pillarIcons = { sales_iq:'💰', product_iq:'🔧', brand_iq:'🏷️', leadership_iq:'👑' };
-var pillarColors = { sales_iq:'#6366f1', product_iq:'#06b6d4', brand_iq:'#f59e0b', leadership_iq:'#a855f7' };
+var pillarLabels = { sales_iq:'Sales IQ', product_iq:'Product IQ', brand_iq:'Brand IQ', leadership_iq:'Leadership IQ', service_iq:'Service IQ' };
+var pillarIcons = { sales_iq:'💰', product_iq:'🔧', brand_iq:'🏷️', leadership_iq:'👑', service_iq:'❤️' };
+var pillarColors = { sales_iq:'#6366f1', product_iq:'#06b6d4', brand_iq:'#f59e0b', leadership_iq:'#a855f7', service_iq:'#e11d48' };
 var pillarDescs = {
   sales_iq:'The complete selling system. Scripts, objection handling, closing techniques, and the psychology of the sale.',
   product_iq:'Category-by-category product mastery. Specs that sell, features that matter, and competitive cross-references.',
   brand_iq:'Know every brand on your floor. 156 brands, each with PIM-linked product data, story, tier, and positioning.',
-  leadership_iq:'From seller to leader. Hiring, coaching, training systems, P&L, metrics, and culture building.'
+  leadership_iq:'From seller to leader. Hiring, coaching, training systems, P&L, metrics, and culture building.',
+  service_iq:'Customer service excellence. Communication, conflict resolution, returns, warranty, delivery, and reputation management.'
 };
 
 var coaches = {
@@ -816,7 +818,7 @@ window.renderView = renderView;
 // ══════════════════════════════════════════════════════════════════════════════
 function renderDashboard(el) {
   var totalCards = 307;
-  var pillars = ['sales_iq','product_iq','brand_iq','leadership_iq'];
+  var pillars = ['sales_iq','product_iq','brand_iq','service_iq','leadership_iq'];
   var pillarCounts = {};
   pillars.forEach(function(p){ pillarCounts[p] = S.courses.filter(function(c){ return c.pillar === p; }).length; });
 
