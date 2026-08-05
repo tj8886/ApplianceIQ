@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.6-2026-08-04"/>
+<meta name="aiq-version" content="pim-scraper-v3.7-2026-08-04"/>
 <!-- VERSION: PIM Scraper v3.5 — Brand content capture + auto-skip useless URLs -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.6</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.7</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -672,6 +672,20 @@ function timeAgo(ts){
   const days=Math.floor(hrs/24);
   if(days<30)return days+'d ago';
   return Math.floor(days/30)+'mo ago';
+}
+
+function shortDate(ts){
+  const d=new Date(ts);
+  const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  return m+' '+d.getDate();
+}
+
+function markBrandScraped(brand){
+  try{
+    const h=JSON.parse(localStorage.getItem('aiq_brand_scrape_history')||'{}');
+    h[brand]=new Date().toISOString();
+    localStorage.setItem('aiq_brand_scrape_history',JSON.stringify(h));
+  }catch(_){}
 }
 
 function getSavedSources(brand){
@@ -1298,7 +1312,15 @@ async function enrichOne(product) {
 function renderTab(){
   const el=document.getElementById('mainContent');
   const sorted=[...allBrands].sort((a,b)=>{const ta=tier(a.brand_name)||99,tb=tier(b.brand_name)||99;return(ta-tb)||a.brand_name.localeCompare(b.brand_name)});
-  const opts=sorted.map(b=>{const t=tier(b.brand_name);const tl=TL[t]||TL[0];return '<option value="'+esc(b.brand_name)+'" '+(selectedBrand===b.brand_name?'selected':'')+'>'+tl.icon+' '+esc(b.brand_name)+' (T'+t+')</option>'}).join('');
+  // Load scrape history for dropdown markers
+  let scrapeHistory={};
+  try{scrapeHistory=JSON.parse(localStorage.getItem('aiq_brand_scrape_history')||'{}')}catch(_){}
+  const opts=sorted.map(b=>{
+    const t=tier(b.brand_name);const tl=TL[t]||TL[0];
+    const lastScraped=scrapeHistory[b.brand_name];
+    const marker=lastScraped?' ✓ '+shortDate(lastScraped):'';
+    return '<option value="'+esc(b.brand_name)+'" '+(selectedBrand===b.brand_name?'selected':'')+'>'+tl.icon+' '+esc(b.brand_name)+' (T'+t+')'+marker+'</option>';
+  }).join('');
 
   // ── Global brand selector ──
   let h='<div class="controls" style="margin-bottom:16px">';
@@ -1306,6 +1328,13 @@ function renderTab(){
   if(selectedBrand){
     const src=brandSourceMap[selectedBrand];const t=tier(selectedBrand);const tl=TL[t]||TL[0];
     h+='<span class="tier-badge '+tl.cls+'" style="padding:6px 12px;font-size:12px">'+tl.icon+' Tier '+t+' '+tl.text+'</span>';
+    // Show last scraped date for selected brand
+    const lastScraped=scrapeHistory[selectedBrand];
+    if(lastScraped){
+      h+='<span style="font-size:11px;color:var(--accent);display:flex;align-items:center;gap:4px">✓ Scraped '+timeAgo(lastScraped)+' <span style="color:var(--txt2)">('+new Date(lastScraped).toLocaleDateString()+')</span></span>';
+    } else {
+      h+='<span style="font-size:11px;color:var(--txt2);opacity:.6">Never scraped</span>';
+    }
     if(src){
       h+='<span style="font-size:11px;color:var(--txt2);display:flex;gap:10px;align-items:center">';
       h+=(src.server_fetchable?'<span style="color:var(--accent)">✓ Fetchable</span>':'<span style="color:var(--red)">✕ '+esc(src.bot_protection||'Blocked')+'</span>');
@@ -1889,6 +1918,7 @@ window.S = {
       logEntry('✅ Category scrape done: '+productUrls.length+' products','ok');
       // Save this URL as a re-scrapable source
       saveCategorySource(brand,url,productUrls.length);
+      markBrandScraped(brand);
       scrapeProgress={current:0,total:0,label:''};
     } else {
       // Single product page — scrape + auto-save
@@ -1898,6 +1928,7 @@ window.S = {
         const ri=scrapeResults.indexOf(result);
         if(ri>=0)await saveToPim(ri);
         logEntry('Auto-saved ✓','ok');
+        markBrandScraped(brand);
       }
     }
     isProcessing=false;renderTab();
@@ -1987,7 +2018,7 @@ window.S = {
     await Promise.all(workers);
 
     if(stopRequested)logEntry('⏹ Stopped at '+scrapeProgress.current+'/'+newOnes.length+' — will resume next time','err');
-    else logEntry('✅ All '+newOnes.length+' URLs scraped!','ok');
+    else{logEntry('✅ All '+newOnes.length+' URLs scraped!','ok');markBrandScraped(selectedBrand)}
     isProcessing=false;stopRequested=false;
     scrapeProgress={current:0,total:0,label:''};
     renderTab();
