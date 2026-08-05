@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.5-2026-08-04"/>
+<meta name="aiq-version" content="pim-scraper-v3.6-2026-08-04"/>
 <!-- VERSION: PIM Scraper v3.5 — Brand content capture + auto-skip useless URLs -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.5</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.6</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -1332,6 +1332,56 @@ function renderTab(){
     h+='<div class="stat-card"><div class="label">Have Dims</div><div class="value '+(brandIntel.withDims>0?'green':'red')+'">'+brandIntel.withDims+'</div></div>';
     h+='<div class="stat-card"><div class="label">Have Specs</div><div class="value '+(brandIntel.withSpecs>0?'green':'red')+'">'+brandIntel.withSpecs+'</div></div>';
     h+='</div>';
+  }
+
+  // ── LIVE COLLECTION DASHBOARD — shows what this session is capturing ──
+  if(scrapeResults.length>0){
+    const sr=scrapeResults.filter(r=>r.data||r._contentSaved);
+    let models=0,specs=0,images=0,docs=0,features=0,prices=0,videos=0,descs=0,content=0;
+    const docTypes={};
+    for(const r of sr){
+      if(r._contentSaved){content++;continue}
+      if(!r.data)continue;
+      const d=r.data;
+      if(d.model)models++;
+      if(d.specs&&Object.keys(d.specs).length>0)specs+=Object.keys(d.specs).length;
+      if(d.images&&d.images.length>0)images+=d.images.length;
+      if(d.features&&d.features.length>0)features+=d.features.length;
+      if(d.msrp)prices++;
+      if(d.videos&&d.videos.length>0)videos+=d.videos.length;
+      if(d.short_description||d.product_description)descs++;
+      if(d.documents&&d.documents.length>0){
+        docs+=d.documents.length;
+        for(const doc of d.documents){const t=doc.doc_type||'other';docTypes[t]=(docTypes[t]||0)+1}
+      }
+    }
+    const total=models+specs+images+docs+features+prices+videos+descs+content;
+    if(total>0){
+      h+='<div style="background:linear-gradient(135deg,rgba(26,158,86,.06),rgba(47,111,237,.06));border:1px solid rgba(26,158,86,.2);border-radius:var(--radius);padding:14px 18px;margin-bottom:16px">';
+      h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span style="font-size:12px;font-weight:700;color:var(--txt)">📊 Session Collection</span><span style="font-size:11px;color:var(--txt2)">'+sr.length+' items processed</span></div>';
+      h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
+      const pill=(icon,label,count,color)=>count>0?'<div style="display:flex;align-items:center;gap:4px;background:rgba('+color+',.1);border:1px solid rgba('+color+',.25);border-radius:20px;padding:4px 10px"><span style="font-size:13px">'+icon+'</span><span style="font-size:11px;font-weight:600;color:rgba('+color+',1)">'+count+'</span><span style="font-size:10px;color:var(--txt2)">'+label+'</span></div>':'';
+      h+=pill('🔧','models',models,'26,158,86');
+      h+=pill('📋','specs',specs,'47,111,237');
+      h+=pill('💰','prices',prices,'26,158,86');
+      h+=pill('🖼️','images',images,'139,92,246');
+      h+=pill('⭐','features',features,'217,119,6');
+      h+=pill('📝','descriptions',descs,'47,111,237');
+      h+=pill('📄','documents',docs,'192,45,30');
+      h+=pill('🎬','videos',videos,'139,92,246');
+      h+=pill('📖','content articles',content,'47,111,237');
+      h+='</div>';
+      // Document type breakdown if any docs found
+      if(Object.keys(docTypes).length>0){
+        h+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px solid rgba(26,158,86,.15)">';
+        const docIcon={'spec_sheet':'📋','installation_manual':'🔧','use_care_manual':'📖','energy_guide':'⚡','quick_start_guide':'🚀','dimensional_diagram':'📐','product_brochure':'📄','warranty':'🛡️','other':'📎'};
+        for(const[type,cnt] of Object.entries(docTypes).sort((a,b)=>b[1]-a[1])){
+          h+='<span style="font-size:10px;color:var(--txt2);background:var(--surface);padding:2px 8px;border-radius:10px">'+(docIcon[type]||'📎')+' '+type.replace(/_/g,' ')+' ×'+cnt+'</span>';
+        }
+        h+='</div>';
+      }
+      h+='</div>';
+    }
   }
 
   // Tab-specific content
