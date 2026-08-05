@@ -429,13 +429,12 @@ a{color:var(--accent);text-decoration:none}
     </div>
     <div class="topbar-center" id="tab-bar">
       <button class="tab-btn active" data-tab="dashboard" onclick="navTo('dashboard')">Home</button>
-      <button class="tab-btn" data-tab="curriculum" onclick="navTo('curriculum')">Curriculum</button>
-      <button class="tab-btn" data-tab="brands" onclick="navTo('brands')">Brands</button>
-      <button class="tab-btn" data-tab="vendors" onclick="navTo('vendors')">Vendors</button>
-      <button class="tab-btn" data-tab="compare" onclick="navTo('compare')">Between Brands</button>
+      <button class="tab-btn" data-tab="sales_iq" onclick="navTo('pillar',{deck:'sales_iq'})">Sales IQ</button>
+      <button class="tab-btn" data-tab="product_iq" onclick="navTo('pillar',{deck:'product_iq'})">Product IQ</button>
+      <button class="tab-btn" data-tab="brand_iq" onclick="navTo('brands')">Brand IQ</button>
+      <button class="tab-btn" data-tab="leadership_iq" onclick="navTo('pillar',{deck:'leadership_iq'})">Leadership IQ</button>
       <button class="tab-btn" data-tab="roleplay" onclick="navTo('roleplay')">Coach</button>
-      <button class="tab-btn" data-tab="serviceiq" onclick="navTo('serviceiq')">Service IQ</button>
-      <button class="tab-btn" data-tab="scorecard" onclick="navTo('scorecard')">Daily Five</button>
+      <button class="tab-btn" data-tab="tools" onclick="navTo('tools')">Tools</button>
       <button class="tab-btn" data-tab="badges" onclick="navTo('badges')">Badges</button>
     </div>
     <div class="topbar-right">
@@ -449,10 +448,10 @@ a{color:var(--accent);text-decoration:none}
   <div class="bottom-nav">
     <div class="bottom-nav-inner">
       <div class="bnav-item active" data-tab="dashboard" onclick="navTo('dashboard')"><span>🏠</span>Home</div>
-      <div class="bnav-item" data-tab="curriculum" onclick="navTo('curriculum')"><span>📚</span>Learn</div>
+      <div class="bnav-item" data-tab="sales_iq" onclick="navTo('pillar',{deck:'sales_iq'})"><span>💰</span>Sales</div>
       <div class="bnav-item" data-tab="roleplay" onclick="navTo('roleplay')"><span>🎤</span>Coach</div>
-      <div class="bnav-item" data-tab="brands" onclick="navTo('brands')"><span>🏷️</span>Brands</div>
-      <div class="bnav-item" data-tab="badges" onclick="navTo('badges')"><span>🏅</span>More</div>
+      <div class="bnav-item" data-tab="brand_iq" onclick="navTo('brands')"><span>🏷️</span>Brands</div>
+      <div class="bnav-item" data-tab="tools" onclick="navTo('tools')"><span>🔧</span>Tools</div>
     </div>
   </div>
 </div>
@@ -460,29 +459,7 @@ a{color:var(--accent);text-decoration:none}
 <!-- CARD PLAYER (overlay) -->
 <div id="card-player"></div>
 
-<!-- CURRICULUM VIEW (overlay) -->
-<div id="curriculum-view">
-  <div class="curr-topbar">
-    <div class="back-btn" onclick="closeCurriculum()">← Back to Academy</div>
-    <div class="progress-pill" id="curr-progress-pill">0 / 0 chapters</div>
-  </div>
-  <div class="curr-layout">
-    <div class="curr-sidebar">
-      <div class="curr-sidebar-search">
-        <input type="text" id="curr-search" placeholder="Search chapters..." oninput="filterCurrSidebar(this.value)">
-      </div>
-      <div class="curr-sidebar-nav" id="curr-sidebar-nav"></div>
-    </div>
-    <div class="curr-reader" id="curr-reader">
-      <div class="curr-reader-inner" id="curr-reader-inner">
-        <div style="text-align:center;padding:80px 20px">
-          <h2 style="font-size:24px;font-weight:800;color:var(--navy);margin-bottom:8px">Welcome to the Curriculum</h2>
-          <p style="color:var(--text2);font-size:14px;max-width:480px;margin:0 auto">18 volumes · 147 chapters · From foundations to leadership. Select a chapter from the sidebar to begin.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Curriculum overlay removed - lessons now inside course detail -->
 
 <!-- NOTIFICATIONS PANEL -->
 <div id="notif-panel">
@@ -528,8 +505,6 @@ function navTo(view, data) {
     if (data.lane !== undefined) currentLane = data.lane;
     if (data.deck !== undefined) currentDeck = data.deck;
   }
-  // Curriculum opens as overlay
-  if (view === 'curriculum') { openCurriculumView(); return; }
   renderView();
   updateTabs();
 }
@@ -668,7 +643,7 @@ async function loadZones() {
 }
 
 async function loadCourses() {
-  var { data } = await sb.from('iq_courses').select('id,pillar,course_key,name,subtitle,icon,brand_id,zone_level,category,sort_order').order('pillar').order('sort_order');
+  var { data } = await sb.from('iq_courses').select('id,pillar,course_key,name,subtitle,icon,brand_id,zone_level,category,sort_order,chapter_slugs').order('pillar').order('sort_order');
   S.courses = data || [];
 }
 
@@ -816,6 +791,7 @@ function renderView() {
     case 'dashboard': renderDashboard(mc); break;
     case 'pillar': renderPillar(mc); break;
     case 'course': renderCourse(mc); break;
+    case 'course-detail': renderCourseDetail(mc); break;
     case 'roleplay': renderRoleplay(mc); break;
     case 'zone': renderZone(mc); break;
     case 'lane': renderLane(mc); break;
@@ -828,6 +804,7 @@ function renderView() {
     case 'compare': renderCompareView(mc); break;
     case 'serviceiq': renderServiceIQ(mc); break;
     case 'scorecard': renderDailyFive(mc); break;
+    case 'tools': renderTools(mc); break;
   }
   mc.classList.add('fade-in');
   setTimeout(function(){ mc.classList.remove('fade-in'); }, 300);
@@ -873,26 +850,17 @@ function renderDashboard(el) {
     + '<div class="stat-card green"><div class="label">Curriculum</div><div class="value">' + chapDone + '</div><div class="sub">of ' + chapTotal + ' chapters</div></div>'
     + '<div class="stat-card gold"><div class="label">Badges</div><div class="value">' + S.earnedBadges.length + '</div><div class="sub">of ' + S.badges.length + ' available</div></div>'
     + '</div>'
-    // Curriculum CTA
-    + '<div style="background:linear-gradient(135deg,var(--accent),#059669);border-radius:var(--radius);padding:24px;margin-bottom:20px;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(13,148,136,.15)" onclick="navTo(\'curriculum\')" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">'
-    + '<div style="display:flex;align-items:center;gap:16px"><div style="font-size:36px">📚</div><div>'
-    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Full Curriculum — ' + S.volumes.length + ' Volumes · ' + chapTotal + ' Chapters</h3>'
-    + '<p style="font-size:13px;color:rgba(255,255,255,.8)">From foundations to leadership. Detailed lessons with AI trainer, quizzes, and completion tracking.</p>'
-    + '</div><div style="color:rgba(255,255,255,.5);font-size:24px;margin-left:auto">›</div></div></div>'
+    // Four Pillars — THE MAIN ENTRY POINT
+    + '<div class="section-header"><h3>Start Learning</h3></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:28px">' + pillarHtml + '</div>'
     // Coach CTA
     + '<div style="background:linear-gradient(135deg,var(--navy),#2c5282);border-radius:var(--radius);padding:24px;margin-bottom:28px;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(30,58,95,.15)" onclick="navTo(\'roleplay\')" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">'
     + '<div style="display:flex;align-items:center;gap:16px"><div style="font-size:36px">🎤</div><div>'
-    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Training Arena — Beat the Bot & AI Roleplay</h3>'
-    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">Go 1-on-1 against AI, practice with the edge-function roleplay (KPI scoring), or record a live session.</p>'
+    + '<h3 style="font-size:18px;font-weight:800;color:#fff;margin-bottom:4px">Training Arena</h3>'
+    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">Beat the Bot, AI roleplay with KPI scoring, Human to Human challenge</p>'
     + '</div><div style="color:rgba(255,255,255,.5);font-size:24px;margin-left:auto">›</div></div></div>'
-    // Four Pillars
-    + '<div class="section-header"><h3>The Four Pillars</h3></div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px">' + pillarHtml + '</div>'
-    // Zone Map
-    + '<div class="section-header"><h3>Your Progression — Zone Map</h3></div>'
-    + '<div class="zone-map">' + zoneHtml + '</div>'
-    // Quick Links
-    + '<div class="section-header"><h3>Quick Access</h3></div>'
+    // Tools quick links
+    + '<div class="section-header"><h3>Tools & Reference</h3></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:28px">'
     + '<div class="brand-card" onclick="navTo(\'vendors\')"><h4>🏢 Vendors</h4><div class="brand-parent">' + S.vendors.length + ' brands</div></div>'
     + '<div class="brand-card" onclick="navTo(\'compare\')"><h4>⚔️ Between Brands</h4><div class="brand-parent">Competitive intel</div></div>'
@@ -914,17 +882,21 @@ function renderPillar(el) {
   var courses = S.courses.filter(function(c){ return c.pillar === pillar; });
   var col = pillarColors[pillar];
   var coursesHtml = courses.map(function(c) {
+    var hasChapters = c.chapter_slugs && c.chapter_slugs.length > 0;
     var clickAction = pillar === 'brand_iq'
       ? "navTo('brand-detail',{deck:" + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + "})"
-      : "openCourse(" + c.id + ")";
+      : "openCourseDetail(" + c.id + ")";
+    var badges = '';
+    if (hasChapters) badges += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;background:rgba(8,145,178,.1);color:var(--cyan)">📖 ' + c.chapter_slugs.length + '</span>';
     return '<div class="deck-row" onclick="' + clickAction + '">'
       + '<div class="deck-num" style="background:' + col + '22;color:' + col + '">' + (c.icon || pillarIcons[pillar]) + '</div>'
-      + '<div class="deck-info"><h5>' + esc(c.name) + '</h5><p>' + esc(c.subtitle || '') + '</p></div>'
+      + '<div class="deck-info"><h5>' + esc(c.name) + '</h5><p>' + esc((c.subtitle || '').substring(0,80)) + '</p></div>'
+      + '<div style="display:flex;gap:4px;align-items:center">' + badges + '</div>'
       + '<div style="color:var(--text3);font-size:16px">›</div></div>';
   }).join('');
   el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;cursor:pointer" onclick="goBack()">'
     + '<span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back</span></div>'
-    + '<div class="dash-header"><h2>' + pillarIcons[pillar] + ' ' + pillarLabels[pillar] + '</h2><p>' + courses.length + ' courses</p></div>'
+    + '<div class="dash-header"><h2>' + pillarIcons[pillar] + ' ' + pillarLabels[pillar] + '</h2><p>' + courses.length + ' courses — each one contains lessons, cards, quizzes, and roleplay</p></div>'
     + '<div class="deck-list">' + coursesHtml + '</div>';
 }
 
@@ -1884,6 +1856,197 @@ function renderNotifPage(el) {
 // ══════════════════════════════════════════════════════════════════════════════
 // UTILITIES
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// COURSE DETAIL — The unified learning unit
+// ══════════════════════════════════════════════════════════════════════════════
+var _courseDetailTab = 'lesson';
+
+async function openCourseDetail(courseId) {
+  var course = S.courses.find(function(c){ return c.id === courseId; });
+  if (!course) return;
+  window._activeCourse = course;
+  // Load decks for this course
+  var { data: decks } = await sb.from('iq_decks').select('*').eq('course_id', courseId).order('sort_order');
+  window._activeCourseDecks = decks || [];
+  _courseDetailTab = 'lesson';
+  currentView = 'course-detail';
+  renderView();
+  updateTabs();
+}
+window.openCourseDetail = openCourseDetail;
+
+function switchCourseTab(tab) {
+  _courseDetailTab = tab;
+  var mc = document.getElementById('main-content');
+  renderCourseDetail(mc);
+}
+window.switchCourseTab = switchCourseTab;
+
+function renderCourseDetail(el) {
+  var course = window._activeCourse;
+  if (!course) { navTo('dashboard'); return; }
+  var decks = window._activeCourseDecks || [];
+  var col = pillarColors[course.pillar] || 'var(--accent)';
+  var slugs = course.chapter_slugs || [];
+  var hasLesson = slugs.length > 0;
+  var hasCards = decks.length > 0;
+  var cardCount = 0;
+  // Tab bar
+  var tabs = [
+    { key:'lesson', label:'Lesson', icon:'📖', count:slugs.length, enabled:hasLesson },
+    { key:'cards', label:'Cards', icon:'🃏', count:decks.length, enabled:hasCards },
+    { key:'roleplay', label:'Practice', icon:'🎤', count:0, enabled:true },
+    { key:'ai', label:'Ask AI', icon:'✦', count:0, enabled:true }
+  ];
+  var tabsHtml = tabs.map(function(t) {
+    var active = _courseDetailTab === t.key;
+    var cls = 'course-tab' + (active ? ' active' : '') + (!t.enabled ? ' disabled' : '');
+    return '<button class="' + cls + '" onclick="' + (t.enabled ? "switchCourseTab('" + t.key + "')" : '') + '">'
+      + t.icon + ' ' + t.label
+      + (t.count ? '<span class="tab-count">' + t.count + '</span>' : '') + '</button>';
+  }).join('');
+
+  var panelHtml = '';
+  if (_courseDetailTab === 'lesson') {
+    panelHtml = renderCourseLessonPanel(course, slugs);
+  } else if (_courseDetailTab === 'cards') {
+    panelHtml = renderCourseCardsPanel(course, decks);
+  } else if (_courseDetailTab === 'roleplay') {
+    panelHtml = renderCourseRoleplayPanel(course);
+  } else if (_courseDetailTab === 'ai') {
+    panelHtml = renderCourseAIPanel(course);
+  }
+
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer" onclick="goBack()"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back to ' + (pillarLabels[course.pillar]||'courses') + '</span></div>'
+    + '<div style="max-width:900px;margin:0 auto">'
+    + '<div style="background:linear-gradient(135deg,' + col + ',' + col + 'cc);border-radius:var(--radius);padding:28px;margin-bottom:20px;color:#fff">'
+    + '<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px"><span style="font-size:32px">' + (course.icon || pillarIcons[course.pillar]) + '</span>'
+    + '<div><h2 style="font-size:22px;font-weight:800;margin-bottom:2px">' + esc(course.name) + '</h2>'
+    + '<p style="font-size:13px;color:rgba(255,255,255,.75)">' + esc(course.subtitle || '') + '</p></div></div>'
+    + '<div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.6)">'
+    + (hasLesson ? '<span>📖 ' + slugs.length + ' lesson' + (slugs.length > 1 ? 's' : '') + '</span>' : '')
+    + (hasCards ? '<span>🃏 ' + decks.length + ' card deck' + (decks.length > 1 ? 's' : '') + '</span>' : '')
+    + '<span>🏷️ ' + (pillarLabels[course.pillar]||'') + '</span>'
+    + (course.zone_level ? '<span>🎯 Zone ' + course.zone_level + '</span>' : '')
+    + '</div></div>'
+    + '<div style="display:flex;gap:2px;margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:4px;overflow-x:auto">' + tabsHtml + '</div>'
+    + '<div>' + panelHtml + '</div></div>';
+}
+
+function renderCourseLessonPanel(course, slugs) {
+  if (!slugs.length) return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:40px;text-align:center"><p style="color:var(--text2);font-size:15px;margin-bottom:16px">No lessons built for this course yet.</p><button onclick="switchCourseTab(\'ai\')" style="padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:600;cursor:pointer">Ask AI about this topic instead</button></div>';
+  // Find matching chapters from loaded data
+  var chapters = slugs.map(function(slug) {
+    var ch = S.chapters.find(function(c){ return c.slug === slug; });
+    return ch || { slug: slug, title: slug.replace(/chapter-\d+-/,'').replace(/-/g,' '), id: null };
+  });
+  return chapters.map(function(ch) {
+    var done = ch.id && S.completedChapterIds.has(ch.id);
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:10px;cursor:pointer;transition:all .2s" onclick="openLessonReader(\'' + ch.slug + '\',' + (ch.id||'null') + ')" onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'">'
+      + '<div style="display:flex;align-items:center;gap:12px">'
+      + '<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:12px;font-weight:700;flex-shrink:0;' + (done ? 'background:rgba(5,150,105,.1);color:var(--green)' : 'background:var(--surface3);color:var(--text2)') + '">' + (done?'✓':'📖') + '</div>'
+      + '<div style="flex:1"><h4 style="font-size:15px;font-weight:700;color:var(--navy)">' + esc(ch.title) + '</h4></div>'
+      + '<span style="font-size:11px;font-weight:700;' + (done?'color:var(--green)':'color:var(--text3)') + '">' + (done?'Completed':'Read →') + '</span>'
+      + '</div></div>';
+  }).join('');
+}
+
+function renderCourseCardsPanel(course, decks) {
+  if (!decks.length) return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:40px;text-align:center"><p style="color:var(--text2);font-size:15px">No card decks built for this course yet.</p></div>';
+  return '<div class="deck-list">' + decks.map(function(d) {
+    return '<div class="deck-row" onclick="openDeck(' + d.id + ')">'
+      + '<div class="deck-num">' + d.deck_number + '</div>'
+      + '<div class="deck-info"><h5>' + esc(d.title) + '</h5><p>' + esc((d.description||'').substring(0,100)) + '</p></div>'
+      + '<div class="deck-meta">⏱ ' + (d.estimated_minutes||5) + 'min</div></div>';
+  }).join('') + '</div>';
+}
+
+function renderCourseRoleplayPanel(course) {
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+    + '<div class="coach-card" style="border-top:3px solid var(--accent)" onclick="startChat(\'tj\',\'Let\'s practice ' + esc(course.name).replace(/'/g,'') + '. You be the customer.\',\'ai_customer\')"><div class="coach-avatar">🛒</div><h4>AI is the Customer</h4><p style="color:var(--accent);font-weight:600">Practice selling ' + esc(course.name) + '</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--navy)" onclick="startChat(\'tj\',\'Demo the best sales approach for ' + esc(course.name).replace(/'/g,'') + '. You be the rep.\',\'ai_rep\')"><div class="coach-avatar">👔</div><h4>AI is the Rep</h4><p style="color:var(--navy);font-weight:600">Watch the AI sell it</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--green)" onclick="startChat(\'natalie\',\'Teach me the key product specs and selling points for ' + esc(course.name).replace(/'/g,'') + '\')"><div class="coach-avatar">📋</div><h4>Product Deep Dive</h4><p style="color:var(--green);font-weight:600">Natalie walks you through specs</p></div>'
+    + '<div class="coach-card" style="border-top:3px solid var(--gold)" onclick="startChat(\'tj\',\'Give me 3 common objections about ' + esc(course.name).replace(/'/g,'') + ' and how to handle them\')"><div class="coach-avatar">🛡️</div><h4>Objection Drill</h4><p style="color:var(--gold);font-weight:600">Common pushbacks for this topic</p></div></div>';
+}
+
+function renderCourseAIPanel(course) {
+  var topics = [
+    'Summarize the key selling points for ' + course.name,
+    'What are the top 3 things a new rep needs to know about ' + course.name + '?',
+    'Give me a 60-second pitch script for ' + course.name,
+    'What questions should I ask a customer about ' + course.name + '?'
+  ];
+  return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px">'
+    + '<h3 style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:16px">Ask AI about ' + esc(course.name) + '</h3>'
+    + '<div style="display:grid;gap:8px;margin-bottom:16px">'
+    + topics.map(function(t){ return '<div class="topic-pill" style="text-align:left;padding:12px 16px;cursor:pointer" onclick="startChat(\'caden\',\'' + t.replace(/'/g,"\\'") + '\')">' + esc(t) + '</div>'; }).join('')
+    + '</div>'
+    + '<p style="font-size:12px;color:var(--text3);text-align:center">Or pick any coach from the Coach tab for a freeform conversation</p></div>';
+}
+
+// Lesson reader inside course detail
+async function openLessonReader(slug, chId) {
+  var mc = document.getElementById('main-content');
+  var course = window._activeCourse;
+  var scrollTarget = mc;
+  try {
+    var res = await fetch('content/' + slug + '.json');
+    if (!res.ok) throw new Error('Not found');
+    var data = await res.json();
+    var isComplete = chId && S.completedChapterIds.has(chId);
+    window._currentSlug = slug;
+    window._currentChapterData = data;
+    mc.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer" onclick="openCourseDetail(' + course.id + ')"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back to ' + esc(course.name) + '</span></div>'
+      + '<div style="max-width:780px;margin:0 auto">'
+      + '<div style="margin-bottom:28px"><div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:2px;font-weight:700;margin-bottom:8px">' + esc(course.name) + '</div>'
+      + '<h1 style="font-size:26px;font-weight:800;color:var(--navy);line-height:1.3;margin-bottom:12px">' + esc(data.title) + '</h1>'
+      + (data.intro ? '<p style="font-size:15px;color:var(--text2);line-height:1.7">' + esc(data.intro) + '</p>' : '') + '</div>'
+      + (data.sections||[]).map(function(s) {
+        return '<div style="margin-bottom:28px"><h2 style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:12px">' + esc(s.title) + '</h2><div style="font-size:15px;line-height:1.8;color:var(--text)">' + formatContent(s.content) + '</div></div>';
+      }).join('')
+      + '<div style="display:flex;gap:12px;justify-content:center;margin:32px 0">'
+      + '<button onclick="openTrainerForCourse()" style="padding:12px 24px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer"><span style="color:var(--accent)">✦</span> Ask AI Trainer</button>'
+      + (chId ? '<button onclick="toggleChapterComplete(\'' + chId + '\',\'' + slug + '\')" id="complete-btn" style="padding:12px 24px;background:' + (isComplete?'var(--green)':'var(--accent)') + ';color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer">' + (isComplete?'✓ Completed':'Mark Complete') + '</button>' : '')
+      + '</div></div>';
+    window.scrollTo(0,0);
+  } catch(e) {
+    mc.innerHTML = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;cursor:pointer" onclick="openCourseDetail(' + course.id + ')"><span style="color:var(--text2);font-size:18px">←</span><span style="color:var(--text2);font-size:14px">Back to ' + esc(course.name) + '</span></div>'
+      + '<div style="text-align:center;padding:60px;color:var(--text2)"><p style="font-size:16px;margin-bottom:16px">This lesson hasn\'t been written yet.</p><button onclick="switchCourseTab(\'ai\')" style="padding:10px 24px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:600;cursor:pointer">Ask AI about this topic</button></div>';
+  }
+}
+window.openLessonReader = openLessonReader;
+
+function openTrainerForCourse() {
+  var course = window._activeCourse;
+  var slug = window._currentSlug;
+  var ch = S.chapters.find(function(c){ return c.slug === slug; });
+  TRAINER.ctx = { volume: course ? course.name : '', chapter: ch ? ch.title : slug };
+  TRAINER.slug = slug;
+  var d = window._currentChapterData;
+  TRAINER.lessonText = d ? (d.title + '\n' + (d.intro||'') + '\n\n' + (d.sections||[]).map(function(s){ return '## ' + s.title + '\n' + s.content; }).join('\n\n')).slice(0,24000) : '';
+  document.getElementById('ai-context').innerHTML = '<b>' + esc(TRAINER.ctx.volume) + '</b><br>' + esc(TRAINER.ctx.chapter);
+  var panel = document.getElementById('ai-panel');
+  panel.classList.add('open'); panel.style.display = 'flex';
+  TRAINER.open = true;
+  TRAINER.history = [];
+  document.getElementById('ai-msgs').innerHTML = '';
+  trainerRender({ msg_role:'assistant', content:'Hi — I can see you\'re studying "' + (TRAINER.ctx.chapter||'this lesson') + '". Ask me anything about this lesson.' });
+}
+window.openTrainerForCourse = openTrainerForCourse;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TOOLS VIEW — Vendors, Between Brands, Service IQ, Daily Five, Leaderboard
+// ══════════════════════════════════════════════════════════════════════════════
+function renderTools(el) {
+  el.innerHTML = '<div class="dash-header"><h2>🔧 Tools & Reference</h2><p>Quick-access tools for the floor</p></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">'
+    + '<div class="brand-card" style="border-top:3px solid var(--cyan)" onclick="navTo(\'vendors\')"><h4 style="font-size:16px">🏢 Vendor Library</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">' + S.vendors.length + ' brands — specs, stories, selling angles, service data</p></div>'
+    + '<div class="brand-card" style="border-top:3px solid var(--gold)" onclick="navTo(\'compare\')"><h4 style="font-size:16px">⚔️ Between Brands</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Head-to-head competitive matchups by category and tier</p></div>'
+    + '<div class="brand-card" style="border-top:3px solid #d946ef" onclick="navTo(\'serviceiq\')"><h4 style="font-size:16px">❤️ Service IQ</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Communication templates and brand service lookup</p></div>'
+    + '<div class="brand-card" style="border-top:3px solid var(--green)" onclick="navTo(\'scorecard\')"><h4 style="font-size:16px">📊 Daily Five</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Track your daily selling activities</p></div>'
+    + '</div>';
+}
+
 function timeAgo(ts) {
   if (!ts) return '';
   var diff = Date.now() - new Date(ts).getTime();
