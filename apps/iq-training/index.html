@@ -807,6 +807,7 @@ function renderView() {
     case 'serviceiq': renderServiceIQ(mc); break;
     case 'scorecard': renderDailyFive(mc); break;
     case 'tools': renderTools(mc); break;
+    case 'intelligence': renderIntelligenceHub(mc); break;
   }
   mc.classList.add('fade-in');
   setTimeout(function(){ mc.classList.remove('fade-in'); }, 300);
@@ -1725,14 +1726,9 @@ async function startChat(coachKey, initialMsg, mode) {
   rpState.messages = [];
   rpState.loading = false;
   rpState.mode = mode || null;
-  // Load PIM context
+  // Load cross-app context for AI
   try {
-    var contextParts = [];
-    var prodRes = await sb.from('aiq_products').select('brand_name,model,category,msrp,sale_price,short_description').limit(30);
-    if (prodRes.data) contextParts.push('LIVE PIM PRODUCTS (' + prodRes.data.length + '):\n' + prodRes.data.map(function(p){ return '- ' + (p.brand_name||'') + ' ' + (p.model||'') + ' (' + (p.category||'') + ') $' + (p.msrp||'N/A'); }).join('\n'));
-    var ccrRes = await sb.from('competitive_cross_reference').select('category,tier,comparison_notes').limit(20);
-    if (ccrRes.data) contextParts.push('COMPETITIVE INTEL (' + ccrRes.data.length + '):\n' + ccrRes.data.map(function(c){ return '- [' + (c.category||'') + '] ' + (c.comparison_notes||'').substring(0,150); }).join('\n'));
-    rpState.context = contextParts.join('\n\n');
+    rpState.context = await loadCrossAppContext();
   } catch(e) { rpState.context = 'Live data unavailable.'; }
 
   if (rpState.mode === 'ai_customer' && !initialMsg) initialMsg = 'Start a roleplay. You are a customer walking into an appliance store. Pick a realistic scenario and open the conversation as the customer would. I am the sales rep.';
@@ -1745,7 +1741,9 @@ window.startChat = startChat;
 async function sendMsg() {
   var input = document.getElementById('chat-input');
   if (!input || !input.value.trim() || rpState.loading) return;
-  rpState.messages.push({ role: 'user', content: input.value.trim() });
+  var msg = input.value.trim();
+  rpState.messages.push({ role: 'user', content: msg });
+  trackEvent('ai_question', { pillar: window._activeCourse ? window._activeCourse.pillar : null, course_key: window._activeCourse ? window._activeCourse.course_key : null, content: msg });
   input.value = ''; renderView(); await callCoach();
 }
 window.sendMsg = sendMsg;
@@ -1867,6 +1865,7 @@ async function openCourseDetail(courseId) {
   var course = S.courses.find(function(c){ return c.id === courseId; });
   if (!course) return;
   window._activeCourse = course;
+  trackEvent('course_open', { pillar: course.pillar, course_key: course.course_key, content: course.name });
   // Load decks for this course
   var { data: decks } = await sb.from('iq_decks').select('*').eq('course_id', courseId).order('sort_order');
   window._activeCourseDecks = decks || [];
@@ -2040,14 +2039,199 @@ window.openTrainerForCourse = openTrainerForCourse;
 // TOOLS VIEW — Vendors, Between Brands, Service IQ, Daily Five, Leaderboard
 // ══════════════════════════════════════════════════════════════════════════════
 function renderTools(el) {
+  var isAdmin = S.user && (S.user.email === 'tjrobar5@gmail.com' || S.user.email === 'demo@applianceiq.com');
   el.innerHTML = '<div class="dash-header"><h2>🔧 Tools & Reference</h2><p>Quick-access tools for the floor</p></div>'
     + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">'
     + '<div class="brand-card" style="border-top:3px solid var(--cyan)" onclick="navTo(\'vendors\')"><h4 style="font-size:16px">🏢 Vendor Library</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">' + S.vendors.length + ' brands — specs, stories, selling angles, service data</p></div>'
     + '<div class="brand-card" style="border-top:3px solid var(--gold)" onclick="navTo(\'compare\')"><h4 style="font-size:16px">⚔️ Between Brands</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Head-to-head competitive matchups by category and tier</p></div>'
     + '<div class="brand-card" style="border-top:3px solid #d946ef" onclick="navTo(\'serviceiq\')"><h4 style="font-size:16px">❤️ Service IQ</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Communication templates and brand service lookup</p></div>'
     + '<div class="brand-card" style="border-top:3px solid var(--green)" onclick="navTo(\'scorecard\')"><h4 style="font-size:16px">📊 Daily Five</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Track your daily selling activities</p></div>'
+    + (isAdmin ? '<div class="brand-card" style="border-top:3px solid var(--navy)" onclick="navTo(\'intelligence\')"><h4 style="font-size:16px">🧠 Intelligence Hub</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Learning analytics, cross-app insights, content development</p></div>' : '')
     + '</div>';
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EVENT TRACKING — Captures learning interactions across the academy
+// ══════════════════════════════════════════════════════════════════════════════
+function trackEvent(type, data) {
+  if (!S.user) return;
+  try {
+    sb.from('academy_learning_events').insert({
+      user_id: S.user.id,
+      event_type: type,
+      pillar: data.pillar || null,
+      course_key: data.course_key || null,
+      content: data.content || null,
+      metadata: data.metadata || {}
+    }).then(function(){}).catch(function(){});
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CROSS-APP CONTEXT — Feeds live data from all apps into AI coach
+// ══════════════════════════════════════════════════════════════════════════════
+async function loadCrossAppContext() {
+  var ctx = [];
+  try {
+    // PIM — latest products
+    var { data: prods } = await sb.from('aiq_products').select('brand_name,model,category,msrp,sale_price,short_description').order('updated_at', { ascending: false }).limit(40);
+    if (prods && prods.length) ctx.push('LIVE PIM PRODUCTS (' + prods.length + '):\n' + prods.map(function(p){ return '- ' + (p.brand_name||'') + ' ' + (p.model||'') + ' (' + (p.category||'') + ') $' + (p.msrp||'N/A') + (p.sale_price ? ' SALE $' + p.sale_price : ''); }).join('\n'));
+    // CCR — competitive intel
+    var { data: ccr } = await sb.from('competitive_cross_reference').select('category,tier,comparison_notes').limit(25);
+    if (ccr && ccr.length) ctx.push('COMPETITIVE INTEL (' + ccr.length + '):\n' + ccr.map(function(c){ return '- [' + (c.tier||'') + ' ' + (c.category||'') + '] ' + (c.comparison_notes||'').substring(0,120); }).join('\n'));
+    // CRM — recent deals/pipeline
+    var { data: deals } = await sb.from('crm_deals').select('title,stage,value,brand').order('updated_at', { ascending: false }).limit(15);
+    if (deals && deals.length) ctx.push('CRM PIPELINE (' + deals.length + ' recent):\n' + deals.map(function(d){ return '- ' + (d.title||'Deal') + ' | ' + (d.stage||'') + ' | $' + (d.value||0) + (d.brand ? ' | ' + d.brand : ''); }).join('\n'));
+    // CRM — coaching reviews
+    var { data: reviews } = await sb.from('ai_coaching_reviews').select('coaching_focus,score,summary').order('created_at', { ascending: false }).limit(10);
+    if (reviews && reviews.length) ctx.push('COACHING REVIEWS (' + reviews.length + '):\n' + reviews.map(function(r){ return '- [' + (r.coaching_focus||'') + '] Score: ' + (r.score||'-') + ' — ' + (r.summary||'').substring(0,100); }).join('\n'));
+    // Up System — recent interactions
+    var { data: interactions } = await sb.from('iq_customer_interactions').select('interaction_type,product_interest,outcome,notes').order('created_at', { ascending: false }).limit(10);
+    if (interactions && interactions.length) ctx.push('FLOOR INTERACTIONS (' + interactions.length + '):\n' + interactions.map(function(i){ return '- ' + (i.interaction_type||'') + ' | ' + (i.product_interest||'') + ' | ' + (i.outcome||'') + ' ' + (i.notes||'').substring(0,80); }).join('\n'));
+    // Field — recent findings
+    var { data: findings } = await sb.from('field_findings').select('category,severity,description').order('created_at', { ascending: false }).limit(10);
+    if (findings && findings.length) ctx.push('FIELD FINDINGS (' + findings.length + '):\n' + findings.map(function(f){ return '- [' + (f.severity||'') + '] ' + (f.category||'') + ': ' + (f.description||'').substring(0,100); }).join('\n'));
+    // Warranty & Recalls
+    var { data: recalls } = await sb.from('aiq_recalls').select('brand_name,model,reason').order('recall_date', { ascending: false }).limit(10);
+    if (recalls && recalls.length) ctx.push('ACTIVE RECALLS (' + recalls.length + '):\n' + recalls.map(function(r){ return '- ' + (r.brand_name||'') + ' ' + (r.model||'') + ': ' + (r.reason||''); }).join('\n'));
+  } catch(e) { console.warn('Cross-app context load partial:', e); }
+  return ctx.join('\n\n');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INTELLIGENCE HUB — Admin view for learning analytics & content development
+// ══════════════════════════════════════════════════════════════════════════════
+async function renderIntelligenceHub(el) {
+  el.innerHTML = '<div class="loading-spinner"></div>';
+  // Load analytics data
+  var [eventsRes, suggestionsRes, completionRes, pimRes] = await Promise.all([
+    sb.from('academy_learning_events').select('event_type,pillar,content,metadata,created_at').order('created_at', { ascending: false }).limit(100),
+    sb.from('academy_content_suggestions').select('*').order('created_at', { ascending: false }).limit(20),
+    sb.from('academy_progress').select('chapter_id'),
+    sb.from('aiq_products').select('id', { count: 'exact', head: true })
+  ]);
+  var events = eventsRes.data || [];
+  var suggestions = suggestionsRes.data || [];
+  var completions = (completionRes.data || []).length;
+  var pimCount = pimRes.count || 0;
+  // Aggregate events
+  var eventCounts = {};
+  events.forEach(function(e){ eventCounts[e.event_type] = (eventCounts[e.event_type]||0) + 1; });
+  var aiQuestions = events.filter(function(e){ return e.event_type === 'ai_question'; });
+  var topTopics = {};
+  aiQuestions.forEach(function(e){ var p = e.pillar || 'general'; topTopics[p] = (topTopics[p]||0) + 1; });
+  // Build dashboard
+  var statsHtml = '<div class="dash-grid">'
+    + '<div class="stat-card accent"><div class="label">Learning Events</div><div class="value">' + events.length + '</div><div class="sub">Last 100 tracked</div></div>'
+    + '<div class="stat-card green"><div class="label">Chapters Completed</div><div class="value">' + completions + '</div><div class="sub">Across all users</div></div>'
+    + '<div class="stat-card gold"><div class="label">PIM Products</div><div class="value">' + pimCount + '</div><div class="sub">Feeding brand knowledge</div></div></div>';
+  // Event breakdown
+  var breakdownHtml = '<div class="section-header"><h3>Event Breakdown</h3></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin-bottom:24px">'
+    + Object.entries(eventCounts).map(function(kv){
+      var icons = { ai_question:'💬', quiz_pass:'✅', quiz_fail:'❌', course_open:'📖', roleplay_score:'🎤', coach_topic:'🤖', feedback:'💡' };
+      return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);padding:14px;text-align:center"><div style="font-size:20px">' + (icons[kv[0]]||'📊') + '</div><div style="font-size:20px;font-weight:800;color:var(--navy);margin:4px 0">' + kv[1] + '</div><div style="font-size:11px;color:var(--text3)">' + kv[0].replace(/_/g,' ') + '</div></div>';
+    }).join('') + '</div>';
+  // Recent AI questions
+  var questionsHtml = '<div class="section-header"><h3>Recent AI Questions (training gaps)</h3></div>'
+    + '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:24px">'
+    + (aiQuestions.length ? aiQuestions.slice(0,15).map(function(q){
+      return '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--accent);font-weight:600">[' + (q.pillar||'general') + ']</span> ' + esc(q.content||'') + '<span style="color:var(--text3);font-size:11px;margin-left:8px">' + timeAgo(q.created_at) + '</span></div>';
+    }).join('') : '<div style="padding:24px;text-align:center;color:var(--text3)">No AI questions logged yet. Questions will appear as users interact with the AI coach.</div>') + '</div>';
+  // Cross-app data connections status
+  var connectionsHtml = '<div class="section-header"><h3>Connected Data Sources</h3></div>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px">';
+  var sources = [
+    { name:'PIM Products', icon:'📦', table:'aiq_products', desc:'Product specs → brand courses' },
+    { name:'Brand Catalog', icon:'🏷️', table:'brand_catalog', desc:'156 brands → Brand IQ' },
+    { name:'CRM Pipeline', icon:'💰', table:'crm_deals', desc:'Deal patterns → training gaps' },
+    { name:'Coaching Reviews', icon:'🎯', table:'ai_coaching_reviews', desc:'AI scoring → skill gaps' },
+    { name:'Up System', icon:'🔄', table:'iq_customer_interactions', desc:'Floor interactions → insights' },
+    { name:'Field Audits', icon:'📋', table:'field_findings', desc:'Store issues → compliance training' },
+    { name:'Competitive Intel', icon:'⚔️', table:'competitive_cross_reference', desc:'214 matchups → Between Brands' },
+    { name:'Warranties', icon:'📜', table:'aiq_warranty_policies', desc:'159 policies → Service IQ' },
+    { name:'Recalls', icon:'⚠️', table:'aiq_recalls', desc:'103 recalls → Service IQ alerts' }
+  ];
+  sources.forEach(function(src) {
+    connectionsHtml += '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-xs);padding:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:18px">' + src.icon + '</span><strong style="font-size:13px;color:var(--navy)">' + src.name + '</strong><span style="font-size:10px;background:rgba(5,150,105,.1);color:var(--green);padding:2px 6px;border-radius:4px;font-weight:700;margin-left:auto">LIVE</span></div><div style="font-size:11px;color:var(--text3)">' + src.desc + '</div></div>';
+  });
+  connectionsHtml += '</div>';
+  // Content suggestions + AI generate button
+  var suggestionsHtml = '<div class="section-header"><h3>Content Development Queue</h3><div class="see-all" onclick="generateContentSuggestions()">✦ Generate AI Suggestions</div></div>'
+    + '<div id="suggestions-list">' + renderSuggestionsList(suggestions) + '</div>';
+  el.innerHTML = '<div class="dash-header"><h2>🧠 Intelligence Hub</h2><p>Learning analytics, cross-app insights, and content development</p></div>'
+    + statsHtml + breakdownHtml + connectionsHtml + questionsHtml + suggestionsHtml;
+}
+
+function renderSuggestionsList(suggestions) {
+  if (!suggestions.length) return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:32px;text-align:center;margin-bottom:24px"><p style="color:var(--text2);font-size:14px;margin-bottom:12px">No content suggestions yet.</p><p style="color:var(--text3);font-size:12px">Click "Generate AI Suggestions" to analyze learning patterns and get module ideas.</p></div>';
+  return '<div style="display:grid;gap:10px;margin-bottom:24px">' + suggestions.map(function(s) {
+    var prioColor = s.priority === 'critical' ? 'var(--red)' : s.priority === 'high' ? 'var(--gold)' : s.priority === 'medium' ? 'var(--accent)' : 'var(--text3)';
+    var statusColor = s.status === 'new' ? 'var(--cyan)' : s.status === 'accepted' ? 'var(--green)' : s.status === 'built' ? 'var(--navy)' : 'var(--text3)';
+    return '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;border-left:3px solid ' + prioColor + '">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      + '<span style="font-size:10px;font-weight:700;color:' + prioColor + ';text-transform:uppercase">' + (s.priority||'') + '</span>'
+      + '<span style="font-size:10px;font-weight:700;color:' + statusColor + ';background:' + statusColor + '15;padding:2px 6px;border-radius:4px">' + (s.status||'') + '</span>'
+      + (s.pillar ? '<span style="font-size:10px;color:var(--text3)">' + (pillarLabels[s.pillar]||s.pillar) + '</span>' : '') + '</div>'
+      + '<h4 style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px">' + esc(s.title) + '</h4>'
+      + '<p style="font-size:12px;color:var(--text2);line-height:1.5">' + esc(s.rationale||'') + '</p>'
+      + '<div style="display:flex;gap:6px;margin-top:10px">'
+      + '<button onclick="updateSuggestion(' + s.id + ',\'accepted\')" style="padding:4px 12px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600">Accept</button>'
+      + '<button onclick="updateSuggestion(' + s.id + ',\'dismissed\')" style="padding:4px 12px;font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text3);font-weight:600">Dismiss</button></div></div>';
+  }).join('') + '</div>';
+}
+window.updateSuggestion = async function(id, status) {
+  await sb.from('academy_content_suggestions').update({ status: status, reviewed_at: new Date().toISOString() }).eq('id', id);
+  showToast('Suggestion ' + status);
+  var mc = document.getElementById('main-content');
+  renderIntelligenceHub(mc);
+};
+
+async function generateContentSuggestions() {
+  showToast('Analyzing learning patterns...');
+  // Gather intelligence from all sources
+  var crossAppCtx = await loadCrossAppContext();
+  var { data: events } = await sb.from('academy_learning_events').select('event_type,pillar,content').order('created_at', { ascending: false }).limit(200);
+  var { data: courses } = await sb.from('iq_courses').select('pillar,name,course_key,chapter_slugs').order('pillar');
+  var evtSummary = {};
+  (events || []).forEach(function(e) {
+    var k = (e.event_type||'') + '|' + (e.pillar||'general');
+    if (!evtSummary[k]) evtSummary[k] = { count: 0, samples: [] };
+    evtSummary[k].count++;
+    if (evtSummary[k].samples.length < 3 && e.content) evtSummary[k].samples.push(e.content.substring(0,100));
+  });
+  var courseList = (courses||[]).filter(function(c){ return c.pillar !== 'brand_iq'; }).map(function(c){ return c.pillar + ' | ' + c.name + ' (' + (c.chapter_slugs||[]).length + ' chapters)'; }).join('\n');
+  var prompt = 'You are the ApplianceIQ Training Content Strategist. Analyze this data and suggest 5 new training modules or content improvements.\n\n'
+    + 'EXISTING COURSES:\n' + courseList + '\n\n'
+    + 'LEARNING EVENT PATTERNS:\n' + JSON.stringify(evtSummary) + '\n\n'
+    + 'CROSS-APP INTELLIGENCE:\n' + crossAppCtx.substring(0,8000) + '\n\n'
+    + 'Respond in JSON only, no markdown. Array of objects: [{"type":"new_module|update_existing|new_cards|gap_alert","pillar":"sales_iq|product_iq|brand_iq|service_iq|leadership_iq","title":"...","rationale":"...","priority":"critical|high|medium|low"}]';
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    var data = await resp.json();
+    var text = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : '[]';
+    var clean = text.replace(/```json|```/g, '').trim();
+    var ideas = JSON.parse(clean);
+    // Insert suggestions
+    for (var i = 0; i < ideas.length; i++) {
+      await sb.from('academy_content_suggestions').insert({
+        suggestion_type: ideas[i].type || 'new_module',
+        pillar: ideas[i].pillar || null,
+        title: ideas[i].title,
+        rationale: ideas[i].rationale,
+        priority: ideas[i].priority || 'medium',
+        source_data: { events: Object.keys(evtSummary).length, generated_at: new Date().toISOString() }
+      });
+    }
+    showToast(ideas.length + ' suggestions generated');
+    var mc = document.getElementById('main-content');
+    renderIntelligenceHub(mc);
+  } catch(e) { showToast('Error generating suggestions: ' + e.message); }
+}
+window.generateContentSuggestions = generateContentSuggestions;
 
 function timeAgo(ts) {
   if (!ts) return '';
