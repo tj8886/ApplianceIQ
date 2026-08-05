@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIM Admin — ApplianceIQ</title>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#242836;--surface3:#2e3344;--border:#363b4e;--text:#e8eaf0;--text2:#9ca3b8;--accent:#3b82f6;--accent-h:#2563eb;--danger:#ef4444;--danger-h:#dc2626;--success:#22c55e;--warn:#f59e0b;--radius:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button{cursor:pointer;font:inherit;border:none;border-radius:var(--radius)}
+input,select,textarea{font:inherit;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+
+/* Layout */
+.app{display:flex;height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar h1{font-size:16px;padding:16px;border-bottom:1px solid var(--border);color:var(--accent);letter-spacing:-.3px}
+.sidebar h1 span{color:var(--text2);font-weight:400}
+.nav-btn{display:flex;align-items:center;gap:10px;padding:10px 16px;background:none;color:var(--text2);text-align:left;width:100%;font-size:13px;border-radius:0;transition:.15s}
+.nav-btn:hover{background:var(--surface2);color:var(--text)}
+.nav-btn.active{background:var(--accent);color:#fff}
+.nav-btn .icon{font-size:16px;width:22px;text-align:center}
+.nav-btn .badge{margin-left:auto;background:var(--surface3);color:var(--text2);font-size:11px;padding:2px 7px;border-radius:10px}
+.nav-btn.active .badge{background:rgba(255,255,255,.2);color:#fff}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.toolbar h2{font-size:15px;margin-right:auto;white-space:nowrap}
+.search-box{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:0 10px;gap:6px}
+.search-box input{border:none;background:none;padding:7px 0;width:200px}
+.search-box .icon{color:var(--text2);font-size:14px}
+.filter-select{padding:7px 10px;font-size:13px}
+.btn{padding:7px 14px;font-size:13px;border-radius:var(--radius);transition:.15s}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-h)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:var(--danger-h)}
+.btn-ghost{background:var(--surface2);color:var(--text)}.btn-ghost:hover{background:var(--surface3)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-icon{width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:var(--surface2);color:var(--text2);font-size:14px;padding:0}
+.btn-icon:hover{background:var(--surface3);color:var(--text)}
+.btn-icon.danger:hover{background:var(--danger);color:#fff}
+
+/* Content */
+.content{flex:1;padding:20px;overflow-y:auto}
+
+/* Table */
+.data-table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.data-table th{position:sticky;top:0;background:var(--surface);color:var(--text2);font-weight:500;text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;z-index:1}
+.data-table td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:middle;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.data-table tr:hover td{background:var(--surface2)}
+.data-table .cb{width:36px;text-align:center}
+.data-table input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent)}
+
+/* Status badges */
+.badge-s{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.badge-active{background:#22c55e22;color:#22c55e}
+.badge-inactive,.badge-discontinued{background:#ef444422;color:#ef4444}
+.badge-unverified{background:#f59e0b22;color:#f59e0b}
+.badge-verified{background:#22c55e22;color:#22c55e}
+
+/* Pagination */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid var(--border);background:var(--surface);font-size:13px;color:var(--text2)}
+.page-btns{display:flex;gap:4px}
+.page-btns button{padding:6px 12px}
+
+/* Image Grid */
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.img-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative}
+.img-card.selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+.img-card img{width:100%;height:160px;object-fit:contain;background:#fff;cursor:pointer}
+.img-card img.broken{background:var(--surface2);object-fit:none}
+.img-card .img-info{padding:8px 10px;font-size:11px;color:var(--text2)}
+.img-card .img-info .model{color:var(--text);font-weight:500;font-size:12px}
+.img-card .img-cb{position:absolute;top:6px;left:6px;width:20px;height:20px;accent-color:var(--accent)}
+.img-card .img-type{position:absolute;top:6px;right:6px;background:var(--surface);color:var(--text2);font-size:10px;padding:2px 6px;border-radius:4px}
+.img-card .img-actions{display:flex;gap:4px;padding:0 8px 8px}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;display:none}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:90%;max-width:700px;max-height:85vh;overflow-y:auto}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:15px}
+.modal-body{padding:20px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--border)}
+
+/* Form */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.field input,.field select,.field textarea{width:100%}
+.field textarea{min-height:80px;resize:vertical}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Preview modal */
+.preview-img{max-width:100%;max-height:60vh;object-fit:contain;border-radius:var(--radius);background:#fff;display:block;margin:0 auto 16px}
+
+/* Stats bar */
+.stats-bar{display:flex;gap:16px;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:6px;color:var(--text2)}
+.stat b{color:var(--text)}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);color:var(--text);padding:12px 18px;border-radius:var(--radius);border:1px solid var(--border);font-size:13px;z-index:200;display:none;max-width:350px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.toast.success{border-color:var(--success)}.toast.error{border-color:var(--danger)}
+
+/* Confirm */
+.confirm-msg{font-size:14px;line-height:1.6;margin-bottom:10px}
+.confirm-warn{color:var(--danger);font-size:12px;margin-top:6px}
+
+/* Loading */
+.loading{text-align:center;padding:60px;color:var(--text2)}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Empty */
+.empty{text-align:center;padding:60px;color:var(--text2)}
+.empty .icon{font-size:40px;margin-bottom:10px}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{width:60px}.sidebar h1 span,.nav-btn span:not(.icon),.nav-btn .badge{display:none}
+  .sidebar h1{font-size:14px;padding:12px;text-align:center}
+  .nav-btn{justify-content:center;padding:12px}
+  .search-box input{width:120px}
+  .img-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <h1>PIM <span>Admin</span></h1>
+    <button class="nav-btn active" onclick="switchTab('products')"><span class="icon">📦</span><span>Products</span><span class="badge" id="badge-products">—</span></button>
+    <button class="nav-btn" onclick="switchTab('images')"><span class="icon">🖼️</span><span>Images</span><span class="badge" id="badge-images">—</span></button>
+    <button class="nav-btn" onclick="switchTab('documents')"><span class="icon">📄</span><span>Documents</span><span class="badge" id="badge-documents">—</span></button>
+    <button class="nav-btn" onclick="switchTab('brands')"><span class="icon">🏷️</span><span>Brands</span><span class="badge" id="badge-brands">—</span></button>
+    <button class="nav-btn" onclick="switchTab('recalls')"><span class="icon">⚠️</span><span>Recalls</span><span class="badge" id="badge-recalls">—</span></button>
+    <button class="nav-btn" onclick="switchTab('warranties')"><span class="icon">🛡️</span><span>Warranties</span><span class="badge" id="badge-warranties">—</span></button>
+    <button class="nav-btn" onclick="switchTab('orphans')"><span class="icon">🔍</span><span>Orphans</span></button>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzMTc2NTgsImV4cCI6MjA2Njg5MzY1OH0.gMRJVPqbgte3bJz_f0mBAqHKbjVEroJJxW1Gh_0J48s');
+
+const PAGE=50;
+let currentTab='products', page=0, totalCount=0, selected=new Set(), searchTerm='', brandFilter='', typeFilter='', allBrands=[];
+
+// Boot
+async function boot(){
+  // Get counts
+  const[p,i,d,b,r,w]=await Promise.all([
+    sb.from('aiq_products').select('*',{count:'exact',head:true}),
+    sb.from('pim_product_images').select('*',{count:'exact',head:true}),
+    sb.from('pim_product_documents').select('*',{count:'exact',head:true}),
+    sb.from('brand_catalog').select('*',{count:'exact',head:true}),
+    sb.from('aiq_recalls').select('*',{count:'exact',head:true}),
+    sb.from('aiq_warranty_policies').select('*',{count:'exact',head:true})
+  ]);
+  document.getElementById('badge-products').textContent=fmtK(p.count);
+  document.getElementById('badge-images').textContent=fmtK(i.count);
+  document.getElementById('badge-documents').textContent=fmtK(d.count);
+  document.getElementById('badge-brands').textContent=fmtK(b.count);
+  document.getElementById('badge-recalls').textContent=fmtK(r.count);
+  document.getElementById('badge-warranties').textContent=fmtK(w.count);
+  
+  // Get brands for filters
+  const{data:br}=await sb.from('brand_catalog').select('brand_name').order('brand_name');
+  allBrands=(br||[]).map(x=>x.brand_name);
+  
+  loadTab();
+}
+
+function fmtK(n){if(!n)return'0';return n>=1000?(n/1000).toFixed(1)+'k':n.toString()}
+
+window.switchTab=function(tab){
+  currentTab=tab;page=0;selected.clear();searchTerm='';brandFilter='';typeFilter='';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>{if(b.onclick?.toString().includes(`'${tab}'`))b.classList.add('active')});
+  loadTab();
+};
+
+async function loadTab(){
+  const m=document.getElementById('main');
+  m.innerHTML='<div class="loading"><div class="spinner"></div><p style="margin-top:12px">Loading…</p></div>';
+  switch(currentTab){
+    case'products':await loadProducts();break;
+    case'images':await loadImages();break;
+    case'documents':await loadDocuments();break;
+    case'brands':await loadBrands();break;
+    case'recalls':await loadRecalls();break;
+    case'warranties':await loadWarranties();break;
+    case'orphans':await loadOrphans();break;
+  }
+}
+
+// ========== PRODUCTS ==========
+async function loadProducts(){
+  let q=sb.from('aiq_products').select('id,brand_name,model,category,subcategory,short_description,msrp,status,color,finish,updated_at',{count:'exact'});
+  if(searchTerm)q=q.or(`model.ilike.%${searchTerm}%,short_description.ilike.%${searchTerm}%,brand_name.ilike.%${searchTerm}%`);
+  if(brandFilter)q=q.eq('brand_name',brandFilter);
+  q=q.order('brand_name').order('model').range(page*PAGE,(page+1)*PAGE-1);
+  const{data,count,error}=await q;
+  if(error){toast(error.message,'error');return;}
+  totalCount=count||0;
+  renderProductsTable(data||[]);
+}
+
+function renderProductsTable(rows){
+  const brandOpts=allBrands.map(b=>`<option value="${b}" ${brandFilter===b?'selected':''}>${b}</option>`).join('');
+  document.getElementById('main').innerHTML=`
+    <div class="toolbar">
+      <h2>Products</h2>
+      <div class="search-box"><span class="icon">🔍</span><input placeholder="Search model, brand, desc…" value="${esc(searchTerm)}" onkeyup="if(event.key==='Enter'){window._search(this.value)}"></div>
+      <select class="filter-select" onchange="window._brandFilter(this.value)"><option value="">All Brands</option>${brandOpts}</select>
+      <button class="btn btn-danger btn-sm" onclick="window._bulkDelete('aiq_products')" id="bulkDelBtn" style="display:none">Delete Selected</button>
+    </div>
+    <div style="overflow-x:auto;flex:1">
+    <table class="data-table">
+      <thead><tr>
+        <th class="cb"><input type="checkbox" onchange="window._selectAll(this.checked)"></th>
+        <th>Brand</th><th>Model</th><th>Description</th><th>Category</th><th>MSRP</th><th>Color</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody>${rows.length?rows.map(r=>`<tr>
+        <td class="cb"><input type="checkbox" data-id="${r.id}" onchange="window._toggleSel('${r.id}',this.checked)"></td>
+        <td>${esc(r.brand_name||'')}</td>
+        <td><strong>${esc(r.model||'')}</strong></td>
+        <td>${esc((r.short_description||'').substring(0,60))}</td>
+        <td>${esc(r.category||'—')}</td>
+        <td>${r.msrp?'$'+Number(r.msrp).toLocaleString():'—'}</td>
+        <td>${esc(r.color||r.finish||'—')}</td>
+        <td><span class="badge-s badge-${r.status||'active'}">${r.status||'active'}</span></td>
+        <td style="white-space:nowrap">
+          <button class="btn-icon" onclick="window._editProduct('${r.id}')" title="Edit">✏️</button>
+          <button class="btn-icon danger" onclick="window._confirmDelete('aiq_products','${r.id}','${esc(r.brand_name||'')} ${esc(r.model||'')}')" title="Delete">🗑️</button>
+        </td>
+      </tr>`).join(''):'<tr><td colspan="9" class="empty">No products found</td></tr>'}</tbody>
+    </table>
+    </div>
+    ${paginationHTML()}`;
+}
+
+// ========== IMAGES ==========
+async function loadImages(){
+  let q=sb.from('pim_product_images').select('id,product_id,brand_id,image_type,file_url,alt_text,is_primary,approved,verification_status,created_at,aiq_products(brand_name,model)',{count:'exact'});
+  if(searchTerm)q=q.or(`alt_text.ilike.%${searchTerm}%,file_url.ilike.%${searchTerm}%`);
+  if(typeFilter)q=q.eq('image_type',typeFilter);
+  q=q.order('created_at',{ascending:false}).range(page*PAGE,(page+1)*PAGE-1);
+  const{data,count,error}=await q;
+  if(error){toast(error.message,'error');return;}
+  totalCount=count||0;
+  renderImagesGrid(data||[]);
+}
+
+function renderImagesGrid(rows){
+  const types=['product','lifestyle','gallery','hero','dimension_diagram','swatch','feature_detail','interior'];
+  const typeOpts=types.map(t=>`<option value="${t}" ${typeFilter===t?'selected':''}>${t}</option>`).join('');
+  document.getElementById('main').innerHTML=`
+    <div class="toolbar">
+      <h2>Images</h2>
+      <div class="search-box"><span class="icon">🔍</span><input placeholder="Search alt text, URL…" value="${esc(searchTerm)}" onkeyup="if(event.key==='Enter'){window._search(this.value)}"></div>
+      <select class="filter-select" onchange="window._typeFilter(this.value)"><option value="">All Types</option>${typeOpts}</select>
+      <button class="btn btn-danger btn-sm" onclick="window._bulkDelete('pim_product_images')" id="bulkDelBtn" style="display:none">Delete Selected (<span id="selCount">0</span>)</button>
+    </div>
+    <div class="content">
+      ${rows.length?`<div class="img-grid">${rows.map(r=>{
+        const brand=r.aiq_products?.brand_name||'';
+        const model=r.aiq_products?.model||'';
+        return`<div class="img-card ${selected.has(r.id)?'selected':''}" id="card-${r.id}">
+          <input type="checkbox" class="img-cb" ${selected.has(r.id)?'checked':''} onchange="window._toggleSel('${r.id}',this.checked)">
+          <span class="img-type">${r.image_type||'?'}</span>
+          <img src="${esc(r.file_url||'')}" alt="${esc(r.alt_text||'')}" loading="lazy" onerror="this.classList.add('broken');this.alt='Broken image'" onclick="window._previewImage('${esc(r.file_url||'')}','${esc(brand)} ${esc(model)}','${r.id}')">
+          <div class="img-info">
+            <div class="model">${esc(brand)} ${esc(model)}</div>
+            <div>${esc((r.alt_text||'').substring(0,50))}</div>
+          </div>
+          <div class="img-actions">
+            <button class="btn-icon" onclick="window._reassignImage('${r.id}')" title="Move to different product">↗️</button>
+            <button class="btn-icon danger" onclick="window._confirmDelete('pim_product_images','${r.id}','this image')" title="Delete">🗑️</button>
+          </div>
+        </div>`}).join('')}</div>`:
+      '<div class="empty"><div class="icon">🖼️</div>No images found</div>'}
+    </div>
+    ${paginationHTML()}`;
+}
+
+// ========== DOCUMENTS ==========
+async function loadDocuments(){
+  let q=sb.from('pim_product_documents').select('*,aiq_products(brand_name,model)',{count:'exact'});
+  if(searchTerm)q=q.or(`title.ilike.%${searchTerm}%,document_type.ilike.%${searchTerm}%`);
+  q=q.order('created_at',{ascending:false}).range(page*PAGE,(page+1)*PAGE-1);
+  const{data,count,error}=await q;
+  if(error){toast(error.message,'error');return;}
+  totalCount=count||0;
+  const cols=data?.length?Object.keys(data[0]).filter(k=>k!=='aiq_products'):[];
+  renderGenericTable('Documents','pim_product_documents',data||[],['id','product_id','brand_id','title','document_type','file_url','language','page_count'],r=>`${r.aiq_products?.brand_name||''} ${r.aiq_products?.model||''}`);
+}
+
+// ========== BRANDS ==========
+async function loadBrands(){
+  let q=sb.from('brand_catalog').select('id,brand_name,brand_tier,parent_company,country,is_active,product_count,canada_website,updated_at',{count:'exact'});
+  if(searchTerm)q=q.or(`brand_name.ilike.%${searchTerm}%,parent_company.ilike.%${searchTerm}%`);
+  q=q.order('brand_name').range(page*PAGE,(page+1)*PAGE-1);
+  const{data,count}=await q;
+  totalCount=count||0;
+  renderGenericTable('Brands','brand_catalog',data||[],['id','brand_name','brand_tier','parent_company','country','is_active','product_count']);
+}
+
+// ========== RECALLS ==========
+async function loadRecalls(){
+  let q=sb.from('aiq_recalls').select('id,brand_name,product_name,category,hazard,remedy,recall_date,country',{count:'exact'});
+  if(searchTerm)q=q.or(`brand_name.ilike.%${searchTerm}%,product_name.ilike.%${searchTerm}%,hazard.ilike.%${searchTerm}%`);
+  q=q.order('recall_date',{ascending:false}).range(page*PAGE,(page+1)*PAGE-1);
+  const{data,count}=await q;
+  totalCount=count||0;
+  renderGenericTable('Recalls','aiq_recalls',data||[],['id','brand_name','product_name','category','hazard','remedy','recall_date','country']);
+}
+
+// ========== WARRANTIES ==========
+async function loadWarranties(){
+  let q=sb.from('aiq_warranty_policies').select('id,brand_name,category,full_coverage_years,full_coverage_notes,registration_required,country',{count:'exact'});
+  if(searchTerm)q=q.or(`brand_name.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`);
+  q=q.order('brand_name').range(page*PAGE,(page+1)*PAGE-1);
+  const{data,count}=await q;
+  totalCount=count||0;
+  renderGenericTable('Warranties','aiq_warranty_policies',data||[],['id','brand_name','category','full_coverage_years','full_coverage_notes','registration_required','country']);
+}
+
+// ========== ORPHANS ==========
+async function loadOrphans(){
+  // Find images whose product_id doesn't exist in aiq_products
+  const{data,count,error}=await sb.rpc('exec_sql',{query:`
+    SELECT i.id, i.product_id, i.image_type, i.file_url, i.alt_text, i.created_at
+    FROM pim_product_images i
+    LEFT JOIN aiq_products p ON i.product_id = p.id
+    WHERE p.id IS NULL
+    LIMIT 200
+  `}).catch(()=>({data:null,error:{message:'RPC not available — orphan detection requires a database function'}}));
+  
+  // Fallback: just show the UI explaining what this does
+  document.getElementById('main').innerHTML=`
+    <div class="toolbar"><h2>Orphan Detection</h2></div>
+    <div class="content">
+      <div style="max-width:600px;margin:40px auto;text-align:center">
+        <div style="font-size:48px;margin-bottom:16px">🔍</div>
+        <h3 style="margin-bottom:12px">Find Orphaned Records</h3>
+        <p style="color:var(--text2);margin-bottom:24px;line-height:1.6">Scan for images, documents, and videos that are linked to products that no longer exist. These waste storage and clutter your data.</p>
+        <button class="btn btn-primary" onclick="window._runOrphanScan()">Run Orphan Scan</button>
+        <div id="orphanResults" style="margin-top:24px;text-align:left"></div>
+      </div>
+    </div>`;
+}
+
+window._runOrphanScan=async function(){
+  const res=document.getElementById('orphanResults');
+  res.innerHTML='<div class="loading"><div class="spinner"></div><p style="margin-top:8px">Scanning…</p></div>';
+  
+  // Count orphaned images
+  const{count:imgOrph}=await sb.from('pim_product_images').select('id',{count:'exact',head:true}).not('product_id','in',`(select id from aiq_products)`).catch(()=>({count:'?'}));
+  
+  // Try a simpler approach: get product IDs that don't exist
+  const{data:sampleOrphans}=await sb.from('pim_product_images').select('product_id').limit(5000);
+  const{data:prodIds}=await sb.from('aiq_products').select('id');
+  const prodSet=new Set((prodIds||[]).map(p=>p.id));
+  const orphanPids=new Set();
+  (sampleOrphans||[]).forEach(s=>{if(!prodSet.has(s.product_id))orphanPids.add(s.product_id)});
+  
+  res.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+      <h4 style="margin-bottom:12px">Scan Results (sampled first 5,000 images)</h4>
+      <p style="color:var(--text2);margin-bottom:12px">${orphanPids.size} orphaned product IDs found — images linked to products that don't exist.</p>
+      ${orphanPids.size>0?`<button class="btn btn-danger" onclick="window._deleteOrphanImages()">Delete Orphaned Images</button>
+      <p style="color:var(--text2);font-size:12px;margin-top:8px">This will delete all images linked to non-existent products.</p>`:'<p style="color:var(--success)">✓ No orphans found in this sample.</p>'}
+    </div>`;
+  window._orphanPids=[...orphanPids];
+};
+
+window._deleteOrphanImages=async function(){
+  if(!window._orphanPids?.length)return;
+  const pids=window._orphanPids;
+  let deleted=0;
+  for(let i=0;i<pids.length;i+=10){
+    const batch=pids.slice(i,i+10);
+    const{error,count}=await sb.from('pim_product_images').delete({count:'exact'}).in('product_id',batch);
+    if(!error)deleted+=(count||0);
+  }
+  toast(`Deleted ${deleted} orphaned images`,'success');
+  loadTab();
+};
+
+// ========== GENERIC TABLE RENDER ==========
+function renderGenericTable(title,table,rows,cols,extraFn){
+  const display=cols.filter(c=>c!=='id');
+  document.getElementById('main').innerHTML=`
+    <div class="toolbar">
+      <h2>${title}</h2>
+      <div class="search-box"><span class="icon">🔍</span><input placeholder="Search…" value="${esc(searchTerm)}" onkeyup="if(event.key==='Enter'){window._search(this.value)}"></div>
+      <button class="btn btn-danger btn-sm" onclick="window._bulkDelete('${table}')" id="bulkDelBtn" style="display:none">Delete Selected</button>
+    </div>
+    <div style="overflow-x:auto;flex:1">
+    <table class="data-table">
+      <thead><tr>
+        <th class="cb"><input type="checkbox" onchange="window._selectAll(this.checked)"></th>
+        ${display.map(c=>`<th>${fmtCol(c)}</th>`).join('')}
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>${rows.length?rows.map(r=>`<tr>
+        <td class="cb"><input type="checkbox" data-id="${r.id}" onchange="window._toggleSel('${r.id}',this.checked)"></td>
+        ${display.map(c=>`<td>${fmtVal(c,r[c])}</td>`).join('')}
+        <td style="white-space:nowrap">
+          <button class="btn-icon" onclick="window._editRecord('${table}','${r.id}')" title="Edit">✏️</button>
+          <button class="btn-icon danger" onclick="window._confirmDelete('${table}','${r.id}','${esc(String(r[display[0]]||''))}')" title="Delete">🗑️</button>
+        </td>
+      </tr>`).join(''):'<tr><td colspan="'+(display.length+2)+'"><div class="empty">No records</div></td></tr>'}</tbody>
+    </table>
+    </div>
+    ${paginationHTML()}`;
+}
+
+function fmtCol(c){return c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}
+function fmtVal(col,val){
+  if(val===null||val===undefined)return'<span style="color:var(--text2)">—</span>';
+  if(typeof val==='boolean')return val?'<span style="color:var(--success)">Yes</span>':'<span style="color:var(--text2)">No</span>';
+  if(col==='is_active')return val?'<span class="badge-s badge-active">Active</span>':'<span class="badge-s badge-inactive">Inactive</span>';
+  if(col==='file_url'&&typeof val==='string')return`<a href="${esc(val)}" target="_blank" style="color:var(--accent)">${esc(val.split('/').pop()?.substring(0,30)||'link')}</a>`;
+  if(col==='msrp'&&val)return'$'+Number(val).toLocaleString();
+  const s=String(val);
+  return esc(s.length>80?s.substring(0,80)+'…':s);
+}
+
+// ========== SHARED ACTIONS ==========
+window._search=function(v){searchTerm=v.trim();page=0;loadTab()};
+window._brandFilter=function(v){brandFilter=v;page=0;loadTab()};
+window._typeFilter=function(v){typeFilter=v;page=0;loadTab()};
+
+window._selectAll=function(checked){
+  document.querySelectorAll('input[data-id]').forEach(cb=>{
+    cb.checked=checked;
+    if(checked)selected.add(cb.dataset.id);else selected.delete(cb.dataset.id);
+  });
+  updateBulkBtn();
+};
+
+window._toggleSel=function(id,checked){
+  if(checked)selected.add(id);else selected.delete(id);
+  const card=document.getElementById('card-'+id);
+  if(card){if(checked)card.classList.add('selected');else card.classList.remove('selected')}
+  updateBulkBtn();
+};
+
+function updateBulkBtn(){
+  const btn=document.getElementById('bulkDelBtn');
+  const cnt=document.getElementById('selCount');
+  if(btn){btn.style.display=selected.size>0?'inline-flex':'none'}
+  if(cnt)cnt.textContent=selected.size;
+}
+
+window._confirmDelete=function(table,id,label){
+  openModal(`
+    <div class="modal-head"><h3>Delete Record</h3><button class="btn-icon" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="confirm-msg">Are you sure you want to delete <strong>${label}</strong>?</p>
+      <p class="confirm-warn">This action cannot be undone. The associated knowledge base chunk will also be removed.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="window._doDelete('${table}','${id}')">Delete</button>
+    </div>`);
+};
+
+window._doDelete=async function(table,id){
+  const{error}=await sb.from(table).delete().eq('id',id);
+  closeModal();
+  if(error){toast(error.message,'error');return}
+  toast('Deleted successfully','success');
+  selected.delete(id);
+  loadTab();
+};
+
+window._bulkDelete=function(table){
+  const n=selected.size;
+  openModal(`
+    <div class="modal-head"><h3>Bulk Delete</h3><button class="btn-icon" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="confirm-msg">Delete <strong>${n} records</strong> from ${table}?</p>
+      <p class="confirm-warn">This cannot be undone.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="window._doBulkDelete('${table}')">Delete ${n} Records</button>
+    </div>`);
+};
+
+window._doBulkDelete=async function(table){
+  const ids=[...selected];
+  let deleted=0;
+  for(let i=0;i<ids.length;i+=20){
+    const batch=ids.slice(i,i+20);
+    const{count,error}=await sb.from(table).delete({count:'exact'}).in('id',batch);
+    if(!error)deleted+=(count||0);
+  }
+  closeModal();
+  toast(`Deleted ${deleted} records`,'success');
+  selected.clear();
+  loadTab();
+};
+
+// ========== EDIT ==========
+window._editProduct=async function(id){
+  const{data}=await sb.from('aiq_products').select('*').eq('id',id).single();
+  if(!data)return;
+  const fields=['brand_name','model','short_description','category','subcategory','product_line','series','msrp','color','finish','color_family','voltage','installation_type','fuel_type','size_class','capacity_cu_ft','noise_dba','weight_lbs','width_inches','height_inches','depth_inches','status','door_style','is_counter_depth','energy_star'];
+  openEditModal('aiq_products',id,data,fields);
+};
+
+window._editRecord=async function(table,id){
+  const{data}=await sb.from(table).select('*').eq('id',id).single();
+  if(!data)return;
+  const skip=['id','created_at','updated_at','created_by','updated_by','organization_id','manufacturer_id','brand_id','raw_data'];
+  const fields=Object.keys(data).filter(k=>!skip.includes(k));
+  openEditModal(table,id,data,fields);
+};
+
+function openEditModal(table,id,data,fields){
+  const rows=fields.map(f=>{
+    const v=data[f];
+    const isB=typeof v==='boolean';
+    const isNum=typeof v==='number'||/msrp|price|cost|count|year|days|inches|lbs|dba|cu_ft|wattage|amperage/.test(f);
+    if(isB)return`<div class="field"><label>${fmtCol(f)}</label><select name="${f}"><option value="true" ${v?'selected':''}>Yes</option><option value="false" ${!v?'selected':''}>No</option></select></div>`;
+    if(f==='status')return`<div class="field"><label>Status</label><select name="status"><option ${v==='active'?'selected':''}>active</option><option ${v==='inactive'?'selected':''}>inactive</option><option ${v==='discontinued'?'selected':''}>discontinued</option><option ${v==='draft'?'selected':''}>draft</option></select></div>`;
+    const long=String(v||'').length>80;
+    if(long)return`<div class="field"><label>${fmtCol(f)}</label><textarea name="${f}">${esc(String(v||''))}</textarea></div>`;
+    return`<div class="field"><label>${fmtCol(f)}</label><input name="${f}" type="${isNum?'number':'text'}" value="${esc(String(v??''))}" ${isNum?'step="any"':''}></div>`;
+  }).join('');
+  
+  openModal(`
+    <div class="modal-head"><h3>Edit Record</h3><button class="btn-icon" onclick="closeModal()">✕</button></div>
+    <div class="modal-body"><form id="editForm">${rows}</form></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="window._saveEdit('${table}','${id}')">Save Changes</button>
+    </div>`);
+}
+
+window._saveEdit=async function(table,id){
+  const form=document.getElementById('editForm');
+  const updates={};
+  form.querySelectorAll('[name]').forEach(el=>{
+    let v=el.value;
+    if(v==='true')v=true;else if(v==='false')v=false;else if(v===''||v==='null')v=null;else if(el.type==='number'&&v)v=parseFloat(v);
+    updates[el.name]=v;
+  });
+  const{error}=await sb.from(table).update(updates).eq('id',id);
+  closeModal();
+  if(error){toast(error.message,'error');return}
+  toast('Saved — knowledge base auto-updated','success');
+  loadTab();
+};
+
+// ========== IMAGE SPECIFIC ==========
+window._previewImage=function(url,label,id){
+  openModal(`
+    <div class="modal-head"><h3>${label}</h3><button class="btn-icon" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <img src="${url}" class="preview-img" onerror="this.alt='Image failed to load'">
+      <div style="display:flex;gap:8px;justify-content:center">
+        <a href="${url}" target="_blank" class="btn btn-ghost btn-sm">Open Original</a>
+        <button class="btn btn-danger btn-sm" onclick="window._confirmDelete('pim_product_images','${id}','this image')">Delete</button>
+      </div>
+    </div>`);
+};
+
+window._reassignImage=function(imgId){
+  openModal(`
+    <div class="modal-head"><h3>Move Image to Product</h3><button class="btn-icon" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Search for target product (brand or model)</label>
+        <input id="reassignSearch" placeholder="e.g. LG LRGL5823S" onkeyup="window._searchProducts(this.value)">
+      </div>
+      <div id="reassignResults" style="max-height:200px;overflow-y:auto"></div>
+    </div>`);
+  window._reassignImgId=imgId;
+};
+
+window._searchProducts=async function(q){
+  if(q.length<2)return;
+  const{data}=await sb.from('aiq_products').select('id,brand_name,model,short_description').or(`model.ilike.%${q}%,brand_name.ilike.%${q}%`).limit(10);
+  document.getElementById('reassignResults').innerHTML=(data||[]).map(p=>
+    `<div style="padding:8px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <span><strong>${esc(p.brand_name)}</strong> ${esc(p.model)} <span style="color:var(--text2);font-size:12px">${esc((p.short_description||'').substring(0,40))}</span></span>
+      <button class="btn btn-primary btn-sm" onclick="window._doReassign('${p.id}')">Move Here</button>
+    </div>`).join('')||'<p style="color:var(--text2);padding:8px">No matches</p>';
+};
+
+window._doReassign=async function(newProductId){
+  const{error}=await sb.from('pim_product_images').update({product_id:newProductId}).eq('id',window._reassignImgId);
+  closeModal();
+  if(error){toast(error.message,'error');return}
+  toast('Image moved successfully','success');
+  loadTab();
+};
+
+// ========== PAGINATION ==========
+function paginationHTML(){
+  const total=totalCount;
+  const pages=Math.ceil(total/PAGE);
+  const from=page*PAGE+1;
+  const to=Math.min((page+1)*PAGE,total);
+  return`<div class="pagination">
+    <span>${from}–${to} of ${total.toLocaleString()}</span>
+    <div class="page-btns">
+      <button class="btn btn-ghost btn-sm" onclick="window._prevPage()" ${page===0?'disabled':''}>← Prev</button>
+      <span style="padding:6px 10px;color:var(--text2)">Page ${page+1} / ${pages||1}</span>
+      <button class="btn btn-ghost btn-sm" onclick="window._nextPage()" ${page>=pages-1?'disabled':''}>Next →</button>
+    </div>
+  </div>`;
+}
+
+window._prevPage=function(){if(page>0){page--;selected.clear();loadTab()}};
+window._nextPage=function(){if((page+1)*PAGE<totalCount){page++;selected.clear();loadTab()}};
+
+// ========== UTILS ==========
+function esc(s){return s?s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'):''}
+
+function openModal(html){
+  document.getElementById('modal').innerHTML=html;
+  document.getElementById('modalBg').classList.add('open');
+}
+window.closeModal=function(){document.getElementById('modalBg').classList.remove('open')};
+
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+(type||'');t.style.display='block';
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>t.style.display='none',3500);
+}
+
+boot();
+</script>
+</body>
+</html>
