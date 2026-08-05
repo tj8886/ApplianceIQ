@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v3 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v3.7-2026-08-04"/>
+<meta name="aiq-version" content="pim-scraper-v3.8-2026-08-04"/>
 <!-- VERSION: PIM Scraper v3.5 — Brand content capture + auto-skip useless URLs -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
@@ -197,7 +197,7 @@ header .right{display:flex;align-items:center;gap:12px}
 <body>
 <div id="app">
   <header>
-    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.7</span></div>
+    <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v3.8</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
@@ -520,7 +520,7 @@ async function callTier2(partial,fallback){
   const key=localStorage.getItem('aiq_google_key');
   if(!key){logEntry('Tier 2 skip: no Google key','err');return null}
   logEntry('Tier 2 → '+geminiModel+'…');
-  const sys='You extract COMPREHENSIVE appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description (1-2 sentence summary), product_description (the FULL marketing overview/description paragraph — the detailed text that describes the product, its purpose, and how it fits the customer\'s life), category, subcategory (specific type: French Door, Side-by-Side, Top Freezer, Gas Freestanding, Gas Slide-In, Electric Freestanding, Induction Slide-In, Dual Fuel Freestanding, Front Load, Top Load, Under-Cabinet, Chimney, Island, Chest, Upright, Countertop, Over-the-Range, Drawer, Single Wall Oven, Double Wall Oven, etc), msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string like "120V"), amperage (number), wattage (number), energy_star (boolean), installation_type (string like "Freestanding" or "Built-in"), series (string), upc (string), specs (object of ADDITIONAL key-value pairs NOT already in top-level fields — do NOT duplicate voltage/dimensions/color/capacity here), images (array of {url,type}), availability, features (array of KEY FEATURE strings exactly as listed — e.g. "Fingerprint Resistant", "Humidity-Controlled Crispers", "Adjustable Gallon Door Bins", "FreshFlow™ Produce Preserver", "SmartHQ™ WiFi Connected"), documents (array of {url,title,doc_type} — IMPORTANT: Look for ALL document links: spec sheets (doc_type:"spec_sheet"), installation manuals/guides (doc_type:"installation_manual"), use & care manuals (doc_type:"use_care_manual"), energy guides/energy star certificates (doc_type:"energy_guide"), quick start guides (doc_type:"quick_start_guide"), dimensional diagrams/drawings (doc_type:"dimensional_diagram"), product brochures (doc_type:"product_brochure"), warranty documents (doc_type:"warranty")). IMPORTANT: Put dimensions, voltage, amperage, wattage, capacity, color, finish, energy_star, installation_type as TOP-LEVEL fields, not inside specs. The specs object is only for additional specs like noise level, cycles, fuel type, controls, door style, refrigerant type, certifications, etc. Extract EVERY feature bullet point and EVERY downloadable document/manual link you can find. Omit fields you do not know. Return ONLY the JSON object, no other text.';
+  const sys='You extract COMPREHENSIVE appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description (1-2 sentence summary), product_description (the FULL marketing overview/description paragraph — the detailed text that describes the product, its purpose, and how it fits the customer\'s life), category, subcategory (specific type: French Door, Side-by-Side, Top Freezer, Gas Freestanding, Gas Slide-In, Electric Freestanding, Induction Slide-In, Dual Fuel Freestanding, Front Load, Top Load, Under-Cabinet, Chimney, Island, Chest, Upright, Countertop, Over-the-Range, Drawer, Single Wall Oven, Double Wall Oven, etc), msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string like "120V"), amperage (number), wattage (number), energy_star (boolean), installation_type (string like "Freestanding" or "Built-in"), series (string), upc (string), specs (object of ADDITIONAL key-value pairs NOT already in top-level fields — do NOT duplicate voltage/dimensions/color/capacity here), images (array of {url,type} — ONLY include actual product photos like front view, angle view, interior, lifestyle-in-kitchen, detail shots, and dimensional drawings. DO NOT include social media icons, logos, banners, UI elements, navigation images, blog photos, or any non-product images), availability, features (array of KEY FEATURE strings exactly as listed — e.g. "Fingerprint Resistant", "Humidity-Controlled Crispers", "Adjustable Gallon Door Bins", "FreshFlow™ Produce Preserver", "SmartHQ™ WiFi Connected"), documents (array of {url,title,doc_type} — IMPORTANT: Look for ALL document links: spec sheets (doc_type:"spec_sheet"), installation manuals/guides (doc_type:"installation_manual"), use & care manuals (doc_type:"use_care_manual"), energy guides/energy star certificates (doc_type:"energy_guide"), quick start guides (doc_type:"quick_start_guide"), dimensional diagrams/drawings (doc_type:"dimensional_diagram"), product brochures (doc_type:"product_brochure"), warranty documents (doc_type:"warranty")). IMPORTANT: Put dimensions, voltage, amperage, wattage, capacity, color, finish, energy_star, installation_type as TOP-LEVEL fields, not inside specs. The specs object is only for additional specs like noise level, cycles, fuel type, controls, door style, refrigerant type, certifications, etc. Extract EVERY feature bullet point and EVERY downloadable document/manual link you can find. Omit fields you do not know. Return ONLY the JSON object, no other text.';
   const usr=partial?'Partial data:\n'+JSON.stringify(partial,null,2)+'\n\nFill in missing fields.':'Extract appliance product data:\n'+(fallback||'').substring(0,8000);
   try{
     const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+key,{
@@ -1065,19 +1065,36 @@ async function saveToPim(idx){
   const productId=saved?.id;
   let assetLog=[];
 
-  // Save images
+  // Save images (with junk filter)
   if(d.images&&d.images.length>0&&productId){
     let imgCount=0;
+    const JUNK_IMG_PATTERNS=[
+      'twitter','facebook','fb.com','instagram','youtube','ytimg','pinterest','linkedin','tiktok',
+      'icon','logo','badge','banner','avatar','profile-pic','placeholder','no-image','noimage',
+      'pixel','tracking','beacon','spacer','1x1','80x80','blog','customer-support','customer_support',
+      'footer','header-bg','navigation','nav-','checkout','cart-icon','payment-icon',
+      'social','share-icon','/people/','/team/','/chef/','lifestyle','editorial',
+      'promo','sale-banner','sprite','loader','spinner','arrow','chevron','close-btn','menu-icon',
+      'search-icon','star-rating','checkbox','radio-btn','tooltip','dropdown',
+      'cookie','gdpr','consent','newsletter','popup','modal-bg','overlay'
+    ];
     for(let i=0;i<d.images.length;i++){
       const img=d.images[i];
       if(!img?.url)continue;
       const imgUrl=String(img.url);
+      const lu=imgUrl.toLowerCase();
+      // Skip junk images
+      if(JUNK_IMG_PATTERNS.some(p=>lu.includes(p)))continue;
+      // Skip data URIs and tiny images
+      if(lu.startsWith('data:'))continue;
+      // Skip non-image URLs
+      if(!lu.match(/\.(jpg|jpeg|png|gif|webp|avif|svg)/i)&&!lu.includes('/image')&&!lu.includes('/photo')&&!lu.includes('Product_Shots')&&!lu.includes('/cdn/'))continue;
       const imgRec={
         product_id:productId,brand_id:br?.id||null,
         image_type:img.type||'product',file_url:imgUrl,
         alt_text:(d.product_name||d.model||'')+' - '+(img.type||'image'),
-        is_primary:i===0,display_order:i,source:'scraper_v2',
-        mime_type:imgUrl.includes('.png')?'image/png':imgUrl.includes('.webp')?'image/webp':'image/jpeg'
+        is_primary:i===0&&imgCount===0,display_order:imgCount,source:'scraper_v3',
+        mime_type:lu.includes('.png')?'image/png':lu.includes('.webp')?'image/webp':lu.includes('.svg')?'image/svg+xml':'image/jpeg'
       };
       const{error:ie}=await sb.from('pim_product_images').upsert(imgRec,{onConflict:'product_id,file_url',ignoreDuplicates:true});
       if(!ie)imgCount++;
