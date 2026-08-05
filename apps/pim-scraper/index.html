@@ -1069,15 +1069,29 @@ async function saveToPim(idx){
   if(d.images&&d.images.length>0&&productId){
     let imgCount=0;
     const JUNK_IMG_PATTERNS=[
+      // Social media
       'twitter','facebook','fb.com','instagram','youtube','ytimg','pinterest','linkedin','tiktok',
+      // UI elements
       'icon','logo','badge','banner','avatar','profile-pic','placeholder','no-image','noimage',
-      'pixel','tracking','beacon','spacer','1x1','80x80','blog','customer-support','customer_support',
-      'footer','header-bg','navigation','nav-','checkout','cart-icon','payment-icon',
-      'social','share-icon','/people/','/team/','/chef/','lifestyle','editorial',
-      'promo','sale-banner','sprite','loader','spinner','arrow','chevron','close-btn','menu-icon',
-      'search-icon','star-rating','checkbox','radio-btn','tooltip','dropdown',
-      'cookie','gdpr','consent','newsletter','popup','modal-bg','overlay'
+      'pixel','tracking','beacon','spacer','1x1','80x80','sprite','loader','spinner',
+      'arrow','chevron','close-btn','menu-icon','search-icon','star-rating','checkbox',
+      'radio-btn','tooltip','dropdown','cookie','gdpr','consent','newsletter','popup','modal-bg','overlay',
+      // Site-wide assets
+      'blog','customer-support','customer_support','footer','header-bg','navigation','nav-',
+      'checkout','cart-icon','payment-icon','social','share-icon','/people/','/team/','/chef/',
+      'lifestyle','editorial','promo','sale-banner',
+      // Theme/template assets (caught from Bosch/BlueStar cleanup)
+      '/themes/','assets/img/','assets/images/','/static/btn','/static/cta',
+      'mega-menu','-menu.jpg','-menu.png','-menu.webp','-menu-',
+      'Cart-','Calc-','Speech-','map-white','mobilepin',
+      'request-quote','manuals.jpg','simmer.jpg','_nav.',
+      'performance_why','prizer-heritage','coty-','customization-menu',
+      'kitchen-design','column-fridge-menu','judges',
+      'bg-warranty','bg-customer','bg-proud','ccccc.jpg','usa_circle','download_1.jpg',
+      '{width}'
     ];
+    // Also reject any URL that's clearly a duplicate shared site asset
+    const SHARED_ASSET_URLS=new Set(); // populated per-session to catch repeats
     for(let i=0;i<d.images.length;i++){
       const img=d.images[i];
       if(!img?.url)continue;
