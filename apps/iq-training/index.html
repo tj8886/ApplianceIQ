@@ -1562,14 +1562,19 @@ async function sendTrainer() {
   TRAINER.history.push(userMsg); trainerRender(userMsg);
   var thinking = trainerRender({ msg_role:'assistant', content:'Thinking…' });
   thinking.classList.add('thinking');
+  var sysPrompt = 'You are the ApplianceIQ AI Trainer — an expert appliance sales training coach.\n\n'
+    + 'CONTEXT:\n' + (TRAINER.ctx.volume||'') + '\nChapter: ' + (TRAINER.ctx.chapter||'') + '\n\n'
+    + 'LESSON CONTENT (grounding — answer from this):\n' + (TRAINER.lessonText||'No lesson loaded.').substring(0,16000) + '\n\n'
+    + 'RULES:\n- Answer based on the lesson content above\n- Keep responses concise (2-3 paragraphs)\n- Use real examples from the appliance sales floor\n- If asked to quiz, create questions from the lesson\n- Canadian context (CAD pricing, building codes, EnerGuide)\n- Be encouraging but direct';
+  var apiMessages = TRAINER.history.filter(function(m){ return m.content !== 'Thinking…'; }).map(function(m){ return { role: m.msg_role === 'user' ? 'user' : 'assistant', content: m.content }; });
   try {
-    var resp = await fetch('/.netlify/functions/ai-trainer', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ context: TRAINER.ctx, lessonText: TRAINER.lessonText, messages: TRAINER.history.map(function(m){ return { role: m.msg_role, content: m.content }; }) })
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sysPrompt, messages: apiMessages })
     });
     var data = await resp.json();
     thinking.remove();
-    var replyText = data.reply || data.error || 'Sorry — the AI Trainer could not answer just now.';
+    var replyText = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : 'Sorry — could not generate a response.';
     var aiMsg = { msg_role:'assistant', content:replyText };
     TRAINER.history.push(aiMsg); trainerRender(aiMsg);
   } catch(e) { thinking.remove(); trainerRender({ msg_role:'assistant', content:'Connection problem — please try again.' }); }
