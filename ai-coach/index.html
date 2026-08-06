@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1f3d">
+<title>AI Coach | ApplianceIQ</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f1f3d'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='%2314b8a6' font-weight='bold'>IQ</text></svg>">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --navy:#0f1f3d;--navy-light:#162a50;--navy-mid:#1a3461;
+  --surface:#ffffff;--surface-dim:#f4f6f9;--surface-alt:#eef1f6;
+  --teal:#14b8a6;--teal-dark:#0d9488;--teal-glow:rgba(20,184,166,.1);
+  --text:#0f1f3d;--text-dim:#5a6a85;--text-light:#8896aa;
+  --border:#e2e7ef;--border-focus:#14b8a6;
+  --success:#22c55e;--warn:#f59e0b;--danger:#ef4444;--info:#3b82f6;
+  --radius:10px;--radius-lg:14px;
+}
+html,body{height:100%;font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--navy);color:var(--text)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font-family:inherit}
+
+/* ── Layout ── */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* ── Sidebar ── */
+.sidebar{width:280px;background:var(--navy);display:flex;flex-direction:column;border-right:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.sidebar-top{padding:20px 18px;border-bottom:1px solid rgba(255,255,255,.06)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.brand-mark{width:30px;height:30px;background:var(--teal);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--navy);letter-spacing:-.5px}
+.brand-text{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.3px}
+.brand-text span{color:var(--teal)}
+.brand-sub{font-size:9px;color:rgba(255,255,255,.35);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;display:block;margin-top:1px}
+.btn-new{width:100%;padding:9px 0;background:rgba(255,255,255,.06);color:rgba(255,255,255,.8);border-radius:var(--radius);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;border:1px solid rgba(255,255,255,.08)}
+.btn-new:hover{background:rgba(20,184,166,.12);color:var(--teal);border-color:rgba(20,184,166,.2)}
+
+.nav-section{padding:16px 18px 6px}
+.nav-label{font-size:9px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:rgba(255,255,255,.25)}
+.nav-links{padding:4px 10px;display:flex;flex-direction:column;gap:1px}
+.nav-link{padding:8px 10px;border-radius:7px;font-size:13px;font-weight:500;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:9px;transition:all .12s;cursor:pointer}
+.nav-link:hover{background:rgba(255,255,255,.05);color:rgba(255,255,255,.85)}
+.nav-link .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.nav-link .link-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-link .link-time{font-size:10px;color:rgba(255,255,255,.2)}
+
+.sidebar-convos{flex:1;overflow-y:auto;padding-bottom:8px}
+.sidebar-convos::-webkit-scrollbar{width:3px}
+.sidebar-convos::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+.sidebar-bottom{padding:14px 18px;border-top:1px solid rgba(255,255,255,.06)}
+.api-row{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.4);cursor:pointer;padding:4px 0;transition:color .15s}
+.api-row:hover{color:rgba(255,255,255,.7)}
+.api-dot{width:7px;height:7px;border-radius:50%}
+.api-dot.on{background:var(--success);box-shadow:0 0 6px rgba(34,197,94,.4)}
+.api-dot.off{background:var(--danger)}
+
+/* ── Main ── */
+.main{flex:1;display:flex;flex-direction:column;background:var(--surface-dim);min-width:0}
+
+/* ── Welcome ── */
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;overflow-y:auto}
+.welcome-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;background:var(--teal-glow);color:var(--teal-dark);font-size:11px;font-weight:600;letter-spacing:.3px;margin-bottom:20px}
+.welcome-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse-dot 2s infinite}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+.welcome h2{font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-.5px;margin-bottom:6px;text-align:center}
+.welcome h2 span{color:var(--teal-dark)}
+.welcome .sub{color:var(--text-dim);font-size:14px;max-width:480px;text-align:center;line-height:1.6;margin-bottom:36px}
+
+.modules-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:640px;margin-bottom:32px}
+.mod-chip{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.mod-chip:hover{border-color:var(--teal);color:var(--teal-dark);background:var(--teal-glow)}
+.mod-chip .mod-dot{width:5px;height:5px;border-radius:50%}
+
+.cmd-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:560px;width:100%}
+.cmd-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:all .15s;text-align:left}
+.cmd-card:hover{border-color:var(--teal);box-shadow:0 4px 16px rgba(20,184,166,.08);transform:translateY(-1px)}
+.cmd-card .cmd-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.cmd-card h4{font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px}
+.cmd-card p{font-size:12px;color:var(--text-dim);line-height:1.45}
+
+/* ── Chat ── */
+.chat{flex:1;display:none;flex-direction:column}
+.chat.active{display:flex}
+.chat-top{padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.chat-top .coach-tag{display:flex;align-items:center;gap:7px;padding:3px 12px 3px 3px;border-radius:16px;background:var(--surface-dim);font-size:12px;font-weight:600;color:var(--text)}
+.coach-tag .tag-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
+.chat-top .eco-label{margin-left:auto;font-size:11px;color:var(--text-light);display:flex;align-items:center;gap:5px}
+.eco-label::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--teal)}
+.chat-top .btn-back{padding:4px 10px;border-radius:6px;font-size:12px;color:var(--text-dim);border:1px solid var(--border);transition:all .12s}
+.chat-top .btn-back:hover{border-color:var(--teal);color:var(--teal-dark)}
+
+.messages{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.messages::-webkit-scrollbar{width:5px}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px}
+
+.msg{display:flex;gap:10px;max-width:82%;animation:fadeUp .25s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.user{margin-left:auto;flex-direction:row-reverse}
+.msg-av{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;margin-top:2px}
+.msg.user .msg-av{background:var(--navy);font-size:9px}
+.msg-body{border-radius:14px;padding:11px 15px;font-size:14px;line-height:1.6;color:var(--text)}
+.msg.user .msg-body{background:var(--navy);color:#fff;border-bottom-right-radius:4px}
+.msg.assistant .msg-body{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.assistant .msg-body strong{font-weight:600}
+.msg.assistant .msg-body code{background:var(--surface-dim);padding:1px 5px;border-radius:4px;font-size:13px;font-family:'SF Mono',Consolas,monospace}
+.msg.assistant .msg-body ul,.msg.assistant .msg-body ol{margin:6px 0;padding-left:18px}
+.msg.assistant .msg-body li{margin:3px 0}
+.msg.assistant .msg-body p{margin:5px 0}
+.msg.assistant .msg-body p:first-child{margin-top:0}
+.msg.assistant .msg-body p:last-child{margin-bottom:0}
+.msg.assistant .msg-body h3,.msg.assistant .msg-body h4{font-size:13px;font-weight:700;margin:10px 0 4px;color:var(--navy)}
+
+/* Data cards in chat */
+.data-card{background:var(--surface-dim);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin:8px 0;font-size:13px}
+.data-card .dc-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--teal-dark);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.data-card .dc-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.data-card .dc-row:last-child{border:none}
+.data-card .dc-label{color:var(--text-dim);font-weight:500}
+.data-card .dc-value{font-weight:600;color:var(--text)}
+.data-card .dc-link{color:var(--teal-dark);text-decoration:none;font-weight:600;font-size:12px;display:inline-flex;align-items:center;gap:4px;margin-top:6px}
+.data-card .dc-link:hover{text-decoration:underline}
+
+.typing{display:flex;gap:4px;padding:6px 0}
+.typing span{width:5px;height:5px;border-radius:50%;background:var(--teal);animation:blink 1.4s infinite both}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+.input-area{padding:14px 20px;border-top:1px solid var(--border);background:var(--surface)}
+.input-row{display:flex;align-items:flex-end;gap:8px}
+.input-wrap{flex:1;display:flex;align-items:flex-end;background:var(--surface-dim);border:1.5px solid var(--border);border-radius:var(--radius);padding:4px 4px 4px 14px;transition:border-color .15s}
+.input-wrap:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px rgba(20,184,166,.08)}
+.input-wrap textarea{flex:1;border:none;background:none;resize:none;font-size:14px;line-height:1.5;color:var(--text);padding:7px 0;max-height:120px;outline:none}
+.input-wrap textarea::placeholder{color:var(--text-light)}
+.btn-send{width:34px;height:34px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0}
+.btn-send:hover{background:var(--teal-dark)}
+.btn-send:disabled{opacity:.3;cursor:default}
+.btn-send svg{width:16px;height:16px}
+.input-hint{font-size:10px;color:var(--text-light);margin-top:6px;text-align:center}
+
+/* ── System context bar ── */
+.ctx-bar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.ctx-tag{font-size:10px;padding:3px 8px;border-radius:10px;background:var(--surface-dim);color:var(--text-dim);font-weight:500;border:1px solid var(--border)}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(15,31,61,.6);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:var(--radius-lg);padding:28px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2);transform:scale(.96);transition:transform .2s}
+.overlay.open .modal{transform:scale(1)}
+.modal h3{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.modal p{font-size:12px;color:var(--text-dim);margin-bottom:18px;line-height:1.5}
+.modal label{font-size:11px;font-weight:600;color:var(--text);display:block;margin-bottom:5px}
+.modal input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;outline:none;color:var(--text);transition:border-color .15s}
+.modal input:focus{border-color:var(--teal)}
+.modal-btns{display:flex;gap:8px;margin-top:18px;justify-content:flex-end}
+.modal .mbtn{padding:8px 18px;border-radius:var(--radius);font-size:12px;font-weight:600}
+.modal .mbtn-ghost{color:var(--text-dim);border:1px solid var(--border)}
+.modal .mbtn-ghost:hover{background:var(--surface-dim)}
+.modal .mbtn-fill{background:var(--navy);color:#fff}
+.modal .mbtn-fill:hover{background:var(--navy-light)}
+
+/* ── Mobile ── */
+.mob-bar{display:none;padding:10px 14px;background:var(--navy);border-bottom:1px solid rgba(255,255,255,.06);align-items:center;gap:10px}
+.mob-bar .hamburger{color:#fff;padding:4px}
+.mob-bar h1{font-size:14px;font-weight:700;color:#fff}
+.mob-bar h1 span{color:var(--teal)}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:49}
+
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .25s}
+  .sidebar.open{transform:none}
+  .sb-overlay.open{display:block}
+  .mob-bar{display:flex}
+  .cmd-grid{grid-template-columns:1fr}
+  .modules-row{gap:6px}
+  .msg{max-width:90%}
+  .messages{padding:16px}
+  .input-area{padding:10px 14px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="mob-bar">
+    <button class="hamburger" onclick="toggleSB()"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h14M3 10h14M3 14h14"/></svg></button>
+    <h1>Appliance<span>IQ</span> Coach</h1>
+  </div>
+  <div class="sb-overlay" onclick="toggleSB()"></div>
+
+  <div class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <div class="brand-mark">IQ</div>
+        <div class="brand-text">Appliance<span>IQ</span><span class="brand-sub">AI Coach</span></div>
+      </div>
+      <button class="btn-new" onclick="newChat()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 1v12M1 7h12"/></svg>New conversation</button>
+    </div>
+    <div class="nav-section"><span class="nav-label">Conversations</span></div>
+    <div class="sidebar-convos" id="convList"></div>
+    <div class="sidebar-bottom">
+      <div class="api-row" onclick="openModal()">
+        <span class="api-dot" id="apiDot"></span>
+        <span id="apiLabel">Set API key</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Welcome -->
+    <div class="welcome" id="welcomeScreen">
+      <div class="welcome-badge">System-wide AI assistant</div>
+      <h2>What can I help you with<span>?</span></h2>
+      <p class="sub">I have access to your entire ApplianceIQ ecosystem — CRM, Spec IQ, Training, Up System, Analytics, Field, and Product IQ. Ask me anything or give me a command.</p>
+
+      <div class="modules-row" id="moduleRow"></div>
+
+      <div class="cmd-grid">
+        <div class="cmd-card" onclick="go(`Show me my open deals in the CRM pipeline and flag any that haven't been touched in 7+ days`)">
+          <div class="cmd-icon" style="background:rgba(59,130,246,.1)"><svg width="18" height="18" fill="none" stroke="#3b82f6" stroke-width="2" viewBox="0 0 24 24"><path d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <h4>CRM Pipeline Check</h4>
+          <p>Open deals, stale contacts, and next actions</p>
+        </div>
+        <div class="cmd-card" onclick="go(`Where am I at with my training? Show my progress, certifications, and what I should work on next.`)">
+          <div class="cmd-icon" style="background:rgba(34,197,94,.1)"><svg width="18" height="18" fill="none" stroke="#22c55e" stroke-width="2" viewBox="0 0 24 24"><path d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342"/></svg></div>
+          <h4>Training Progress</h4>
+          <p>Certifications, quiz scores, and next lessons</p>
+        </div>
+        <div class="cmd-card" onclick="go(`Compare Sub-Zero vs Thermador built-in refrigerators — give me specs, selling angles, and objection handlers`)">
+          <div class="cmd-icon" style="background:rgba(168,85,247,.1)"><svg width="18" height="18" fill="none" stroke="#a855f7" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6l3 1m0 0l-3 9a5 5 0 006 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5 5 0 006 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg></div>
+          <h4>Product Showdown</h4>
+          <p>Head-to-head comparisons with selling angles</p>
+        </div>
+        <div class="cmd-card" onclick="go(`What's the status of my latest Spec IQ packages? Any quotes pending customer acceptance?`)">
+          <div class="cmd-icon" style="background:rgba(245,158,11,.1)"><svg width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2" viewBox="0 0 24 24"><path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg></div>
+          <h4>Spec IQ Status</h4>
+          <p>Packages, quotes, and order pipeline</p>
+        </div>
+        <div class="cmd-card" onclick="go(`Who's up next on the sales floor? Show me the current Up System queue and any missed ups today.`)">
+          <div class="cmd-icon" style="background:rgba(239,68,68,.1)"><svg width="18" height="18" fill="none" stroke="#ef4444" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg></div>
+          <h4>Floor Queue</h4>
+          <p>Up system rotation, shifts, and missed ups</p>
+        </div>
+        <div class="cmd-card" onclick="go(`Give me a sales coaching session — customer wants a full kitchen package under $8,000. Help me build and close it.`)">
+          <div class="cmd-icon" style="background:rgba(20,184,166,.1)"><svg width="18" height="18" fill="none" stroke="#14b8a6" stroke-width="2" viewBox="0 0 24 24"><path d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z"/></svg></div>
+          <h4>Sales Coaching</h4>
+          <p>Deal coaching, objections, and closing strategies</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat" id="chatView">
+      <div class="chat-top">
+        <div class="coach-tag"><span class="tag-dot" id="tagDot" style="background:var(--teal)">IQ</span><span id="tagName">AI Coach</span></div>
+        <span class="eco-label">Ecosystem connected</span>
+        <button class="btn-back" onclick="newChat()">New chat</button>
+      </div>
+      <div class="messages" id="msgArea"></div>
+      <div class="input-area">
+        <div class="ctx-bar" id="ctxBar"></div>
+        <div class="input-row">
+          <div class="input-wrap">
+            <textarea id="inp" rows="1" placeholder="Ask anything or run a command…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+          </div>
+          <button class="btn-send" id="btnSend" onclick="send()"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg></button>
+        </div>
+        <div class="input-hint">Connected to CRM · Spec IQ · Academy · Up System · Command Center · IQ Field · Product IQ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3>Anthropic API Key</h3>
+    <p>Stored in your browser only. Sent directly to Anthropic — never touches our servers.</p>
+    <label>API Key</label>
+    <input type="password" id="keyInput" placeholder="sk-ant-api03-…" autocomplete="off">
+    <div class="modal-btns">
+      <button class="mbtn mbtn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="mbtn mbtn-fill" onclick="saveKey()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMTkwNjEsImV4cCI6MjA1ODY5NTA2MX0.FgGW0BAb1AuMFaMBmOkqjVaOx1JxRvHASrzP3LNpMrg');
+
+// ── App URLs ──
+const APPS={
+  crm:{name:'CRM & Sales',url:'https://applianceiq-crm.netlify.app',color:'#3b82f6'},
+  speciq:{name:'Spec IQ',url:'https://appliance-spec-iq.netlify.app',color:'#f59e0b'},
+  academy:{name:'IQ Academy',url:'https://iqacademy-appliance-training.netlify.app',color:'#22c55e'},
+  up:{name:'Up System',url:'https://applianceiq-iq-up-system.netlify.app',color:'#ef4444'},
+  command:{name:'Command Center',url:'https://applianceiq-command-center.netlify.app',color:'#a855f7'},
+  field:{name:'IQ Field',url:'https://applianceiq-ai-field.netlify.app',color:'#06b6d4'},
+  pim:{name:'Product IQ',url:'https://applianceiq-product-iq-pim.netlify.app',color:'#ec4899'},
+  scraper:{name:'PIM Scraper',url:'https://applianceiq-pim-scraper.netlify.app',color:'#8b5cf6'},
+};
+
+// ── Module chips ──
+document.getElementById('moduleRow').innerHTML=Object.values(APPS).map(a=>
+  `<a href="${a.url}" target="_blank" class="mod-chip"><span class="mod-dot" style="background:${a.color}"></span>${a.name}</a>`
+).join('');
+
+// ── State ──
+let convos=JSON.parse(localStorage.getItem('aiq_coach2')||'[]');
+let cid=null, msgs=[], streaming=false, sysCtx={};
+
+// ── Init ──
+renderConvos();
+updateApi();
+loadSystemContext();
+
+// ── System context: preload ecosystem data ──
+async function loadSystemContext(){
+  try{
+    const [prods,brands,vendors,ccr]=await Promise.all([
+      sb.from('aiq_products').select('id,name,brand,category,subcategory,model_number').limit(88),
+      sb.from('brand_catalog').select('id,name,tier,country_of_origin,brand_story_short').limit(60),
+      sb.from('mfr_vendors').select('id,name,rightFor,sellingAngles,specGuides').eq('status','active').limit(40),
+      sb.from('competitive_cross_reference').select('id,brand_a,model_a,brand_b,model_b,category,comparison_summary').limit(30),
+    ]);
+    sysCtx={
+      products:prods.data||[], brands:brands.data||[],
+      vendors:vendors.data||[], crossRef:ccr.data||[]
+    };
+    renderCtx();
+  }catch(e){console.log('ctx skip',e)}
+}
+
+function renderCtx(){
+  const el=document.getElementById('ctxBar');
+  const c=[];
+  if(sysCtx.products?.length)c.push(`${sysCtx.products.length} products`);
+  if(sysCtx.brands?.length)c.push(`${sysCtx.brands.length} brands`);
+  if(sysCtx.vendors?.length)c.push(`${sysCtx.vendors.length} vendors`);
+  el.innerHTML=c.map(t=>`<span class="ctx-tag">${t}</span>`).join('');
+}
+
+// ── Intent detection & data fetching ──
+async function fetchContextForQuery(text){
+  const t=text.toLowerCase();
+  let extra=[];
+
+  // CRM
+  if(t.includes('crm')||t.includes('deal')||t.includes('pipeline')||t.includes('contact')||t.includes('customer')||t.includes('lead')){
+    try{
+      const[deals,contacts]=await Promise.all([
+        sb.from('crm_deals').select('*').order('updated_at',{ascending:false}).limit(20),
+        sb.from('crm_contacts').select('id,first_name,last_name,email,phone,company,status,created_at').order('created_at',{ascending:false}).limit(20),
+      ]);
+      if(deals.data?.length) extra.push(`CRM DEALS (${deals.data.length} recent):\n${JSON.stringify(deals.data.map(d=>({id:d.id,title:d.title||d.name,stage:d.stage,value:d.value||d.amount,contact:d.contact_name,updated:d.updated_at})),null,1)}`);
+      if(contacts.data?.length) extra.push(`CRM CONTACTS (${contacts.data.length} recent):\n${JSON.stringify(contacts.data.map(c=>({id:c.id,name:`${c.first_name||''} ${c.last_name||''}`.trim(),email:c.email,company:c.company,status:c.status})),null,1)}`);
+    }catch(e){extra.push('CRM data: query failed — tables may need auth')}
+  }
+
+  // Spec IQ
+  if(t.includes('spec')||t.includes('quote')||t.includes('package')||t.includes('order')||t.includes('invoice')){
+    try{
+      const pkgs=await sb.from('speciq_packages').select('*').order('created_at',{ascending:false}).limit(15);
+      if(pkgs.data?.length) extra.push(`SPEC IQ PACKAGES (${pkgs.data.length}):\n${JSON.stringify(pkgs.data.map(p=>({id:p.id,name:p.package_name||p.name,status:p.status,total:p.total_price||p.grand_total,customer:p.customer_name,created:p.created_at})),null,1)}`);
+    }catch(e){extra.push('Spec IQ: query failed')}
+  }
+
+  // Training / Academy
+  if(t.includes('train')||t.includes('academ')||t.includes('certif')||t.includes('badge')||t.includes('quiz')||t.includes('progress')||t.includes('learn')){
+    try{
+      const[quizzes,certs]=await Promise.all([
+        sb.from('academy_brand_quiz_scores').select('*').order('completed_at',{ascending:false}).limit(15),
+        sb.from('academy_brand_certifications').select('*').order('earned_at',{ascending:false}).limit(10),
+      ]);
+      if(quizzes.data?.length) extra.push(`QUIZ SCORES (${quizzes.data.length}):\n${JSON.stringify(quizzes.data,null,1)}`);
+      if(certs.data?.length) extra.push(`CERTIFICATIONS (${certs.data.length}):\n${JSON.stringify(certs.data,null,1)}`);
+    }catch(e){}
+    try{
+      const bp=await sb.from('academy_brand_progress').select('*').limit(20);
+      if(bp.data?.length) extra.push(`BRAND TRAINING PROGRESS (${bp.data.length}):\n${JSON.stringify(bp.data,null,1)}`);
+    }catch(e){extra.push('Training data: some tables may need auth')}
+  }
+
+  // Up System
+  if(t.includes('up system')||t.includes('queue')||t.includes('floor')||t.includes('rotation')||t.includes('shift')||t.includes('missed up')||t.includes('who\'s up')||t.includes('whos up')){
+    try{
+      const[queue,shifts]=await Promise.all([
+        sb.from('iq_up_queue_entries').select('*').order('position',{ascending:true}).limit(10),
+        sb.from('iq_shift_records').select('*').order('created_at',{ascending:false}).limit(10),
+      ]);
+      if(queue.data?.length) extra.push(`UP QUEUE (${queue.data.length} entries):\n${JSON.stringify(queue.data,null,1)}`);
+      if(shifts.data?.length) extra.push(`RECENT SHIFTS:\n${JSON.stringify(shifts.data,null,1)}`);
+    }catch(e){extra.push('Up System: query failed')}
+  }
+
+  // Field
+  if(t.includes('field')||t.includes('store walk')||t.includes('checklist')||t.includes('action plan')){
+    try{
+      const resp=await sb.from('field_checklist_responses').select('*').order('created_at',{ascending:false}).limit(10);
+      if(resp.data?.length) extra.push(`FIELD RESPONSES (${resp.data.length}):\n${JSON.stringify(resp.data,null,1)}`);
+    }catch(e){}
+  }
+
+  // Product lookups
+  if(t.includes('product')||t.includes('model')||t.includes('brand')||t.includes('compare')||t.includes('spec')){
+    // Already in sysCtx, but look for specific brand/product mentions
+    const brandNames=(sysCtx.brands||[]).map(b=>b.name?.toLowerCase()).filter(Boolean);
+    const mentioned=brandNames.filter(bn=>t.includes(bn));
+    if(mentioned.length){
+      try{
+        const prods=await sb.from('aiq_products').select('*').or(mentioned.map(m=>`brand.ilike.%${m}%`).join(','));
+        if(prods.data?.length) extra.push(`PRODUCTS MATCHING [${mentioned.join(', ')}] (${prods.data.length}):\n${JSON.stringify(prods.data.slice(0,15),null,1)}`);
+      }catch(e){}
+    }
+  }
+
+  // Warranty / recalls
+  if(t.includes('warranty')||t.includes('recall')||t.includes('service')){
+    try{
+      const[war,rec]=await Promise.all([
+        sb.from('aiq_warranty_policies').select('id,brand,category,warranty_years,warranty_summary').limit(20),
+        sb.from('aiq_recalls').select('id,brand,model,recall_date,reason,status').order('recall_date',{ascending:false}).limit(15),
+      ]);
+      if(war.data?.length) extra.push(`WARRANTY POLICIES (${war.data.length}):\n${JSON.stringify(war.data,null,1)}`);
+      if(rec.data?.length) extra.push(`RECENT RECALLS (${rec.data.length}):\n${JSON.stringify(rec.data.slice(0,10),null,1)}`);
+    }catch(e){}
+  }
+
+  // Installation
+  if(t.includes('install')||t.includes('rough-in')||t.includes('electrical')||t.includes('plumbing')||t.includes('vent')){
+    try{
+      const inst=await sb.from('installation_requirements').select('*').limit(14);
+      if(inst.data?.length) extra.push(`INSTALLATION REQUIREMENTS:\n${JSON.stringify(inst.data,null,1)}`);
+    }catch(e){}
+  }
+
+  return extra.join('\n\n');
+}
+
+// ── System prompt ──
+function buildSystem(extraData){
+  let s=`You are the ApplianceIQ AI Coach — a system-wide intelligent assistant embedded across the entire ApplianceIQ Intelligence Group ecosystem. Today is ${new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}.
+
+ROLE: You help appliance retail professionals by navigating across all ApplianceIQ modules, answering questions with live data, coaching on sales, and directing users to the right tools. You are direct, knowledgeable, and concise — sales reps are on the floor.
+
+ECOSYSTEM APPS (provide links when directing users):
+- CRM & Sales: ${APPS.crm.url} — Pipeline, deals, contacts, AI email composer, communications
+- Spec IQ: ${APPS.speciq.url} — Package builder, quotes, customer pricing, order lifecycle
+- IQ Academy: ${APPS.academy.url} — Training, certifications, quizzes, brand courses, AI roleplay
+- Up System: ${APPS.up.url} — Floor rotation queue, shifts, greeter mode, missed ups
+- Command Center: ${APPS.command.url} — Analytics dashboard, budgets, leaderboard, drill-down
+- IQ Field: ${APPS.field.url} — Store walk checklists, action plans, zone audits
+- Product IQ: ${APPS.pim.url} — Product data, brand directory, CAD/BIM sources
+- PIM Scraper: ${APPS.scraper.url} — AI-powered product data extraction and price checking
+
+COACHING TEAM (you embody all 6 and switch naturally):
+- TJ: Sales strategy, closing, objection handling, pipeline management
+- Natalie: Product specs, model comparisons, technical features
+- Leah: Kitchen design, layout, style matching, finish coordination
+- Caden: Training, onboarding, skill building, enthusiastic explainer
+- Asher: Installation specs, rough-in dimensions, electrical/plumbing, delivery
+- Katrina: Service, warranties, complaint resolution, post-sale relationships
+
+When a question maps to a specific coach's expertise, embody them naturally (e.g. "This is Asher's territory — here's what you need to know about that rough-in…").
+
+CAPABILITIES:
+- Query live data from CRM, Spec IQ, Training, Up System, Field, and Product databases
+- Look up products, brands, warranties, recalls, installation requirements
+- Compare products head-to-head with selling angles
+- Coach on sales scenarios with real product data
+- Navigate users to the right app with direct links
+- Track training progress and recommend next steps
+
+RESPONSE FORMAT:
+- Bold key numbers, product names, and action items
+- Use bullet points for lists and action items
+- Include direct app links when directing users: [Open in CRM](url)
+- When showing data, format it cleanly — don't dump raw JSON
+- End coaching responses with a specific next action
+- Keep it concise — 2-3 paragraphs max unless the user asks for detail`;
+
+  // Inject brand/product context
+  if(sysCtx.brands?.length){
+    s+=`\n\nBRAND DATABASE (${sysCtx.brands.length} brands):\n`;
+    s+=sysCtx.brands.slice(0,30).map(b=>`${b.name}${b.tier?' ['+b.tier+']':''}${b.country_of_origin?' ('+b.country_of_origin+')':''}`).join(' · ');
+  }
+  if(sysCtx.vendors?.length){
+    s+=`\n\nVENDOR SELLING ANGLES:\n`;
+    s+=sysCtx.vendors.slice(0,20).map(v=>`- ${v.name}: ${(v.sellingAngles||v.rightFor||'').slice(0,150)}`).join('\n');
+  }
+  if(sysCtx.crossRef?.length){
+    s+=`\n\nCROSS-REFERENCE DATA: ${sysCtx.crossRef.length} competitive comparisons available across brands.`;
+  }
+
+  // Inject query-specific data
+  if(extraData){
+    s+=`\n\n=== LIVE DATA FROM ECOSYSTEM ===\n${extraData}`;
+  }
+
+  return s;
+}
+
+// ── Send ──
+async function send(){
+  const inp=document.getElementById('inp');
+  const text=inp.value.trim();
+  if(!text||streaming)return;
+  const key=localStorage.getItem('aiq_anthropic_key');
+  if(!key){openModal();return}
+
+  inp.value='';inp.style.height='auto';
+  if(!cid) startConvo(text);
+  addMsg('user',text);
+  showTyping();
+  streaming=true;
+  document.getElementById('btnSend').disabled=true;
+
+  try{
+    // Fetch relevant ecosystem data
+    const extraData=await fetchContextForQuery(text);
+    const sys=buildSystem(extraData);
+    const apiMsgs=msgs.filter(m=>m.role==='user'||m.role==='assistant').map(m=>({role:m.role,content:m.content}));
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:3000,system:sys,messages:apiMsgs,stream:true})
+    });
+
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error?.message||`API ${res.status}`)}
+
+    removeTyping();
+
+    // Stream
+    const msgEl=document.createElement('div');
+    msgEl.className='msg assistant';
+    const av=document.createElement('div');
+    av.className='msg-av';av.style.background='var(--teal)';av.textContent='IQ';
+    const body=document.createElement('div');
+    body.className='msg-body';body.id='streamBody';
+    msgEl.append(av,body);
+    document.getElementById('msgArea').appendChild(msgEl);
+
+    const reader=res.body.getReader();
+    const dec=new TextDecoder();
+    let full='',buf='';
+
+    while(true){
+      const{done,value}=await reader.read();
+      if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n');buf=lines.pop()||'';
+      for(const ln of lines){
+        if(!ln.startsWith('data: '))continue;
+        const d=ln.slice(6);if(d==='[DONE]')continue;
+        try{
+          const ev=JSON.parse(d);
+          if(ev.type==='content_block_delta'&&ev.delta?.text){
+            full+=ev.delta.text;
+            body.innerHTML=fmtMd(full);
+            document.getElementById('msgArea').scrollTop=1e9;
+          }
+        }catch(e){}
+      }
+    }
+
+    body.removeAttribute('id');
+    // Convert app URLs to clickable links
+    body.querySelectorAll('a').forEach(a=>{if(a.href)a.target='_blank'});
+    msgs.push({role:'assistant',content:full,ts:Date.now()});
+    saveConvo();
+  }catch(e){
+    removeTyping();
+    addMsg('assistant',`⚠️ ${e.message}. Check your API key.`);
+  }
+  streaming=false;
+  document.getElementById('btnSend').disabled=false;
+  document.getElementById('inp').focus();
+}
+
+// ── Helpers ──
+function startConvo(firstMsg){
+  cid='c_'+Date.now();
+  msgs=[];
+  convos.push({id:cid,title:firstMsg.slice(0,55)+(firstMsg.length>55?'…':''),updated:Date.now()});
+  showChat();
+  saveConvos();
+  renderConvos();
+}
+
+function addMsg(role,content){
+  msgs.push({role,content,ts:Date.now()});
+  const el=document.getElementById('msgArea');
+  el.innerHTML+=mkMsg(role,content);
+  el.scrollTop=1e9;
+  saveConvo();
+}
+
+function mkMsg(role,content){
+  const isU=role==='user';
+  const av=isU?`<div class="msg-av">You</div>`:`<div class="msg-av" style="background:var(--teal)">IQ</div>`;
+  return`<div class="msg ${role}">${av}<div class="msg-body">${isU?esc(content):fmtMd(content)}</div></div>`;
+}
+
+function showTyping(){
+  document.getElementById('msgArea').innerHTML+=`<div class="msg assistant" id="typ"><div class="msg-av" style="background:var(--teal)">IQ</div><div class="msg-body"><div class="typing"><span></span><span></span><span></span></div></div></div>`;
+  document.getElementById('msgArea').scrollTop=1e9;
+}
+function removeTyping(){document.getElementById('typ')?.remove()}
+
+function showChat(){
+  document.getElementById('welcomeScreen').style.display='none';
+  document.getElementById('chatView').classList.add('active');
+}
+
+window.newChat=()=>{
+  cid=null;msgs=[];
+  document.getElementById('welcomeScreen').style.display='';
+  document.getElementById('chatView').classList.remove('active');
+  document.getElementById('msgArea').innerHTML='';
+  renderConvos();closeSB();
+};
+
+window.go=(prompt)=>{
+  if(!cid)startConvo(prompt);
+  document.getElementById('inp').value=prompt;
+  send();
+  closeSB();
+};
+
+window.loadConvo=(id)=>{
+  const c=convos.find(x=>x.id===id);
+  if(!c)return;
+  cid=id;
+  msgs=JSON.parse(localStorage.getItem('aiq_cm_'+id)||'[]');
+  showChat();
+  document.getElementById('msgArea').innerHTML=msgs.map(m=>mkMsg(m.role,m.content)).join('');
+  document.getElementById('msgArea').scrollTop=1e9;
+  renderConvos();closeSB();
+};
+
+window.delConvo=(id,ev)=>{
+  ev.stopPropagation();
+  convos=convos.filter(c=>c.id!==id);
+  localStorage.removeItem('aiq_cm_'+id);
+  saveConvos();
+  if(cid===id)newChat();
+  renderConvos();
+};
+
+function saveConvo(){if(cid){localStorage.setItem('aiq_cm_'+cid,JSON.stringify(msgs));const c=convos.find(x=>x.id===cid);if(c){c.updated=Date.now();saveConvos()}}}
+function saveConvos(){localStorage.setItem('aiq_coach2',JSON.stringify(convos))}
+
+function renderConvos(){
+  const el=document.getElementById('convList');
+  if(!convos.length){el.innerHTML='<div style="padding:20px;text-align:center;color:rgba(255,255,255,.2);font-size:12px">No conversations yet</div>';return}
+  el.innerHTML=convos.slice().sort((a,b)=>b.updated-a.updated).map(c=>{
+    const t=new Date(c.updated).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return`<div class="nav-links"><div class="nav-link ${c.id===cid?'active':''}" onclick="loadConvo('${c.id}')" style="${c.id===cid?'background:rgba(20,184,166,.08);color:var(--teal)':''}">
+      <span class="dot" style="background:var(--teal)"></span>
+      <span class="link-title">${esc(c.title)}</span>
+      <span class="link-time">${t}</span>
+    </div></div>`;
+  }).join('');
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function fmtMd(t){
+  return t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" style="color:var(--teal-dark);font-weight:600;text-decoration:none">$1 ↗</a>')
+    .replace(/^### (.+)$/gm,'<h4>$1</h4>')
+    .replace(/^## (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g,(m)=>{if(!m.startsWith('<ul>'))return'<ul>'+m+'</ul>';return m})
+    .replace(/<\/ul>\s*<ul>/g,'')
+    .replace(/\n{2,}/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^/,'<p>').replace(/$/,'</p>')
+    .replace(/<p><(h[34]|ul|ol|li)/g,'<$1')
+    .replace(/<\/(h[34]|ul|ol|li)><\/p>/g,'</$1>')
+    .replace(/<p><\/p>/g,'');
+}
+
+// ── API key ──
+function updateApi(){
+  const k=localStorage.getItem('aiq_anthropic_key');
+  document.getElementById('apiDot').className='api-dot '+(k?'on':'off');
+  document.getElementById('apiLabel').textContent=k?'Connected · sk-…'+k.slice(-4):'Set API key';
+}
+window.openModal=()=>{document.getElementById('modal').classList.add('open');document.getElementById('keyInput').value=localStorage.getItem('aiq_anthropic_key')||'';document.getElementById('keyInput').focus()};
+window.closeModal=()=>{document.getElementById('modal').classList.remove('open')};
+window.saveKey=()=>{const k=document.getElementById('keyInput').value.trim();if(k)localStorage.setItem('aiq_anthropic_key',k);else localStorage.removeItem('aiq_anthropic_key');updateApi();closeModal()};
+
+// ── Mobile ──
+window.toggleSB=()=>{document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sb-overlay').classList.toggle('open')};
+function closeSB(){document.querySelector('.sidebar').classList.remove('open');document.querySelector('.sb-overlay').classList.remove('open')}
+
+// ── Expose to onclick ──
+window.send=send;
+</script>
+</body>
+</html>
