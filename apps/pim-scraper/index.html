@@ -2804,8 +2804,10 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     const{mapped:specCols,remaining:leftoverSpecs}=window.S._unpackSpecs(d.specs, d);
 
     // Build aiq_products record with unpacked specs
+    const mfrName=brandSourceMap[r.brand_name]?.parent_company||r.brand_name||selectedBrand||'Unknown';
     const productRec={
       brand_name:r.brand_name||selectedBrand||'Unknown',
+      manufacturer_name:mfrName,
       model:r.model, status:'active',
       category:normalizeCategory(d.category||r.category)||r.category||null,
       subcategory:specCols.subcategory||d.subcategory||null,
