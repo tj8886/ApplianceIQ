@@ -1390,28 +1390,8 @@ window.loadModule = function(key) {
     return;
   }
 
-  state.activeView = 'module';
-  state.activeModuleKey = key;
-
-  // Update nav active state
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const navBtn = document.querySelector(`.nav-item[data-module="${key}"]`);
-  if (navBtn) navBtn.classList.add('active');
-
-  // Update topbar
-  document.getElementById('topbar-title').textContent = mod.name;
-
-  // Hide dashboard/settings, show iframe
-  document.getElementById('view-dashboard').style.display = 'none';
-  document.getElementById('view-settings').style.display = 'none';
-  const frame = document.getElementById('module-frame');
-  frame.style.display = 'block';
-
-  // Pass auth token via hash for the module to pick up
-  const session = JSON.parse(localStorage.getItem(`sb-fumwwhyozeouoqscolke-auth-token`) || '{}');
-  const token = session?.access_token || '';
-  frame.src = mod.app_url + (token ? '#aiq_token=' + token : '');
-
+  // Open module in new tab — cross-origin iframes are blocked by Netlify headers
+  window.open(mod.app_url, '_blank');
   closeSidebar();
 };
 
