@@ -2724,6 +2724,75 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     logEntry('Deep scrape batch complete','ok');renderTab();
   },
 
+  // ── UNPACK SPECS: Map known spec keys to proper aiq_products columns ──
+  _unpackSpecs(specsObj, topLevelData){
+    const mapped={};  // goes to top-level aiq_products columns
+    const remaining={}; // stays in specs_json
+    const d=topLevelData||{};
+
+    // Merge specs from both the specs object and top-level deep data
+    const all={...(specsObj||{})};
+
+    // Spec key → aiq_products column mapping
+    const keyMap={
+      'fuel_type':'fuel_type','fuel type':'fuel_type','fuel':'fuel_type',
+      'capacity':'capacity_cu_ft','oven capacity':'capacity_cu_ft','total capacity':'capacity_cu_ft',
+      'capacity_cu_ft':'capacity_cu_ft','capacity (cu. ft.)':'capacity_cu_ft',
+      'voltage':'voltage','volts':'voltage',
+      'amperage':'amperage','amps':'amperage','amp':'amperage',
+      'wattage':'wattage','watts':'wattage',
+      'width':'width_inches','width (in.)':'width_inches','width_inches':'width_inches',
+      'height':'height_inches','height (in.)':'height_inches','height_inches':'height_inches',
+      'depth':'depth_inches','depth (in.)':'depth_inches','depth_inches':'depth_inches',
+      'weight':'weight_lbs','weight (lbs.)':'weight_lbs','weight_lbs':'weight_lbs',
+      'color':'color','colour':'color',
+      'finish':'finish',
+      'noise level':'noise_dba','noise_dba':'noise_dba','noise (dba)':'noise_dba','decibel level':'noise_dba',
+      'door style':'door_style','door_style':'door_style','door type':'door_style',
+      'defrost type':'defrost_type','defrost_type':'defrost_type','defrost':'defrost_type',
+      'installation type':'installation_type','installation_type':'installation_type','install type':'installation_type',
+      'energy star':'energy_star','energy_star':'energy_star','energy star certified':'energy_star',
+      'upc':'upc','upc code':'upc',
+      'series':'series','product line':'product_line',
+      'subcategory':'subcategory','sub-category':'subcategory','type':'subcategory',
+      'depth with handles':'depth_with_handles','depth without handles':'depth_without_handles',
+      'frequency':'frequency_hz','frequency_hz':'frequency_hz',
+      'ada compliant':'ada_compliant','ada_compliant':'ada_compliant',
+    };
+
+    const numericCols=new Set(['capacity_cu_ft','width_inches','height_inches','depth_inches','weight_lbs','noise_dba','amperage','wattage','depth_with_handles','depth_without_handles','frequency_hz']);
+    const boolCols=new Set(['energy_star','ada_compliant']);
+
+    for(const[rawKey,val] of Object.entries(all)){
+      const normKey=rawKey.toLowerCase().trim();
+      const col=keyMap[normKey];
+      if(col){
+        if(numericCols.has(col)){
+          const num=parseFloat(String(val).replace(/[^0-9.\-]/g,''));
+          if(!isNaN(num))mapped[col]=num;
+        } else if(boolCols.has(col)){
+          mapped[col]=val===true||String(val).toLowerCase()==='yes'||String(val).toLowerCase()==='true';
+        } else {
+          mapped[col]=val;
+        }
+      } else {
+        remaining[rawKey]=val;
+      }
+    }
+
+    // Also pull from top-level deepData fields that AI put directly
+    const directFields=['capacity_cu_ft','voltage','amperage','wattage','width_inches','height_inches','depth_inches','weight_lbs','color','finish','color_family','energy_star','installation_type','upc','series','subcategory','fuel_type','noise_dba','door_style','defrost_type'];
+    for(const f of directFields){
+      if(d[f]!==undefined&&d[f]!==null&&mapped[f]===undefined){
+        if(numericCols.has(f)){const n=parseFloat(d[f]);if(!isNaN(n))mapped[f]=n}
+        else if(boolCols.has(f)){mapped[f]=!!d[f]}
+        else{mapped[f]=d[f]}
+      }
+    }
+
+    return{mapped,remaining:Object.keys(remaining).length>0?remaining:null};
+  },
+
   // ── IMPORT NEW: Create aiq_products entry + save docs/images/features/relationships ──
   async rdImportOne(idx){
     const r=rdDiscoveryResults[idx];
@@ -2731,30 +2800,45 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     const d=r._deepData||r;
     logEntry('📥 Importing '+r.brand_name+' '+r.model+' to PIM…');
 
-    // Build aiq_products record
+    // Unpack specs into proper columns
+    const{mapped:specCols,remaining:leftoverSpecs}=window.S._unpackSpecs(d.specs, d);
+
+    // Build aiq_products record with unpacked specs
     const productRec={
       brand_name:r.brand_name||selectedBrand||'Unknown',
       model:r.model, status:'active',
       category:normalizeCategory(d.category||r.category)||r.category||null,
-      subcategory:d.subcategory||null,
-      product_line:d.series||d.product_line||null,
+      subcategory:specCols.subcategory||d.subcategory||null,
+      product_line:specCols.product_line||d.series||d.product_line||null,
+      series:specCols.series||d.series||null,
       short_description:d.short_description||r.product_name||null,
       long_description:d.long_description||r._description||null,
       msrp:r.price?Number(r.price):null,
       price_currency:psMarket==='CA'?'CAD':'USD',
       market:psMarket,
-      color:d.color||null, finish:d.finish||null, color_family:d.color_family||null,
-      width_inches:d.width_inches?Number(d.width_inches):null,
-      height_inches:d.height_inches?Number(d.height_inches):null,
-      depth_inches:d.depth_inches?Number(d.depth_inches):null,
-      weight_lbs:d.weight_lbs?Number(d.weight_lbs):null,
-      capacity_cu_ft:d.capacity_cu_ft?Number(d.capacity_cu_ft):null,
-      voltage:d.voltage||null, amperage:d.amperage?Number(d.amperage):null,
-      wattage:d.wattage?Number(d.wattage):null,
-      energy_star:d.energy_star||false,
-      installation_type:d.installation_type||null,
-      upc:d.upc||null,
-      specs_json:d.specs?JSON.stringify(d.specs):null,
+      color:specCols.color||d.color||null,
+      finish:specCols.finish||d.finish||null,
+      color_family:specCols.color_family||d.color_family||null,
+      width_inches:specCols.width_inches||null,
+      height_inches:specCols.height_inches||null,
+      depth_inches:specCols.depth_inches||null,
+      depth_with_handles:specCols.depth_with_handles||null,
+      depth_without_handles:specCols.depth_without_handles||null,
+      weight_lbs:specCols.weight_lbs||null,
+      capacity_cu_ft:specCols.capacity_cu_ft||null,
+      voltage:specCols.voltage||d.voltage||null,
+      amperage:specCols.amperage||null,
+      wattage:specCols.wattage||null,
+      frequency_hz:specCols.frequency_hz||null,
+      energy_star:specCols.energy_star||d.energy_star||false,
+      ada_compliant:specCols.ada_compliant||false,
+      installation_type:specCols.installation_type||d.installation_type||null,
+      fuel_type:specCols.fuel_type||null,
+      noise_dba:specCols.noise_dba||null,
+      door_style:specCols.door_style||null,
+      defrost_type:specCols.defrost_type||null,
+      upc:specCols.upc||d.upc||null,
+      specs_json:leftoverSpecs?JSON.stringify(leftoverSpecs):null,
       features_html:d.features?.length?'<ul>'+d.features.map(f=>'<li>'+f+'</li>').join('')+'</ul>':null,
       source_type:'retailer_crawl',
       source_reference:r.product_url||null,
@@ -2768,6 +2852,12 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
       bundle_skus:d.bundle_models||null,
       public_visible:true, approval_status:'auto_imported'
     };
+    // Remove undefined/null keys to avoid Supabase complaints
+    for(const k of Object.keys(productRec)){if(productRec[k]===undefined)delete productRec[k]}
+
+    const unpackedCount=Object.keys(specCols).length;
+    const leftoverCount=leftoverSpecs?Object.keys(leftoverSpecs).length:0;
+    logEntry('Specs: '+unpackedCount+' unpacked to columns, '+leftoverCount+' in specs_json');
 
     const{data:product,error}=await sb.from('aiq_products').insert(productRec).select('id').single();
     if(error){logEntry('Import err: '+error.message,'err');return}
@@ -2879,34 +2969,88 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     const d=r._deepData||{};
     logEntry('🔄 Enriching '+r.model+' in PIM…');
 
-    // Find existing product
+    // Find existing product — need source_type to check manufacturer priority
     const{data:existing}=await sb.from('aiq_products')
-      .select('id,specs_json,long_description,features_html,width_inches,height_inches,depth_inches')
+      .select('id,source_type,discovered_via,specs_json,long_description,retailer_description,features_html,width_inches,height_inches,depth_inches,weight_lbs,capacity_cu_ft,voltage,amperage,wattage,color,finish,energy_star,installation_type,upc,fuel_type,noise_dba,door_style,defrost_type,subcategory,series,depth_with_handles,depth_without_handles,frequency_hz,ada_compliant')
       .ilike('model',r.model).eq('status','active').limit(1).single();
     if(!existing){logEntry('Could not find PIM record for '+r.model,'err');return}
 
-    // Only update fields that are empty/null in PIM
+    // RULE: Manufacturer is source of truth
+    // If source_type is 'manufacturer' or 'scraper' (from mfr site), we ONLY fill nulls
+    // If source_type is 'retailer_crawl', we can update more freely
+    const isMfrSource=existing.source_type==='manufacturer'||existing.discovered_via==='manufacturer';
+
+    // Unpack specs
+    const{mapped:specCols,remaining:leftoverSpecs}=window.S._unpackSpecs(d.specs, d);
+
+    // Only update fields that are EMPTY in PIM — never overwrite manufacturer data
     const updates={};
-    if(!existing.long_description&&d.long_description)updates.long_description=d.long_description;
-    if(!existing.width_inches&&d.width_inches)updates.width_inches=Number(d.width_inches);
-    if(!existing.height_inches&&d.height_inches)updates.height_inches=Number(d.height_inches);
-    if(!existing.depth_inches&&d.depth_inches)updates.depth_inches=Number(d.depth_inches);
-    if(d.specs&&(!existing.specs_json||existing.specs_json==='{}')){
-      updates.specs_json=JSON.stringify(d.specs);
+    const fillIfEmpty=(col,val)=>{
+      if(val!==null&&val!==undefined&&val!==''&&(existing[col]===null||existing[col]===undefined||existing[col]==='')){
+        updates[col]=val;
+      }
+    };
+
+    // Core fields — only fill blanks
+    fillIfEmpty('long_description',d.long_description);
+    fillIfEmpty('subcategory',specCols.subcategory||d.subcategory);
+    fillIfEmpty('series',specCols.series||d.series);
+    fillIfEmpty('color',specCols.color||d.color);
+    fillIfEmpty('finish',specCols.finish||d.finish);
+    fillIfEmpty('width_inches',specCols.width_inches);
+    fillIfEmpty('height_inches',specCols.height_inches);
+    fillIfEmpty('depth_inches',specCols.depth_inches);
+    fillIfEmpty('depth_with_handles',specCols.depth_with_handles);
+    fillIfEmpty('depth_without_handles',specCols.depth_without_handles);
+    fillIfEmpty('weight_lbs',specCols.weight_lbs);
+    fillIfEmpty('capacity_cu_ft',specCols.capacity_cu_ft);
+    fillIfEmpty('voltage',specCols.voltage||d.voltage);
+    fillIfEmpty('amperage',specCols.amperage);
+    fillIfEmpty('wattage',specCols.wattage);
+    fillIfEmpty('frequency_hz',specCols.frequency_hz);
+    fillIfEmpty('energy_star',specCols.energy_star);
+    fillIfEmpty('ada_compliant',specCols.ada_compliant);
+    fillIfEmpty('installation_type',specCols.installation_type||d.installation_type);
+    fillIfEmpty('fuel_type',specCols.fuel_type);
+    fillIfEmpty('noise_dba',specCols.noise_dba);
+    fillIfEmpty('door_style',specCols.door_style);
+    fillIfEmpty('defrost_type',specCols.defrost_type);
+    fillIfEmpty('upc',specCols.upc||d.upc);
+
+    // Specs JSON — merge retailer specs into existing, but don't overwrite existing keys
+    if(leftoverSpecs){
+      let existingSpecs={};
+      try{existingSpecs=typeof existing.specs_json==='string'?JSON.parse(existing.specs_json||'{}'):{...(existing.specs_json||{})}}catch(e){}
+      let merged=false;
+      for(const[k,v] of Object.entries(leftoverSpecs)){
+        if(existingSpecs[k]===undefined||existingSpecs[k]===null){
+          existingSpecs[k]=v;merged=true;
+        }
+      }
+      if(merged)updates.specs_json=JSON.stringify(existingSpecs);
     }
+
+    // Features — only if PIM has none
     if(d.features?.length&&!existing.features_html){
       updates.features_html='<ul>'+d.features.map(f=>'<li>'+f+'</li>').join('')+'</ul>';
     }
-    if(d.retailer_description)updates.retailer_description=d.retailer_description;
 
-    if(Object.keys(updates).length>0){
+    // Retailer description always goes in separate field (never overwrites long_description)
+    if(d.long_description&&!existing.retailer_description){
+      updates.retailer_description=d.long_description;
+    }
+
+    const fieldCount=Object.keys(updates).length;
+    if(fieldCount>0){
       updates.source_extracted_at=new Date().toISOString();
       const{error}=await sb.from('aiq_products').update(updates).eq('id',existing.id);
       if(error){logEntry('Enrich err: '+error.message,'err');return}
-      logEntry('Enriched '+Object.keys(updates).length+' fields on '+r.model,'ok');
+      logEntry('Enriched '+fieldCount+' fields on '+r.model+(isMfrSource?' (mfr data preserved)':''),'ok');
+    } else {
+      logEntry(r.model+': nothing to enrich (all fields already populated'+(isMfrSource?' by manufacturer':'')+')',isMfrSource?'ok':'');
     }
 
-    // Save docs/images/relationships even for existing products
+    // Docs/images/relationships always get added regardless of source priority
     if(r._docs?.length){
       const docRecs=r._docs.filter(doc=>doc.url).map(doc=>({
         product_id:existing.id, doc_type:doc.doc_type||'other',
@@ -2915,6 +3059,7 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
       }));
       if(docRecs.length){
         await sb.from('pim_product_documents').upsert(docRecs,{onConflict:'product_id,doc_type,file_url',ignoreDuplicates:true}).catch(()=>{});
+        logEntry('Added '+docRecs.length+' documents','ok');
       }
     }
     if(r._alsoViewed?.length||r._bundles?.length){
@@ -2930,6 +3075,7 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
       }
       if(relRecs.length){
         await sb.from('product_relationships').upsert(relRecs,{onConflict:'source_brand,source_model,related_brand,related_model,relationship_type,retailer_name'}).catch(()=>{});
+        logEntry('Added '+relRecs.length+' relationships','ok');
       }
     }
     r._enriched=true;
