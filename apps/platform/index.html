@@ -1382,7 +1382,7 @@ function renderSettings() {
 }
 
 // ── Module Loading ─────────────────────────────────────────
-window.loadModule = function(key) {
+window.loadModule = async function(key) {
   const mod = state.modules.find(m => m.key === key);
   if (!mod || isModuleLocked(mod)) return;
   if (!mod.app_url) {
@@ -1390,8 +1390,18 @@ window.loadModule = function(key) {
     return;
   }
 
-  // Open module in new tab — cross-origin iframes are blocked by Netlify headers
-  window.open(mod.app_url, '_blank');
+  // Get current session for token relay
+  const { data: { session } } = await sb.auth.getSession();
+  let url = mod.app_url;
+  if (session?.access_token && session?.refresh_token) {
+    const payload = btoa(JSON.stringify({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+      expires_at: session.expires_at
+    }));
+    url += '#aiq_relay=' + payload;
+  }
+  window.open(url, '_blank');
   closeSidebar();
 };
 
