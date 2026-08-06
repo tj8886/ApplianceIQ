@@ -2379,11 +2379,100 @@ window.S = {
   rdSelectAllCats(){rdSelectedCategories=new Set(rdCategories);renderTab()},
   rdSelectNoneCats(){rdSelectedCategories.clear();renderTab()},
 
+  // ── TIERED AI CALL for crawl/discovery — tries T2 Gemini → T3 GPT → T4 Haiku ──
+  async _crawlAI(systemPrompt, userPrompt, maxTokens){
+    maxTokens=maxTokens||4000;
+    let result=null;
+
+    // T2 — Gemini (cheapest, has Google Search grounding)
+    const gKey=localStorage.getItem('aiq_google_key');
+    if(!result&&gKey){
+      logEntry('Tier 2 → '+geminiModel+' + Google Search…');
+      try{
+        const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+gKey,{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            systemInstruction:{parts:[{text:systemPrompt}]},
+            contents:[{parts:[{text:userPrompt}]}],
+            tools:[{google_search:{}}],
+            generationConfig:{temperature:0.1,maxOutputTokens:maxTokens}
+          })
+        });
+        const data=await r.json();
+        if(data.error){logEntry('T2 err: '+(data.error.message||JSON.stringify(data.error)),'err')}
+        else{
+          const txt=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('\n')||'';
+          const pt=data.usageMetadata?.promptTokenCount||0;
+          const ct=data.usageMetadata?.candidatesTokenCount||0;
+          const cost=(pt*0.0000003+ct*0.0000025);
+          addCost(cost);
+          if(txt.trim()){
+            logEntry('T2 ✓ $'+cost.toFixed(4),'cost');
+            result={text:txt,tier:2,cost};
+          } else {logEntry('T2: empty response','err')}
+        }
+      }catch(e){logEntry('T2 err: '+e.message,'err')}
+    }
+
+    // T3 — GPT Luna (has web search via responses API or knowledge)
+    const oKey=localStorage.getItem('aiq_openai_key');
+    if(!result&&oKey){
+      const model=aiModel||'gpt-5.6-luna';
+      logEntry('Tier 3 → '+model+'…');
+      try{
+        const body={model,temperature:0.1,messages:[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}],
+          tools:[{type:'web_search_preview'}]};
+        if(model.startsWith('gpt-5')||model.startsWith('o')){body.max_completion_tokens=maxTokens;if(model.startsWith('gpt-5'))body.reasoning_effort='none'}else{body.max_tokens=maxTokens}
+        const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+oKey},body:JSON.stringify(body)});
+        const data=await r.json();
+        if(data.error){logEntry('T3 err: '+data.error.message,'err')}
+        else{
+          const txt=data.choices?.[0]?.message?.content||'';
+          const cost=((data.usage?.prompt_tokens||0)*0.0000004+(data.usage?.completion_tokens||0)*0.0000016);
+          addCost(cost);
+          if(txt.trim()){
+            logEntry('T3 ✓ $'+cost.toFixed(4),'cost');
+            result={text:txt,tier:3,cost};
+          } else {logEntry('T3: empty response','err')}
+        }
+      }catch(e){logEntry('T3 err: '+e.message,'err')}
+    }
+
+    // T4 — Haiku + web search (most powerful, most expensive)
+    const aKey=localStorage.getItem('aiq_anthropic_key');
+    if(!result&&aKey){
+      logEntry('Tier 4 → Haiku + web search…');
+      try{
+        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':aKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,
+            system:systemPrompt,
+            tools:[{type:'web_search_20250305',name:'web_search'}],
+            messages:[{role:'user',content:userPrompt}]})});
+        const data=await r.json();
+        if(data.error){logEntry('T4 err: '+data.error.message,'err')}
+        else{
+          const texts=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text);
+          const txt=texts.join('\n');
+          addCost(0.30);
+          if(txt.trim()){
+            logEntry('T4 ✓ $0.30','cost');
+            result={text:txt,tier:4,cost:0.30};
+          } else {logEntry('T4: empty response','err')}
+        }
+      }catch(e){logEntry('T4 err: '+e.message,'err')}
+    }
+
+    if(!result){
+      logEntry('All tiers failed — check API keys (🔑 Keys button)','err');
+    }
+    return result;
+  },
+
   // ── CATEGORY CRAWL: Find ALL products on a category page ──
   async rdCategoryCrawl(){
     if(isProcessing)return;
-    const key=localStorage.getItem('aiq_anthropic_key');
-    if(!key){logEntry('Need Anthropic API key for crawling','err');return}
+    const hasAnyKey=localStorage.getItem('aiq_google_key')||localStorage.getItem('aiq_openai_key')||localStorage.getItem('aiq_anthropic_key');
+    if(!hasAnyKey){logEntry('Need at least one API key (🔑 Keys) — Google, OpenAI, or Anthropic','err');return}
 
     // Determine retailer from URL or selection
     let retailerName=rdSelectedRetailer||'';
@@ -2461,17 +2550,10 @@ Search for EVERY product. Do not stop at the first page of results. Return ALL r
           'Visit this retailer page and find ALL appliance products'+brandFilter+': '+target.url :
           'Search for ALL '+selectedBrand+' '+target.label+' products at '+retailerName+siteFilter;
 
-        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8000,
-            system:LISTING_PROMPT,
-            tools:[{type:'web_search_20250305',name:'web_search'}],
-            messages:[{role:'user',content:searchInstruction}]})});
-        const data=await r.json();
-        if(data.error){logEntry('API err: '+data.error.message,'err');continue}
+        const aiResult=await window.S._crawlAI(LISTING_PROMPT, searchInstruction, 8000);
+        if(!aiResult){continue}
 
-        const texts=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text);
-        const fullText=texts.join('\n');
-        const arrMatch=fullText.match(/\[[\s\S]*\]/);
+        const arrMatch=aiResult.text.match(/\[[\s\S]*\]/);
         if(arrMatch){
           try{
             const parsed=JSON.parse(arrMatch[0]);
@@ -2503,7 +2585,6 @@ Search for EVERY product. Do not stop at the first page of results. Return ALL r
             }
           }catch(pe){logEntry('JSON parse err in '+target.label+': '+pe.message,'err')}
         } else {logEntry(target.label+': no products array in response','err')}
-        addCost(0.30);
       }catch(e){logEntry('Crawl err: '+e.message,'err')}
       renderTab();
       if(ti<searchTargets.length-1)await new Promise(r=>setTimeout(r,1500));
@@ -2518,8 +2599,6 @@ Search for EVERY product. Do not stop at the first page of results. Return ALL r
   async rdDeepScrapeOne(idx){
     const r=rdDiscoveryResults[idx];
     if(!r||r._deepScraped||!r.product_url)return;
-    const key=localStorage.getItem('aiq_anthropic_key');
-    if(!key){logEntry('Need Anthropic API key','err');return}
 
     logEntry('🔬 Deep scraping '+r.model+' at '+r.product_url+'…');
 
@@ -2547,18 +2626,11 @@ Search for EVERY product. Do not stop at the first page of results. Return ALL r
 
 Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY the JSON object.`;
 
-    try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:8000,
-          system:DEEP_PROMPT,
-          tools:[{type:'web_search_20250305',name:'web_search'}],
-          messages:[{role:'user',content:'Visit this product page and extract ALL data: '+r.product_url}]})});
-      const data=await resp.json();
-      if(data.error){logEntry('Deep scrape err: '+data.error.message,'err');return}
+    const aiResult=await window.S._crawlAI(DEEP_PROMPT, 'Visit this product page and extract ALL data: '+r.product_url, 8000);
+    if(!aiResult){logEntry('Deep scrape failed — all tiers exhausted','err');return}
 
-      const texts=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text);
-      const fullText=texts.join('\n');
-      const objMatch=fullText.match(/\{[\s\S]*\}/);
+    try{
+      const objMatch=aiResult.text.match(/\{[\s\S]*\}/);
       if(objMatch){
         const parsed=JSON.parse(objMatch[0]);
         // Store deep scrape data on the result
@@ -2583,8 +2655,7 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
           (r._features.length?r._features.length+' features ':'')+ 
           (r._alsoViewed.length?r._alsoViewed.length+' also-viewed ':''),'ok');
       } else {logEntry('Deep scrape: no JSON in response','err')}
-      addCost(0.30);
-    }catch(e){logEntry('Deep scrape err: '+e.message,'err')}
+    }catch(e){logEntry('Deep scrape parse err: '+e.message,'err')}
     renderTab();
   },
 
