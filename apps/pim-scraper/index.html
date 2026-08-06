@@ -3409,8 +3409,6 @@ async function init(){
     psRetailers=rs||[];
 
     // Load catalog stats (how many products discovered per retailer/brand)
-    const{data:cstats}=await sb.rpc('', {}).catch(()=>({data:null}));
-    // Just get counts grouped by retailer+brand
     const{data:catData}=await sb.from('retailer_discovered_products').select('retailer_name,brand_name,status').eq('status','active');
     rdCatalogStats={};
     for(const r of(catData||[])){
