@@ -1543,8 +1543,8 @@ async function sendTrainer() {
     + 'RULES:\n- Answer based on the lesson content above\n- Keep responses concise (2-3 paragraphs)\n- Use real examples from the appliance sales floor\n- If asked to quiz, create questions from the lesson\n- Canadian context (CAD pricing, building codes, EnerGuide)\n- Be encouraging but direct';
   var apiMessages = TRAINER.history.filter(function(m){ return m.content !== 'Thinking…'; }).map(function(m){ return { role: m.msg_role === 'user' ? 'user' : 'assistant', content: m.content }; });
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sysPrompt, messages: apiMessages })
     });
     var data = await resp.json();
@@ -1760,8 +1760,8 @@ async function callCoach() {
     sysPrompt = 'You are ' + c.name + ', ' + c.role + ' at ApplianceIQ.\nPERSONA: ' + c.desc + '\nKeep responses concise (2-4 paragraphs). Use real product data. Give actionable scripts. Canadian context.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
   }
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sysPrompt, messages: rpState.messages.map(function(m){ return { role: m.role, content: m.content }; }) })
     });
     var data = await resp.json();
@@ -1804,8 +1804,8 @@ async function scoreSession() {
   mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2)">Analyzing ' + formatTime(recState.timer) + ' of practice...</p></div>';
   var scorePrompt = 'You are the ApplianceIQ Sales Scoring AI. Analyze this recorded sales practice session for appliance retail.\n\nIdentify who is the sales rep and who is the customer. Score across 12 categories (1-10): Greeting/Rapport, Needs Discovery, Product Knowledge, Feature-Benefit Selling, Objection Handling, Cross-Selling, Closing Technique, Follow-Up Setup, Product Demo, Value Building, Customer Engagement, Professionalism.\n\nRespond in JSON only: {"scores":{"Greeting":8,...},"total":85,"feedback":"...","rep_identified":"...","customer_identified":"..."}\n\nTranscript:\n' + recState.transcript;
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: scorePrompt }] })
     });
     var data = await resp.json();
@@ -2207,8 +2207,8 @@ async function generateContentSuggestions() {
     + 'CROSS-APP INTELLIGENCE:\n' + crossAppCtx.substring(0,8000) + '\n\n'
     + 'Respond in JSON only, no markdown. Array of objects: [{"type":"new_module|update_existing|new_cards|gap_alert","pillar":"sales_iq|product_iq|brand_iq|service_iq|leadership_iq","title":"...","rationale":"...","priority":"critical|high|medium|low"}]';
   try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
       body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     var data = await resp.json();

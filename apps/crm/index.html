@@ -1616,8 +1616,8 @@ function openRecorderModal(dealId){
             const b64=await new Promise((res,rej)=>{reader.onload=()=>res(reader.result.split(',')[1]);reader.onerror=()=>rej(new Error('Read failed'));reader.readAsDataURL(blob);});
             const mediaType=recorder.mimeType.split(';')[0]||'audio/webm';
             const dealContext=linkedDeal?'Deal: '+linkedDeal.title+', Stage: '+linkedDeal.stage+', Value: $'+linkedDeal.value_amount:'No deal linked';
-            const resp=await fetch('https://api.anthropic.com/v1/messages',{
-              method:'POST',headers:{'Content-Type':'application/json'},
+            const resp=await fetch(SUPABASE_URL+'/functions/v1/ai-proxy',{
+              method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await sb.auth.getSession()).data.session?.access_token},
               body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
                 system:'You are an expert appliance retail sales coach analyzing a recorded sales interaction. Return ONLY valid JSON with no markdown fences. Use this exact structure:\n{\n"transcript_summary": "2-3 sentence summary of what was discussed",\n"coaching_score": 7.5,\n"coaching_strengths": ["strength 1","strength 2"],\n"coaching_improvements": ["improvement 1","improvement 2"],\n"selling_steps_used": ["greeting","discovery","presentation"],\n"crm_notes": "Key info for the CRM: what the customer wants, products discussed, objections raised, decisions made",\n"customer_needs": ["need 1","need 2"],\n"products_discussed": ["product 1","product 2"],\n"action_items": [{"task":"Follow up with pricing on Bosch 800","priority":"high","due_days":2},{"task":"Send comparison sheet","priority":"normal","due_days":1}],\n"follow_up_recommended": true,\n"follow_up_reason": "Customer showed strong interest but needs pricing confirmation"\n}',
                 messages:[{role:'user',content:[
@@ -2128,8 +2128,8 @@ function openComposeModal(contact,deal,templates,seqStep){
     }
 
     try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/ai-proxy',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await sb.auth.getSession()).data.session?.access_token},
         body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,
           messages:[{role:'user',content:userMsg}]})
       });
