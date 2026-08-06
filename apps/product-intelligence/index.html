@@ -31,8 +31,27 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-
 .nav-cta:hover{background:var(--teal-light)!important}
 
 /* HERO */
-.hero{text-align:center;padding:80px 0 60px;position:relative}
-.hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:600px;height:600px;background:radial-gradient(circle,rgba(13,148,136,.12) 0%,transparent 70%);pointer-events:none}
+.hero{text-align:center;padding:80px 0 60px;position:relative;overflow:hidden}
+#particleCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.hero .container{position:relative;z-index:1}
+
+/* STORAGE SECTION */
+.storage-section{margin-bottom:56px}
+.storage-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.storage-card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:20px;text-align:center;transition:border-color .3s}
+.storage-card:hover{border-color:rgba(13,148,136,.3)}
+.storage-card .sc-tier{font-size:12px;font-weight:600;color:var(--teal-light);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.storage-card .sc-amount{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;color:var(--white);margin-bottom:4px}
+.storage-card .sc-included{font-size:13px;color:var(--text-dim);margin-bottom:8px}
+.storage-card .sc-overage{font-size:12px;color:var(--slate-dark)}
+.storage-card.unlimited-storage{border-color:var(--gold);background:rgba(245,158,11,.05)}
+.storage-card.unlimited-storage .sc-amount{color:var(--gold-light)}
+.storage-extras{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.storage-extra{background:rgba(13,148,136,.05);border:1px solid rgba(13,148,136,.12);border-radius:var(--radius-sm);padding:16px;text-align:center}
+.storage-extra .se-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:4px}
+.storage-extra .se-price{font-size:14px;color:var(--teal-light);font-weight:600}
+.storage-extra .se-note{font-size:11px;color:var(--text-dim);margin-top:4px}
+@media(max-width:768px){.storage-grid{grid-template-columns:repeat(2,1fr)}.storage-extras{grid-template-columns:1fr}}
 .hero-badge{display:inline-block;background:rgba(13,148,136,.15);border:1px solid rgba(13,148,136,.3);color:var(--teal-light);font-size:13px;font-weight:600;padding:6px 16px;border-radius:20px;margin-bottom:24px;letter-spacing:.5px;text-transform:uppercase}
 .hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(36px,5vw,56px);font-weight:800;color:var(--white);line-height:1.1;margin-bottom:20px;letter-spacing:-1.5px}
 .hero h1 span{background:linear-gradient(135deg,var(--teal-light),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -222,6 +241,7 @@ footer p{color:var(--slate-dark);font-size:13px}
 
 <!-- HERO -->
 <section class="hero">
+<canvas id="particleCanvas"></canvas>
 <div class="container">
 <div class="hero-badge">Pricing</div>
 <h1>One Platform. <span>Every Tool.</span><br>Your Entire Operation.</h1>
@@ -622,6 +642,58 @@ footer p{color:var(--slate-dark);font-size:13px}
 <li>Customizable reporting & exports</li>
 </ul>
 <a class="card-btn primary" href="mailto:tj@elev8talentagency.com">Add to Plan</a>
+</div>
+</div>
+</div>
+
+<!-- STORAGE & DATA -->
+<div class="product-group storage-section">
+<div class="product-group-title">Infrastructure</div>
+<div class="product-group-name">Storage & Data Management</div>
+<div class="product-group-desc">Every subscription includes storage. Upgrade when you need more.</div>
+
+<div class="storage-grid">
+<div class="storage-card">
+<div class="sc-tier">Starter / Standard / Essential</div>
+<div class="sc-amount">5 GB</div>
+<div class="sc-included">Included with subscription</div>
+<div class="sc-overage">Overage: $2/GB/mo</div>
+</div>
+<div class="storage-card">
+<div class="sc-tier">Growth / Professional</div>
+<div class="sc-amount">25 GB</div>
+<div class="sc-included">Included with subscription</div>
+<div class="sc-overage">Overage: $1.50/GB/mo</div>
+</div>
+<div class="storage-card">
+<div class="sc-tier">Pro / Enterprise / Complete</div>
+<div class="sc-amount">100 GB</div>
+<div class="sc-included">Included with subscription</div>
+<div class="sc-overage">Overage: $1/GB/mo</div>
+</div>
+<div class="storage-card unlimited-storage">
+<div class="sc-tier">Unlimited Add-On</div>
+<div class="sc-amount">500 GB</div>
+<div class="sc-included">$49/month flat</div>
+<div class="sc-overage">Never worry about storage again</div>
+</div>
+</div>
+
+<div class="storage-extras">
+<div class="storage-extra">
+<div class="se-name">Data Migration</div>
+<div class="se-price">$1,500 one-time</div>
+<div class="se-note">Managed migration from Salesforce, HubSpot, etc. Self-service CSV import is free.</div>
+</div>
+<div class="storage-extra">
+<div class="se-name">Notification Packs</div>
+<div class="se-price">1,000 for $29</div>
+<div class="se-note">Additional SMS/push notifications beyond tier allowance</div>
+</div>
+<div class="storage-extra">
+<div class="se-name">Data Retention</div>
+<div class="se-price">Included</div>
+<div class="se-note">Recordings archive after 90 days · Walk photos after 12 months · Deal data retained indefinitely</div>
 </div>
 </div>
 </div>
@@ -1127,6 +1199,123 @@ function updateCalc() {
   document.getElementById('calcMonthlyCAD').textContent = 'C$' + monthlyCAD.toLocaleString();
   document.getElementById('calcPerDay').textContent = '$' + daily.toLocaleString();
 }
+
+// ======== 3D PARTICLE CONSTELLATION ENGINE ========
+(function(){
+  const canvas = document.getElementById('particleCanvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let mouse = {x:-999,y:-999};
+  const PARTICLE_COUNT = 80;
+  const CONNECTION_DIST = 150;
+  const MOUSE_DIST = 200;
+  
+  function resize(){
+    const hero = canvas.parentElement;
+    canvas.width = hero.offsetWidth;
+    canvas.height = hero.offsetHeight;
+  }
+  
+  function createParticles(){
+    particles = [];
+    for(let i=0;i<PARTICLE_COUNT;i++){
+      particles.push({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        z: Math.random()*1+0.3,
+        vx: (Math.random()-0.5)*0.6,
+        vy: (Math.random()-0.5)*0.4,
+        vz: (Math.random()-0.5)*0.01,
+        radius: Math.random()*2+1,
+        opacity: Math.random()*0.5+0.3,
+        pulse: Math.random()*Math.PI*2,
+        pulseSpeed: Math.random()*0.02+0.005
+      });
+    }
+  }
+  
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    
+    particles.forEach(p=>{
+      p.x+=p.vx*p.z;
+      p.y+=p.vy*p.z;
+      p.z+=p.vz;
+      p.pulse+=p.pulseSpeed;
+      
+      if(p.z<0.3||p.z>1.5)p.vz*=-1;
+      if(p.x<0)p.x=canvas.width;
+      if(p.x>canvas.width)p.x=0;
+      if(p.y<0)p.y=canvas.height;
+      if(p.y>canvas.height)p.y=0;
+      
+      const mdx=p.x-mouse.x,mdy=p.y-mouse.y;
+      const md=Math.sqrt(mdx*mdx+mdy*mdy);
+      if(md<MOUSE_DIST){
+        const force=(1-md/MOUSE_DIST)*0.02;
+        p.vx+=mdx/md*force;
+        p.vy+=mdy/md*force;
+      }
+      p.vx*=0.999;
+      p.vy*=0.999;
+    });
+    
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const a=particles[i],b=particles[j];
+        const dx=a.x-b.x,dy=a.y-b.y;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<CONNECTION_DIST){
+          const alpha=(1-dist/CONNECTION_DIST)*0.15*a.z*b.z;
+          ctx.beginPath();
+          ctx.moveTo(a.x,a.y);
+          ctx.lineTo(b.x,b.y);
+          ctx.strokeStyle='rgba(13,148,136,'+alpha+')';
+          ctx.lineWidth=0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    
+    particles.forEach(p=>{
+      const glow=Math.sin(p.pulse)*0.2+0.8;
+      const r=p.radius*p.z*glow;
+      const grad=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*4);
+      grad.addColorStop(0,'rgba(13,148,136,'+(p.opacity*0.3*glow)+')');
+      grad.addColorStop(1,'rgba(13,148,136,0)');
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,r*4,0,Math.PI*2);
+      ctx.fillStyle=grad;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,r,0,Math.PI*2);
+      ctx.fillStyle='rgba(20,184,166,'+(p.opacity*glow)+')';
+      ctx.fill();
+    });
+    
+    if(mouse.x>0){
+      const mg=ctx.createRadialGradient(mouse.x,mouse.y,0,mouse.x,mouse.y,120);
+      mg.addColorStop(0,'rgba(245,158,11,0.04)');
+      mg.addColorStop(1,'rgba(245,158,11,0)');
+      ctx.beginPath();
+      ctx.arc(mouse.x,mouse.y,120,0,Math.PI*2);
+      ctx.fillStyle=mg;
+      ctx.fill();
+    }
+    requestAnimationFrame(animate);
+  }
+  
+  canvas.parentElement.addEventListener('mousemove',function(e){
+    const rect=canvas.getBoundingClientRect();
+    mouse.x=e.clientX-rect.left;
+    mouse.y=e.clientY-rect.top;
+  });
+  canvas.parentElement.addEventListener('mouseleave',function(){mouse.x=-999;mouse.y=-999});
+  window.addEventListener('resize',function(){resize();createParticles()});
+  resize();
+  createParticles();
+  animate();
+})();
 </script>
 </body>
 </html>
