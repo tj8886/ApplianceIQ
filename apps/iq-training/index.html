@@ -1423,7 +1423,8 @@ window.filterCurrSidebar = filterCurrSidebar;
 
 function formatContent(content) {
   if (!content) return '';
-  return content.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/^/, '<p>') + '</p>';
+  var text = Array.isArray(content) ? content.join('\n\n') : content;
+  return text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/^/, '<p>') + '</p>';
 }
 
 async function loadChapter(slug, volId) {
