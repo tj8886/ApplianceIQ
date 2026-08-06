@@ -886,9 +886,7 @@ function renderPillar(el) {
   var col = pillarColors[pillar];
   var coursesHtml = courses.map(function(c) {
     var hasChapters = c.chapter_slugs && c.chapter_slugs.length > 0;
-    var clickAction = pillar === 'brand_iq'
-      ? "navTo('brand-detail',{deck:" + JSON.stringify({id:c.id,name:c.name,brand_id:c.brand_id,subtitle:c.subtitle}).replace(/"/g,'&quot;') + "})"
-      : "openCourseDetail(" + c.id + ")";
+    var clickAction = "openCourseDetail(" + c.id + ")";
     var badges = '';
     if (hasChapters) badges += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;background:rgba(8,145,178,.1);color:var(--cyan)">📖 ' + c.chapter_slugs.length + '</span>';
     return '<div class="deck-row" onclick="' + clickAction + '">'
@@ -1939,7 +1937,7 @@ function renderCourseLessonPanel(course, slugs) {
   // Find matching chapters from loaded data
   var chapters = slugs.map(function(slug) {
     var ch = S.chapters.find(function(c){ return c.slug === slug; });
-    return ch || { slug: slug, title: slug.replace(/chapter-\d+-/,'').replace(/-/g,' '), id: null };
+    return ch || { slug: slug, title: slug.replace(/^chapter-\d+-/,'').replace(/^brand-/,'').replace(/-/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase()}), id: null };
   });
   return chapters.map(function(ch) {
     var done = ch.id && S.completedChapterIds.has(ch.id);
