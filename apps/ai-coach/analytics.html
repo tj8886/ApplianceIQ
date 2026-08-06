@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1f3d">
+<title>AI Analytics | ApplianceIQ Intelligence</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230f1f3d'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='%2314b8a6' font-weight='bold'>IQ</text></svg>">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--navy:#0f1f3d;--teal:#14b8a6;--teal-dark:#0d9488;--surface:#fff;--dim:#f4f6f9;--text:#0f1f3d;--text-dim:#5a6a85;--text-light:#8896aa;--border:#e2e7ef;--radius:10px;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;--pink:#ec4899;--cyan:#06b6d4}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:var(--dim);color:var(--text)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+.app-bar{background:var(--navy);padding:14px 24px;display:flex;align-items:center;gap:12px}
+.app-bar .mark{width:28px;height:28px;background:var(--teal);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--navy)}
+.app-bar h1{font-size:15px;font-weight:700;color:#fff}
+.app-bar h1 span{color:var(--teal)}
+.app-bar .sub{font-size:10px;color:rgba(255,255,255,.35);margin-left:8px}
+.app-bar .back{margin-left:auto;font-size:12px;color:rgba(255,255,255,.5);padding:6px 14px;border:1px solid rgba(255,255,255,.1);border-radius:8px;text-decoration:none;transition:all .15s}
+.app-bar .back:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+
+.dash{max-width:1200px;margin:0 auto;padding:24px}
+.time-bar{display:flex;gap:6px;margin-bottom:20px}
+.time-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);transition:all .12s}
+.time-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.time-btn:hover:not(.active){border-color:var(--teal)}
+
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px}
+.stat{background:var(--surface);border-radius:var(--radius);padding:18px;border:1px solid var(--border)}
+.stat .label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-dim)}
+.stat .value{font-size:28px;font-weight:800;color:var(--navy);margin:6px 0 2px}
+.stat .sub{font-size:11px;color:var(--text-light)}
+.stat .value.green{color:var(--green)}
+.stat .value.teal{color:var(--teal-dark)}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+.card{background:var(--surface);border-radius:var(--radius);padding:20px;border:1px solid var(--border)}
+.card h3{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.card h3 .badge{font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600;background:var(--dim);color:var(--text-dim);margin-left:auto}
+
+.bar-chart{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-row .bar-label{font-size:12px;font-weight:600;color:var(--text);width:100px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .bar-track{flex:1;height:24px;background:var(--dim);border-radius:6px;overflow:hidden;position:relative}
+.bar-row .bar-fill{height:100%;border-radius:6px;transition:width .4s ease;display:flex;align-items:center;padding:0 8px;min-width:fit-content}
+.bar-row .bar-fill span{font-size:10px;font-weight:700;color:#fff;white-space:nowrap}
+.bar-row .bar-value{font-size:12px;font-weight:600;color:var(--text-dim);width:70px;text-align:right;flex-shrink:0}
+
+.tier-dots{display:flex;gap:8px;flex-wrap:wrap}
+.tier-dot{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--text-dim)}
+.tier-dot::before{content:'';width:8px;height:8px;border-radius:50%}
+.tier-dot.det::before{background:var(--amber)}
+.tier-dot.cached::before{background:var(--green)}
+.tier-dot.fast::before{background:var(--cyan)}
+.tier-dot.standard::before{background:var(--blue)}
+.tier-dot.strong::before{background:var(--purple)}
+
+.question-list{display:flex;flex-direction:column;gap:6px}
+.q-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--dim);font-size:12px}
+.q-row .q-count{font-size:11px;font-weight:700;color:var(--teal-dark);background:rgba(20,184,166,.1);padding:2px 8px;border-radius:6px;flex-shrink:0}
+.q-row .q-text{flex:1;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-row .q-persona{font-size:10px;font-weight:600;color:var(--text-light)}
+
+.cost-timeline{display:flex;align-items:flex-end;gap:3px;height:120px;padding-top:8px}
+.cost-bar{flex:1;background:var(--teal);border-radius:4px 4px 0 0;transition:height .3s;min-height:2px;position:relative;cursor:pointer}
+.cost-bar:hover{opacity:.8}
+.cost-bar .tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;font-size:10px;padding:4px 8px;border-radius:4px;white-space:nowrap;font-weight:600;z-index:10}
+.cost-bar:hover .tip{display:block}
+.cost-labels{display:flex;gap:3px;margin-top:4px}
+.cost-labels span{flex:1;text-align:center;font-size:9px;color:var(--text-light)}
+
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;display:inline-block}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.refresh-btn{font-size:11px;color:var(--teal-dark);font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid var(--border);transition:all .12s}
+.refresh-btn:hover{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+.loading{text-align:center;padding:60px;color:var(--text-dim);font-size:14px}
+
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(3,1fr)}.grid-2,.grid-3{grid-template-columns:1fr}}
+@media(max-width:600px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app-bar">
+  <div class="mark">IQ</div>
+  <h1>AI <span>Analytics</span></h1>
+  <div class="sub">Intelligence Cost & Usage</div>
+  <a class="back" href="/">← AI Coach</a>
+</div>
+
+<div class="dash" id="dash">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <div class="time-bar" id="timeBar"></div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <span class="live-dot"></span>
+      <span style="font-size:11px;color:var(--text-dim)">Live</span>
+      <button class="refresh-btn" onclick="loadData()">Refresh</button>
+    </div>
+  </div>
+  <div id="content"><div class="loading">Loading analytics...</div></div>
+</div>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const sb=createClient('https://fumwwhyozeouoqscolke.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMTkwNjEsImV4cCI6MjA1ODY5NTA2MX0.FgGW0BAb1AuMFaMBmOkqjVaOx1JxRvHASrzP3LNpMrg');
+
+let period='30d';
+const periods=[{k:'24h',l:'24 Hours'},{k:'7d',l:'7 Days'},{k:'30d',l:'30 Days'},{k:'90d',l:'90 Days'},{k:'all',l:'All Time'}];
+
+function periodStart(){
+  const now=new Date();
+  if(period==='24h')return new Date(now-864e5).toISOString();
+  if(period==='7d')return new Date(now-6048e5).toISOString();
+  if(period==='30d')return new Date(now-2592e6).toISOString();
+  if(period==='90d')return new Date(now-7776e6).toISOString();
+  return '2020-01-01T00:00:00Z';
+}
+
+// Render time buttons
+document.getElementById('timeBar').innerHTML=periods.map(p=>`<button class="time-btn ${p.k===period?'active':''}" onclick="window.setPeriod('${p.k}')">${p.l}</button>`).join('');
+window.setPeriod=(k)=>{period=k;document.getElementById('timeBar').innerHTML=periods.map(p=>`<button class="time-btn ${p.k===period?'active':''}" onclick="window.setPeriod('${p.k}')">${p.l}</button>`).join('');loadData()};
+
+async function loadData(){
+  const start=periodStart();
+  const el=document.getElementById('content');
+
+  // Fetch assistant turns with metadata
+  const{data:turns}=await sb.from('ai_conversation_turns').select('persona_name,content,metadata,created_at,role').gte('created_at',start).order('created_at',{ascending:false}).limit(2000);
+
+  // Fetch user questions
+  const{data:userTurns}=await sb.from('ai_conversation_turns').select('content,created_at').eq('role','user').gte('created_at',start).order('created_at',{ascending:false}).limit(500);
+
+  // Fetch cache stats
+  const{data:cacheRows}=await sb.from('ai_response_cache').select('cache_key,hit_count,deterministic_type,created_at').order('hit_count',{ascending:false}).limit(50);
+
+  // Fetch proxy audit events
+  const{data:auditRows}=await sb.from('ai_audit_events').select('event_type,event_payload,event_status,created_at').gte('created_at',start).order('created_at',{ascending:false}).limit(1000);
+
+  const assistant=(turns||[]).filter(t=>t.role==='assistant'&&t.metadata);
+  const users=userTurns||[];
+  const cache=cacheRows||[];
+  const audits=auditRows||[];
+
+  // ── Compute metrics ──
+  let totalCost=0, totalRequests=assistant.length, freeRequests=0;
+  const byTier={deterministic:0,cached:0,fast:0,standard:0,strong:0};
+  const byPersona={};
+  const byApp={};
+  const dailyCosts={};
+
+  for(const t of assistant){
+    const tier=t.metadata?.tier||'unknown';
+    const cost=parseFloat(t.metadata?.total_cost_usd||t.metadata?.cost||0);
+    const app=t.metadata?.source_app||'unknown';
+    const persona=t.persona_name||'Unknown';
+    const day=t.created_at?.slice(0,10);
+
+    totalCost+=cost;
+    if(tier==='deterministic'||tier==='cached')freeRequests++;
+    if(byTier[tier]!==undefined)byTier[tier]++;
+    byPersona[persona]=(byPersona[persona]||0)+1;
+    byApp[app]=(byApp[app]||0)+1;
+    if(day){dailyCosts[day]=(dailyCosts[day]||0)+cost}
+  }
+
+  // Add proxy audit costs
+  for(const a of audits){
+    if(a.event_payload?.cost_estimate_usd){
+      totalCost+=parseFloat(a.event_payload.cost_estimate_usd);
+      const day=a.created_at?.slice(0,10);
+      if(day)dailyCosts[day]=(dailyCosts[day]||0)+parseFloat(a.event_payload.cost_estimate_usd);
+    }
+  }
+
+  const totalCacheHits=cache.reduce((s,c)=>s+(c.hit_count||0),0);
+  const avgCost=totalRequests>0?(totalCost/totalRequests):0;
+  const freePercent=totalRequests>0?((freeRequests/totalRequests)*100):0;
+
+  // ── Common questions ──
+  const qMap={};
+  for(const u of users){
+    const q=(u.content||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').trim().slice(0,80);
+    if(q.length>10)qMap[q]=(qMap[q]||{count:0,raw:u.content});qMap[q]&&(qMap[q].count++);
+  }
+  const topQuestions=Object.entries(qMap).sort((a,b)=>b[1].count-a[1].count).slice(0,10);
+
+  // ── Cost timeline ──
+  const days=Object.keys(dailyCosts).sort();
+  const maxDayCost=Math.max(...Object.values(dailyCosts),0.001);
+
+  // ── Render ──
+  el.innerHTML=`
+    <div class="stats-row">
+      <div class="stat"><div class="label">Total Cost</div><div class="value">$${totalCost.toFixed(2)}</div><div class="sub">${period==='all'?'all time':period}</div></div>
+      <div class="stat"><div class="label">Total Requests</div><div class="value teal">${totalRequests.toLocaleString()}</div><div class="sub">${users.length} user messages</div></div>
+      <div class="stat"><div class="label">Free Requests</div><div class="value green">${freePercent.toFixed(0)}%</div><div class="sub">${freeRequests} deterministic + cached</div></div>
+      <div class="stat"><div class="label">Avg Cost / Request</div><div class="value">$${avgCost.toFixed(4)}</div><div class="sub">across all tiers</div></div>
+      <div class="stat"><div class="label">Cache Hits</div><div class="value green">${totalCacheHits.toLocaleString()}</div><div class="sub">${cache.length} cached answers</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Cost Over Time <span class="badge">${days.length} days</span></h3>
+        <div class="cost-timeline" id="costTimeline">
+          ${days.slice(-30).map(d=>{
+            const h=Math.max(2,(dailyCosts[d]/maxDayCost)*110);
+            return`<div class="cost-bar" style="height:${h}px"><div class="tip">${d}: $${dailyCosts[d].toFixed(3)}</div></div>`;
+          }).join('')}
+        </div>
+        <div class="cost-labels">${days.slice(-30).map(d=>`<span>${d.slice(5)}</span>`).join('')}</div>
+      </div>
+      <div class="card">
+        <h3>Requests by Tier</h3>
+        <div class="tier-dots" style="margin-bottom:14px">
+          <span class="tier-dot det">Deterministic</span>
+          <span class="tier-dot cached">Cached</span>
+          <span class="tier-dot fast">Fast (Luna)</span>
+          <span class="tier-dot standard">Standard</span>
+          <span class="tier-dot strong">Strong</span>
+        </div>
+        <div class="bar-chart">
+          ${Object.entries(byTier).sort((a,b)=>b[1]-a[1]).map(([tier,count])=>{
+            const pct=totalRequests>0?(count/totalRequests*100):0;
+            const colors={deterministic:'var(--amber)',cached:'var(--green)',fast:'var(--cyan)',standard:'var(--blue)',strong:'var(--purple)'};
+            return`<div class="bar-row"><div class="bar-label">${tier}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,2)}%;background:${colors[tier]||'#999'}"><span>${count}</span></div></div><div class="bar-value">${pct.toFixed(0)}%</div></div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3>By Persona</h3>
+        <div class="bar-chart">
+          ${Object.entries(byPersona).sort((a,b)=>b[1]-a[1]).map(([name,count])=>{
+            const maxP=Math.max(...Object.values(byPersona));
+            const pct=(count/maxP)*100;
+            const colors={TJ:'var(--amber)',Natalie:'var(--blue)',Leah:'var(--purple)',Caden:'var(--green)',Asher:'var(--red)',Katrina:'var(--pink)'};
+            return`<div class="bar-row"><div class="bar-label">${name}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,5)}%;background:${colors[name]||'var(--teal)'}"><span>${count}</span></div></div><div class="bar-value">${count}</div></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h3>By App</h3>
+        <div class="bar-chart">
+          ${Object.entries(byApp).sort((a,b)=>b[1]-a[1]).map(([app,count])=>{
+            const maxA=Math.max(...Object.values(byApp));
+            const pct=(count/maxA)*100;
+            const labels={crm:'CRM',speciq:'Spec IQ',academy:'Academy',up:'Up System',command:'Command Center',field:'IQ Field',pim:'Product IQ',scraper:'PIM Scraper',coach:'AI Coach',unknown:'Other'};
+            return`<div class="bar-row"><div class="bar-label">${labels[app]||app}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(pct,5)}%;background:var(--teal)"><span>${count}</span></div></div><div class="bar-value">${count}</div></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h3>Top Cached Answers <span class="badge">saves $</span></h3>
+        <div class="question-list">
+          ${cache.slice(0,8).map(c=>`<div class="q-row"><span class="q-count">${c.hit_count}x</span><span class="q-text">${esc(c.cache_key?.slice(0,50)||'')}</span><span class="q-persona">${c.deterministic_type||''}</span></div>`).join('')||'<div style="font-size:12px;color:var(--text-light);padding:8px">No cached answers yet</div>'}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Most Common Questions <span class="badge">${topQuestions.length} unique</span></h3>
+      <div class="question-list">
+        ${topQuestions.map(([q,data])=>`<div class="q-row"><span class="q-count">${data.count}x</span><span class="q-text">${esc(data.raw?.slice(0,80)||q)}</span></div>`).join('')||'<div style="font-size:12px;color:var(--text-light);padding:8px">No questions tracked yet</div>'}
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:14px">
+      <div class="card">
+        <h3>Recent AI Activity</h3>
+        <div class="question-list">
+          ${assistant.slice(0,8).map(t=>{
+            const tier=t.metadata?.tier||'?';
+            const cost=parseFloat(t.metadata?.total_cost_usd||t.metadata?.cost||0);
+            const colors={deterministic:'var(--amber)',cached:'var(--green)',fast:'var(--cyan)',standard:'var(--blue)',strong:'var(--purple)'};
+            return`<div class="q-row"><span class="q-count" style="background:${colors[tier]||'#eee'}20;color:${colors[tier]||'#999'}">${tier}</span><span class="q-text">${esc((t.content||'').slice(0,60))}</span><span class="q-persona">${t.persona_name||''} · $${cost.toFixed(4)}</span></div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h3>Cost Breakdown by Tier</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${[
+            {label:'Deterministic',tier:'deterministic',rate:'$0.0000',color:'var(--amber)'},
+            {label:'Cached',tier:'cached',rate:'$0.0000',color:'var(--green)'},
+            {label:'Fast (Luna)',tier:'fast',rate:'~$0.0003',color:'var(--cyan)'},
+            {label:'Standard',tier:'standard',rate:'~$0.004',color:'var(--blue)'},
+            {label:'Strong',tier:'strong',rate:'~$0.008',color:'var(--purple)'},
+          ].map(t=>`<div style="background:var(--dim);border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:600;color:${t.color}">${t.label}</div><div style="font-size:18px;font-weight:800;color:var(--navy);margin:2px 0">${byTier[t.tier]||0}</div><div style="font-size:10px;color:var(--text-light)">${t.rate}/req</div></div>`).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+
+window.loadData=loadData;
+loadData();
+// Auto-refresh every 30 seconds
+setInterval(loadData,30000);
+</script>
+</body>
+</html>
