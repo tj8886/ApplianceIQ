@@ -403,6 +403,11 @@ a{color:var(--accent);text-decoration:none}
 .loading-spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:40px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+/* TTS Audio Player */
+#tts-player { position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:2px solid var(--accent); padding:10px 16px; display:none; align-items:center; gap:8px; z-index:9999; box-shadow:0 -4px 20px rgba(0,0,0,.1); }
+@media(max-width:600px) { #tts-player { padding:8px 10px; } #tts-player select { display:none; } }
+.btn-listen { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg,var(--navy),#2c5282); color:#fff; border:none; border-radius:var(--radius-xs); font-size:13px; font-weight:700; cursor:pointer; transition:all .2s; }
+.btn-listen:hover { transform:translateY(-1px); box-shadow:0 2px 8px rgba(30,58,95,.3); }
 </style>
 </head>
 <body>
@@ -499,6 +504,7 @@ var currentZone = null, currentLane = null, currentDeck = null;
 var viewHistory = [];
 
 function navTo(view, data) {
+  if (typeof ttsStop === 'function') ttsStop();
   if (currentView !== view) viewHistory.push({ view: currentView, zone: currentZone, lane: currentLane });
   currentView = view;
   if (data) {
@@ -1455,7 +1461,8 @@ async function loadChapter(slug, volId) {
       + (data.sections||[]).map(function(s) {
         return '<div class="section-block"><h2 class="section-title">' + esc(s.title) + '</h2><div class="section-content">' + formatContent(s.content) + '</div></div>';
       }).join('')
-      + '<button class="btn-ai-trainer" onclick="openTrainer()"><span style="color:var(--accent)">✦</span> Ask AI Trainer</button>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><button class="btn-listen" onclick="ttsListenToChapter()">🎧 Listen to Chapter</button>'
+      + '<button class="btn-ai-trainer" onclick="openTrainer()"><span style="color:var(--accent)">✦</span> Ask AI Trainer</button></div>'
       + '<div class="chapter-actions"><div class="nav-pair">'
       + (prev ? '<button class="btn-nav" onclick="loadChapter(\'' + prev.slug + '\',' + (prevVol?prevVol.id:'null') + ')">← Previous</button>' : '<span></span>')
       + (next ? '<button class="btn-nav" onclick="loadChapter(\'' + next.slug + '\',' + (nextVol?nextVol.id:'null') + ')">Next →</button>' : '')
@@ -2005,6 +2012,7 @@ async function openLessonReader(slug, chId) {
         return '<div style="margin-bottom:28px"><h2 style="font-size:18px;font-weight:700;color:var(--navy);margin-bottom:12px">' + esc(s.title) + '</h2><div style="font-size:15px;line-height:1.8;color:var(--text)">' + formatContent(s.content) + '</div></div>';
       }).join('')
       + '<div style="display:flex;gap:12px;justify-content:center;margin:32px 0">'
+      + '<button class="btn-listen" onclick="ttsListenToChapter()">🎧 Listen</button>'
       + '<button onclick="openTrainerForCourse()" style="padding:12px 24px;background:var(--navy);color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer"><span style="color:var(--accent)">✦</span> Ask AI Trainer</button>'
       + (chId ? '<button onclick="toggleChapterComplete(\'' + chId + '\',\'' + slug + '\')" id="complete-btn" style="padding:12px 24px;background:' + (isComplete?'var(--green)':'var(--accent)') + ';color:#fff;border:none;border-radius:var(--radius-xs);font-size:14px;font-weight:700;cursor:pointer">' + (isComplete?'✓ Completed':'Mark Complete') + '</button>' : '')
       + '</div></div>';
@@ -2242,6 +2250,118 @@ function timeAgo(ts) {
   if (hrs < 24) return hrs + 'h ago';
   return Math.floor(hrs / 24) + 'd ago';
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AUDIO READER — Text-to-Speech for chapter content
+// ══════════════════════════════════════════════════════════════════════════════
+var _tts = { synth: window.speechSynthesis, utterance: null, playing: false, paused: false, rate: 1.0, voiceIdx: 0, voices: [], chunks: [], chunkIdx: 0, progressPct: 0 };
+
+function ttsLoadVoices() {
+  var all = _tts.synth.getVoices();
+  var english = all.filter(function(v) { return /en[-_]/i.test(v.lang); });
+  var premium = english.filter(function(v) { return /premium|natural|enhanced|neural/i.test(v.name); });
+  var standard = english.filter(function(v) { return !/premium|natural|enhanced|neural/i.test(v.name); });
+  _tts.voices = premium.concat(standard);
+  if (!_tts.voices.length) _tts.voices = english.length ? english : all.slice(0, 10);
+  var preferred = _tts.voices.findIndex(function(v) { return /samantha|karen|daniel|google.*us|natural/i.test(v.name); });
+  if (preferred >= 0) _tts.voiceIdx = preferred;
+  ttsUpdateVoiceSelect();
+}
+
+function ttsUpdateVoiceSelect() {
+  var sel = document.getElementById('tts-voice-select');
+  if (!sel) return;
+  sel.innerHTML = _tts.voices.map(function(v, i) {
+    var label = v.name.replace(/Microsoft |Google |Apple /g, '').replace(/ Online \(Natural\)/g, ' ✨').replace(/ \(.*?\)/g, '');
+    return '<option value="' + i + '"' + (i === _tts.voiceIdx ? ' selected' : '') + '>' + label + '</option>';
+  }).join('');
+}
+
+function ttsGetText() {
+  var d = window._currentChapterData;
+  if (!d) return '';
+  var parts = [];
+  if (d.title) parts.push(d.title.replace(/Chapter \d+ — /, ''));
+  if (d.intro) parts.push(d.intro);
+  (d.sections || []).forEach(function(s) {
+    if (s.title) parts.push(s.title);
+    var c = s.content;
+    if (Array.isArray(c)) c = c.join('. ');
+    if (c) parts.push(c);
+  });
+  return parts.join('. ').replace(/•/g, '').replace(/\n+/g, ' ').replace(/\s+/g, ' ');
+}
+
+function ttsSplitChunks(text) {
+  var raw = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text];
+  var chunks = []; var buf = '';
+  raw.forEach(function(s) { buf += s; if (buf.length > 150) { chunks.push(buf.trim()); buf = ''; } });
+  if (buf.trim()) chunks.push(buf.trim());
+  return chunks;
+}
+
+function ttsPlay() {
+  if (_tts.paused && _tts.synth.paused) { _tts.synth.resume(); _tts.paused = false; _tts.playing = true; ttsUpdateUI(); return; }
+  _tts.synth.cancel();
+  var text = ttsGetText();
+  if (!text) return;
+  _tts.chunks = ttsSplitChunks(text);
+  _tts.chunkIdx = 0;
+  _tts.playing = true; _tts.paused = false;
+  ttsUpdateUI(); ttsSpeakChunk();
+}
+
+function ttsSpeakChunk() {
+  if (_tts.chunkIdx >= _tts.chunks.length) { ttsStop(); return; }
+  var u = new SpeechSynthesisUtterance(_tts.chunks[_tts.chunkIdx]);
+  if (_tts.voices[_tts.voiceIdx]) u.voice = _tts.voices[_tts.voiceIdx];
+  u.rate = _tts.rate; u.pitch = 1.0;
+  u.onend = function() { _tts.chunkIdx++; _tts.progressPct = Math.round((_tts.chunkIdx / _tts.chunks.length) * 100); ttsUpdateUI(); if (_tts.playing && !_tts.paused) ttsSpeakChunk(); };
+  u.onerror = function() { _tts.chunkIdx++; if (_tts.playing) ttsSpeakChunk(); };
+  _tts.utterance = u; _tts.synth.speak(u);
+}
+
+function ttsPause() { if (_tts.playing && !_tts.paused) { _tts.synth.pause(); _tts.paused = true; ttsUpdateUI(); } }
+function ttsStop() { _tts.synth.cancel(); _tts.playing = false; _tts.paused = false; _tts.chunkIdx = 0; _tts.progressPct = 0; ttsUpdateUI(); }
+function ttsToggle() { if (!_tts.playing) ttsPlay(); else if (_tts.paused) ttsPlay(); else ttsPause(); }
+function ttsSetRate(r) { _tts.rate = parseFloat(r); var l = document.getElementById('tts-rate-label'); if (l) l.textContent = _tts.rate.toFixed(1) + 'x'; if (_tts.playing && !_tts.paused) { _tts.synth.cancel(); ttsSpeakChunk(); } }
+function ttsSetVoice(idx) { _tts.voiceIdx = parseInt(idx); if (_tts.playing) { _tts.synth.cancel(); ttsSpeakChunk(); } }
+function ttsSkip(dir) { _tts.chunkIdx = Math.max(0, Math.min(_tts.chunks.length - 1, _tts.chunkIdx + (dir > 0 ? 3 : -3))); _tts.progressPct = Math.round((_tts.chunkIdx / _tts.chunks.length) * 100); if (_tts.playing) { _tts.synth.cancel(); ttsSpeakChunk(); } ttsUpdateUI(); }
+function ttsUpdateUI() {
+  var bar = document.getElementById('tts-player'); if (!bar) return;
+  var btn = document.getElementById('tts-play-btn'); var prog = document.getElementById('tts-progress'); var pct = document.getElementById('tts-pct');
+  if (btn) btn.textContent = _tts.playing && !_tts.paused ? '⏸' : '▶';
+  if (prog) prog.style.width = _tts.progressPct + '%';
+  if (pct) pct.textContent = _tts.progressPct + '%';
+  bar.style.display = 'flex';
+}
+function ttsShowPlayer() {
+  var existing = document.getElementById('tts-player');
+  if (existing) { existing.style.display = 'flex'; return; }
+  var el = document.createElement('div'); el.id = 'tts-player';
+  el.innerHTML = '<div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    + '<button onclick="ttsSkip(-1)" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text2);padding:4px" title="Back">⏮</button>'
+    + '<button id="tts-play-btn" onclick="ttsToggle()" style="width:36px;height:36px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">▶</button>'
+    + '<button onclick="ttsSkip(1)" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text2);padding:4px" title="Forward">⏭</button>'
+    + '<button onclick="ttsStop()" style="background:none;border:none;font-size:14px;cursor:pointer;color:var(--text3);padding:4px" title="Stop">⏹</button>'
+    + '<div style="flex:1;min-width:60px;max-width:180px;height:4px;background:var(--surface3);border-radius:2px;position:relative"><div id="tts-progress" style="height:100%;background:var(--accent);border-radius:2px;width:0%;transition:width .3s"></div></div>'
+    + '<span id="tts-pct" style="font-size:11px;color:var(--text3);min-width:28px">0%</span>'
+    + '<div style="display:flex;align-items:center;gap:4px"><label style="font-size:11px;color:var(--text3)">Speed</label>'
+    + '<input type="range" min="0.5" max="2.5" step="0.1" value="' + _tts.rate + '" oninput="ttsSetRate(this.value)" style="width:60px;accent-color:var(--accent)">'
+    + '<span id="tts-rate-label" style="font-size:11px;color:var(--text2);min-width:28px">' + _tts.rate.toFixed(1) + 'x</span></div>'
+    + '<select id="tts-voice-select" onchange="ttsSetVoice(this.value)" style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text);max-width:140px"></select></div>'
+    + '<button onclick="ttsClosePlayer()" style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3);padding:4px;margin-left:8px" title="Close">✕</button>';
+  document.body.appendChild(el);
+  ttsUpdateVoiceSelect();
+}
+function ttsClosePlayer() { ttsStop(); var el = document.getElementById('tts-player'); if (el) el.style.display = 'none'; }
+function ttsListenToChapter() { ttsShowPlayer(); ttsPlay(); }
+
+if (_tts.synth.onvoiceschanged !== undefined) _tts.synth.onvoiceschanged = ttsLoadVoices;
+ttsLoadVoices();
+window.ttsToggle = ttsToggle; window.ttsStop = ttsStop; window.ttsPlay = ttsPlay; window.ttsPause = ttsPause;
+window.ttsSetRate = ttsSetRate; window.ttsSetVoice = ttsSetVoice; window.ttsSkip = ttsSkip;
+window.ttsClosePlayer = ttsClosePlayer; window.ttsListenToChapter = ttsListenToChapter;
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="academy"></script>
 </body>
