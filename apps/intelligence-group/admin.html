@@ -420,12 +420,13 @@ async function postLogin(){
 
 async function loadOrg(orgId){
   const safe=(p)=>p.catch(e=>{console.error("loadOrg query failed:",e);return []});
-  const [mems,roles,ents,invs,locs]=await Promise.all([
+  const [mems,roles,ents,invs,locs,locmems]=await Promise.all([
     safe(api("/rest/v1/organization_members?organization_id=eq."+orgId+"&select=*")),
     safe(api("/rest/v1/org_roles?organization_id=eq."+orgId+"&order=role_level.asc")),
     safe(api("/rest/v1/org_app_entitlements?organization_id=eq."+orgId)),
     safe(api("/rest/v1/org_invites?organization_id=eq."+orgId+"&order=created_at.desc")),
-    safe(api("/rest/v1/org_locations?organization_id=eq."+orgId))
+    safe(api("/rest/v1/org_locations?organization_id=eq."+orgId+"&order=location_type.desc,name.asc")),
+    safe(api("/rest/v1/org_location_members?organization_id=eq."+orgId))
   ]);
   const ids=[...new Set(mems.map(m=>m.user_id))].filter(Boolean);
   let profMap={};
@@ -436,7 +437,7 @@ async function loadOrg(orgId){
     }catch{}
   }
   mems.forEach(m=>{m._name=profMap[m.user_id]?.full_name||null;m._email=profMap[m.user_id]?.email||null});
-  S.orgData={mems,roles,ents,invs,locs};
+  S.orgData={mems,roles,ents,invs,locs,locmems};
 }
 
 /* ─── RENDER ─── */
@@ -623,8 +624,10 @@ function tabBody(){
 
 function membersTab(d){
   if(!d.mems.length)return '<div class="empty">No members yet — send some invites.</div>';
+  const stores=d.locs.filter(l=>l.location_type==="store"&&l.is_active);
+  const primaryLoc=uid=>{const lm=d.locmems.find(x=>x.user_id===uid);return lm?lm.location_id:""};
   return `<div style="overflow-x:auto"><table>
-<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Store</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
 <tbody>${d.mems.map(m=>`
 <tr>
   <td><div class="mem"><div class="avatar">${esc((m._name||m._email||"?")[0].toUpperCase())}</div>
@@ -634,6 +637,9 @@ function membersTab(d){
   <td><select onchange="patchMember('${m.id}',{org_role_id:this.value||null})">
     <option value="">— Unassigned —</option>
     ${d.roles.map(r=>`<option value="${r.id}" ${m.org_role_id===r.id?"selected":""}>${esc(r.role_name)}</option>`).join("")}</select></td>
+  <td><select onchange="assignStore('${m.user_id}',this.value)">
+    <option value="">— No store —</option>
+    ${stores.map(s=>`<option value="${s.id}" ${primaryLoc(m.user_id)===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></td>
   <td><span class="badge ${m.status==='active'?'bg-green':'bg-red'}">${esc(m.status)}</span></td>
   <td style="text-align:right">${m.status==="active"
     ?`<button class="link-danger" onclick="removeMember('${m.id}')">Remove</button>`
@@ -684,14 +690,103 @@ async function revokeInvite(id){
   }catch(e){alert("Failed: "+e.message)}
 }
 
+const LOC_TYPES=[["store","Store"],["district","District"],["region","Region"],["corporate","Corporate"]];
+const LOC_ICONS={corporate:"🏛️",region:"🗺️",district:"📍",store:"🏬"};
+
 function storesTab(d){
-  if(!d.locs.length)return '<div class="empty">No store locations recorded for this organization.</div>';
-  return d.locs.map(l=>`
+  const byId={};d.locs.forEach(l=>byId[l.id]=l);
+  const memCount=id=>d.locmems.filter(lm=>lm.location_id===id).length;
+  return `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div><b style="font-size:14px;color:var(--navy)">Locations</b><div style="font-size:12px;color:#94a3b8">Link stores under districts/regions with the "Under" field. Assign members on the Members tab or when inviting.</div></div>
+  <button class="btn btn-green" style="padding:8px 14px;font-size:12px" onclick="openAddStore()">+ Add Location</button>
+</div>
+${d.locs.length?d.locs.map(l=>`
 <div class="row-item">
-  <div class="fx"><div class="nm">${esc(l.name||"Unnamed Location")}</div>
-    <div class="sb">${esc([l.address,l.city,l.province_state,l.country].filter(Boolean).join(", "))}${l.code?" · Code "+esc(l.code):""}</div></div>
+  <span class="app-icon">${LOC_ICONS[l.location_type]||"🏬"}</span>
+  <div class="fx">
+    <div class="nm">${esc(l.name)} <span style="font-weight:400;color:#94a3b8;font-size:11px">${esc(l.location_type)}${l.parent_id&&byId[l.parent_id]?" · under "+esc(byId[l.parent_id].name):""}</span></div>
+    <div class="sb">${esc([l.address,l.city,l.province_state,l.country].filter(Boolean).join(", ")||"No address")}${l.code?" · Code "+esc(l.code):""} · ${memCount(l.id)} member${memCount(l.id)!==1?"s":""}</div>
+  </div>
   <span class="badge ${l.is_active?'bg-green':'bg-red'}">${l.is_active?"Active":"Closed"}</span>
-</div>`).join("")}
+  <button class="link-muted" onclick="patchLoc('${l.id}',{is_active:${!l.is_active}})">${l.is_active?"Close":"Reopen"}</button>
+  ${memCount(l.id)===0&&!d.locs.some(x=>x.parent_id===l.id)?`<button class="link-danger" onclick="deleteLoc('${l.id}')">Delete</button>`:""}
+</div>`).join(""):'<div class="empty">No locations yet — add your first store.</div>'}
+<div id="addstore-slot"></div>`}
+
+function openAddStore(){
+  const parents=S.orgData.locs.filter(l=>l.location_type!=="store");
+  document.getElementById("addstore-slot").innerHTML=`
+<div style="margin-top:12px;border:2px dashed var(--line);border-radius:12px;padding:16px;background:#f8fafc">
+  <div class="frm-grid" style="grid-template-columns:2fr 1fr 1fr;margin-bottom:12px">
+    <div><label>Name</label><input id="ns-name" placeholder="Burlington Store"/></div>
+    <div><label>Type</label><select id="ns-type">${LOC_TYPES.map(([v,lb])=>`<option value="${v}">${lb}</option>`).join("")}</select></div>
+    <div><label>Code</label><input id="ns-code" placeholder="BUR-01"/></div>
+  </div>
+  <div class="frm-grid" style="grid-template-columns:2fr 1fr;margin-bottom:12px">
+    <div><label>Address</label><input id="ns-addr" placeholder="123 Main St"/></div>
+    <div><label>City</label><input id="ns-city" placeholder="Burlington"/></div>
+  </div>
+  <div class="frm-grid" style="grid-template-columns:1fr 1fr 2fr;margin-bottom:12px">
+    <div><label>Province/State</label><input id="ns-prov" placeholder="ON"/></div>
+    <div><label>Country</label><input id="ns-country" value="Canada"/></div>
+    <div><label>Under (optional)</label><select id="ns-parent"><option value="">— Top level —</option>${parents.map(p=>`<option value="${p.id}">${esc(p.name)} (${p.location_type})</option>`).join("")}</select></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-green" style="padding:8px 16px;font-size:13px" onclick="addStore()">Add Location</button>
+    <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="document.getElementById('addstore-slot').innerHTML=''">Cancel</button>
+  </div>
+</div>`;
+}
+
+async function addStore(){
+  const name=document.getElementById("ns-name").value.trim();
+  if(!name)return;
+  try{
+    await api("/rest/v1/org_locations",{method:"POST",body:JSON.stringify({
+      organization_id:S.org.id,name,
+      location_type:document.getElementById("ns-type").value,
+      code:document.getElementById("ns-code").value.trim()||null,
+      address:document.getElementById("ns-addr").value.trim()||null,
+      city:document.getElementById("ns-city").value.trim()||null,
+      province_state:document.getElementById("ns-prov").value.trim()||null,
+      country:document.getElementById("ns-country").value.trim()||null,
+      parent_id:document.getElementById("ns-parent").value||null,
+      is_active:true})});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message.slice(0,160))}
+}
+
+async function patchLoc(id,body){
+  try{
+    await api("/rest/v1/org_locations?id=eq."+id,{method:"PATCH",body:JSON.stringify(body)});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message.slice(0,160))}
+}
+
+async function deleteLoc(id){
+  if(!confirm("Delete this location?"))return;
+  try{
+    await api("/rest/v1/org_locations?id=eq."+id,{method:"DELETE"});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message.slice(0,160))}
+}
+
+async function assignStore(memberUserId,locationId){
+  try{
+    // one primary store per member: clear then set
+    await api("/rest/v1/org_location_members?organization_id=eq."+S.org.id+"&user_id=eq."+memberUserId,{method:"DELETE"});
+    if(locationId){
+      await api("/rest/v1/org_location_members",{method:"POST",body:JSON.stringify({
+        organization_id:S.org.id,location_id:locationId,user_id:memberUserId,is_primary:true})});
+    }
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message.slice(0,160))}
+}
 
 function appsTab(d){
   const monthly=d.ents.filter(e=>e.status==="active").reduce((s,e)=>s+(e.price_cents_monthly||0),0);
@@ -863,9 +958,10 @@ function inviteModal(){
       <button class="${invMode==='single'?'active':''}" onclick="invMode='single';document.getElementById('modal-slot').innerHTML=inviteModal()">Single Invite</button>
       <button class="${invMode==='bulk'?'active':''}" onclick="invMode='bulk';document.getElementById('modal-slot').innerHTML=inviteModal()">Bulk Invite</button>
     </div>
-    <div class="frm-grid">
+    <div class="frm-grid" style="grid-template-columns:1fr 1fr 1fr">
       <div><label>System Role</label><select id="iv-role"><option value="member">Member</option><option value="admin">Org Admin</option><option value="owner">Owner</option></select></div>
       <div><label>Position</label><select id="iv-pos"><option value="">— Select —</option>${roles.map(r=>`<option value="${r.id}">${esc(r.role_name)} (L${r.role_level})</option>`).join("")}</select></div>
+      <div><label>Store</label><select id="iv-store"><option value="">— No store —</option>${S.orgData.locs.filter(l=>l.location_type==="store"&&l.is_active).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select></div>
     </div>
     ${invMode==="single"
       ?`<div class="frm-row"><label>Email Address</label><input id="iv-email" type="email" placeholder="newrep@company.com"/></div>`
@@ -880,11 +976,12 @@ async function sendInvites(){
   const btn=document.getElementById("iv-btn");
   const role=document.getElementById("iv-role").value;
   const pos=document.getElementById("iv-pos").value||null;
+  const store=document.getElementById("iv-store")?document.getElementById("iv-store").value||null:null;
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Sending…';
   let ok=0,fail=0,emailed=0,created=[];
   const send=async(em,rl)=>{
     const rows=await api("/rest/v1/org_invites",{method:"POST",headers:{Prefer:"return=representation"},
-      body:JSON.stringify({organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,invited_by:S.user.id,status:"pending"})});
+      body:JSON.stringify({organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,location_id:store,invited_by:S.user.id,status:"pending"})});
     const inv=Array.isArray(rows)?rows[0]:rows;
     if(inv){created.push(inv);const er=await sendInviteEmail(inv);if(er&&er.sent)emailed++}
     return inv;
