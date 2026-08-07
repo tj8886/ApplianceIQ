@@ -7,7 +7,7 @@
 
    Behavior:
    - Reads the Supabase session (standard supabase-js localStorage key,
-     or #aiq_relay= token relay hash, or igcc_token from Command Center)
+     or #aiq_relay= token relay hash, or igcc_token from Admin Dashboard)
    - Calls check_app_access(app_key)
    - allowed  -> exposes window.AIQ_ACCESS = {role_level, permissions, ...}
                  and fires 'aiq:access' event; app can gate features by level
@@ -39,7 +39,7 @@
         if (tok) return tok;
       }
     } catch (e) {}
-    // 3. Command Center token
+    // 3. Admin Dashboard token
     try { var t = localStorage.getItem("igcc_token"); if (t) return t; } catch (e) {}
     return null;
   }
@@ -84,7 +84,7 @@
       } else if (reason === "canceled") {
         overlay("Subscription canceled", "This app is no longer part of your organization's plan.", false);
       } else if (reason === "no_entitlement") {
-        overlay("Not included in your plan", "Your organization doesn't have this app yet. Ask your administrator to add it in the Command Center.", false);
+        overlay("Not included in your plan", "Your organization doesn't have this app yet. Ask your administrator to add it in the Admin Dashboard.", false);
       }
       // any other reason (network weirdness): fail open, no overlay
     })

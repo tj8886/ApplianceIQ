@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
-<title>Command Center — IQ Intelligence Group</title>
+<title>Admin Dashboard — IQ Intelligence Group</title>
 <meta name="robots" content="noindex,nofollow"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -245,7 +245,7 @@ async function boot(){
   const t=localStorage.getItem("igcc_token"),u=localStorage.getItem("igcc_user");
   if(t&&u){
     S.token=t;S.user=JSON.parse(u);
-    document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Loading Command Center…</div>';
+    document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Loading Admin Dashboard…</div>';
     try{await postLogin()}catch(e){signOut();return}
   }
   render();
@@ -369,7 +369,7 @@ async function finishAccept(authData){
     }
     location.hash="";
     S.inviteCode=null;S.invitePreview=null;
-    // Route by role: members land on their apps, admins get the Command Center
+    // Route by role: members land on their apps, admins get the Admin Dashboard
     let ents=[];
     try{ents=await api("/rest/v1/org_app_entitlements?organization_id=eq."+res.organization_id+"&status=in.(active,trial)")}catch{}
     const isAdmin=res.role==="owner"||res.role==="admin";
@@ -388,7 +388,7 @@ async function finishAccept(authData){
   <h1 style="text-align:center">Welcome to ${esc(res.organization_name)}</h1>
   <p class="login-sub">You've joined as ${esc(res.role)}. ${tiles?"Here's everything your team uses:":""}</p>
   <div style="display:flex;flex-direction:column;gap:8px">${tiles||'<p style="text-align:center;font-size:13px;color:var(--muted)">No apps assigned yet — your administrator will set those up.</p>'}</div>
-  ${isAdmin?`<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="S.inviteCode=null;bootAfterAccept()">Open Command Center</button>`:""}
+  ${isAdmin?`<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="S.inviteCode=null;bootAfterAccept()">Open Admin Dashboard</button>`:""}
 </div></div>`;
     initParticles();
   }catch(e){
@@ -397,7 +397,7 @@ async function finishAccept(authData){
 }
 
 async function bootAfterAccept(){
-  document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Loading Command Center…</div>';
+  document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Loading Admin Dashboard…</div>';
   await postLogin();
   render();
 }
@@ -451,7 +451,7 @@ function loginView(){return `
   <canvas id="pt"></canvas>
   <div class="login-card">
     <div class="logo-row"><span class="logo-mark">IQ</span></div>
-    <h1>Command Center</h1>
+    <h1>Admin Dashboard</h1>
     <p class="login-sub">IQ Intelligence Group · Platform Administration</p>
     <div class="frm-row"><label>Email</label><input id="li-email" type="email" placeholder="you@company.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
     <div class="frm-row"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
@@ -482,10 +482,10 @@ async function doLogin(){
 
 function shellView(){
   return `
-<div class="mobile-topbar"><button onclick="document.querySelector('aside').classList.toggle('open')">☰</button><b>Command Center</b></div>
+<div class="mobile-topbar"><button onclick="document.querySelector('aside').classList.toggle('open')">☰</button><b>Admin Dashboard</b></div>
 <div class="shell">
 <aside>
-  <div class="side-head"><span class="logo-mark">IQ</span><div><b>Command Center</b><small>Intelligence Group</small></div></div>
+  <div class="side-head"><span class="logo-mark">IQ</span><div><b>Admin Dashboard</b><small>Intelligence Group</small></div></div>
   <nav class="side-nav">
     <button class="${S.view==='orgs'&&!S.org?'active':''}" onclick="nav('orgs')">🏢 Organizations</button>
     <button class="${S.view==='hierarchy'?'active':''}" onclick="nav('hierarchy')">👔 Role Hierarchy</button>
