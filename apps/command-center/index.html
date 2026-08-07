@@ -165,6 +165,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
 .clogin-notice.err{display:block;color:var(--danger)}.clogin-notice.ok{display:block;color:var(--verified)}
 @media(max-width:860px){.cnav-links a:not(.cbtn):not(.cbtn-o){display:none}.cdemo-grid{grid-template-columns:1fr 1fr}.cfeeds{grid-template-columns:1fr}.cc-shell{grid-template-columns:1fr}.cc-side{flex-direction:row;overflow-x:auto}}
 @media(max-width:520px){.cdemo-grid{grid-template-columns:1fr}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -312,6 +313,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
       <button class="cc-nav-btn" data-view="training">🎓 Training</button>
       <button class="cc-nav-btn" data-view="floor">🔄 Floor / Up System</button>
       <button class="cc-nav-btn" data-view="leaderboard">🏅 Leaderboard</button>
+      <button class="cc-nav-btn" data-view="ai">🤖 AI Insights</button>
       <button class="cc-nav-btn" data-view="settings">⚙️ Settings</button>
       <button class="cc-signout" id="ccSignout">Sign out</button>
     </aside>
@@ -412,6 +414,7 @@ async function renderCC(){
   if(currentView==='training') return renderTraining();
   if(currentView==='floor') return renderFloor();
   if(currentView==='leaderboard') return renderLeaderboard();
+  if(currentView==='ai') return renderAI();
   if(currentView==='settings') return renderSettings();
 }
 
@@ -877,6 +880,194 @@ async function renderLeaderboard(){
         ${(()=>{const ipoRank=ranked('ipo',v=>fmtN(v,2));return ipoRank[0]?`<b>${esc(repName(ipoRank[0].uid))}</b> is building the biggest tickets at ${ipoRank[0].display} items per order 📦`:''})()}
       </div>
     </div>`;
+}
+
+async function renderAI(){
+  const d=await loadAll();const m=$('#ccMain');
+  const lv=viewLevel;const scopeLabel=lv.level==='corporate'?'All Stores':esc(lv.name);
+  // Check for cached predictions (last 24h)
+  let pQuery=sb.from('ai_budget_predictions').select('*').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(50);
+  if(lv.level==='store') pQuery=pQuery.eq('location_id',lv.id);
+  else if(lv.level==='rep') pQuery=pQuery.eq('user_id',lv.id);
+  const{data:cached}=await pQuery;
+  const fresh=cached?.filter(p=>(Date.now()-new Date(p.created_at).getTime())<86400000)||[];
+
+  // Build metrics summary for AI prompt
+  const metricKeys=['revenue','margin_dollars','margin_pct','warranty_value','warranty_attach','avg_order','ipo','item_value','units_sold','coaching_avg','training_completion','floor_conversion','walk_ins','warranty_opps'];
+  const metricsForAI={};
+  metricKeys.forEach(k=>{const v=d.g(k);if(v&&v.actual_value!=null)metricsForAI[k]={actual:v.actual_value,target:v.target_value,variance_pct:v.variance_pct};});
+
+  // Store-level breakdown
+  const storeBreakdown=[];
+  if(lv.level!=='rep'){
+    d.storeList.forEach(s=>{
+      const sr={name:s.name,metrics:{}};
+      ['revenue','warranty_attach','warranty_value','coaching_avg','floor_conversion'].forEach(k=>{
+        const v=d.gl(d.stores,s.id,k);if(v&&v.actual_value!=null)sr.metrics[k]={actual:v.actual_value,target:v.target_value};
+      });
+      storeBreakdown.push(sr);
+    });
+  }
+
+  // Rep-level breakdown
+  const repBreakdown=[];
+  d.userIds.forEach(uid=>{
+    const rr={name:repName(uid),metrics:{}};
+    ['revenue','warranty_attach','coaching_avg','training_completion','floor_conversion'].forEach(k=>{
+      const v=d.gu(d.reps,uid,k);if(v&&v.actual_value!=null)rr.metrics[k]={actual:v.actual_value,target:v.target_value};
+    });
+    repBreakdown.push(rr);
+  });
+
+  // Penetration calc
+  const rev=d.g('revenue'),war=d.g('warranty_value');
+  const penPct=rev.actual_value?(war.actual_value/rev.actual_value*100):0;
+
+  m.innerHTML=`<h2 class="cc-page-title">🤖 AI Insights</h2>
+    <p class="cc-page-sub">Advanced AI modeling and predictive analytics · ${scopeLabel}</p>
+    <div class="cc-stat-grid">
+      ${statCard('Insights',String(fresh.length),'Last 24 hours',null)}
+      ${statCard('Unacknowledged',String(fresh.filter(p=>!p.is_acknowledged).length),'Need attention',null)}
+      ${statCard('Avg Confidence',fresh.length?fmtP(fresh.reduce((s,p)=>s+(p.confidence||0),0)/fresh.length*100):'—','Model confidence',null)}
+      ${statCard('Warranty Pen %',penPct.toFixed(1)+'%','Target: 6.5% (War$/Rev$)',penPct-6.5)}
+    </div>
+    <div class="cc-panel" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 style="margin:0">Generate AI Analysis</h3>
+        <button id="ccRunAI" style="background:var(--accent);color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px">⚡ Run AI Analysis</button>
+      </div>
+      <p style="color:var(--steel);font-size:13px;margin:0">Sends current metrics across all reps and stores to the AI engine for trend detection, forecasting, coaching recommendations, and staffing suggestions. Results are cached for 24 hours.</p>
+    </div>
+    <div id="ccAIResults">
+      ${fresh.length?renderInsightCards(fresh):'<div class="cc-panel"><p style="color:var(--steel);text-align:center;padding:20px">No AI insights yet. Click <b>Run AI Analysis</b> to generate predictions and recommendations.</p></div>'}
+    </div>`;
+
+  // Run AI button handler
+  document.getElementById('ccRunAI').onclick=async()=>{
+    const btn=document.getElementById('ccRunAI');
+    btn.disabled=true;btn.textContent='🔄 Analyzing…';btn.style.opacity='0.6';
+    document.getElementById('ccAIResults').innerHTML='<div class="cc-panel"><p style="text-align:center;padding:30px;color:var(--steel)"><span style="display:inline-block;animation:spin 1s linear infinite;font-size:24px">⚙️</span><br>AI is analyzing metrics across '+d.storeList.length+' stores and '+d.userIds.length+' reps…<br><span style="font-size:12px">This may take 15-30 seconds</span></p></div>';
+
+    try{
+      const aiPayload={
+        scope:scopeLabel,
+        level:lv.level,
+        period:'2026-06',
+        warranty_penetration_pct:penPct.toFixed(2),
+        metrics:metricsForAI,
+        stores:storeBreakdown,
+        reps:repBreakdown
+      };
+
+      const aiPrompt=`You are an appliance retail analytics AI for ApplianceIQ Command Center. Analyze this performance data and return ONLY a JSON array of insight objects. Each object must have:
+- "prediction_type": one of "trend_alert", "budget_forecast", "coaching_recommendation", "staffing_suggestion", "warranty_alert", "margin_alert", "training_gap"
+- "metric_key": the relevant metric (e.g. "revenue", "warranty_attach", "coaching_avg")
+- "insight_text": 1-2 sentence insight about what the data shows
+- "recommended_action": specific actionable recommendation
+- "confidence": number 0.0 to 1.0
+- "severity": "critical", "warning", or "info"
+- "target_name": store or rep name this applies to, or "All" for org-wide
+
+Generate 8-15 insights covering: revenue trends, warranty penetration gaps (target is 6.5% of total revenue), coaching priorities, training gaps, margin protection, staffing, and any reps or stores significantly above or below targets. Warranty penetration % is warranty dollars divided by total revenue — this is a key metric in appliance retail, typical target is 6-7%.
+
+DATA:
+${JSON.stringify(aiPayload)}
+
+Return ONLY the JSON array, no markdown, no backticks, no explanation.`;
+
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/ai-proxy',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON_KEY},
+        body:JSON.stringify({provider:'openai',model:'gpt-5.6-luna',max_completion_tokens:4000,reasoning_effort:'none',messages:[{role:'user',content:aiPrompt}]})
+      });
+      const aiData=await resp.json();
+      let text=aiData.content||aiData.choices?.[0]?.message?.content||'';
+      text=text.replace(/```json|```/g,'').trim();
+      const insights=JSON.parse(text);
+
+      // Cache insights to ai_budget_predictions
+      const{data:{session:sess}}=await sb.auth.getSession();
+      const inserts=insights.map(ins=>({
+        organization_id:currentOrg.id,
+        budget_plan_id:null,
+        location_id:lv.level==='store'?lv.id:null,
+        user_id:lv.level==='rep'?lv.id:null,
+        prediction_type:ins.prediction_type,
+        metric_key:ins.metric_key,
+        period_key:'2026-06',
+        predicted_value:ins.confidence,
+        confidence:ins.confidence,
+        insight_text:ins.insight_text,
+        recommended_action:ins.recommended_action,
+        is_acknowledged:false,
+        model:'gpt-5.6-luna'
+      }));
+      await sb.from('ai_budget_predictions').insert(inserts);
+
+      // Render results
+      const enriched=insights.map((ins,i)=>({...ins,...inserts[i]}));
+      document.getElementById('ccAIResults').innerHTML=renderInsightCards(enriched);
+      bindAckButtons();
+      btn.textContent='✅ Analysis Complete';btn.style.opacity='1';
+      setTimeout(()=>{btn.disabled=false;btn.textContent='⚡ Run AI Analysis';},3000);
+    }catch(err){
+      console.error('AI analysis error:',err);
+      document.getElementById('ccAIResults').innerHTML=`<div class="cc-panel"><p style="color:var(--danger);text-align:center;padding:20px">⚠️ AI analysis failed: ${esc(err.message)}<br><span style="font-size:12px;color:var(--steel)">Check that OPENAI_API_KEY is set in Supabase Edge Function Secrets</span></p></div>`;
+      btn.disabled=false;btn.textContent='⚡ Retry Analysis';btn.style.opacity='1';
+    }
+  };
+
+  bindAckButtons();
+}
+
+function renderInsightCards(insights){
+  const typeIcons={trend_alert:'📈',budget_forecast:'🎯',coaching_recommendation:'🏆',staffing_suggestion:'👥',warranty_alert:'🛡️',margin_alert:'💰',training_gap:'🎓'};
+  const sevColors={critical:'var(--danger)',warning:'#e67e22',info:'var(--verified)'};
+  const grouped={critical:[],warning:[],info:[]};
+  insights.forEach(i=>{ const sev=i.severity||'info';(grouped[sev]||(grouped.info)).push(i); });
+
+  let html='';
+  ['critical','warning','info'].forEach(sev=>{
+    if(!grouped[sev].length) return;
+    const sevLabel={critical:'🔴 Critical',warning:'🟡 Warnings',info:'🟢 Insights'}[sev];
+    html+=`<div class="cc-panel" style="margin-bottom:12px;border-left:4px solid ${sevColors[sev]}">
+      <h3 style="margin-bottom:12px">${sevLabel} (${grouped[sev].length})</h3>
+      ${grouped[sev].map(ins=>{
+        const icon=typeIcons[ins.prediction_type]||'💡';
+        const confPct=((ins.confidence||0)*100).toFixed(0);
+        const acked=ins.is_acknowledged;
+        const target=ins.target_name?` · <b>${esc(ins.target_name)}</b>`:'';
+        return `<div style="background:${acked?'#f8f9fa':'#fff'};border:1px solid ${acked?'#e9ecef':'#dee2e6'};border-radius:10px;padding:14px 16px;margin-bottom:8px;${acked?'opacity:0.6':''}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:${sevColors[sev]};margin-bottom:4px">
+                ${icon} ${esc((ins.prediction_type||'').replace(/_/g,' '))}${target}
+              </div>
+              <div style="font-size:14px;color:var(--navy);margin-bottom:6px">${esc(ins.insight_text)}</div>
+              <div style="font-size:13px;color:var(--steel)">💡 <b>Action:</b> ${esc(ins.recommended_action)}</div>
+            </div>
+            <div style="text-align:right;min-width:80px;margin-left:12px">
+              <div style="font-size:11px;color:var(--steel)">Confidence</div>
+              <div style="font-size:16px;font-weight:700;color:${Number(confPct)>75?'var(--verified)':Number(confPct)>50?'#e67e22':'var(--danger)'}">${confPct}%</div>
+              ${ins.id&&!acked?`<button class="cc-ack-btn" data-id="${ins.id}" style="margin-top:6px;font-size:11px;background:var(--accent);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer">Acknowledge</button>`:''}
+              ${acked?'<div style="font-size:11px;color:var(--verified);margin-top:6px">✓ Acknowledged</div>':''}
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+  return html||'<div class="cc-panel"><p style="color:var(--steel);text-align:center">No insights to display.</p></div>';
+}
+
+function bindAckButtons(){
+  document.querySelectorAll('.cc-ack-btn').forEach(btn=>{
+    btn.onclick=async()=>{
+      const id=btn.dataset.id;
+      await sb.from('ai_budget_predictions').update({is_acknowledged:true}).eq('id',id);
+      btn.outerHTML='<div style="font-size:11px;color:var(--verified);margin-top:6px">✓ Acknowledged</div>';
+    };
+  });
 }
 
 async function renderSettings(){
