@@ -195,7 +195,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
       <div class="cdemo-card"><div class="cdemo-val">$316,667</div><div class="cdemo-lbl">Revenue</div><div class="cdemo-var flat">● On budget</div></div>
       <div class="cdemo-card"><div class="cdemo-val">$82,133</div><div class="cdemo-lbl">Gross Margin</div><div class="cdemo-var dn">▼ 3.9% vs budget</div></div>
       <div class="cdemo-card"><div class="cdemo-val">42.2%</div><div class="cdemo-lbl">Warranty Attach</div><div class="cdemo-var dn">▼ 2.8% vs target</div></div>
-      <div class="cdemo-card"><div class="cdemo-val">73.6%</div><div class="cdemo-lbl">Warranty Pen (Units)</div><div class="cdemo-var dn">▼ 8.0% vs target</div></div>
+      <div class="cdemo-card"><div class="cdemo-val">5.8%</div><div class="cdemo-lbl">Warranty Pen %</div><div class="cdemo-var dn">▼ 0.7% vs 6.5% target</div></div>
     </div>
     <div class="cdemo-grid" style="margin-top:12px">
       <div class="cdemo-card"><div class="cdemo-val">$2,869</div><div class="cdemo-lbl">Avg Order</div><div class="cdemo-var up">▲ 2.5% vs target</div></div>
@@ -221,7 +221,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
     <div class="cfeat"><div class="cfeat-icon">🔬</div><h3>Corporate → Region → Store → Rep</h3><p>Four drill-down levels with one click each. Breadcrumb navigation. Dropdown selectors for any region, store, or rep by name. Every metric available at every level — same data, different scope.</p></div>
     <div class="cfeat"><div class="cfeat-icon">💰</div><h3>Cascading Budgets</h3><p>CEO enters one growth number. Budget flows to regions, stores, and reps based on historical share. Add or close a store — budget recalculates. Manual override at every level. Math is a suggestion, not a prison.</p></div>
     <div class="cfeat"><div class="cfeat-icon">📊</div><h3>Margin ($ and %)</h3><p>Gross margin in dollars and as a percentage — by rep, store, region, corporate. Budget margin targets. See who's protecting margin and who's discounting away the profit.</p></div>
-    <div class="cfeat"><div class="cfeat-icon">🛡️</div><h3>Warranty Intelligence</h3><p>Attach rate, unit penetration (pieces with warranty ÷ pieces sold), dollar penetration (warranty $ ÷ revenue $), opportunities, and warranty revenue — all tracked separately, all budgeted, all by rep.</p></div>
+    <div class="cfeat"><div class="cfeat-icon">🛡️</div><h3>Warranty Intelligence</h3><p>Attach rate, penetration $ (warranty dollar volume), penetration % (warranty $ ÷ total revenue $ — target 6-7%), opportunities, and warranty revenue — all tracked separately, all budgeted, all by rep.</p></div>
     <div class="cfeat"><div class="cfeat-icon">🏷️</div><h3>Brand Mix (35 Brands)</h3><p>Sales % by brand — Samsung, LG, KitchenAid, Sub-Zero, and 31 more. Brands grouped by tier: Entry, Mid, Luxury, Ultra Luxury. Budget brand targets. See who's selling up and who's staying safe.</p></div>
     <div class="cfeat"><div class="cfeat-icon">🏪</div><h3>Channel Split</h3><p>Three sales channels: Retail (walk-in), Commercial (builders, property mgmt), Trades (designers, custom homes, cabinet makers). Revenue and % by channel at every level. See which stores are building trade relationships.</p></div>
     <div class="cfeat"><div class="cfeat-icon">🛒</div><h3>IPO, AOV, Item Value</h3><p>Items per order, average order value, and average item value. Budget each one. Know who's building multi-piece kitchen packages and who's selling one dishwasher at a time.</p></div>
@@ -525,7 +525,7 @@ async function renderOverview(){
   const d=await loadAll();const m=$('#ccMain');const isRep=viewLevel.level==='rep';
   const rev=d.g('revenue'),war=d.g('warranty_value'),warA=d.g('warranty_attach'),units=d.g('units_sold');
   const avgO=d.g('avg_order'),ipo=d.g('ipo'),itemV=d.g('item_value'),coach=d.g('coaching_avg'),train=d.g('training_completion'),conv=d.g('floor_conversion'),walks=d.g('walk_ins'),greet=d.g('greeting_time'),warOpp=d.g('warranty_opps');
-  const mgD=d.g('margin_dollars'),mgP=d.g('margin_pct'),wpU=d.g('warranty_pen_units'),wpD=d.g('warranty_pen_dollars');
+  const mgD=d.g('margin_dollars'),mgP=d.g('margin_pct'),wpD=d.g('warranty_pen_dollars');
   m.innerHTML=`${levelBar()}
     <h2 class="cc-page-title">${isRep?esc(viewLevel.name):viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
     <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · ${esc(viewLevel.name)}</p>
@@ -540,8 +540,8 @@ async function renderOverview(){
       ${statCard('Units',fmtN(units.actual_value,0),'Target: '+fmtN(units.target_value,0),units.variance_pct)}
       ${statCard('Warranty $',money(war.actual_value),'Budget: '+money(war.target_value),war.variance_pct)}
       ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
-      ${statCard('Pen. (Units)',fmtP(wpU.actual_value),'Target: '+fmtP(wpU.target_value),wpU.variance_pct)}
-      ${statCard('Pen. ($)',fmtP(wpD.actual_value),'War$/Rev$, Target: '+fmtP(wpD.target_value),wpD.variance_pct)}
+      ${statCard('Pen $',money(wpD.actual_value),'Budget: '+money(wpD.target_value),wpD.variance_pct)}
+      ${(()=>{const penPct=rev.actual_value?(war.actual_value/rev.actual_value*100):0;const penTgt=6.5;const penVar=penPct-penTgt;return statCard('Pen %',penPct.toFixed(1)+'%','War$/Rev$ · Target: '+penTgt+'%',penVar);})()}
       ${statCard('War. Opps',fmtN(warOpp.actual_value,0),'Target: '+fmtN(warOpp.target_value,0),warOpp.variance_pct)}
       ${statCard('Coaching',fmtN(coach.actual_value,1)+'/10','Target: '+fmtN(coach.target_value,1),coach.variance_pct)}
       ${statCard('Training',fmtP(train.actual_value),'Target: 100%',train.variance_pct)}
@@ -634,14 +634,15 @@ async function renderRevenue(){
 
 async function renderWarranty(){
   const d=await loadAll();const m=$('#ccMain');
-  const warV=d.g('warranty_value'),warA=d.g('warranty_attach'),warO=d.g('warranty_opps');
-  const penetration=warO.actual_value&&d.g('units_sold').actual_value?(warO.actual_value/d.g('units_sold').actual_value*100):0;
+  const warV=d.g('warranty_value'),warA=d.g('warranty_attach'),warO=d.g('warranty_opps'),wpD=d.g('warranty_pen_dollars'),rev=d.g('revenue');
+  const penPct=rev.actual_value?(warV.actual_value/rev.actual_value*100):0;const penTgt=6.5;const penVar=penPct-penTgt;
   m.innerHTML=`<h2 class="cc-page-title">Warranty Intelligence</h2><p class="cc-page-sub">Attach rate, penetration, and revenue · June 2026</p>
     <div class="cc-stat-grid">
       ${statCard('Warranty Revenue',money(warV.actual_value),'Budget: '+money(warV.target_value),warV.variance_pct)}
       ${statCard('Attach Rate',fmtP(warA.actual_value),'Target: '+fmtP(warA.target_value),warA.variance_pct)}
+      ${statCard('Pen $',money(wpD.actual_value),'Budget: '+money(wpD.target_value),wpD.variance_pct)}
+      ${statCard('Pen %',penPct.toFixed(1)+'%','War$/Rev$ · Target: '+penTgt+'%',penVar)}
       ${statCard('Opportunities',fmtN(warO.actual_value,0),'Target: '+fmtN(warO.target_value,0),warO.variance_pct)}
-      ${statCard('Penetration Rate',penetration.toFixed(1)+'%','Opps vs units sold',null)}
     </div>
     <div class="cc-panel"><h3>Warranty by Store</h3>
     <table class="cc-table"><thead><tr><th>Store</th><th class="num">Attach %</th><th class="num">Target</th><th class="num">Gap</th><th class="num">Opps</th><th class="num">Warranty $</th><th class="num">Budget $</th><th>Status</th></tr></thead><tbody>
@@ -799,7 +800,6 @@ async function renderLeaderboard(){
     {key:'margin_dollars',label:'Margin $',icon:'📊',fmt:money},
     {key:'margin_pct',label:'Margin %',icon:'📈',fmt:fmtP},
     {key:'warranty_attach',label:'Warranty Attach',icon:'🛡️',fmt:fmtP},
-    {key:'warranty_pen_units',label:'Warranty Pen. (Units)',icon:'🔗',fmt:fmtP},
     {key:'warranty_value',label:'Warranty $',icon:'💎',fmt:money},
     {key:'avg_order',label:'Avg Order',icon:'🛒',fmt:money},
     {key:'ipo',label:'IPO',icon:'📦',fmt:v=>fmtN(v,2)},
