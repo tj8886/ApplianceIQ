@@ -2619,9 +2619,9 @@ window.S = {
     if(selectedBrand){
       brandsToSweep=[selectedBrand];
     } else {
-      // Pull brands that are likely carried at major retailers
-      const majorBrands=['Samsung','LG','GE','Whirlpool','Frigidaire','Maytag','Bosch','KitchenAid','Café','Amana','Danby','Hisense','Haier','Electrolux','Fisher & Paykel','Miele','Thermador','Monogram','Profile','Frigidaire Gallery','Frigidaire Professional','Beko','Blomberg','Viking','Wolf','Sub-Zero','Jennair','Bertazzoni','Forno','Thor Kitchen','Unique Appliances','Marathon','Galanz','Midea','Vissani','Koolmore','RCA','iio','Epic'];
-      brandsToSweep=majorBrands;
+      // Pull ALL brands from brand_catalog (165+)
+      brandsToSweep=allBrands.map(b=>b.brand_name).filter(Boolean);
+      logEntry('Using all '+brandsToSweep.length+' brands from catalog');
     }
 
     // Build targets: each brand × category (main), then brand × sub-categories
@@ -2972,6 +2972,21 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     if(!r||!r.model||r._pimMatch)return;
     const d=r._deepData||r;
     logEntry('📥 Importing '+r.brand_name+' '+r.model+' to PIM…');
+
+    // Auto-create brand if not in catalog
+    const brandExists=allBrands.some(b=>b.brand_name.toUpperCase()===(r.brand_name||'').toUpperCase());
+    if(!brandExists&&r.brand_name){
+      logEntry('New brand discovered: '+r.brand_name+' — adding to catalog…');
+      const{data:newBrand,error:be}=await sb.from('brand_catalog').insert({
+        brand_name:r.brand_name,
+        parent_company:r.brand_name
+      }).select('id,brand_name').single();
+      if(!be&&newBrand){
+        allBrands.push(newBrand);
+        document.getElementById('brandCount').textContent=allBrands.length;
+        logEntry('✓ Brand "'+r.brand_name+'" added to catalog (ID: '+newBrand.id.substring(0,8)+')','ok');
+      } else if(be){logEntry('Brand create warning: '+be.message,'err')}
+    }
 
     // Unpack specs into proper columns
     const{mapped:specCols,remaining:leftoverSpecs}=window.S._unpackSpecs(d.specs, d);
