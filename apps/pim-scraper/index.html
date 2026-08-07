@@ -2441,10 +2441,14 @@ window.S = {
   rdSelectAllCats(){rdSelectedCategories=new Set(rdCategories);renderTab()},
   rdSelectNoneCats(){rdSelectedCategories.clear();renderTab()},
 
-  // ── TIERED AI CALL for crawl/discovery — tries T2 Gemini → T3 GPT → T4 Haiku ──
-  async _crawlAI(systemPrompt, userPrompt, maxTokens){
+  // ── TIERED AI CALL — tries T2 Gemini → T3 GPT → T4 Haiku ──
+  // mode='fallback' (default): stops at first success
+  // mode='additive': runs all available tiers and combines results (for discovery)
+  async _crawlAI(systemPrompt, userPrompt, maxTokens, mode){
     maxTokens=maxTokens||4000;
+    mode=mode||'fallback';
     let result=null;
+    const allResults=[];  // for additive mode
 
     // Helper: fetch with timeout
     async function fetchWithTimeout(url,opts,timeoutMs){
@@ -2456,7 +2460,7 @@ window.S = {
 
     // T2 — Gemini (cheapest, has Google Search grounding)
     const gKey=localStorage.getItem('aiq_google_key');
-    if(!result&&gKey){
+    if((!result||mode==='additive')&&gKey){
       logEntry('Tier 2 → '+geminiModel+' + Google Search…');
       try{
         const r=await fetchWithTimeout('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+gKey,{
@@ -2479,30 +2483,36 @@ window.S = {
           if(txt.trim()){
             logEntry('T2 ✓ $'+cost.toFixed(4),'cost');
             result={text:txt,tier:2,cost};
+            allResults.push(result);
           } else {logEntry('T2: empty response','err')}
         }
       }catch(e){logEntry('T2 '+(e.name==='AbortError'?'timeout (45s)':'err: '+e.message),'err')}
     }
 
-    // T3 — GPT Luna
+    // T3 — GPT Luna (uses Responses API for web search)
     const oKey=localStorage.getItem('aiq_openai_key');
-    if(!result&&oKey){
+    if((!result||mode==='additive')&&oKey){
       const model=aiModel||'gpt-5.6-luna';
       logEntry('Tier 3 → '+model+'…');
       try{
-        const body={model,temperature:0.1,messages:[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}],
+        // Use Responses API which supports web_search_preview
+        const body={model,temperature:0.1,
+          input:[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}],
           tools:[{type:'web_search_preview'}]};
-        if(model.startsWith('gpt-5')||model.startsWith('o')){body.max_completion_tokens=maxTokens;if(model.startsWith('gpt-5'))body.reasoning_effort='none'}else{body.max_tokens=maxTokens}
-        const r=await fetchWithTimeout('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+oKey},body:JSON.stringify(body)},45000);
+        if(model.startsWith('gpt-5'))body.reasoning={effort:'none'};
+        body.max_output_tokens=maxTokens;
+        const r=await fetchWithTimeout('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+oKey},body:JSON.stringify(body)},45000);
         const data=await r.json();
         if(data.error){logEntry('T3 err: '+data.error.message,'err')}
         else{
-          const txt=data.choices?.[0]?.message?.content||'';
-          const cost=((data.usage?.prompt_tokens||0)*0.0000004+(data.usage?.completion_tokens||0)*0.0000016);
+          // Responses API returns output array
+          const txt=(data.output||[]).filter(o=>o.type==='message').map(o=>(o.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('')).join('\n')||'';
+          const cost=((data.usage?.input_tokens||0)*0.0000004+(data.usage?.output_tokens||0)*0.0000016);
           addCost(cost);
           if(txt.trim()){
             logEntry('T3 ✓ $'+cost.toFixed(4),'cost');
             result={text:txt,tier:3,cost};
+            allResults.push(result);
           } else {logEntry('T3: empty response','err')}
         }
       }catch(e){logEntry('T3 '+(e.name==='AbortError'?'timeout (45s)':'err: '+e.message),'err')}
@@ -2510,7 +2520,7 @@ window.S = {
 
     // T4 — Haiku + web search (most powerful, most expensive)
     const aKey=localStorage.getItem('aiq_anthropic_key');
-    if(!result&&aKey){
+    if((!result||mode==='additive')&&aKey){
       logEntry('Tier 4 → Haiku + web search…');
       try{
         const r=await fetchWithTimeout('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':aKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
@@ -2527,13 +2537,19 @@ window.S = {
           if(txt.trim()){
             logEntry('T4 ✓ $0.30','cost');
             result={text:txt,tier:4,cost:0.30};
+            allResults.push(result);
           } else {logEntry('T4: empty response','err')}
         }
       }catch(e){logEntry('T4 '+(e.name==='AbortError'?'timeout (45s)':'err: '+e.message),'err')}
     }
 
-    if(!result){
+    if(!result&&allResults.length===0){
       logEntry('All tiers failed — check API keys (🔑 Keys button)','err');
+    }
+
+    // In additive mode, merge all results into one
+    if(mode==='additive'&&allResults.length>1){
+      return{text:allResults.map(r=>r.text).join('\n'),tier:'multi',cost:allResults.reduce((s,r)=>s+r.cost,0)};
     }
     return result;
   },
@@ -2727,7 +2743,7 @@ Find EVERY product matching the search. If you find none, return [].`;
       }
 
       try{
-        const aiResult=await window.S._crawlAI(LISTING_PROMPT, searchInstruction, 8000);
+        const aiResult=await window.S._crawlAI(LISTING_PROMPT, searchInstruction, 8000, 'additive');
         if(!aiResult){consecutiveEmpty++;continue}
 
         const arrMatch=aiResult.text.match(/\[[\s\S]*\]/);
