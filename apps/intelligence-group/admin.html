@@ -156,7 +156,7 @@ const SB_KEY="sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
 const APPS={
   crm:{name:"CRM",icon:"👥"},spec_iq:{name:"Spec IQ",icon:"📋"},iq_academy:{name:"IQ Academy",icon:"🎓"},
   iq_up_system:{name:"IQ Up System",icon:"📊"},iq_field:{name:"IQ Field",icon:"🔧"},product_iq:{name:"Product IQ",icon:"📦"},
-  ai_coach:{name:"AI Coach",icon:"🤖"},command_center:{name:"Command Center",icon:"🎛️"},pim_scraper:{name:"PIM Scraper",icon:"🔍"},analytics:{name:"Analytics",icon:"📈"}
+  ai_coach:{name:"AI Coach",icon:"🤖"},platform:{name:"Platform Shell",icon:"🧭"},command_center:{name:"Command Center",icon:"🎛️"},pim_scraper:{name:"PIM Scraper",icon:"🔍"},analytics:{name:"Analytics",icon:"📈"}
 };
 const TIERS=["starter","growth","pro","elite","enterprise"];
 const APP_URLS={
@@ -167,6 +167,7 @@ const APP_URLS={
   iq_field:"https://applianceiq-ai-field.netlify.app",
   product_iq:"https://applianceiq-product-iq-pim.netlify.app",
   ai_coach:"https://ai-iq-coach.netlify.app",
+  platform:"https://appliance-iq-platform.netlify.app",
   pim_scraper:"https://applianceiq-pim-scraper.netlify.app",
   analytics:"https://ai-iq-coach.netlify.app/analytics.html",
   command_center:"/admin.html"
@@ -374,7 +375,9 @@ async function finishAccept(authData){
     let ents=[];
     try{ents=await api("/rest/v1/org_app_entitlements?organization_id=eq."+res.organization_id+"&status=in.(active,trial)")}catch{}
     const isAdmin=res.role==="owner"||res.role==="admin";
-    const tiles=ents.filter(e=>APP_URLS[e.app_key]&&e.app_key!=="command_center"&&e.app_key!=="pim_scraper").map(e=>{
+    const appEnts=ents.filter(e=>APP_URLS[e.app_key]&&!["command_center","pim_scraper","platform"].includes(e.app_key));
+    const hasShell=ents.some(e=>e.app_key==="platform")&&appEnts.length>=2;
+    const tiles=appEnts.map(e=>{
       const a=APPS[e.app_key]||{name:e.app_key,icon:"📱"};
       return `<a href="${APP_URLS[e.app_key]}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;text-decoration:none;transition:.15s"
         onmouseover="this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.boxShadow='none'">
@@ -388,6 +391,7 @@ async function finishAccept(authData){
   <div class="logo-row"><span class="logo-mark">IQ</span></div>
   <h1 style="text-align:center">Welcome to ${esc(res.organization_name)}</h1>
   <p class="login-sub">You've joined as ${esc(res.role)}. ${tiles?"Here's everything your team uses:":""}</p>
+  ${hasShell?`<a href="${APP_URLS.platform}" class="btn btn-primary btn-block" style="margin-bottom:12px;text-decoration:none">🧭 Open ApplianceIQ Platform — all your apps in one place</a>`:""}
   <div style="display:flex;flex-direction:column;gap:8px">${tiles||'<p style="text-align:center;font-size:13px;color:var(--muted)">No apps assigned yet — your administrator will set those up.</p>'}</div>
   ${isAdmin?`<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="S.inviteCode=null;bootAfterAccept()">Open Admin Dashboard</button>`:""}
 </div></div>`;
