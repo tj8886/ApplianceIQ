@@ -2777,19 +2777,23 @@ Find EVERY product matching the search. If you find none, return [].`;
       }
 
       try{
-        const aiResult=await window.S._crawlAI(LISTING_PROMPT, searchInstruction, 8000, 'additive');
+        const aiResult=await window.S._crawlAI(LISTING_PROMPT, searchInstruction, 8000);
         if(!aiResult){consecutiveEmpty++;continue}
 
-        const arrMatch=aiResult.text.match(/\[[\s\S]*\]/);
-        if(arrMatch){
-          try{
-            const parsed=JSON.parse(arrMatch[0]);
-            if(Array.isArray(parsed)){
-              const added=addProducts(parsed,target.label);
+        // Extract all JSON arrays from response (handles multi-tier merged text)
+        let allParsed=[];
+        const jsonBlocks=aiResult.text.match(/\[[\s\S]*?\](?=\s*[\n\r]|\s*$|\s*\[)/g)||[aiResult.text.match(/\[[\s\S]*\]/)?.[ 0]||''];
+        for(const block of jsonBlocks){
+          if(!block)continue;
+          try{const p=JSON.parse(block);if(Array.isArray(p))allParsed.push(...p)}catch(e){
+            // Try cleaning common issues
+            try{const clean=block.replace(/,\s*\]/g,']').replace(/,\s*,/g,',');const p2=JSON.parse(clean);if(Array.isArray(p2))allParsed.push(...p2)}catch(e2){}
+          }
+        }
+        if(allParsed.length>0){
+              const added=addProducts(allParsed,target.label);
               if(added===0)consecutiveEmpty++;
               else consecutiveEmpty=0;
-            }
-          }catch(pe){logEntry('Parse err: '+pe.message,'err');consecutiveEmpty++}
         } else {consecutiveEmpty++}
       }catch(e){logEntry('Err: '+e.message,'err');consecutiveEmpty++}
       renderTab();
