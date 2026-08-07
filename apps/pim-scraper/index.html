@@ -2831,7 +2831,6 @@ Find EVERY product matching the search. If you find none, return [].`;
     logEntry('🔬 Deep scraping '+r.model+' at '+r.product_url+'…');
 
     const DEEP_PROMPT=`You are scraping a product detail page on a retailer website. Extract EVERYTHING available. Return ONLY a JSON object with:
-
 - brand_name, model, product_name
 - short_description (1-2 sentence summary)
 - long_description (the FULL marketing/product overview text)
@@ -2843,55 +2842,149 @@ Find EVERY product matching the search. If you find none, return [].`;
 - capacity_cu_ft (number), voltage, amperage, wattage
 - energy_star (boolean), installation_type (e.g. "Freestanding", "Slide-In", "Built-In")
 - upc (string if shown)
-- specs (object of ALL specification key-value pairs from the specs table — include everything: fuel type, oven capacity, burner BTUs, noise level, cycles, controls, etc.)
+- specs (object of ALL specification key-value pairs from the specs table)
 - features (array of ALL feature bullet strings exactly as listed)
-- documents (array of {url, title, doc_type} — find ALL downloadable PDFs: spec sheets (doc_type:"spec_sheet"), installation guides (doc_type:"installation_manual"), use & care manuals (doc_type:"use_care_manual"), energy guides (doc_type:"energy_guide"), dimensional diagrams (doc_type:"dimensional_diagram"), warranty docs (doc_type:"warranty"), product brochures (doc_type:"product_brochure"))
-- images (array of {url, type} — product photos like "front", "angle", "interior", "lifestyle", "dimensional_drawing". Only REAL product images, not icons or logos)
-- also_viewed (array of {model, brand_name, product_name} — from "Customers Also Viewed" or "Similar Products" sections)
-- bought_together (array of {model, brand_name, product_name} — from "Frequently Bought Together" or bundle sections)
-- bundle_models (array of model numbers if this product is part of a bundle/package deal)
-- retailer_sku (the retailer's own SKU/item number if shown)
+- documents (array of {url, title, doc_type} — find ALL downloadable PDFs: spec_sheet, installation_manual, use_care_manual, energy_guide, dimensional_diagram, warranty, product_brochure)
+- images (array of {url, type} — product photos: front, angle, interior, lifestyle, dimensional_drawing)
+- also_viewed (array of {model, brand_name, product_name} — "Customers Also Viewed")
+- bought_together (array of {model, brand_name, product_name} — "Frequently Bought Together")
+- bundle_models (array of model numbers)
+- retailer_sku (retailer's own SKU)
+Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
 
-Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY the JSON object.`;
+    let parsed=null;
+    let t1RawText='';
 
-    const aiResult=await window.S._crawlAI(DEEP_PROMPT, 'Visit this product page and extract ALL data: '+r.product_url, 8000);
-    if(!aiResult){logEntry('Deep scrape failed — all tiers exhausted','err');return}
-
+    // ── TIER 1 FREE: Fetch page HTML directly ──
     try{
-      const objMatch=aiResult.text.match(/\{[\s\S]*\}/);
-      if(objMatch){
-        const parsed=JSON.parse(objMatch[0]);
-        // Store deep scrape data on the result
-        r._deepScraped=true;
-        r._specs=parsed.specs||null;
-        r._docs=parsed.documents||[];
-        r._images=parsed.images||[];
-        r._features=parsed.features||[];
-        r._alsoViewed=parsed.also_viewed||[];
-        r._bundles=parsed.bought_together||parsed.bundle_models||[];
-        r._description=parsed.long_description||parsed.short_description||null;
-        r._deepData=parsed; // full parsed data for import
-        // Update basic fields if we got better data
-        if(parsed.price)r.price=Number(parsed.price);
-        if(parsed.regular_price)r.regular_price=Number(parsed.regular_price);
-        if(parsed.product_name)r.product_name=parsed.product_name;
-        if(parsed.brand_name)r.brand_name=parsed.brand_name;
-        if(parsed.is_discontinued)r.is_discontinued=true;
-        if(parsed.is_exclusive)r.is_exclusive=true;
-        // Push updated price back to catalog
-        if(r._saved&&(parsed.price||parsed.regular_price)){
-          await sb.from('retailer_discovered_products').update({
-            price:r.price,regular_price:r.regular_price||null,
-            last_verified:new Date().toISOString()
-          }).eq('retailer_name',r.retailer_name).eq('model',r.model).eq('country',r.country||'CA');
-        }
-        logEntry('Deep scrape ✓ '+r.model+': '+(r.price?'$'+r.price+' ':'')+
-          (r._specs?Object.keys(r._specs).length+' specs ':'')+ 
-          (r._docs.length?r._docs.length+' docs ':'')+ 
-          (r._features.length?r._features.length+' features ':'')+ 
-          (r._alsoViewed.length?r._alsoViewed.length+' also-viewed ':''),'ok');
-      } else {logEntry('Deep scrape: no JSON in response','err')}
-    }catch(e){logEntry('Deep scrape parse err: '+e.message,'err')}
+      logEntry('T1 → free-extract (free)…');
+      const resp=await fetch(SB_URL+'/functions/v1/free-extract',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url:r.product_url})
+      });
+      const t1=await resp.json();
+      // Check if free-extract got structured data
+      if(t1.found||t1._partial){
+        parsed={...t1};
+        delete parsed.found;delete parsed._partial;delete parsed._tier;
+        logEntry('T1 ✓ free data: '+(t1.model||'')+(t1.msrp?' $'+t1.msrp:''),'ok');
+      }
+      // Also grab raw text for AI to analyze
+      if(t1.raw_text)t1RawText=t1.raw_text;
+      else{
+        // Try fetching raw text separately
+        const resp2=await fetch(SB_URL+'/functions/v1/free-extract',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({url:r.product_url,raw_text_only:true})
+        });
+        const t1b=await resp2.json();
+        t1RawText=t1b.raw_text||t1b.text||'';
+      }
+      if(t1RawText.length>200)logEntry('T1 got '+Math.round(t1RawText.length/1024)+'KB page text');
+    }catch(e){logEntry('T1 err: '+e.message,'err')}
+
+    // ── Check what T1 got vs what's missing ──
+    const t1HasSpecs=parsed?.specs&&Object.keys(parsed.specs).length>3;
+    const t1HasDocs=parsed?.documents?.length>0;
+    const t1HasFeatures=parsed?.features?.length>0;
+    const t1HasPrice=!!(parsed?.msrp||parsed?.price);
+    const t1HasDims=!!(parsed?.width_inches&&parsed?.height_inches);
+
+    // ── TIER 2+: AI fills gaps using page text or web search ──
+    const needsAI=!t1HasSpecs||!t1HasDocs||!t1HasFeatures||!t1HasDims;
+    if(needsAI){
+      const gapList=[];
+      if(!t1HasSpecs)gapList.push('specs table');
+      if(!t1HasDocs)gapList.push('document/manual PDF links');
+      if(!t1HasFeatures)gapList.push('feature bullets');
+      if(!t1HasDims)gapList.push('dimensions');
+      if(!t1HasPrice)gapList.push('price');
+
+      const aiPrompt=t1RawText.length>500?
+        'Here is the raw page text from '+r.product_url+'. Extract ALL product data, especially: '+gapList.join(', ')+'.\n\nPARTIAL DATA ALREADY EXTRACTED:\n'+JSON.stringify(parsed||{},null,1).substring(0,2000)+'\n\nPAGE TEXT:\n'+t1RawText.substring(0,10000) :
+        'Visit this product page and extract ALL data, especially: '+gapList.join(', ')+'. URL: '+r.product_url+(parsed?'\n\nPartial data already found:\n'+JSON.stringify(parsed,null,1).substring(0,1500):'');
+
+      const aiResult=await window.S._crawlAI(DEEP_PROMPT, aiPrompt, 8000);
+      if(aiResult){
+        try{
+          const objMatch=aiResult.text.match(/\{[\s\S]*\}/);
+          if(objMatch){
+            const aiParsed=JSON.parse(objMatch[0]);
+            // Merge: AI fills gaps in T1 data, T1 data takes priority
+            if(!parsed)parsed=aiParsed;
+            else{
+              for(const[k,v]of Object.entries(aiParsed)){
+                if(v!==null&&v!==undefined&&v!==''&&(!parsed[k]||parsed[k]===null||parsed[k]===''||(Array.isArray(parsed[k])&&parsed[k].length===0)||(typeof parsed[k]==='object'&&!Array.isArray(parsed[k])&&Object.keys(parsed[k]).length===0))){
+                  parsed[k]=v;
+                }
+              }
+              // Always merge specs (additive)
+              if(aiParsed.specs&&typeof aiParsed.specs==='object'){
+                if(!parsed.specs)parsed.specs={};
+                for(const[sk,sv]of Object.entries(aiParsed.specs)){
+                  if(!parsed.specs[sk])parsed.specs[sk]=sv;
+                }
+              }
+              // Always merge docs/images/features (additive, dedup by url/text)
+              if(aiParsed.documents?.length){
+                if(!parsed.documents)parsed.documents=[];
+                const existUrls=new Set(parsed.documents.map(d=>d.url));
+                for(const d of aiParsed.documents){if(d.url&&!existUrls.has(d.url)){parsed.documents.push(d);existUrls.add(d.url)}}
+              }
+              if(aiParsed.images?.length){
+                if(!parsed.images)parsed.images=[];
+                const existUrls=new Set(parsed.images.map(i=>i.url));
+                for(const i of aiParsed.images){if(i.url&&!existUrls.has(i.url)){parsed.images.push(i);existUrls.add(i.url)}}
+              }
+              if(aiParsed.features?.length){
+                if(!parsed.features)parsed.features=[];
+                const existSet=new Set(parsed.features.map(f=>f.toLowerCase()));
+                for(const f of aiParsed.features){if(!existSet.has(f.toLowerCase())){parsed.features.push(f);existSet.add(f.toLowerCase())}}
+              }
+              if(aiParsed.also_viewed?.length&&!parsed.also_viewed?.length)parsed.also_viewed=aiParsed.also_viewed;
+              if(aiParsed.bought_together?.length&&!parsed.bought_together?.length)parsed.bought_together=aiParsed.bought_together;
+            }
+          }
+        }catch(e){logEntry('AI parse err: '+e.message,'err')}
+      }
+    }
+
+    if(!parsed){logEntry('Deep scrape failed — no data extracted','err');return}
+
+    // ── Normalize field names (T1 uses msrp, AI might use price) ──
+    if(parsed.msrp&&!parsed.price)parsed.price=parsed.msrp;
+    if(parsed.product_description&&!parsed.long_description)parsed.long_description=parsed.product_description;
+    if(parsed.source_url&&!parsed.product_url)parsed.product_url=parsed.source_url;
+
+    // ── Store on result ──
+    r._deepScraped=true;
+    r._specs=parsed.specs||null;
+    r._docs=parsed.documents||[];
+    r._images=parsed.images||[];
+    r._features=parsed.features||[];
+    r._alsoViewed=parsed.also_viewed||[];
+    r._bundles=parsed.bought_together||parsed.bundle_models||[];
+    r._description=parsed.long_description||parsed.short_description||null;
+    r._deepData=parsed;
+    if(parsed.price)r.price=Number(parsed.price);
+    if(parsed.regular_price)r.regular_price=Number(parsed.regular_price);
+    if(parsed.product_name)r.product_name=parsed.product_name;
+    if(parsed.brand_name)r.brand_name=parsed.brand_name;
+    if(parsed.is_discontinued)r.is_discontinued=true;
+    if(parsed.is_exclusive)r.is_exclusive=true;
+    // Push updated price back to catalog
+    if(r._saved&&(parsed.price||parsed.regular_price)){
+      await sb.from('retailer_discovered_products').update({
+        price:r.price,regular_price:r.regular_price||null,
+        last_verified:new Date().toISOString()
+      }).eq('retailer_name',r.retailer_name).eq('model',r.model).eq('country',r.country||'CA');
+    }
+    logEntry('Deep scrape ✓ '+r.model+': '+(r.price?'$'+r.price+' ':'')+
+      (r._specs?Object.keys(r._specs).length+' specs ':'0 specs ')+
+      (r._docs.length+' docs ')+
+      (r._features.length+' features ')+
+      (r._images.length+' images ')+
+      (r._alsoViewed.length?r._alsoViewed.length+' also-viewed ':''),'ok');
     renderTab();
   },
 
