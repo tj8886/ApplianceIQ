@@ -159,6 +159,18 @@ const APPS={
   ai_coach:{name:"AI Coach",icon:"🤖"},command_center:{name:"Command Center",icon:"🎛️"},pim_scraper:{name:"PIM Scraper",icon:"🔍"},analytics:{name:"Analytics",icon:"📈"}
 };
 const TIERS=["starter","growth","pro","elite","enterprise"];
+const APP_URLS={
+  crm:"https://applianceiq-crm.netlify.app",
+  spec_iq:"https://appliance-spec-iq.netlify.app",
+  iq_academy:"https://iqacademy-appliance-training.netlify.app",
+  iq_up_system:"https://applianceiq-iq-up-system.netlify.app",
+  iq_field:"https://applianceiq-ai-field.netlify.app",
+  product_iq:"https://applianceiq-product-iq-pim.netlify.app",
+  ai_coach:"https://ai-iq-coach.netlify.app",
+  pim_scraper:"https://applianceiq-pim-scraper.netlify.app",
+  analytics:"https://ai-iq-coach.netlify.app/analytics.html",
+  command_center:"/admin.html"
+};
 const TENANTS={retail_company:"Retailer",manufacturer:"Manufacturer",buying_group:"Buying Group",builder_designer:"Builder / Designer",developer:"Developer (API)",demo:"Demo",appliance_iq_internal:"Internal"};
 const HIERARCHY=[
   {l:1,n:"CEO / Owner",p:"Full control — billing, roles, users, all analytics"},
@@ -357,17 +369,37 @@ async function finishAccept(authData){
     }
     location.hash="";
     S.inviteCode=null;S.invitePreview=null;
-    await postLogin();
-    render();
-    // Welcome toast
-    setTimeout(()=>{
-      const main=document.getElementById("main");
-      if(main)main.insertAdjacentHTML("afterbegin",
-        `<div class="result-ok" style="margin-bottom:18px">🎉 Welcome to ${esc(res.organization_name)} — you've joined as ${esc(res.role)}.</div>`);
-    },50);
+    // Route by role: members land on their apps, admins get the Command Center
+    let ents=[];
+    try{ents=await api("/rest/v1/org_app_entitlements?organization_id=eq."+res.organization_id+"&status=in.(active,trial)")}catch{}
+    const isAdmin=res.role==="owner"||res.role==="admin";
+    const tiles=ents.filter(e=>APP_URLS[e.app_key]&&e.app_key!=="command_center"&&e.app_key!=="pim_scraper").map(e=>{
+      const a=APPS[e.app_key]||{name:e.app_key,icon:"📱"};
+      return `<a href="${APP_URLS[e.app_key]}" style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:12px;text-decoration:none;transition:.15s"
+        onmouseover="this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.boxShadow='none'">
+        <span style="font-size:24px">${a.icon}</span>
+        <span style="font-weight:600;font-size:14px;color:var(--navy)">${a.name}</span>
+        <span style="margin-left:auto;color:#94a3b8">→</span></a>`;
+    }).join("");
+    document.getElementById("app").innerHTML=`
+<div class="login-wrap"><canvas id="pt"></canvas>
+<div class="login-card" style="max-width:460px">
+  <div class="logo-row"><span class="logo-mark">IQ</span></div>
+  <h1 style="text-align:center">Welcome to ${esc(res.organization_name)}</h1>
+  <p class="login-sub">You've joined as ${esc(res.role)}. ${tiles?"Here's everything your team uses:":""}</p>
+  <div style="display:flex;flex-direction:column;gap:8px">${tiles||'<p style="text-align:center;font-size:13px;color:var(--muted)">No apps assigned yet — your administrator will set those up.</p>'}</div>
+  ${isAdmin?`<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="S.inviteCode=null;bootAfterAccept()">Open Command Center</button>`:""}
+</div></div>`;
+    initParticles();
   }catch(e){
     document.getElementById("app").innerHTML=inviteDeadView(null);
   }
+}
+
+async function bootAfterAccept(){
+  document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Loading Command Center…</div>';
+  await postLogin();
+  render();
 }
 
 async function postLogin(){
@@ -637,9 +669,12 @@ async function resendInvite(id){
   alert(r&&r.sent?"Invite email resent to "+inv.invited_email:"Email not configured — use Copy Link instead.");
 }
 
-function copyInvite(code){
+function copyInvite(code,btn){
   const url=location.origin+"/admin.html#invite="+code;
-  navigator.clipboard.writeText(url).then(()=>alert("Invite link copied:\n"+url));
+  navigator.clipboard.writeText(url).then(()=>{
+    if(btn){const t=btn.textContent;btn.textContent="✓ Copied";setTimeout(()=>btn.textContent=t,1800)}
+    else alert("Invite link copied:\n"+url);
+  });
 }
 async function revokeInvite(id){
   try{
@@ -669,10 +704,13 @@ function appsTab(d){
 </div>
 ${d.ents.length?d.ents.map(e=>{
   const a=APPS[e.app_key]||{name:e.app_key,icon:"📱"};
+  const bu=e.metadata&&e.metadata.billing_unit;
+  const unit=e.metadata&&e.metadata.unit_price_cents?` · $${(e.metadata.unit_price_cents/100).toLocaleString()}/${bu==="store"?"store":bu==="flat"?"mo flat":"seat"}`:"";
   return `
 <div class="row-item">
   <span class="app-icon">${a.icon}</span>
-  <div class="fx"><div class="nm">${esc(a.name)}</div><div class="sb">${e.seats_used}/${e.seats_included} seats · $${((e.price_cents_monthly||0)/100).toLocaleString()}/mo</div></div>
+  <div class="fx"><div class="nm">${esc(a.name)}${e.metadata&&e.metadata.tier_display?` <span style="font-weight:400;color:#94a3b8;font-size:11px">${esc(e.metadata.tier_display)}</span>`:""}</div>
+  <div class="sb">${e.seats_used}/${e.seats_included} ${bu==="store"?"stores":"seats"}${unit} = <b>$${((e.price_cents_monthly||0)/100).toLocaleString()}/mo</b></div></div>
   <select style="width:auto;padding:5px 8px;font-size:12px" onchange="patchEnt('${e.id}',{tier:this.value})">
     ${TIERS.map(t=>`<option value="${t}" ${e.tier===t?"selected":""}>${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select>
   <input type="number" min="0" value="${e.seats_included}" style="width:70px;padding:5px 8px;font-size:12px" title="Seats included"
@@ -843,12 +881,12 @@ async function sendInvites(){
   const role=document.getElementById("iv-role").value;
   const pos=document.getElementById("iv-pos").value||null;
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Sending…';
-  let ok=0,fail=0,emailed=0;
+  let ok=0,fail=0,emailed=0,created=[];
   const send=async(em,rl)=>{
     const rows=await api("/rest/v1/org_invites",{method:"POST",headers:{Prefer:"return=representation"},
       body:JSON.stringify({organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,invited_by:S.user.id,status:"pending"})});
     const inv=Array.isArray(rows)?rows[0]:rows;
-    if(inv){const er=await sendInviteEmail(inv);if(er&&er.sent)emailed++}
+    if(inv){created.push(inv);const er=await sendInviteEmail(inv);if(er&&er.sent)emailed++}
     return inv;
   };
   try{
@@ -864,10 +902,15 @@ async function sendInvites(){
       }
     }
   }finally{
-    const mailNote=emailed===ok?" · emails delivered":emailed>0?` · ${emailed} emailed, rest need Copy Link`:" · email not configured — use Copy Link in the Invites tab";
-    document.getElementById("iv-result").innerHTML=fail
-      ?`<div class="result-warn">✓ ${ok} sent · ${fail} failed (check emails / duplicates)${ok?mailNote:""}</div>`
-      :`<div class="result-ok">✓ ${ok} invite${ok!==1?"s":""} created${mailNote}</div>`;
+    const mailNote=emailed===ok&&ok>0?" · emails delivered":emailed>0?` · ${emailed} emailed`:"";
+    const linkRows=created.map(inv=>`
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid #bbf7d0">
+        <span style="flex:1;font-size:12px;font-weight:600;color:#0f1f3d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(inv.invited_email)}</span>
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:12px" onclick="copyInvite('${esc(inv.invite_code)}',this)">Copy Link</button>
+      </div>`).join("");
+    document.getElementById("iv-result").innerHTML=(fail
+      ?`<div class="result-warn">✓ ${ok} created · ${fail} failed (check emails / duplicates)${mailNote}${linkRows}</div>`
+      :`<div class="result-ok">✓ ${ok} invite${ok!==1?"s":""} created${mailNote}${linkRows}</div>`);
     btn.disabled=false;btn.textContent="Send More";
     await loadOrg(S.org.id);
   }
