@@ -3034,10 +3034,24 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     const leftoverCount=leftoverSpecs?Object.keys(leftoverSpecs).length:0;
     logEntry('Specs: '+unpackedCount+' unpacked to columns, '+leftoverCount+' in specs_json');
 
-    const{data:product,error}=await sb.from('aiq_products')
-      .upsert(productRec,{onConflict:'brand_name,model,market'}).select('id').single();
+    // Check if product already exists (handles NULL market)
+    const{data:existCheck}=await sb.from('aiq_products')
+      .select('id').ilike('brand_name',productRec.brand_name).ilike('model',productRec.model)
+      .eq('status','active').limit(1).maybeSingle();
+    
+    let pid;
+    if(existCheck){
+      // Already exists — just enrich instead
+      pid=existCheck.id;
+      r._pimMatch=true;
+      logEntry(r.model+' already in PIM, enriching instead…');
+      if(!r._enriched)await window.S.rdEnrichOne(idx);
+      renderTab();return;
+    }
+    
+    const{data:product,error}=await sb.from('aiq_products').insert(productRec).select('id').single();
     if(error){logEntry('Import err: '+error.message,'err');return}
-    const pid=product.id;
+    pid=product.id;
     r._pimMatch=true;
 
     // Save documents
