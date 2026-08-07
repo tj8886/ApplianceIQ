@@ -712,15 +712,93 @@ async function addApp(){
   }catch(e){alert("Failed: "+e.message)}
 }
 
+const PERMS=[["can_manage_users","Users"],["can_manage_roles","Roles"],["can_view_all_analytics","All Analytics"],["can_view_team_analytics","Team Analytics"],["can_manage_kpis","KPIs"],["can_manage_targets","Targets"]];
+
 function rolesTab(d){
-  if(!d.roles.length)return '<div class="empty">No custom roles defined. The standard hierarchy applies.</div>';
-  return d.roles.map((r,i)=>`
-<div class="row-item">
+  return `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div><b style="font-size:14px;color:var(--navy)">Command Structure</b><div style="font-size:12px;color:#94a3b8">Click a permission chip to toggle it. Levels: L1 highest → L7 lowest.</div></div>
+  <div style="display:flex;gap:8px">
+    ${!d.roles.length?'<button class="btn btn-primary" style="padding:8px 14px;font-size:12px" onclick="provisionRoles()">⚡ Add Standard L1–L7</button>':""}
+    <button class="btn btn-green" style="padding:8px 14px;font-size:12px" onclick="openAddRole()">+ Add Role</button>
+  </div>
+</div>
+${d.roles.length?d.roles.map(r=>`
+<div class="row-item" style="align-items:flex-start">
   <div class="lvl" style="background:hsl(${220-(r.role_level||1)*14},60%,${30+(r.role_level||1)*4}%)">L${r.role_level}</div>
-  <div class="fx"><div class="nm">${esc(r.role_name)}</div>
-    <div class="sb">${[r.can_manage_users&&"Users",r.can_manage_roles&&"Roles",r.can_view_all_analytics&&"All Analytics",r.can_view_team_analytics&&"Team Analytics",r.can_manage_kpis&&"KPIs",r.can_manage_targets&&"Targets"].filter(Boolean).join(" · ")||"No special permissions"}</div></div>
-  <span style="font-size:11px;color:#cbd5e1">${d.mems.filter(m=>m.org_role_id===r.id).length} assigned</span>
-</div>`).join("")}
+  <div class="fx">
+    <div style="display:flex;align-items:center;gap:8px">
+      <input value="${esc(r.role_name)}" style="width:auto;min-width:140px;padding:4px 8px;font-size:13px;font-weight:600;color:var(--navy);border-color:transparent;background:transparent"
+        onfocus="this.style.borderColor='var(--line)';this.style.background='#fff'"
+        onblur="this.style.borderColor='transparent';this.style.background='transparent';if(this.value.trim()&&this.value!=='${esc(r.role_name)}')patchRole('${r.id}',{role_name:this.value.trim()})"
+        onkeydown="if(event.key==='Enter')this.blur()"/>
+      <select style="width:auto;padding:3px 6px;font-size:11px" onchange="patchRole('${r.id}',{role_level:+this.value})" title="Level">
+        ${[1,2,3,4,5,6,7,8,9].map(l=>`<option value="${l}" ${r.role_level===l?"selected":""}>L${l}</option>`).join("")}
+      </select>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
+      ${PERMS.map(([k,lb])=>`<button onclick="patchRole('${r.id}',{${k}:${!r[k]}})"
+        class="badge ${r[k]?'bg-green':'bg-gray'}" style="border:none;cursor:pointer">${r[k]?"✓ ":""}${lb}</button>`).join("")}
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+    <span style="font-size:11px;color:#cbd5e1">${d.mems.filter(m=>m.org_role_id===r.id).length} assigned</span>
+    ${d.mems.filter(m=>m.org_role_id===r.id).length===0
+      ?`<button class="link-danger" onclick="deleteRole('${r.id}')">Delete</button>`
+      :`<span style="font-size:10px;color:#e2e8f0">in use</span>`}
+  </div>
+</div>`).join(""):'<div class="empty">No roles yet — click "⚡ Add Standard L1–L7" to provision the full command structure.</div>'}
+<div id="addrole-slot"></div>`}
+
+async function patchRole(id,body){
+  try{
+    await api("/rest/v1/org_roles?id=eq."+id,{method:"PATCH",body:JSON.stringify(body)});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Update failed: "+e.message)}
+}
+
+async function deleteRole(id){
+  if(!confirm("Delete this role?"))return;
+  try{
+    await api("/rest/v1/org_roles?id=eq."+id,{method:"DELETE"});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Delete failed: "+e.message)}
+}
+
+async function provisionRoles(){
+  try{
+    const n=await rpc("provision_standard_roles",{p_org:S.org.id});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message)}
+}
+
+function openAddRole(){
+  document.getElementById("addrole-slot").innerHTML=`
+<div style="margin-top:12px;border:2px dashed var(--line);border-radius:12px;padding:16px;background:#f8fafc">
+  <div class="frm-grid" style="grid-template-columns:2fr 90px;margin-bottom:12px">
+    <div><label>Role Name</label><input id="nr-name" placeholder="Warehouse Lead"/></div>
+    <div><label>Level</label><select id="nr-lvl">${[1,2,3,4,5,6,7,8,9].map(l=>`<option value="${l}" ${l===5?"selected":""}>L${l}</option>`).join("")}</select></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-green" style="padding:8px 16px;font-size:13px" onclick="addRole()">Add Role</button>
+    <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="document.getElementById('addrole-slot').innerHTML=''">Cancel</button>
+  </div>
+</div>`;
+}
+
+async function addRole(){
+  const name=document.getElementById("nr-name").value.trim();
+  if(!name)return;
+  try{
+    await api("/rest/v1/org_roles",{method:"POST",body:JSON.stringify({
+      organization_id:S.org.id,role_name:name,role_level:+document.getElementById("nr-lvl").value,active:true})});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message)}
+}
 
 /* ─── INVITE MODAL ─── */
 let invMode="single";
@@ -818,12 +896,14 @@ async function createOrg(){
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Creating…';
   try{
     const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-    await api("/rest/v1/organizations",{method:"POST",headers:{Prefer:"return=representation"},
+    const rows=await api("/rest/v1/organizations",{method:"POST",headers:{Prefer:"return=representation"},
       body:JSON.stringify({name,slug,tenant_type:document.getElementById("co-type").value,
         tier:document.getElementById("co-tier").value,
         billing_email:document.getElementById("co-bill").value.trim()||null,status:"active"})});
     S.orgs=await api("/rest/v1/organizations?status=eq.active&order=name.asc");
-    closeModal();render();
+    closeModal();
+    const created=Array.isArray(rows)?rows[0]:rows;
+    if(created&&created.id){openOrg(created.id)}else{render()}
   }catch(e){
     document.getElementById("co-err").textContent="Failed — slug may already exist";
     btn.disabled=false;btn.textContent="Create Organization";
@@ -845,7 +925,7 @@ ${HIERARCHY.map((r,i)=>`
     <div style="font-size:12px;color:#94a3b8;margin-top:2px">${r.p}</div>
   </div>
 </div>`).join("")}
-<div class="note"><b>How it works:</b> Super Admins set up the initial organization and assign the first Owner. From there, the org is self-administered — Owners invite admins, admins invite members, each level manages the levels below. Seat counts are tracked per-app for billing.</div>
+<div class="note"><b>How it works:</b> Every new organization is automatically provisioned with this L1–L7 structure the moment it's created. Super Admins assign the first Owner; from there the org is self-administered — Owners invite admins, admins invite members, each level manages the levels below. Role names and permissions are editable per-org in their Roles tab. Seat counts are tracked per-app for billing.</div>
 </div>`}
 
 /* ─── REGISTRY VIEW ─── */
