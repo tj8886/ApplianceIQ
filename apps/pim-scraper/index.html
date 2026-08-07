@@ -1764,6 +1764,7 @@ function renderRDDiscover(retailers) {
     const hasUrl=!!rdCrawlUrl;
     h+='<button class="btn btn-primary" onclick="window.S.rdCategoryCrawl()" '+((!hasUrl&&!hasRetailer)?'disabled':'')+'>';
     h+='🌐 Crawl '+(hasUrl?'URL':(hasRetailer?esc(rdSelectedRetailer):' Retailer'))+(hasBrand?' ('+esc(selectedBrand)+')':' (all brands)')+'</button>';
+    if(hasRetailer)h+='<button class="btn" style="background:#2f6fed;color:#fff" onclick="window.S.rdCrawlAllCategories()" title="Crawl all 10 appliance categories at this retailer">🚀 Crawl ALL Categories</button>';
   }
   h+='</div>';
 
@@ -2557,6 +2558,36 @@ window.S = {
     return result;
   },
 
+  // ── CRAWL ALL CATEGORIES at one retailer ──
+  async rdCrawlAllCategories(){
+    if(isProcessing||!rdSelectedRetailer)return;
+    const allCats=['refrigerators','ranges','dishwashers','washers','dryers','microwaves','range hoods','cooktops','wall ovens','freezers'];
+    logEntry('🚀 FULL CRAWL: '+rdSelectedRetailer+' — '+allCats.length+' categories');
+    
+    for(let ci=0;ci<allCats.length;ci++){
+      if(stopRequested){logEntry('⏹ Stopped full crawl at category '+(ci+1),'err');break}
+      rdCrawlCat=allCats[ci];
+      // Build the URL for this category
+      const ret=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
+      if(ret?.category_slugs?.[rdCrawlCat]&&ret?.brand_page_template){
+        rdCrawlUrl=ret.brand_page_template.replace('{category_slug}',ret.category_slugs[rdCrawlCat]);
+      } else if(ret?.search_url_template){
+        rdCrawlUrl=ret.search_url_template.replace('{brand}','').replace('{category}',encodeURIComponent(rdCrawlCat));
+      }
+      logEntry('━━━ Category '+(ci+1)+'/'+allCats.length+': '+rdCrawlCat.toUpperCase()+' ━━━');
+      renderTab();
+      
+      await window.S.rdCategoryCrawl();
+      
+      // Brief pause between categories
+      if(ci<allCats.length-1&&!stopRequested){
+        logEntry('Pausing 3s before next category…');
+        await new Promise(r=>setTimeout(r,3000));
+      }
+    }
+    logEntry('🏁 FULL CRAWL COMPLETE: '+rdDiscoveryResults.length+' total products across '+allCats.length+' categories','ok');
+  },
+
   // ── CATEGORY CRAWL: Find ALL products on a category page ──
   async rdCategoryCrawl(){
     if(isProcessing)return;
@@ -2608,7 +2639,7 @@ window.S = {
             const arr=extractResult.text.match(/\[[\s\S]*\]/);
             if(arr){try{htmlProducts=JSON.parse(arr[0]);logEntry('Phase 1: extracted '+htmlProducts.length+' products from HTML','ok')}catch(e){}}
           }
-        } else {logEntry('Phase 1: page too short or JS-rendered ('+rawText.length+' chars), skipping to AI search','err')}
+        } else {logEntry('Phase 1: JS-rendered page — AI search will handle it')}
       }catch(e){logEntry('Phase 1: fetch err: '+e.message+', falling back to AI search','err')}
     }
 
