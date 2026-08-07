@@ -189,15 +189,40 @@ let S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs
 function esc(s){const d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML}
 function tok(){return localStorage.getItem("igcc_token")}
 
-async function api(path,opts={}){
+async function api(path,opts={},_retried){
   const h={apikey:SB_KEY,"Content-Type":"application/json"};
   const t=tok();if(t)h.Authorization="Bearer "+t;
   Object.assign(h,opts.headers||{});
   const r=await fetch(SB_URL+path,{...opts,headers:h});
+  if(r.status===401&&!_retried&&localStorage.getItem("igcc_refresh")){
+    const ok=await refreshSession();
+    if(ok)return api(path,opts,true);
+  }
   if(!r.ok){const e=await r.text();throw new Error(e)}
   const txt=await r.text();
   return txt?JSON.parse(txt):null;
 }
+
+async function refreshSession(){
+  try{
+    const r=await fetch(SB_URL+"/auth/v1/token?grant_type=refresh_token",{
+      method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({refresh_token:localStorage.getItem("igcc_refresh")})});
+    if(!r.ok)throw new Error("refresh_failed");
+    const d=await r.json();
+    localStorage.setItem("igcc_token",d.access_token);
+    if(d.refresh_token)localStorage.setItem("igcc_refresh",d.refresh_token);
+    localStorage.setItem("igcc_user",JSON.stringify(d.user));
+    S.token=d.access_token;S.user=d.user;
+    return true;
+  }catch(e){
+    signOut();
+    return false;
+  }
+}
+
+// Proactive refresh every 50 minutes while the tab is open
+setInterval(()=>{if(localStorage.getItem("igcc_refresh"))refreshSession()},50*60*1000);
 
 async function login(email,pass){
   const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{
@@ -235,7 +260,7 @@ async function sendInviteEmail(inv){
 }
 
 function signOut(){
-  localStorage.removeItem("igcc_token");localStorage.removeItem("igcc_user");
+  localStorage.removeItem("igcc_token");localStorage.removeItem("igcc_user");localStorage.removeItem("igcc_refresh");
   S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
   render();
 }
@@ -348,6 +373,7 @@ async function doAcceptLogin(){
 
 async function finishAccept(authData){
   localStorage.setItem("igcc_token",authData.access_token);
+  if(authData.refresh_token)localStorage.setItem("igcc_refresh",authData.refresh_token);
   localStorage.setItem("igcc_user",JSON.stringify(authData.user));
   S.token=authData.access_token;S.user=authData.user;
   document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Joining organization…</div>';
@@ -476,6 +502,7 @@ async function doLogin(){
   try{
     const d=await login(email,pass);
     localStorage.setItem("igcc_token",d.access_token);
+    if(d.refresh_token)localStorage.setItem("igcc_refresh",d.refresh_token);
     localStorage.setItem("igcc_user",JSON.stringify(d.user));
     S.token=d.access_token;S.user=d.user;
     await postLogin();
@@ -1318,9 +1345,12 @@ async function addAdmin(){
       user_id:profs[0].id,email,full_name:name||profs[0].full_name,role:"super_admin",created_by:S.user.id})});
     closeModal();loadAdmins();
   }catch(e){
-    err.textContent=e.message==="no-account"
-      ?"No account found for that email — they need to sign up first."
-      :"Failed to grant access (may already be an admin).";
+    let msg;
+    if(e.message==="no-account")msg="No account found for that email — Natalie needs to sign up first (any invite link, or the Sign In page → Create Account).";
+    else if(/duplicate key/i.test(e.message))msg="Already a platform admin.";
+    else if(/JWT|401|expired/i.test(e.message))msg="Your session expired — sign out and back in, then retry.";
+    else{try{msg=JSON.parse(e.message).message||"Failed to grant access."}catch{msg="Failed: "+e.message.slice(0,140)}}
+    err.textContent=msg;
     btn.disabled=false;btn.textContent="Grant Super Admin";
   }
 }
