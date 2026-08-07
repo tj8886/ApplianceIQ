@@ -1323,7 +1323,7 @@ function openAddAdmin(){
 <div class="modal">
   <div class="modal-head"><h3>Add Platform Admin</h3><button class="modal-x" onclick="closeModal()">×</button></div>
   <div class="modal-body">
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">The person must already have an account (they've logged in at least once). Enter their email to grant super admin access.</p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">If they don't have an account yet, one is created instantly — you'll get a temporary password to hand them. They should change it after first sign-in.</p>
     <div class="frm-row"><label>Email</label><input id="pa-email" type="email" placeholder="natalie@company.com"/></div>
     <div class="frm-row"><label>Full Name</label><input id="pa-name" placeholder="Natalie"/></div>
     <div class="err" id="pa-err"></div>
@@ -1337,19 +1337,32 @@ async function addAdmin(){
   const name=document.getElementById("pa-name").value.trim();
   const err=document.getElementById("pa-err"),btn=document.getElementById("pa-btn");
   if(!email)return;
-  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Granting…';
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Granting…';err.textContent="";
   try{
-    const profs=await api("/rest/v1/profiles?email=eq."+encodeURIComponent(email)+"&select=id,email,full_name");
-    if(!profs.length)throw new Error("no-account");
-    await api("/rest/v1/platform_admins",{method:"POST",body:JSON.stringify({
-      user_id:profs[0].id,email,full_name:name||profs[0].full_name,role:"super_admin",created_by:S.user.id})});
-    closeModal();loadAdmins();
+    const r=await fetch(SB_URL+"/functions/v1/admin-provision",{
+      method:"POST",
+      headers:{apikey:SB_KEY,Authorization:"Bearer "+tok(),"Content-Type":"application/json"},
+      body:JSON.stringify({action:"create_admin",email,full_name:name})});
+    const res=await r.json();
+    if(!res.ok)throw new Error(res.error||"failed");
+    if(res.created_account&&res.temp_password){
+      document.querySelector("#modal-slot .modal-body").innerHTML=`
+        <div class="result-ok" style="margin-bottom:14px">✓ Account created and super admin granted for <b>${esc(email)}</b></div>
+        <label>Temporary password — copy it now, it won't be shown again</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input id="pa-temp" value="${esc(res.temp_password)}" readonly style="font-family:monospace;font-weight:700"/>
+          <button class="btn btn-primary" style="padding:10px 16px" onclick="navigator.clipboard.writeText(document.getElementById('pa-temp').value).then(()=>{this.textContent='✓'})">Copy</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:12px">Send her the sign-in link (<b>${esc(location.origin)}/admin.html</b>) and this password. She should change it after first sign-in.</p>
+        <button class="btn btn-green btn-block" style="margin-top:16px" onclick="closeModal();loadAdmins()">Done</button>`;
+    }else{
+      closeModal();loadAdmins();
+    }
   }catch(e){
-    let msg;
-    if(e.message==="no-account")msg="No account found for that email — Natalie needs to sign up first (any invite link, or the Sign In page → Create Account).";
-    else if(/duplicate key/i.test(e.message))msg="Already a platform admin.";
-    else if(/JWT|401|expired/i.test(e.message))msg="Your session expired — sign out and back in, then retry.";
-    else{try{msg=JSON.parse(e.message).message||"Failed to grant access."}catch{msg="Failed: "+e.message.slice(0,140)}}
+    let msg=e.message;
+    if(/forbidden/.test(msg))msg="Only platform admins can do this.";
+    else if(/not_authenticated|JWT|expired/i.test(msg))msg="Session expired — sign out and back in.";
+    else msg="Failed: "+msg.slice(0,140);
     err.textContent=msg;
     btn.disabled=false;btn.textContent="Grant Super Admin";
   }
