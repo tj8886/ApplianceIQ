@@ -387,12 +387,13 @@ async function postLogin(){
 }
 
 async function loadOrg(orgId){
+  const safe=(p)=>p.catch(e=>{console.error("loadOrg query failed:",e);return []});
   const [mems,roles,ents,invs,locs]=await Promise.all([
-    api("/rest/v1/organization_members?organization_id=eq."+orgId+"&select=*"),
-    api("/rest/v1/org_roles?organization_id=eq."+orgId+"&order=role_level.asc"),
-    api("/rest/v1/org_app_entitlements?organization_id=eq."+orgId),
-    api("/rest/v1/org_invites?organization_id=eq."+orgId+"&order=created_at.desc"),
-    api("/rest/v1/org_locations?organization_id=eq."+orgId)
+    safe(api("/rest/v1/organization_members?organization_id=eq."+orgId+"&select=*")),
+    safe(api("/rest/v1/org_roles?organization_id=eq."+orgId+"&order=role_level.asc")),
+    safe(api("/rest/v1/org_app_entitlements?organization_id=eq."+orgId)),
+    safe(api("/rest/v1/org_invites?organization_id=eq."+orgId+"&order=created_at.desc")),
+    safe(api("/rest/v1/org_locations?organization_id=eq."+orgId))
   ]);
   const ids=[...new Set(mems.map(m=>m.user_id))].filter(Boolean);
   let profMap={};
@@ -523,8 +524,15 @@ async function openOrg(id){
   S.org=S.orgs.find(o=>o.id===id);
   S.tab="members";
   document.getElementById("main").innerHTML='<div class="loading-screen" style="min-height:60vh"><div class="logo-mark">IQ</div>Loading '+esc(S.org.name)+'…</div>';
-  await loadOrg(id);
-  document.getElementById("main").innerHTML=orgDetailView();
+  try{
+    await loadOrg(id);
+    document.getElementById("main").innerHTML=orgDetailView();
+  }catch(e){
+    console.error(e);
+    S.org=null;S.orgData=null;render();
+    const main=document.getElementById("main");
+    if(main)main.insertAdjacentHTML("afterbegin",'<div class="result-warn" style="margin-bottom:18px">Couldn\'t load that organization — try again. If it persists, check the browser console.</div>');
+  }
 }
 
 /* ─── ORG DETAIL ─── */
