@@ -1764,10 +1764,6 @@ function renderRDDiscover(retailers) {
     const hasUrl=!!rdCrawlUrl;
     h+='<button class="btn btn-primary" onclick="window.S.rdCategoryCrawl()" '+((!hasUrl&&!hasRetailer)?'disabled':'')+'>';
     h+='🌐 Crawl '+(hasUrl?'URL':(hasRetailer?esc(rdSelectedRetailer):' Retailer'))+(hasBrand?' ('+esc(selectedBrand)+')':' (all brands)')+'</button>';
-    if(rdDiscoveryResults.length>0){
-      const unscraped=rdDiscoveryResults.filter(r=>!r._deepScraped).length;
-      if(unscraped>0)h+='<button class="btn" style="background:var(--blue);color:#fff" onclick="window.S.rdDeepScrapeAll()">🔬 Deep Scrape '+unscraped+' Products</button>';
-    }
   }
   h+='</div>';
 
@@ -1786,11 +1782,13 @@ function renderRDDiscover(retailers) {
     if(matched>0)h+='<span class="tier-badge t1">'+matched+' matched PIM</span>';
     if(deepScraped>0)h+='<span class="tier-badge t2">'+deepScraped+' deep scraped</span>';
     if(saved>0)h+='<span style="font-size:11px;color:var(--accent);font-weight:600">'+saved+' saved</span>';
-    if(!isProcessing&&newProducts>0)h+='<button class="btn btn-sm btn-primary" onclick="window.S.rdImportAllNew()">📥 Import '+newProducts+' New to PIM</button>';
-    if(!isProcessing&&rdDiscoveryResults.filter(r=>!r._saved).length>0)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.rdSaveAll()">💾 Save All to Catalog</button>';
+    const imported=rdDiscoveryResults.filter(r=>r._pimMatch&&r._saved).length;
+    const enrichedCount=rdDiscoveryResults.filter(r=>r._enriched).length;
+    if(imported>0)h+='<span style="font-size:11px;color:var(--blue);font-weight:600">'+imported+' in PIM</span>';
+    if(enrichedCount>0)h+='<span style="font-size:11px;color:var(--accent);font-weight:600">'+enrichedCount+' enriched</span>';
     h+='</div>';
 
-    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Name</th><th>Price</th><th>PIM</th><th>Data</th><th>Actions</th></tr></thead><tbody>';
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Name</th><th>Price</th><th>PIM</th><th>Data</th><th>Status</th></tr></thead><tbody>';
     for(let i=0;i<rdDiscoveryResults.length;i++){
       const r=rdDiscoveryResults[i];
       const pimBadge=r._pimMatch?'<span style="color:var(--accent);font-size:10px;font-weight:700">✓ exists</span>':'<span style="color:var(--amber);font-size:10px;font-weight:700">NEW</span>';
@@ -1811,11 +1809,12 @@ function renderRDDiscover(retailers) {
       h+='<td style="font-weight:600">'+(r.price?'$'+Number(r.price).toLocaleString():'—')+'</td>';
       h+='<td>'+pimBadge+'</td>';
       h+='<td style="font-size:11px">'+(dataIcons||'<span style="color:var(--txt2)">—</span>')+'</td>';
-      h+='<td style="white-space:nowrap">';
-      if(!r._deepScraped)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.rdDeepScrapeOne('+i+')">🔬 Scrape</button> ';
-      if(r._deepScraped&&!r._pimMatch&&!r._saved)h+='<button class="btn btn-sm btn-primary" onclick="window.S.rdImportOne('+i+')">📥 Import</button> ';
-      if(r._deepScraped&&r._pimMatch&&!r._enriched)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.rdEnrichOne('+i+')">🔄 Enrich</button> ';
-      if(r._saved)h+='<span style="color:var(--accent);font-size:10px">✓</span>';
+      h+='<td style="white-space:nowrap;font-size:10px">';
+      if(r._enriched)h+='<span style="color:var(--accent)">✓ enriched</span>';
+      else if(r._pimMatch&&r._deepScraped)h+='<span style="color:var(--accent)">✓ imported</span>';
+      else if(r._deepScraped)h+='<span style="color:var(--blue)">✓ scraped</span>';
+      else if(r._saved)h+='<span style="color:var(--txt2)">⏳ queued</span>';
+      else h+='<span style="color:var(--txt2)">…</span>';
       if(r.product_url)h+=' <a href="'+esc(r.product_url)+'" target="_blank" style="font-size:10px;color:var(--blue)">🔗</a>';
       h+='</td></tr>';
     }
@@ -2759,19 +2758,45 @@ Find EVERY product matching the search. If you find none, return [].`;
         country:r.country||psMarket, discovered_at:new Date().toISOString(),
         last_verified:new Date().toISOString(), status:'active'
       }));
-      // Batch in chunks of 50
       for(let ci=0;ci<recs.length;ci+=50){
         const chunk=recs.slice(ci,ci+50);
         const{data,error}=await sb.from('retailer_discovered_products')
           .upsert(chunk,{onConflict:'retailer_name,brand_name,model,condition,country'}).select('id');
-        if(error){logEntry('Catalog save err: '+error.message,'err')}
-        else logEntry('Saved batch '+(Math.floor(ci/50)+1)+': '+(data?.length||0)+' products','ok');
+        if(error)logEntry('Catalog save err: '+error.message,'err');
       }
       for(const r of rdDiscoveryResults)r._saved=true;
-      // Update stats
       for(const r of rdDiscoveryResults){
         if(!rdCatalogStats[r.retailer_name])rdCatalogStats[r.retailer_name]={};
         rdCatalogStats[r.retailer_name][r.brand_name]=(rdCatalogStats[r.retailer_name][r.brand_name]||0)+1;
+      }
+      logEntry('✅ '+rdDiscoveryResults.length+' saved to catalog','ok');
+      renderTab();
+
+      // ── AUTO DEEP SCRAPE + IMPORT/ENRICH — fully automatic pipeline ──
+      const toProcess=rdDiscoveryResults.filter(r=>r.product_url&&!r._deepScraped);
+      if(toProcess.length>0&&!stopRequested){
+        logEntry('🔬 Auto deep-scraping '+toProcess.length+' products…');
+        scrapeProgress={current:0,total:toProcess.length,label:'Deep Scrape + Import'};
+        renderTab();
+        for(let i=0;i<toProcess.length;i++){
+          if(stopRequested){logEntry('⏹ Stopped','err');break}
+          scrapeProgress.current=i+1;updateHeaderProgress();
+          const idx=rdDiscoveryResults.indexOf(toProcess[i]);
+          // Deep scrape
+          await window.S.rdDeepScrapeOne(idx);
+          await new Promise(r=>setTimeout(r,800));
+          // Auto import if NEW, auto enrich if EXISTS
+          const item=rdDiscoveryResults[idx];
+          if(item._deepScraped){
+            if(!item._pimMatch){
+              await window.S.rdImportOne(idx);
+            } else if(!item._enriched){
+              await window.S.rdEnrichOne(idx);
+            }
+          }
+          renderTab();
+          await new Promise(r=>setTimeout(r,300));
+        }
       }
     }
 
@@ -2832,11 +2857,19 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
         r._deepData=parsed; // full parsed data for import
         // Update basic fields if we got better data
         if(parsed.price)r.price=Number(parsed.price);
+        if(parsed.regular_price)r.regular_price=Number(parsed.regular_price);
         if(parsed.product_name)r.product_name=parsed.product_name;
         if(parsed.brand_name)r.brand_name=parsed.brand_name;
         if(parsed.is_discontinued)r.is_discontinued=true;
         if(parsed.is_exclusive)r.is_exclusive=true;
-        logEntry('Deep scrape ✓ '+r.model+': '+
+        // Push updated price back to catalog
+        if(r._saved&&(parsed.price||parsed.regular_price)){
+          await sb.from('retailer_discovered_products').update({
+            price:r.price,regular_price:r.regular_price||null,
+            last_verified:new Date().toISOString()
+          }).eq('retailer_name',r.retailer_name).eq('model',r.model).eq('country',r.country||'CA');
+        }
+        logEntry('Deep scrape ✓ '+r.model+': '+(r.price?'$'+r.price+' ':'')+
           (r._specs?Object.keys(r._specs).length+' specs ':'')+ 
           (r._docs.length?r._docs.length+' docs ':'')+ 
           (r._features.length?r._features.length+' features ':'')+ 
@@ -3001,9 +3034,11 @@ Extract EVERY spec, EVERY feature, EVERY document link. Be thorough. Return ONLY
     const leftoverCount=leftoverSpecs?Object.keys(leftoverSpecs).length:0;
     logEntry('Specs: '+unpackedCount+' unpacked to columns, '+leftoverCount+' in specs_json');
 
-    const{data:product,error}=await sb.from('aiq_products').insert(productRec).select('id').single();
+    const{data:product,error}=await sb.from('aiq_products')
+      .upsert(productRec,{onConflict:'brand_name,model,market'}).select('id').single();
     if(error){logEntry('Import err: '+error.message,'err');return}
     const pid=product.id;
+    r._pimMatch=true;
 
     // Save documents
     if(r._docs?.length){
