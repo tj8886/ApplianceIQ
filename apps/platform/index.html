@@ -1140,6 +1140,7 @@ let state = {
   selectedTier: 'solo',
   activeView: 'dashboard',
   activeModuleKey: null,
+  entitledApps: null, // from org_app_entitlements via my_entitled_apps()
 };
 
 // ── Auth ───────────────────────────────────────────────────
@@ -1226,6 +1227,10 @@ async function initPlatform() {
 
   // Load org subscription (if exists)
   const { data: subs } = await sb.from('platform_subscriptions').select('*').limit(1);
+  try {
+    const { data: entApps } = await sb.rpc('my_entitled_apps');
+    if (Array.isArray(entApps) && entApps.length) state.entitledApps = entApps;
+  } catch (e) { /* fail open to legacy plan logic */ }
   state.subscription = subs?.[0] || null;
 
   // Load AI credits
@@ -1256,7 +1261,18 @@ function renderUserInfo() {
   document.getElementById('dash-greeting').textContent = `${greeting}, ${name.split(' ')[0]}`;
 }
 
+const MODULE_TO_APP = { crm:'crm', spec_iq:'spec_iq', academy:'iq_academy', up_system:'iq_up_system',
+  command_center:'command_center', field:'iq_field', product_iq:'product_iq', scraper:'pim_scraper', ai_coach:'ai_coach' };
+
 function getActiveModules() {
+  // Source of truth: org entitlements from the Admin Dashboard
+  if (Array.isArray(state.entitledApps)) {
+    return state.modules.filter(m => {
+      const appKey = MODULE_TO_APP[m.key];
+      return !appKey || state.entitledApps.includes(appKey); // unmapped modules stay visible
+    });
+  }
+  // Legacy fallback: platform_plans (pre-entitlement accounts)
   const sub = state.subscription;
   if (!sub || sub.status === 'trial') return state.modules; // trial = all modules
   const planId = sub.plan_id;
