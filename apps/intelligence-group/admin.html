@@ -803,6 +803,7 @@ async function addStore(){
       is_active:true})});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
+    syncStripe();
   }catch(e){alert("Failed: "+e.message.slice(0,160))}
 }
 
@@ -872,7 +873,23 @@ async function patchEnt(id,body){
     await api("/rest/v1/org_app_entitlements?id=eq."+id,{method:"PATCH",body:JSON.stringify(body)});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
+    syncStripe();
   }catch(e){alert("Update failed: "+e.message)}
+}
+
+async function syncStripe(){
+  if(!S.org||!S.org.stripe_subscription_id)return;
+  try{
+    const r=await fetch(SB_URL+"/functions/v1/stripe-billing",{
+      method:"POST",headers:{apikey:SB_KEY,Authorization:"Bearer "+tok(),"Content-Type":"application/json"},
+      body:JSON.stringify({action:"sync_subscription",organization_id:S.org.id})});
+    const res=await r.json();
+    if(res.ok&&res.synced){
+      const tb=document.getElementById("tab-body");
+      if(tb)tb.insertAdjacentHTML("afterbegin",
+        '<div class="result-ok" style="margin-bottom:12px">✓ Stripe subscription updated — new total $'+((res.monthly_cents||0)/100).toLocaleString()+'/mo (prorated)</div>');
+    }
+  }catch(e){}
 }
 
 async function openBilling(kind){
@@ -925,6 +942,7 @@ async function addApp(){
       status:"active"})});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
+    syncStripe();
   }catch(e){alert("Failed: "+e.message)}
 }
 
@@ -1105,7 +1123,10 @@ function openCreateOrg(){
         <option value="developer">Developer (API)</option></select></div>
       <div><label>Starting Tier</label><select id="co-tier">${TIERS.map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select></div>
     </div>
-    <div class="frm-row"><label>Billing Email</label><input id="co-bill" type="email" placeholder="billing@company.com"/></div>
+    <div class="frm-grid">
+      <div><label>Billing Email</label><input id="co-bill" type="email" placeholder="billing@company.com"/></div>
+      <div><label>Currency</label><select id="co-curr"><option value="cad">CAD 🇨🇦</option><option value="usd">USD 🇺🇸</option></select></div>
+    </div>
     <div class="err" id="co-err"></div>
     <button class="btn btn-green btn-block" id="co-btn" onclick="createOrg()">Create Organization</button>
   </div>
@@ -1122,7 +1143,8 @@ async function createOrg(){
     const rows=await api("/rest/v1/organizations",{method:"POST",headers:{Prefer:"return=representation"},
       body:JSON.stringify({name,slug,tenant_type:document.getElementById("co-type").value,
         tier:document.getElementById("co-tier").value,
-        billing_email:document.getElementById("co-bill").value.trim()||null,status:"active"})});
+        billing_email:document.getElementById("co-bill").value.trim()||null,
+        billing_currency:document.getElementById("co-curr").value,status:"active"})});
     S.orgs=await api("/rest/v1/organizations?status=eq.active&order=name.asc");
     closeModal();
     const created=Array.isArray(rows)?rows[0]:rows;
