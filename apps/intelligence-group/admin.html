@@ -913,7 +913,10 @@ async function createOrg(){
     const created=Array.isArray(rows)?rows[0]:rows;
     if(created&&created.id){openOrg(created.id)}else{render()}
   }catch(e){
-    document.getElementById("co-err").textContent="Failed — slug may already exist";
+    let msg="Create failed";
+    try{const j=JSON.parse(e.message);msg=j.message||j.details||j.hint||msg}catch{msg=e.message.slice(0,160)||msg}
+    if(/duplicate key.*slug/i.test(msg))msg="An organization with this name (slug) already exists — pick a different name.";
+    document.getElementById("co-err").textContent=msg;
     btn.disabled=false;btn.textContent="Create Organization";
   }
 }
