@@ -1765,6 +1765,7 @@ function renderRDDiscover(retailers) {
     h+='<button class="btn btn-primary" onclick="window.S.rdCategoryCrawl()" '+((!hasUrl&&!hasRetailer)?'disabled':'')+'>';
     h+='🌐 Crawl '+(hasUrl?'URL':(hasRetailer?esc(rdSelectedRetailer):' Retailer'))+(hasBrand?' ('+esc(selectedBrand)+')':' (all brands)')+'</button>';
     if(hasRetailer)h+='<button class="btn" style="background:#2f6fed;color:#fff" onclick="window.S.rdCrawlAllCategories()" title="Crawl all 10 appliance categories at this retailer">🚀 Crawl ALL Categories</button>';
+    if(hasRetailer)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.rdDiscoverBrands()" title="Find which brands this retailer carries">🏷️ Discover Brands</button>';
   }
   h+='</div>';
 
@@ -2558,6 +2559,64 @@ window.S = {
     return result;
   },
 
+  // ── DISCOVER BRANDS: Find which brands a retailer carries (run once) ──
+  async rdDiscoverBrands(){
+    if(isProcessing||!rdSelectedRetailer)return;
+    const retailer=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
+    if(!retailer)return;
+    isProcessing=true;stopRequested=false;
+    logEntry('🏷️ Discovering brands at '+rdSelectedRetailer+'…');
+    scrapeProgress={current:0,total:1,label:'Brand Discovery'};renderTab();
+
+    const BRAND_PROMPT=`You are identifying which appliance brands a retailer carries. Search their website thoroughly. Return ONLY a JSON array of brand name strings. Include ALL brands they sell for major appliances (refrigerators, ranges, dishwashers, washers, dryers, cooktops, wall ovens, microwaves, range hoods, freezers). Return ONLY the JSON array of strings, nothing else. Example: ["Samsung","LG","GE","Whirlpool","Bosch"]`;
+
+    const aiResult=await window.S._crawlAI(BRAND_PROMPT, 
+      'What appliance brands does '+retailer.website+' carry? Search '+retailer.website+' and list every major appliance brand they sell. Include all brands visible on their website.', 4000);
+    
+    if(aiResult){
+      const arrMatch=aiResult.text.match(/\[[\s\S]*?\]/);
+      if(arrMatch){
+        try{
+          const brands=JSON.parse(arrMatch[0]);
+          if(Array.isArray(brands)&&brands.length>0){
+            // Save to retailer_brand_pages
+            const recs=brands.filter(b=>typeof b==='string'&&b.trim()).map(b=>({
+              retailer_name:rdSelectedRetailer,
+              brand_name:b.trim(),
+              category:'all',
+              crawl_status:'discovered'
+            }));
+            const{data,error}=await sb.from('retailer_brand_pages')
+              .upsert(recs,{onConflict:'retailer_name,brand_name,category'}).select('id');
+            if(error)logEntry('Brand save err: '+error.message,'err');
+            else logEntry('✅ Found '+brands.length+' brands at '+rdSelectedRetailer+': '+brands.slice(0,10).join(', ')+(brands.length>10?' +'+( brands.length-10)+' more':''),'ok');
+            
+            // Check for new brands not in our catalog
+            for(const b of brands){
+              const exists=allBrands.some(ab=>ab.brand_name.toUpperCase()===b.trim().toUpperCase());
+              if(!exists){
+                logEntry('🆕 New brand discovered: '+b+' — adding to catalog');
+                const{data:nb}=await sb.from('brand_catalog').insert({brand_name:b.trim(),parent_company:b.trim()}).select('id,brand_name').single();
+                if(nb){allBrands.push(nb);document.getElementById('brandCount').textContent=allBrands.length}
+              }
+            }
+          }
+        }catch(e){logEntry('Brand parse err: '+e.message,'err')}
+      }
+    }
+    isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};renderTab();
+  },
+
+  // ── Get brands for a specific retailer (from retailer_brand_pages or fallback to all) ──
+  async _getRetailerBrands(retailerName){
+    const{data}=await sb.from('retailer_brand_pages')
+      .select('brand_name').eq('retailer_name',retailerName);
+    if(data&&data.length>0){
+      return data.map(d=>d.brand_name);
+    }
+    return null; // null = use all brands (not yet discovered)
+  },
+
   // ── CRAWL ALL CATEGORIES at one retailer ──
   async rdCrawlAllCategories(){
     if(isProcessing||!rdSelectedRetailer)return;
@@ -2664,14 +2723,21 @@ window.S = {
     };
     const subCats=subCatMap[cat]||['standard'];
 
-    // Get brands to sweep — use ALL brands from catalog if no brand selected
+    // Get brands to sweep — use retailer-specific brands if discovered, else all
     let brandsToSweep=[];
     if(selectedBrand){
       brandsToSweep=[selectedBrand];
     } else {
-      // Pull ALL brands from brand_catalog (165+)
-      brandsToSweep=allBrands.map(b=>b.brand_name).filter(Boolean);
-      logEntry('Using all '+brandsToSweep.length+' brands from catalog');
+      // Check if we've discovered this retailer's brands
+      const retailerBrands=await window.S._getRetailerBrands(retailerName);
+      if(retailerBrands){
+        brandsToSweep=retailerBrands;
+        logEntry('Using '+retailerBrands.length+' known brands for '+retailerName);
+      } else {
+        // Not yet discovered — use all brands from catalog
+        brandsToSweep=allBrands.map(b=>b.brand_name).filter(Boolean);
+        logEntry('⚠️ Brands not yet discovered for '+retailerName+' — using all '+brandsToSweep.length+' brands (run 🏷️ Discover Brands first for speed)');
+      }
     }
 
     // Build targets: each brand × category (main), then brand × sub-categories
@@ -2724,12 +2790,17 @@ Find EVERY product matching the search. If you find none, return [].`;
     const addProducts=(parsed,label)=>{
       const existingModels=new Set(rdDiscoveryResults.map(r=>(r.model||'').toUpperCase()));
       let added=0;
+      const newBrandsFound=new Set();
       for(const p of parsed){
         if(!p.model)continue;
         const mk=(p.model||'').toUpperCase();
         if(existingModels.has(mk))continue;
         existingModels.add(mk);
         const inPim=allPimModels.has(mk);
+        // Track new brands discovered during crawl
+        if(p.brand_name&&!allBrands.some(b=>b.brand_name.toUpperCase()===p.brand_name.toUpperCase())){
+          newBrandsFound.add(p.brand_name);
+        }
         rdDiscoveryResults.push({
           model:p.model, brand_name:p.brand_name||selectedBrand||'',
           product_name:p.product_name||p.name||null,
@@ -2744,6 +2815,12 @@ Find EVERY product matching the search. If you find none, return [].`;
           _alsoViewed:null, _bundles:null, _description:null
         });
         added++;
+      }
+      // Auto-add newly discovered brands to catalog + retailer brand list
+      for(const nb of newBrandsFound){
+        logEntry('🆕 New brand: '+nb+' — adding to catalog & retailer');
+        sb.from('brand_catalog').insert({brand_name:nb,parent_company:nb}).select('id,brand_name').single().then(({data})=>{if(data){allBrands.push(data);document.getElementById('brandCount').textContent=allBrands.length}});
+        sb.from('retailer_brand_pages').upsert({retailer_name:retailerName,brand_name:nb,category:'all',crawl_status:'discovered'},{onConflict:'retailer_name,brand_name,category'});
       }
       if(added>0)logEntry(label+': +'+added+' new (total: '+rdDiscoveryResults.length+')','ok');
       return added;
