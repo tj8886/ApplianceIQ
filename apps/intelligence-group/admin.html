@@ -193,6 +193,33 @@ async function login(email,pass){
   return r.json();
 }
 
+async function signup(email,pass,name){
+  const r=await fetch(SB_URL+"/auth/v1/signup",{
+    method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({email,password:pass,data:{full_name:name}})});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.msg||d.error_description||"signup_failed");
+  return d;
+}
+
+async function rpc(fn,args){
+  return api("/rest/v1/rpc/"+fn,{method:"POST",body:JSON.stringify(args)});
+}
+
+async function sendInviteEmail(inv){
+  // Fire the org-invite edge function; returns {sent, accept_url}
+  try{
+    const r=await fetch(SB_URL+"/functions/v1/org-invite",{
+      method:"POST",
+      headers:{apikey:SB_KEY,Authorization:"Bearer "+tok(),"Content-Type":"application/json"},
+      body:JSON.stringify({
+        invite_code:inv.invite_code,invited_email:inv.invited_email,
+        org_name:S.org.name,role:inv.role,inviter_email:S.user.email,
+        site_origin:location.origin})});
+    return await r.json();
+  }catch(e){return {ok:false,sent:false}}
+}
+
 function signOut(){
   localStorage.removeItem("igcc_token");localStorage.removeItem("igcc_user");
   S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
@@ -200,6 +227,9 @@ function signOut(){
 }
 
 async function boot(){
+  // Invite link? Route to the acceptance flow.
+  const m=location.hash.match(/#invite=([a-f0-9]+)/i);
+  if(m){S.inviteCode=m[1];await bootInvite();return}
   const t=localStorage.getItem("igcc_token"),u=localStorage.getItem("igcc_user");
   if(t&&u){
     S.token=t;S.user=JSON.parse(u);
@@ -207,6 +237,137 @@ async function boot(){
     try{await postLogin()}catch(e){signOut();return}
   }
   render();
+}
+
+/* ─── INVITE ACCEPTANCE FLOW ─── */
+async function bootInvite(){
+  const app=document.getElementById("app");
+  app.innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Checking your invitation…</div>';
+  let preview;
+  try{
+    const r=await fetch(SB_URL+"/rest/v1/rpc/get_invite_preview",{
+      method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({p_code:S.inviteCode})});
+    preview=await r.json();
+  }catch{preview={ok:false}}
+  if(!preview.ok||preview.status!=="pending"||preview.expired){
+    app.innerHTML=inviteDeadView(preview);
+    return;
+  }
+  S.invitePreview=preview;
+  app.innerHTML=inviteAcceptView();
+  initParticles();
+}
+
+function inviteDeadView(p){
+  const reason=!p||!p.ok?"This invitation link isn't valid.":p.expired?"This invitation has expired.":p.status==="accepted"?"This invitation was already accepted.":"This invitation has been revoked.";
+  return `
+<div class="login-wrap"><canvas id="pt"></canvas>
+<div class="login-card" style="text-align:center">
+  <div class="logo-row"><span class="logo-mark">IQ</span></div>
+  <h1>Invitation unavailable</h1>
+  <p class="login-sub" style="margin-bottom:20px">${reason}</p>
+  <p style="font-size:13px;color:var(--muted)">Ask your administrator to send a new invite.</p>
+  <p style="margin-top:20px;font-size:12px"><a href="/admin.html" onclick="location.hash=''">Go to sign in</a></p>
+</div></div>`}
+
+let invTab="signup";
+function inviteAcceptView(){
+  const p=S.invitePreview;
+  return `
+<div class="login-wrap"><canvas id="pt"></canvas>
+<div class="login-card">
+  <div class="logo-row"><span class="logo-mark">IQ</span></div>
+  <h1 style="text-align:center">Join ${esc(p.organization_name)}</h1>
+  <p class="login-sub">You've been invited as ${esc(p.role==="admin"?"an Administrator":p.role==="owner"?"an Owner":"a Team Member")} · ${esc(p.invited_email)}</p>
+  <div class="seg" style="justify-content:center">
+    <button class="${invTab==='signup'?'active':''}" onclick="invTab='signup';document.getElementById('app').innerHTML=inviteAcceptView();initParticles()">Create Account</button>
+    <button class="${invTab==='login'?'active':''}" onclick="invTab='login';document.getElementById('app').innerHTML=inviteAcceptView();initParticles()">I Have an Account</button>
+  </div>
+  ${invTab==="signup"?`
+  <div class="frm-row"><label>Full Name</label><input id="ia-name" placeholder="Jane Smith"/></div>
+  <div class="frm-row"><label>Email</label><input id="ia-email" type="email" value="${esc(p.invited_email)}" readonly style="background:#f8fafc;color:#64748b"/></div>
+  <div class="frm-row"><label>Create Password</label><input id="ia-pass" type="password" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')doAcceptSignup()"/></div>
+  <button class="btn btn-green btn-block" id="ia-btn" onclick="doAcceptSignup()">Create Account &amp; Join</button>
+  `:`
+  <div class="frm-row"><label>Email</label><input id="ia-email" type="email" value="${esc(p.invited_email)}" readonly style="background:#f8fafc;color:#64748b"/></div>
+  <div class="frm-row"><label>Password</label><input id="ia-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAcceptLogin()"/></div>
+  <button class="btn btn-green btn-block" id="ia-btn" onclick="doAcceptLogin()">Sign In &amp; Join</button>
+  `}
+  <div class="err" id="ia-err"></div>
+</div></div>`}
+
+async function doAcceptSignup(){
+  const name=document.getElementById("ia-name").value.trim();
+  const pass=document.getElementById("ia-pass").value;
+  const err=document.getElementById("ia-err"),btn=document.getElementById("ia-btn");
+  if(pass.length<8){err.textContent="Password must be at least 8 characters";return}
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Creating account…';
+  try{
+    const d=await signup(S.invitePreview.invited_email,pass,name);
+    if(!d.access_token){
+      // Email confirmation is ON for this project — they must confirm first
+      err.style.color="#166534";
+      err.textContent="Account created! Check your email to confirm, then reopen this invite link and use 'I Have an Account'.";
+      btn.textContent="Waiting for confirmation…";
+      return;
+    }
+    await finishAccept(d);
+  }catch(e){
+    err.textContent=/already/i.test(e.message)?"An account with this email exists — use 'I Have an Account'.":"Signup failed: "+e.message;
+    btn.disabled=false;btn.textContent="Create Account & Join";
+  }
+}
+
+async function doAcceptLogin(){
+  const pass=document.getElementById("ia-pass").value;
+  const err=document.getElementById("ia-err"),btn=document.getElementById("ia-btn");
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Signing in…';
+  try{
+    const d=await login(S.invitePreview.invited_email,pass);
+    await finishAccept(d);
+  }catch(e){
+    err.textContent="Invalid password";
+    btn.disabled=false;btn.textContent="Sign In & Join";
+  }
+}
+
+async function finishAccept(authData){
+  localStorage.setItem("igcc_token",authData.access_token);
+  localStorage.setItem("igcc_user",JSON.stringify(authData.user));
+  S.token=authData.access_token;S.user=authData.user;
+  document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Joining organization…</div>';
+  try{
+    const res=await rpc("accept_org_invite",{p_code:S.inviteCode});
+    if(!res.ok){
+      document.getElementById("app").innerHTML=inviteDeadView(
+        res.error==="email_mismatch"?{ok:true,status:"pending",expired:false}:null);
+      if(res.error==="email_mismatch"){
+        document.getElementById("app").innerHTML=`
+<div class="login-wrap"><canvas id="pt"></canvas>
+<div class="login-card" style="text-align:center">
+  <div class="logo-row"><span class="logo-mark">IQ</span></div>
+  <h1>Wrong account</h1>
+  <p class="login-sub">This invite is for <b>${esc(res.expected)}</b> but you're signed in as <b>${esc(S.user.email)}</b>.</p>
+  <button class="btn btn-ghost btn-block" onclick="signOut();location.reload()">Sign out and try again</button>
+</div></div>`;
+        initParticles();
+      }
+      return;
+    }
+    location.hash="";
+    S.inviteCode=null;S.invitePreview=null;
+    await postLogin();
+    render();
+    // Welcome toast
+    setTimeout(()=>{
+      const main=document.getElementById("main");
+      if(main)main.insertAdjacentHTML("afterbegin",
+        `<div class="result-ok" style="margin-bottom:18px">🎉 Welcome to ${esc(res.organization_name)} — you've joined as ${esc(res.role)}.</div>`);
+    },50);
+  }catch(e){
+    document.getElementById("app").innerHTML=inviteDeadView(null);
+  }
 }
 
 async function postLogin(){
@@ -458,8 +619,15 @@ function invitesTab(d){
   <div class="fx"><div class="nm">${esc(i.invited_email)}</div>
     <div class="sb">Role: ${esc(i.role)} · Sent ${new Date(i.created_at).toLocaleDateString()} · Expires ${new Date(i.expires_at).toLocaleDateString()}</div></div>
   <span class="badge ${i.status==='pending'?'bg-amber':i.status==='accepted'?'bg-green':'bg-red'}">${esc(i.status)}</span>
-  ${i.status==="pending"?`<button class="link-muted" onclick="copyInvite('${esc(i.invite_code)}')">Copy Link</button><button class="link-danger" onclick="revokeInvite('${i.id}')">Revoke</button>`:""}
+  ${i.status==="pending"?`<button class="link-muted" onclick="resendInvite('${i.id}')">Resend</button><button class="link-muted" onclick="copyInvite('${esc(i.invite_code)}')">Copy Link</button><button class="link-danger" onclick="revokeInvite('${i.id}')">Revoke</button>`:""}
 </div>`).join("")}
+
+async function resendInvite(id){
+  const inv=S.orgData.invs.find(i=>i.id===id);
+  if(!inv)return;
+  const r=await sendInviteEmail(inv);
+  alert(r&&r.sent?"Invite email resent to "+inv.invited_email:"Email not configured — use Copy Link instead.");
+}
 
 function copyInvite(code){
   const url=location.origin+"/admin.html#invite="+code;
@@ -589,9 +757,14 @@ async function sendInvites(){
   const role=document.getElementById("iv-role").value;
   const pos=document.getElementById("iv-pos").value||null;
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Sending…';
-  let ok=0,fail=0;
-  const send=(em,rl)=>api("/rest/v1/org_invites",{method:"POST",body:JSON.stringify({
-    organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,invited_by:S.user.id,status:"pending"})});
+  let ok=0,fail=0,emailed=0;
+  const send=async(em,rl)=>{
+    const rows=await api("/rest/v1/org_invites",{method:"POST",headers:{Prefer:"return=representation"},
+      body:JSON.stringify({organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,invited_by:S.user.id,status:"pending"})});
+    const inv=Array.isArray(rows)?rows[0]:rows;
+    if(inv){const er=await sendInviteEmail(inv);if(er&&er.sent)emailed++}
+    return inv;
+  };
   try{
     if(invMode==="single"){
       const em=document.getElementById("iv-email").value.trim();
@@ -605,9 +778,10 @@ async function sendInvites(){
       }
     }
   }finally{
+    const mailNote=emailed===ok?" · emails delivered":emailed>0?` · ${emailed} emailed, rest need Copy Link`:" · email not configured — use Copy Link in the Invites tab";
     document.getElementById("iv-result").innerHTML=fail
-      ?`<div class="result-warn">✓ ${ok} sent · ${fail} failed (check emails / duplicates)</div>`
-      :`<div class="result-ok">✓ ${ok} invite${ok!==1?"s":""} sent</div>`;
+      ?`<div class="result-warn">✓ ${ok} sent · ${fail} failed (check emails / duplicates)${ok?mailNote:""}</div>`
+      :`<div class="result-ok">✓ ${ok} invite${ok!==1?"s":""} created${mailNote}</div>`;
     btn.disabled=false;btn.textContent="Send More";
     await loadOrg(S.org.id);
   }
