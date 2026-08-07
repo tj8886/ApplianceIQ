@@ -2365,12 +2365,25 @@ window.S = {
   rdBuildQuickUrl(){
     if(!rdSelectedRetailer)return;
     const ret=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
-    if(!ret||!ret.search_url_template)return;
-    const brand=selectedBrand||'';
-    const cat=rdCrawlCat||'appliances';
-    rdCrawlUrl=ret.search_url_template.replace('{brand}',encodeURIComponent(brand)).replace('{category}',encodeURIComponent(cat));
-    const el=document.getElementById('crawlUrlInput');
-    if(el)el.value=rdCrawlUrl;
+    if(!ret)return;
+    const cat=rdCrawlCat||'';
+    // Use category page template if available (proper URLs like /en/home/categories/appliances/dishwashers.html)
+    if(cat&&ret.category_slugs&&ret.brand_page_template){
+      const slug=ret.category_slugs[cat];
+      if(slug){
+        rdCrawlUrl=ret.brand_page_template.replace('{category_slug}',slug);
+        const el=document.getElementById('crawlUrlInput');
+        if(el)el.value=rdCrawlUrl;
+        return;
+      }
+    }
+    // Fallback to search URL template
+    if(ret.search_url_template){
+      const brand=selectedBrand||'';
+      rdCrawlUrl=ret.search_url_template.replace('{brand}',encodeURIComponent(brand)).replace('{category}',encodeURIComponent(cat||'appliances'));
+      const el=document.getElementById('crawlUrlInput');
+      if(el)el.value=rdCrawlUrl;
+    }
   },
   rdToggleCat(cat){
     if(rdSelectedCategories.has(cat))rdSelectedCategories.delete(cat);else rdSelectedCategories.add(cat);
@@ -2524,8 +2537,10 @@ window.S = {
     }
 
     // ── PHASE 2: Build comprehensive search targets ──
+    // ALWAYS runs — brand sweep finds products the HTML phase misses
     const searchTargets=[];
     const cat=rdCrawlCat||'appliances';
+    const siteForSearch=retailerSite||((crawlUrl)?(new URL(crawlUrl)).hostname.replace('www.',''):'');
 
     // Sub-category maps per category for thorough sweeps
     const subCatMap={
@@ -2555,7 +2570,7 @@ window.S = {
     // Build targets: each brand × category (main), then brand × sub-categories
     for(const brand of brandsToSweep){
       searchTargets.push({
-        query:'Search '+retailerSite+' for ALL '+brand+' '+cat+'. List every product with exact model number, price, and full product page URL. Find as many as possible.',
+        query:'Search '+siteForSearch+' for ALL '+brand+' '+cat+'. List every product with exact model number, price, and full product page URL. Find as many as possible.',
         label:brand+' '+cat, brand
       });
     }
@@ -2564,7 +2579,7 @@ window.S = {
     for(const brand of deepSweepBrands){
       for(const sc of subCats){
         searchTargets.push({
-          query:'Search '+retailerSite+' for '+brand+' '+sc+' '+cat+'. Find ALL models with model numbers, prices, and product URLs.',
+          query:'Search '+siteForSearch+' for '+brand+' '+sc+' '+cat+'. Find ALL models with model numbers, prices, and product URLs.',
           label:brand+' '+sc, brand, isSubCat:true
         });
       }
@@ -3665,7 +3680,7 @@ async function init(){
     for(const row of(sbs||[]))brandSourceMap[row.brand_name]=row;
 
     // Load retailer scrape sources (with templates)
-    const{data:rs,error:e3}=await sb.from('scraper_retailer_sources').select('retailer_name,website,country,region,scrape_tier,server_fetchable,has_json_ld,is_shopify,bot_protection,retailer_type,search_url_template,brand_page_template,categories_carried').order('scrape_tier').order('retailer_name');
+    const{data:rs,error:e3}=await sb.from('scraper_retailer_sources').select('retailer_name,website,country,region,scrape_tier,server_fetchable,has_json_ld,is_shopify,bot_protection,retailer_type,search_url_template,brand_page_template,categories_carried,category_slugs').order('scrape_tier').order('retailer_name');
     if(e3)console.error('retailer_sources:',e3);
     psRetailers=rs||[];
 
