@@ -2670,11 +2670,17 @@ window.S = {
     isProcessing=true;stopRequested=false;rdDiscoveryResults=[];
     logEntry('🌐 Category crawl: '+retailerName+(selectedBrand?' / '+selectedBrand:''));
 
-    // ── PHASE 1: Try to fetch the actual page HTML and extract product links ──
+    // ── PHASE 1: Try saved category URL first, then fetch HTML ──
     const retailer=psRetailers.find(r=>r.retailer_name===retailerName);
     const retailerSite=retailer?.website||'';
-    const fetchUrl=crawlUrl||null;
+    let fetchUrl=crawlUrl||null;
     let htmlProducts=[];
+
+    // Check if we have a saved working URL for this category
+    if(!fetchUrl&&retailer?.category_urls){
+      const savedUrl=retailer.category_urls[rdCrawlCat||'all'];
+      if(savedUrl){fetchUrl=savedUrl;logEntry('Using saved URL: '+savedUrl);}
+    }
 
     if(fetchUrl){
       logEntry('Phase 1: Fetching page HTML…');
@@ -2932,9 +2938,49 @@ Find EVERY product matching the search. If you find none, return [].`;
     }
 
     isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};
+
+    // ── SAVE WHAT WE LEARNED — URLs, tiers, brand results ──
+    if(rdDiscoveryResults.length>0){
+      // Save working category URL for this retailer
+      if(crawlUrl||rdCrawlCat){
+        const catKey=rdCrawlCat||'all';
+        const{data:retSrc}=await sb.from('scraper_retailer_sources')
+          .select('category_urls').eq('retailer_name',retailerName).single();
+        const existingUrls=retSrc?.category_urls||{};
+        existingUrls[catKey]=crawlUrl||existingUrls[catKey]||null;
+        await sb.from('scraper_retailer_sources').update({
+          category_urls:existingUrls,
+          last_crawled:new Date().toISOString(),
+          total_products_found:(retSrc?.total_products_found||0)+rdDiscoveryResults.length
+        }).eq('retailer_name',retailerName);
+      }
+
+      // Save brand results — which brands found products + how many + which URL worked
+      const brandResults={};
+      for(const r of rdDiscoveryResults){
+        if(!brandResults[r.brand_name])brandResults[r.brand_name]={count:0,urls:new Set()};
+        brandResults[r.brand_name].count++;
+        if(r.product_url)brandResults[r.brand_name].urls.add(r.product_url);
+      }
+      for(const[brandName,info] of Object.entries(brandResults)){
+        const sampleUrl=[...info.urls][0]||null;
+        await sb.from('retailer_brand_pages').upsert({
+          retailer_name:retailerName,
+          brand_name:brandName,
+          category:rdCrawlCat||'all',
+          products_found:info.count,
+          products_last_found:info.count,
+          last_crawled:new Date().toISOString(),
+          crawl_status:'crawled',
+          last_successful_url:sampleUrl
+        },{onConflict:'retailer_name,brand_name,category'});
+      }
+      logEntry('💾 Saved crawl data: '+Object.keys(brandResults).length+' brands, URLs, and patterns stored for next time','ok');
+    }
+
     logEntry('✅ Crawl complete: '+rdDiscoveryResults.length+' products found, '
       +rdDiscoveryResults.filter(r=>!r._pimMatch).length+' new to PIM, all saved to catalog','ok');
-    loadDashboard(); // refresh dashboard stats
+    loadDashboard();
     renderTab();
   },
 
@@ -4065,7 +4111,7 @@ async function init(){
     for(const row of(sbs||[]))brandSourceMap[row.brand_name]=row;
 
     // Load retailer scrape sources (with templates)
-    const{data:rs,error:e3}=await sb.from('scraper_retailer_sources').select('retailer_name,website,country,region,scrape_tier,server_fetchable,has_json_ld,is_shopify,bot_protection,retailer_type,search_url_template,brand_page_template,categories_carried,category_slugs').order('scrape_tier').order('retailer_name');
+    const{data:rs,error:e3}=await sb.from('scraper_retailer_sources').select('retailer_name,website,country,region,scrape_tier,server_fetchable,has_json_ld,is_shopify,bot_protection,retailer_type,search_url_template,brand_page_template,categories_carried,category_slugs,category_urls,best_tier,last_crawled,total_products_found').order('scrape_tier').order('retailer_name');
     if(e3)console.error('retailer_sources:',e3);
     psRetailers=rs||[];
 
