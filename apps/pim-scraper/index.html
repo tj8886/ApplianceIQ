@@ -1896,30 +1896,32 @@ function renderRDCatalog(retailers) {
 function renderRDPriceCheck(retailers) {
   let h='';
 
-  if(!selectedBrand){
-    h+='<div style="text-align:center;padding:50px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px;opacity:.3">💲</div><div style="font-size:16px;font-weight:700;color:var(--txt)">Select a brand to check prices</div><div style="font-size:13px;margin-top:6px">Only checks products already discovered in the catalog</div></div>';
-    return h;
-  }
-
-  // Show which retailers have catalog entries for this brand
-  const retailersWithBrand=[];
+  // Show ALL retailers that have catalog data (optionally filtered by brand)
+  const retailersWithData=[];
   for(const r of retailers){
-    const cnt=rdCatalogStats[r.retailer_name]?.[selectedBrand]||0;
-    if(cnt>0)retailersWithBrand.push({...r,catalogCount:cnt});
+    let cnt=0;
+    if(selectedBrand){
+      cnt=rdCatalogStats[r.retailer_name]?.[selectedBrand]||0;
+    } else {
+      // Sum all brands for this retailer
+      const brands=rdCatalogStats[r.retailer_name];
+      if(brands)for(const c of Object.values(brands))cnt+=c;
+    }
+    if(cnt>0)retailersWithData.push({...r,catalogCount:cnt});
   }
 
-  if(retailersWithBrand.length===0){
+  if(retailersWithData.length===0){
     h+='<div style="text-align:center;padding:40px 0;color:var(--txt2)"><div style="font-size:40px;margin-bottom:10px;opacity:.3">⚠️</div>';
-    h+='<div style="font-size:14px;font-weight:600">No catalog data for '+esc(selectedBrand)+'</div>';
-    h+='<div style="font-size:12px;margin-top:6px">Run <span style="color:var(--accent);cursor:pointer" onclick="window.S.rdSetMode(\'discover\')">Discovery</span> first to find which retailers carry this brand</div></div>';
+    h+='<div style="font-size:14px;font-weight:600">No catalog data'+(selectedBrand?' for '+esc(selectedBrand):'')+'</div>';
+    h+='<div style="font-size:12px;margin-top:6px">Run <span style="color:var(--accent);cursor:pointer" onclick="window.S.rdSetMode(\'discover\')">Discovery</span> first to crawl retailer products</div></div>';
     return h;
   }
 
   // Retailer checkboxes with catalog counts
   h+='<div style="margin-bottom:12px">';
-  h+='<div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:6px">RETAILERS WITH '+esc(selectedBrand).toUpperCase()+' IN CATALOG</div>';
+  h+='<div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:6px">RETAILERS WITH '+(selectedBrand?esc(selectedBrand).toUpperCase()+' ':'')+'CATALOG DATA</div>';
   h+='<div style="display:flex;gap:6px;flex-wrap:wrap">';
-  for(const r of retailersWithBrand){
+  for(const r of retailersWithData){
     const checked=psSelectedRetailers.has(r.website);
     h+='<label style="font-size:11px;color:'+(checked?'var(--txt)':'var(--txt2)')+';display:flex;align-items:center;gap:3px;cursor:pointer;background:var(--surface);padding:4px 8px;border-radius:6px;border:1px solid '+(checked?'var(--accent)':'var(--line)')+'">';
     h+='<input type="checkbox" '+(checked?'checked':'')+' onchange="window.S.psToggleRetailer(\''+esc(r.website)+'\')" style="accent-color:var(--accent)"/> '+esc(r.retailer_name);
@@ -1928,8 +1930,8 @@ function renderRDPriceCheck(retailers) {
   }
   h+='</div></div>';
 
-  // MSRP check button
-  const src=brandSourceMap[selectedBrand];
+  // Action buttons
+  const src=selectedBrand?brandSourceMap[selectedBrand]:null;
   const hasDirect=src?.sells_direct;
 
   h+='<div class="controls">';
@@ -1938,10 +1940,10 @@ function renderRDPriceCheck(retailers) {
     h+='<span style="font-size:12px;color:var(--txt2)">⏳ Checking prices…</span>';
   } else {
     if(hasDirect)h+='<button class="btn btn-primary" onclick="window.S.psCheckMfr()">🏭 Check MSRP ('+((brandIntel?.products?.length)||0)+')</button>';
-    const selRetailers=retailersWithBrand.filter(r=>psSelectedRetailers.has(r.website));
+    const selRetailers=retailersWithData.filter(r=>psSelectedRetailers.has(r.website));
     const totalCatalogProducts=selRetailers.reduce((s,r)=>s+r.catalogCount,0);
-    h+='<button class="btn btn-primary" onclick="window.S.rdPriceCheckCatalog()" '+(selRetailers.length===0?'disabled':'')+'>💲 Price Check '+totalCatalogProducts+' Catalog Products ('+selRetailers.length+' retailer'+(selRetailers.length!==1?'s':'')+')</button>';
-    h+='<span style="font-size:12px;color:var(--txt2)">Only checks products known to exist at each retailer</span>';
+    h+='<button class="btn btn-primary" onclick="window.S.rdPriceCheckCatalog()" '+(selRetailers.length===0?'disabled':'')+'>💲 Price Check '+totalCatalogProducts+' Products ('+selRetailers.length+' retailer'+(selRetailers.length!==1?'s':'')+')</button>';
+    h+='<span style="font-size:12px;color:var(--txt2)">Checks products in your catalog'+(selectedBrand?' for '+esc(selectedBrand):'')+'</span>';
   }
   h+='</div>';
 
@@ -1955,7 +1957,7 @@ function renderRDPriceCheck(retailers) {
     if(changedCount>0)h+='<span class="tier-badge t2">'+changedCount+' differ from MSRP</span>';
     h+='</div>';
 
-    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Model</th><th>MSRP</th><th>Retailer</th><th>Live Price</th><th>Δ</th><th>Tier</th></tr></thead><tbody>';
+    h+='<div class="table-wrap"><table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>MSRP</th><th>Retailer</th><th>Live Price</th><th>Δ</th><th>Tier</th></tr></thead><tbody>';
     for(const r of psResults){
       const p=r.product||{};
       const msrp=p.msrp?Number(p.msrp):null;
@@ -1971,7 +1973,8 @@ function renderRDPriceCheck(retailers) {
       const srcIcon=r.source_name==='Manufacturer'?'🏭':'🏪';
       const condBadge=r.condition_normalized&&r.condition_normalized!=='new'?'<span style="display:inline-block;padding:1px 7px;border-radius:100px;font-size:10px;font-weight:600;background:rgba(245,158,11,.12);color:#d97706;margin-left:6px">'+esc(r.condition_normalized.replace(/_/g,' '))+'</span>':'';
       const savedBadge=r._saved?'<span style="font-size:10px;color:var(--accent);margin-left:4px">✓ tracked</span>':'';
-      h+='<tr><td class="model-cell">'+esc(p.model||r.model||'')+condBadge+'</td>';
+      h+='<tr><td style="font-size:12px">'+esc(r.brand_name||p.brand_name||'')+'</td>';
+      h+='<td class="model-cell">'+esc(p.model||r.model||'')+condBadge+'</td>';
       h+='<td>'+(msrp?'$'+msrp.toLocaleString():'—')+'</td>';
       h+='<td style="font-size:12px">'+srcIcon+' '+esc(r.source_name||'')+savedBadge+'</td>';
       h+='<td style="font-weight:600">'+(live!==null?'$'+live.toLocaleString()+(r.regular_price&&r.regular_price>live?' <span style="text-decoration:line-through;color:var(--txt2);font-size:11px">$'+Number(r.regular_price).toLocaleString()+'</span>':''):'<span style="color:var(--red)">not found</span>')+'</td>';
@@ -3454,17 +3457,19 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
   },
 
   async rdPriceCheckCatalog(){
-    if(!selectedBrand||isProcessing)return;
+    if(isProcessing)return;
     const selRetailers=psRetailers.filter(r=>r.country===psMarket&&psSelectedRetailers.has(r.website));
     if(selRetailers.length===0)return;
     isProcessing=true;stopRequested=false;psResults=[];
 
-    // Load catalog products for selected retailers + brand
+    // Load catalog products for selected retailers (all brands or filtered)
     let catalogProducts=[];
     for(const ret of selRetailers){
-      const{data}=await sb.from('retailer_discovered_products')
+      let q=sb.from('retailer_discovered_products')
         .select('*').eq('retailer_name',ret.retailer_name)
-        .ilike('brand_name',selectedBrand).eq('status','active').eq('country',psMarket);
+        .eq('status','active').eq('country',psMarket);
+      if(selectedBrand)q=q.ilike('brand_name',selectedBrand);
+      const{data}=await q.limit(500);
       if(data)catalogProducts.push(...data.map(p=>({...p,_retailer:ret})));
     }
 
