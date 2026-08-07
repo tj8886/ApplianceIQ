@@ -174,13 +174,14 @@ const APP_URLS={
 const TENANTS={retail_company:"Retailer",manufacturer:"Manufacturer",buying_group:"Buying Group",builder_designer:"Builder / Designer",developer:"Developer (API)",demo:"Demo",appliance_iq_internal:"Internal"};
 const HIERARCHY=[
   {l:1,n:"CEO / Owner",p:"Full control — billing, roles, users, all analytics"},
-  {l:2,n:"VP Sales",p:"Manage users, view all analytics"},
+  {l:2,n:"VP",p:"Manage users, view all analytics — Sales, HR, Marketing, any VP"},
   {l:3,n:"Director",p:"View all analytics, manage regions"},
   {l:4,n:"RSM / Regional",p:"View all analytics, manage stores"},
   {l:5,n:"Store Manager",p:"Manage store team, store analytics"},
   {l:6,n:"Sales Manager",p:"Manage team, team analytics"},
-  {l:7,n:"Sales Rep",p:"Personal dashboard only"}
+  {l:7,n:"Sales Rep · Service Rep",p:"Personal dashboard only"}
 ];
+const SCOPES=[["own","Own data"],["team","Their team"],["store","Their store(s)"],["all","Whole org"]];
 
 let S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
 
@@ -625,10 +626,13 @@ function tabBody(){
 function membersTab(d){
   if(!d.mems.length)return '<div class="empty">No members yet — send some invites.</div>';
   const stores=d.locs.filter(l=>l.location_type==="store"&&l.is_active);
-  const primaryLoc=uid=>{const lm=d.locmems.find(x=>x.user_id===uid);return lm?lm.location_id:""};
+  const myLocs=uid=>d.locmems.filter(x=>x.user_id===uid).map(x=>x.location_id);
   return `<div style="overflow-x:auto"><table>
-<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Store</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
-<tbody>${d.mems.map(m=>`
+<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Stores</th><th>Sees</th><th>Status</th><th style="text-align:right"></th></tr></thead>
+<tbody>${d.mems.map(m=>{
+  const assigned=myLocs(m.user_id);
+  const storeLabel=assigned.length===0?"— No store —":assigned.length===1?(stores.find(s=>s.id===assigned[0])?.name||d.locs.find(s=>s.id===assigned[0])?.name||"1 store"):assigned.length+" stores";
+  return `
 <tr>
   <td><div class="mem"><div class="avatar">${esc((m._name||m._email||"?")[0].toUpperCase())}</div>
     <div><div class="nm">${esc(m._name||"—")}</div><div class="eml">${esc(m._email||(m.user_id||"").slice(0,8))}</div></div></div></td>
@@ -637,14 +641,54 @@ function membersTab(d){
   <td><select onchange="patchMember('${m.id}',{org_role_id:this.value||null})">
     <option value="">— Unassigned —</option>
     ${d.roles.map(r=>`<option value="${r.id}" ${m.org_role_id===r.id?"selected":""}>${esc(r.role_name)}</option>`).join("")}</select></td>
-  <td><select onchange="assignStore('${m.user_id}',this.value)">
-    <option value="">— No store —</option>
-    ${stores.map(s=>`<option value="${s.id}" ${primaryLoc(m.user_id)===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select></td>
+  <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap" onclick="openStorePicker('${m.user_id}','${esc(m._name||m._email||"")}')">${esc(storeLabel)} ▾</button></td>
+  <td><select onchange="patchMember('${m.id}',{visibility_scope:this.value})" title="What data this person can see">
+    ${SCOPES.map(([v,lb])=>`<option value="${v}" ${(m.visibility_scope||"own")===v?"selected":""}>${lb}</option>`).join("")}</select></td>
   <td><span class="badge ${m.status==='active'?'bg-green':'bg-red'}">${esc(m.status)}</span></td>
   <td style="text-align:right">${m.status==="active"
     ?`<button class="link-danger" onclick="removeMember('${m.id}')">Remove</button>`
     :`<button class="link-muted" onclick="patchMember('${m.id}',{status:'active'})">Reactivate</button>`}</td>
-</tr>`).join("")}</tbody></table></div>`}
+</tr>`}).join("")}</tbody></table></div>
+<div id="modal-slot-mem"></div>`}
+
+function openStorePicker(userId,name){
+  const d=S.orgData;
+  const stores=d.locs.filter(l=>l.location_type==="store"&&l.is_active);
+  if(!stores.length){alert("No active stores yet — add them on the Stores tab.");return}
+  const assigned=new Set(d.locmems.filter(x=>x.user_id===userId).map(x=>x.location_id));
+  const primary=d.locmems.find(x=>x.user_id===userId&&x.is_primary)?.location_id||null;
+  document.getElementById("modal-slot-mem").innerHTML=`
+<div class="overlay" onclick="if(event.target===this)document.getElementById('modal-slot-mem').innerHTML=''">
+<div class="modal">
+  <div class="modal-head"><h3>Stores — ${esc(name)}</h3><button class="modal-x" onclick="document.getElementById('modal-slot-mem').innerHTML=''">×</button></div>
+  <div class="modal-body">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Check every store this person should see. Mark one as primary (their home store).</p>
+    ${stores.map(s=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #f1f5f9">
+        <input type="checkbox" id="sp-${s.id}" ${assigned.has(s.id)?"checked":""} style="width:auto"/>
+        <label for="sp-${s.id}" style="flex:1;margin:0;text-transform:none;font-size:13px;font-weight:600;color:var(--navy);letter-spacing:0">${esc(s.name)}</label>
+        <label style="display:flex;align-items:center;gap:5px;margin:0;font-size:11px;letter-spacing:0"><input type="radio" name="sp-primary" value="${s.id}" ${primary===s.id?"checked":""} style="width:auto"/>primary</label>
+      </div>`).join("")}
+    <button class="btn btn-green btn-block" style="margin-top:16px" onclick="saveStorePicker('${userId}')">Save</button>
+  </div>
+</div></div>`;
+}
+
+async function saveStorePicker(userId){
+  const stores=S.orgData.locs.filter(l=>l.location_type==="store"&&l.is_active);
+  const checked=stores.filter(s=>document.getElementById("sp-"+s.id).checked).map(s=>s.id);
+  const primary=document.querySelector('input[name="sp-primary"]:checked')?.value||checked[0]||null;
+  try{
+    await api("/rest/v1/org_location_members?organization_id=eq."+S.org.id+"&user_id=eq."+userId,{method:"DELETE"});
+    for(const locId of checked){
+      await api("/rest/v1/org_location_members",{method:"POST",body:JSON.stringify({
+        organization_id:S.org.id,location_id:locId,user_id:userId,is_primary:locId===primary})});
+    }
+    document.getElementById("modal-slot-mem").innerHTML="";
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message.slice(0,160))}
+}
 
 async function patchMember(id,body){
   try{
@@ -874,7 +918,7 @@ ${d.roles.length?d.roles.map(r=>`
         onblur="this.style.borderColor='transparent';this.style.background='transparent';if(this.value.trim()&&this.value!=='${esc(r.role_name)}')patchRole('${r.id}',{role_name:this.value.trim()})"
         onkeydown="if(event.key==='Enter')this.blur()"/>
       <select style="width:auto;padding:3px 6px;font-size:11px" onchange="patchRole('${r.id}',{role_level:+this.value})" title="Level">
-        ${[1,2,3,4,5,6,7,8,9].map(l=>`<option value="${l}" ${r.role_level===l?"selected":""}>L${l}</option>`).join("")}
+        ${[1,2,3,4,5,6,7].map(l=>`<option value="${l}" ${r.role_level===l?"selected":""}>L${l}</option>`).join("")}
       </select>
     </div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
@@ -921,7 +965,7 @@ function openAddRole(){
 <div style="margin-top:12px;border:2px dashed var(--line);border-radius:12px;padding:16px;background:#f8fafc">
   <div class="frm-grid" style="grid-template-columns:2fr 90px;margin-bottom:12px">
     <div><label>Role Name</label><input id="nr-name" placeholder="Warehouse Lead"/></div>
-    <div><label>Level</label><select id="nr-lvl">${[1,2,3,4,5,6,7,8,9].map(l=>`<option value="${l}" ${l===5?"selected":""}>L${l}</option>`).join("")}</select></div>
+    <div><label>Level</label><select id="nr-lvl">${[1,2,3,4,5,6,7].map(l=>`<option value="${l}" ${l===5?"selected":""}>L${l}</option>`).join("")}</select></div>
   </div>
   <div style="display:flex;gap:8px">
     <button class="btn btn-green" style="padding:8px 16px;font-size:13px" onclick="addRole()">Add Role</button>
