@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="theme-color" content="#0f1f3d"/>
+<title>Command Center — IQ Intelligence Group</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--navy:#0f1f3d;--navy2:#162a4d;--blue:#2563eb;--cyan:#06b6d4;--green:#1a9e56;--white:#fff;--bg:#f4f6f8;--ink:#1f2b3d;--muted:#64748b;--line:#e2e8f0;--grad:linear-gradient(135deg,var(--blue),var(--cyan));--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 12px 40px rgba(0,0,0,.12);--radius:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:15px/1.6 Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:Sora,Inter,sans-serif;line-height:1.2;color:var(--navy)}
+button{font-family:Inter,sans-serif;cursor:pointer}
+a{color:var(--blue);text-decoration:none}
+input,select,textarea{font-family:Inter,sans-serif;font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;width:100%;background:#fff;transition:.15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em}
+
+/* Login */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f1f3d 0%,#162a4d 55%,#0f1f3d 100%);position:relative;overflow:hidden}
+.login-card{position:relative;z-index:2;width:100%;max-width:420px;background:#fff;border-radius:20px;box-shadow:var(--shadow-lg);padding:40px;margin:20px}
+.logo-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px}
+.logo-mark{width:42px;height:42px;border-radius:12px;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-family:Sora;font-weight:800;font-size:17px}
+.login-card h1{font-size:22px;text-align:center}
+.login-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:28px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;padding:11px 20px;font-size:14px;font-weight:600;transition:.15s}
+.btn-primary{background:var(--grad);color:#fff}
+.btn-primary:hover{opacity:.9}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{opacity:.9}
+.btn-ghost{background:#f1f5f9;color:var(--ink)}
+.btn-ghost:hover{background:#e2e8f0}
+.btn-block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:#dc2626;font-size:13px;margin-top:10px}
+
+/* Shell */
+.shell{display:flex;min-height:100vh}
+aside{width:250px;flex-shrink:0;background:var(--navy);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side-head{padding:20px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+.side-head .logo-mark{width:36px;height:36px;font-size:15px}
+.side-head b{font-family:Sora;font-size:15px}
+.side-head small{display:block;font-size:10px;color:rgba(255,255,255,.5)}
+.side-nav{flex:1;padding:14px 10px}
+.side-nav button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:rgba(255,255,255,.7);font-size:14px;font-weight:500;padding:11px 14px;border-radius:10px;transition:.15s;text-align:left}
+.side-nav button:hover{color:#fff;background:rgba(255,255,255,.08)}
+.side-nav button.active{color:#fff;background:var(--grad)}
+.side-foot{padding:16px;border-top:1px solid rgba(255,255,255,.08)}
+.user-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.user-row .em{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.user-row .rl{font-size:10px;color:#4ade80}
+.signout{background:none;border:none;color:rgba(255,255,255,.4);font-size:12px;padding:0}
+.signout:hover{color:#f87171}
+main{flex:1;padding:36px 40px;overflow-x:hidden}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.page-head h1{font-size:26px}
+.page-head p{color:var(--muted);font-size:13px;margin-top:4px}
+
+/* Cards / stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.stat .lb{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat .vl{font-family:Sora;font-size:28px;font-weight:700;color:var(--navy);margin-top:2px}
+.stat .sb{font-size:11px;color:#94a3b8;margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);transition:.15s;text-align:left;cursor:pointer}
+.card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.card h3{font-size:15px}
+.card .tp{font-size:12px;color:var(--muted);margin-top:2px}
+.card-foot{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:11px;color:#94a3b8}
+.group-lb{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin:22px 0 12px}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600}
+.bg-green{background:#dcfce7;color:#166534}.bg-red{background:#fee2e2;color:#991b1b}.bg-amber{background:#fef3c7;color:#92400e}.bg-indigo{background:#e0e7ff;color:#3730a3}.bg-gray{background:#f1f5f9;color:#475569}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:22px;flex-wrap:wrap}
+.tabs button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-size:14px;font-weight:600;padding:10px 16px;transition:.15s}
+.tabs button:hover{color:var(--ink)}
+.tabs button.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tabs .cnt{display:inline-block;background:#f1f5f9;border-radius:999px;padding:1px 7px;font-size:11px;margin-left:6px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:10px 8px;border-bottom:1px solid var(--line)}
+td{padding:12px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+tr:hover td{background:#f8fafc}
+td select{width:auto;padding:5px 8px;font-size:12px}
+.mem{display:flex;align-items:center;gap:10px}
+.mem .avatar{background:var(--blue)}
+.mem .nm{font-weight:600;font-size:13px;color:var(--navy)}
+.mem .eml{font-size:11px;color:#94a3b8}
+.link-danger{background:none;border:none;color:#f87171;font-size:12px}
+.link-danger:hover{color:#dc2626}
+.link-muted{background:none;border:none;color:#94a3b8;font-size:12px}
+.link-muted:hover{color:var(--ink)}
+
+/* Rows */
+.row-item{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:8px}
+.row-item .fx{flex:1;min-width:0}
+.row-item .nm{font-weight:600;font-size:13px;color:var(--navy)}
+.row-item .sb{font-size:11px;color:#94a3b8}
+.app-icon{font-size:22px}
+.lvl{width:36px;height:36px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(15,31,61,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:18px;box-shadow:var(--shadow-lg);width:100%;max-width:480px;max-height:90vh;overflow:auto}
+.modal.wide{max-width:640px}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:16px}
+.modal-x{background:none;border:none;font-size:22px;color:#94a3b8;line-height:1}
+.modal-body{padding:24px}
+.frm-row{margin-bottom:16px}
+.frm-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.seg{display:flex;gap:8px;margin-bottom:18px}
+.seg button{border:none;border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;background:#f1f5f9;color:var(--muted)}
+.seg button.active{background:var(--blue);color:#fff}
+.note{background:#eff6ff;border:1px solid #dbeafe;border-radius:12px;padding:14px;font-size:12px;color:#1e40af;margin-top:20px}
+.result-ok{background:#dcfce7;color:#166534;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+.result-warn{background:#fef3c7;color:#92400e;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px}
+.empty{color:#94a3b8;font-size:13px;text-align:center;padding:40px 0}
+.back-lnk{background:none;border:none;color:#94a3b8;font-size:13px;margin-bottom:14px;padding:0}
+.back-lnk:hover{color:var(--ink)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;color:var(--muted);font-size:13px}
+.loading-screen .logo-mark{width:48px;height:48px;font-size:19px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Particles on login */
+canvas#pt{position:absolute;inset:0;z-index:1}
+
+.mobile-topbar{display:none}
+@media(max-width:860px){
+  aside{position:fixed;left:-260px;transition:.25s;z-index:150}
+  aside.open{left:0}
+  main{padding:70px 18px 30px}
+  .mobile-topbar{display:flex;position:fixed;top:0;left:0;right:0;height:54px;background:var(--navy);color:#fff;align-items:center;gap:12px;padding:0 16px;z-index:140}
+  .mobile-topbar button{background:none;border:none;color:#fff;font-size:20px}
+  .mobile-topbar b{font-family:Sora;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const SB_URL="https://fumwwhyozeouoqscolke.supabase.co";
+const SB_KEY="sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV";
+
+const APPS={
+  crm:{name:"CRM",icon:"👥"},spec_iq:{name:"Spec IQ",icon:"📋"},iq_academy:{name:"IQ Academy",icon:"🎓"},
+  iq_up_system:{name:"IQ Up System",icon:"📊"},iq_field:{name:"IQ Field",icon:"🔧"},product_iq:{name:"Product IQ",icon:"📦"},
+  ai_coach:{name:"AI Coach",icon:"🤖"},command_center:{name:"Command Center",icon:"🎛️"},pim_scraper:{name:"PIM Scraper",icon:"🔍"},analytics:{name:"Analytics",icon:"📈"}
+};
+const TIERS=["starter","growth","pro","elite","enterprise"];
+const TENANTS={retail_company:"Retailer",manufacturer:"Manufacturer",buying_group:"Buying Group",builder_designer:"Builder / Designer",developer:"Developer (API)",demo:"Demo",appliance_iq_internal:"Internal"};
+const HIERARCHY=[
+  {l:1,n:"CEO / Owner",p:"Full control — billing, roles, users, all analytics"},
+  {l:2,n:"VP Sales",p:"Manage users, view all analytics"},
+  {l:3,n:"Director",p:"View all analytics, manage regions"},
+  {l:4,n:"RSM / Regional",p:"View all analytics, manage stores"},
+  {l:5,n:"Store Manager",p:"Manage store team, store analytics"},
+  {l:6,n:"Sales Manager",p:"Manage team, team analytics"},
+  {l:7,n:"Sales Rep",p:"Personal dashboard only"}
+];
+
+let S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
+
+function esc(s){const d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML}
+function tok(){return localStorage.getItem("igcc_token")}
+
+async function api(path,opts={}){
+  const h={apikey:SB_KEY,"Content-Type":"application/json"};
+  const t=tok();if(t)h.Authorization="Bearer "+t;
+  Object.assign(h,opts.headers||{});
+  const r=await fetch(SB_URL+path,{...opts,headers:h});
+  if(!r.ok){const e=await r.text();throw new Error(e)}
+  const txt=await r.text();
+  return txt?JSON.parse(txt):null;
+}
+
+async function login(email,pass){
+  const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{
+    method:"POST",headers:{apikey:SB_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({email,password:pass})});
+  if(!r.ok)throw new Error("bad");
+  return r.json();
+}
+
+function signOut(){
+  localStorage.removeItem("igcc_token");localStorage.removeItem("igcc_user");
+  S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
+  render();
+}
+
+async function boot(){
+  const t=localStorage.getItem("igcc_token"),u=localStorage.getItem("igcc_user");
+  if(t&&u){
+    S.token=t;S.user=JSON.parse(u);
+    document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Loading Command Center…</div>';
+    try{await postLogin()}catch(e){signOut();return}
+  }
+  render();
+}
+
+async function postLogin(){
+  try{
+    const admins=await api("/rest/v1/platform_admins?select=user_id");
+    S.super=admins.some(a=>a.user_id===S.user.id);
+  }catch{S.super=false}
+  S.orgs=await api("/rest/v1/organizations?status=eq.active&order=name.asc");
+  if(!S.super){
+    // Org admins only see orgs they belong to as owner/admin
+    try{
+      const mems=await api("/rest/v1/organization_members?user_id=eq."+S.user.id+"&role=in.(owner,admin)&status=eq.active&select=organization_id");
+      const ids=new Set(mems.map(m=>m.organization_id));
+      S.orgs=S.orgs.filter(o=>ids.has(o.id));
+    }catch{S.orgs=[]}
+  }
+}
+
+async function loadOrg(orgId){
+  const [mems,roles,ents,invs,locs]=await Promise.all([
+    api("/rest/v1/organization_members?organization_id=eq."+orgId+"&select=*"),
+    api("/rest/v1/org_roles?organization_id=eq."+orgId+"&order=role_level.asc"),
+    api("/rest/v1/org_app_entitlements?organization_id=eq."+orgId),
+    api("/rest/v1/org_invites?organization_id=eq."+orgId+"&order=created_at.desc"),
+    api("/rest/v1/org_locations?organization_id=eq."+orgId)
+  ]);
+  const ids=[...new Set(mems.map(m=>m.user_id))].filter(Boolean);
+  let profMap={};
+  if(ids.length){
+    try{
+      const profs=await api("/rest/v1/profiles?id=in.("+ids.join(",")+")");
+      profs.forEach(p=>profMap[p.id]=p);
+    }catch{}
+  }
+  mems.forEach(m=>{m._name=profMap[m.user_id]?.full_name||null;m._email=profMap[m.user_id]?.email||null});
+  S.orgData={mems,roles,ents,invs,locs};
+}
+
+/* ─── RENDER ─── */
+function render(){
+  const app=document.getElementById("app");
+  if(!S.user){app.innerHTML=loginView();initParticles();return}
+  app.innerHTML=shellView();
+}
+
+function loginView(){return `
+<div class="login-wrap">
+  <canvas id="pt"></canvas>
+  <div class="login-card">
+    <div class="logo-row"><span class="logo-mark">IQ</span></div>
+    <h1>Command Center</h1>
+    <p class="login-sub">IQ Intelligence Group · Platform Administration</p>
+    <div class="frm-row"><label>Email</label><input id="li-email" type="email" placeholder="you@company.com" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <div class="frm-row"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+    <button class="btn btn-primary btn-block" id="li-btn" onclick="doLogin()">Sign In</button>
+    <div class="err" id="li-err"></div>
+    <p style="text-align:center;margin-top:20px;font-size:12px"><a href="/">← Back to IQ Intelligence Group</a></p>
+  </div>
+</div>`}
+
+async function doLogin(){
+  const email=document.getElementById("li-email").value.trim();
+  const pass=document.getElementById("li-pass").value;
+  const btn=document.getElementById("li-btn"),err=document.getElementById("li-err");
+  if(!email||!pass)return;
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Signing in…';err.textContent="";
+  try{
+    const d=await login(email,pass);
+    localStorage.setItem("igcc_token",d.access_token);
+    localStorage.setItem("igcc_user",JSON.stringify(d.user));
+    S.token=d.access_token;S.user=d.user;
+    await postLogin();
+    render();
+  }catch(e){
+    err.textContent="Invalid email or password";
+    btn.disabled=false;btn.textContent="Sign In";
+  }
+}
+
+function shellView(){
+  return `
+<div class="mobile-topbar"><button onclick="document.querySelector('aside').classList.toggle('open')">☰</button><b>Command Center</b></div>
+<div class="shell">
+<aside>
+  <div class="side-head"><span class="logo-mark">IQ</span><div><b>Command Center</b><small>Intelligence Group</small></div></div>
+  <nav class="side-nav">
+    <button class="${S.view==='orgs'&&!S.org?'active':''}" onclick="nav('orgs')">🏢 Organizations</button>
+    <button class="${S.view==='hierarchy'?'active':''}" onclick="nav('hierarchy')">👔 Role Hierarchy</button>
+    <button class="${S.view==='registry'?'active':''}" onclick="nav('registry')">📱 App Registry</button>
+    ${S.super?`<button class="${S.view==='admins'?'active':''}" onclick="nav('admins')">⚡ Platform Admins</button>`:""}
+  </nav>
+  <div class="side-foot">
+    <div class="user-row">
+      <div class="avatar" style="background:${S.super?'var(--green)':'var(--blue)'}">${esc((S.user.email||"U")[0].toUpperCase())}</div>
+      <div style="min-width:0"><div class="em">${esc(S.user.email)}</div><div class="rl" style="color:${S.super?'#4ade80':'#93c5fd'}">${S.super?"⚡ Super Admin":"Org Admin"}</div></div>
+    </div>
+    <button class="signout" onclick="signOut()">Sign out</button>
+  </div>
+</aside>
+<main id="main">${mainView()}</main>
+</div>`}
+
+function mainView(){
+  if(S.org)return orgDetailView();
+  if(S.view==="hierarchy")return hierarchyView();
+  if(S.view==="registry")return registryView();
+  if(S.view==="admins")return adminsView();
+  return orgsView();
+}
+
+async function nav(v){
+  S.view=v;S.org=null;S.orgData=null;
+  document.querySelector("aside")?.classList.remove("open");
+  if(v==="admins"){render();await loadAdmins();return}
+  render();
+}
+
+/* ─── ORGS LIST ─── */
+function orgsView(){
+  const visible=S.orgs.filter(o=>o.tenant_type!=="appliance_iq_internal");
+  const groups=[
+    {lb:"Retailers",c:"#1a9e56",items:visible.filter(o=>["retail_company","demo"].includes(o.tenant_type))},
+    {lb:"Manufacturers",c:"#7c3aed",items:visible.filter(o=>o.tenant_type==="manufacturer")},
+    {lb:"Other",c:"#d97706",items:visible.filter(o=>!["retail_company","demo","manufacturer"].includes(o.tenant_type))}
+  ];
+  return `
+<div class="page-head">
+  <div><h1>Organizations</h1><p>${visible.length} account${visible.length!==1?"s":""} · Manage members, apps, and billing</p></div>
+  ${S.super?'<button class="btn btn-green" onclick="openCreateOrg()">+ New Organization</button>':""}
+</div>
+<div class="stats">
+  <div class="stat"><div class="lb">Organizations</div><div class="vl">${visible.length}</div></div>
+  <div class="stat"><div class="lb">Retailers</div><div class="vl" style="color:#1a9e56">${groups[0].items.length}</div></div>
+  <div class="stat"><div class="lb">Manufacturers</div><div class="vl" style="color:#7c3aed">${groups[1].items.length}</div></div>
+  <div class="stat"><div class="lb">Other</div><div class="vl" style="color:#d97706">${groups[2].items.length}</div></div>
+</div>
+${groups.filter(g=>g.items.length).map(g=>`
+  <div class="group-lb" style="color:${g.c}">${g.lb}</div>
+  <div class="grid">
+    ${g.items.map(o=>`
+      <div class="card" onclick="openOrg('${o.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div><h3>${esc(o.name)}</h3><div class="tp">${esc(TENANTS[o.tenant_type]||o.tenant_type)}</div></div>
+          <span class="badge bg-indigo">${esc(o.tier)}</span>
+        </div>
+        <div class="card-foot"><span>/${esc(o.slug)}</span><span>·</span><span class="badge ${o.status==='active'?'bg-green':'bg-red'}">${esc(o.status)}</span></div>
+      </div>`).join("")}
+  </div>`).join("")}
+${visible.length===0?'<div class="empty">No organizations yet. Create the first one to get started.</div>':""}
+<div id="modal-slot"></div>`}
+
+async function openOrg(id){
+  S.org=S.orgs.find(o=>o.id===id);
+  S.tab="members";
+  document.getElementById("main").innerHTML='<div class="loading-screen" style="min-height:60vh"><div class="logo-mark">IQ</div>Loading '+esc(S.org.name)+'…</div>';
+  await loadOrg(id);
+  document.getElementById("main").innerHTML=orgDetailView();
+}
+
+/* ─── ORG DETAIL ─── */
+function orgDetailView(){
+  const o=S.org,d=S.orgData;
+  if(!d)return "";
+  const active=d.mems.filter(m=>m.status==="active");
+  const pending=d.invs.filter(i=>i.status==="pending");
+  const activeEnts=d.ents.filter(e=>e.status==="active");
+  const monthly=activeEnts.reduce((s,e)=>s+(e.price_cents_monthly||0),0);
+  const seats=d.ents.reduce((s,e)=>s+(e.seats_included||0),0);
+  const tabs=[
+    {k:"members",lb:"Members",c:active.length},
+    {k:"invites",lb:"Invites",c:pending.length},
+    {k:"stores",lb:"Stores",c:d.locs.length},
+    {k:"apps",lb:"Apps & Billing",c:d.ents.length},
+    {k:"roles",lb:"Roles",c:d.roles.length}
+  ];
+  return `
+<button class="back-lnk" onclick="closeOrg()">← Back to Organizations</button>
+<div class="page-head">
+  <div>
+    <h1>${esc(o.name)}</h1>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <span class="badge bg-indigo">${esc(TENANTS[o.tenant_type]||o.tenant_type)}</span>
+      <span class="badge bg-gray">${esc(o.tier)}</span>
+      <span class="badge ${o.status==='active'?'bg-green':'bg-red'}">${esc(o.status)}</span>
+    </div>
+  </div>
+  <button class="btn btn-green" onclick="openInvite()">+ Invite Members</button>
+</div>
+<div class="stats">
+  <div class="stat"><div class="lb">Active Members</div><div class="vl" style="color:var(--blue)">${active.length}</div></div>
+  <div class="stat"><div class="lb">Stores</div><div class="vl" style="color:#7c3aed">${d.locs.length}</div></div>
+  <div class="stat"><div class="lb">Apps Active</div><div class="vl" style="color:var(--green)">${activeEnts.length}</div></div>
+  <div class="stat"><div class="lb">Monthly</div><div class="vl">$${(monthly/100).toLocaleString()}</div><div class="sb">${seats} total seats</div></div>
+</div>
+<div class="tabs">
+  ${tabs.map(t=>`<button class="${S.tab===t.k?'active':''}" onclick="setTab('${t.k}')">${t.lb}${t.c?'<span class="cnt">'+t.c+'</span>':""}</button>`).join("")}
+</div>
+<div id="tab-body">${tabBody()}</div>
+<div id="modal-slot"></div>`}
+
+function closeOrg(){S.org=null;S.orgData=null;render()}
+function setTab(t){S.tab=t;document.querySelectorAll(".tabs button").forEach(b=>b.classList.remove("active"));event.target.closest("button").classList.add("active");document.getElementById("tab-body").innerHTML=tabBody()}
+
+function tabBody(){
+  const d=S.orgData;
+  if(S.tab==="members")return membersTab(d);
+  if(S.tab==="invites")return invitesTab(d);
+  if(S.tab==="stores")return storesTab(d);
+  if(S.tab==="apps")return appsTab(d);
+  if(S.tab==="roles")return rolesTab(d);
+  return "";
+}
+
+function membersTab(d){
+  if(!d.mems.length)return '<div class="empty">No members yet — send some invites.</div>';
+  return `<div style="overflow-x:auto"><table>
+<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+<tbody>${d.mems.map(m=>`
+<tr>
+  <td><div class="mem"><div class="avatar">${esc((m._name||m._email||"?")[0].toUpperCase())}</div>
+    <div><div class="nm">${esc(m._name||"—")}</div><div class="eml">${esc(m._email||(m.user_id||"").slice(0,8))}</div></div></div></td>
+  <td><select onchange="patchMember('${m.id}',{role:this.value})">
+    ${["member","admin","owner"].map(r=>`<option value="${r}" ${m.role===r?"selected":""}>${r[0].toUpperCase()+r.slice(1)}</option>`).join("")}</select></td>
+  <td><select onchange="patchMember('${m.id}',{org_role_id:this.value||null})">
+    <option value="">— Unassigned —</option>
+    ${d.roles.map(r=>`<option value="${r.id}" ${m.org_role_id===r.id?"selected":""}>${esc(r.role_name)}</option>`).join("")}</select></td>
+  <td><span class="badge ${m.status==='active'?'bg-green':'bg-red'}">${esc(m.status)}</span></td>
+  <td style="text-align:right">${m.status==="active"
+    ?`<button class="link-danger" onclick="removeMember('${m.id}')">Remove</button>`
+    :`<button class="link-muted" onclick="patchMember('${m.id}',{status:'active'})">Reactivate</button>`}</td>
+</tr>`).join("")}</tbody></table></div>`}
+
+async function patchMember(id,body){
+  try{
+    await api("/rest/v1/organization_members?id=eq."+id,{method:"PATCH",body:JSON.stringify(body)});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Update failed: "+e.message)}
+}
+async function removeMember(id){
+  if(!confirm("Remove this member? Their seat will be freed."))return;
+  patchMember(id,{status:"inactive"});
+}
+
+function invitesTab(d){
+  if(!d.invs.length)return '<div class="empty">No invites yet. Use "+ Invite Members" to send the first one.</div>';
+  return d.invs.map(i=>`
+<div class="row-item">
+  <div class="fx"><div class="nm">${esc(i.invited_email)}</div>
+    <div class="sb">Role: ${esc(i.role)} · Sent ${new Date(i.created_at).toLocaleDateString()} · Expires ${new Date(i.expires_at).toLocaleDateString()}</div></div>
+  <span class="badge ${i.status==='pending'?'bg-amber':i.status==='accepted'?'bg-green':'bg-red'}">${esc(i.status)}</span>
+  ${i.status==="pending"?`<button class="link-muted" onclick="copyInvite('${esc(i.invite_code)}')">Copy Link</button><button class="link-danger" onclick="revokeInvite('${i.id}')">Revoke</button>`:""}
+</div>`).join("")}
+
+function copyInvite(code){
+  const url=location.origin+"/admin.html#invite="+code;
+  navigator.clipboard.writeText(url).then(()=>alert("Invite link copied:\n"+url));
+}
+async function revokeInvite(id){
+  try{
+    await api("/rest/v1/org_invites?id=eq."+id,{method:"PATCH",body:JSON.stringify({status:"revoked"})});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message)}
+}
+
+function storesTab(d){
+  if(!d.locs.length)return '<div class="empty">No store locations recorded for this organization.</div>';
+  return d.locs.map(l=>`
+<div class="row-item">
+  <div class="fx"><div class="nm">${esc(l.name||"Unnamed Location")}</div>
+    <div class="sb">${esc([l.address,l.city,l.province_state,l.country].filter(Boolean).join(", "))}${l.code?" · Code "+esc(l.code):""}</div></div>
+  <span class="badge ${l.is_active?'bg-green':'bg-red'}">${l.is_active?"Active":"Closed"}</span>
+</div>`).join("")}
+
+function appsTab(d){
+  const monthly=d.ents.filter(e=>e.status==="active").reduce((s,e)=>s+(e.price_cents_monthly||0),0);
+  const used=d.ents.map(e=>e.app_key);
+  const avail=Object.keys(APPS).filter(k=>!used.includes(k));
+  return `
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div><b style="font-size:14px;color:var(--navy)">App Entitlements</b><div style="font-size:12px;color:#94a3b8">Monthly total: $${(monthly/100).toLocaleString()}/mo</div></div>
+  ${avail.length?'<button class="btn btn-green" style="padding:8px 14px;font-size:12px" onclick="openAddApp()">+ Add App</button>':""}
+</div>
+${d.ents.length?d.ents.map(e=>{
+  const a=APPS[e.app_key]||{name:e.app_key,icon:"📱"};
+  return `
+<div class="row-item">
+  <span class="app-icon">${a.icon}</span>
+  <div class="fx"><div class="nm">${esc(a.name)}</div><div class="sb">${e.seats_used}/${e.seats_included} seats · $${((e.price_cents_monthly||0)/100).toLocaleString()}/mo</div></div>
+  <select style="width:auto;padding:5px 8px;font-size:12px" onchange="patchEnt('${e.id}',{tier:this.value})">
+    ${TIERS.map(t=>`<option value="${t}" ${e.tier===t?"selected":""}>${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select>
+  <input type="number" min="0" value="${e.seats_included}" style="width:70px;padding:5px 8px;font-size:12px" title="Seats included"
+    onchange="patchEnt('${e.id}',{seats_included:+this.value})"/>
+  <span class="badge ${e.status==='active'?'bg-green':'bg-red'}">${esc(e.status)}</span>
+  <button class="link-muted" onclick="patchEnt('${e.id}',{status:'${e.status==="active"?"suspended":"active"}'})">${e.status==="active"?"Suspend":"Activate"}</button>
+</div>`}).join(""):'<div class="empty">No apps assigned yet.</div>'}
+<div id="addapp-slot"></div>`}
+
+async function patchEnt(id,body){
+  try{
+    await api("/rest/v1/org_app_entitlements?id=eq."+id,{method:"PATCH",body:JSON.stringify(body)});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Update failed: "+e.message)}
+}
+
+function openAddApp(){
+  const used=S.orgData.ents.map(e=>e.app_key);
+  const avail=Object.keys(APPS).filter(k=>!used.includes(k));
+  document.getElementById("addapp-slot").innerHTML=`
+<div style="margin-top:12px;border:2px dashed var(--line);border-radius:12px;padding:16px;background:#f8fafc">
+  <div class="frm-grid" style="grid-template-columns:1fr 1fr 100px;margin-bottom:12px">
+    <div><label>App</label><select id="na-app">${avail.map(k=>`<option value="${k}">${APPS[k].name}</option>`).join("")}</select></div>
+    <div><label>Tier</label><select id="na-tier">${TIERS.map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select></div>
+    <div><label>Seats</label><input id="na-seats" type="number" min="1" value="5"/></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-green" style="padding:8px 16px;font-size:13px" onclick="addApp()">Add</button>
+    <button class="btn btn-ghost" style="padding:8px 16px;font-size:13px" onclick="document.getElementById('addapp-slot').innerHTML=''">Cancel</button>
+  </div>
+</div>`;
+}
+
+async function addApp(){
+  try{
+    await api("/rest/v1/org_app_entitlements",{method:"POST",body:JSON.stringify({
+      organization_id:S.org.id,
+      app_key:document.getElementById("na-app").value,
+      tier:document.getElementById("na-tier").value,
+      seats_included:+document.getElementById("na-seats").value||1,
+      status:"active"})});
+    await loadOrg(S.org.id);
+    document.getElementById("tab-body").innerHTML=tabBody();
+  }catch(e){alert("Failed: "+e.message)}
+}
+
+function rolesTab(d){
+  if(!d.roles.length)return '<div class="empty">No custom roles defined. The standard hierarchy applies.</div>';
+  return d.roles.map((r,i)=>`
+<div class="row-item">
+  <div class="lvl" style="background:hsl(${220-(r.role_level||1)*14},60%,${30+(r.role_level||1)*4}%)">L${r.role_level}</div>
+  <div class="fx"><div class="nm">${esc(r.role_name)}</div>
+    <div class="sb">${[r.can_manage_users&&"Users",r.can_manage_roles&&"Roles",r.can_view_all_analytics&&"All Analytics",r.can_view_team_analytics&&"Team Analytics",r.can_manage_kpis&&"KPIs",r.can_manage_targets&&"Targets"].filter(Boolean).join(" · ")||"No special permissions"}</div></div>
+  <span style="font-size:11px;color:#cbd5e1">${d.mems.filter(m=>m.org_role_id===r.id).length} assigned</span>
+</div>`).join("")}
+
+/* ─── INVITE MODAL ─── */
+let invMode="single";
+function openInvite(){
+  invMode="single";
+  document.getElementById("modal-slot").innerHTML=inviteModal();
+}
+function inviteModal(){
+  const roles=S.orgData.roles;
+  return `
+<div class="overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal wide">
+  <div class="modal-head"><h3>Invite Team Members</h3><button class="modal-x" onclick="closeModal()">×</button></div>
+  <div class="modal-body">
+    <div class="seg">
+      <button class="${invMode==='single'?'active':''}" onclick="invMode='single';document.getElementById('modal-slot').innerHTML=inviteModal()">Single Invite</button>
+      <button class="${invMode==='bulk'?'active':''}" onclick="invMode='bulk';document.getElementById('modal-slot').innerHTML=inviteModal()">Bulk Invite</button>
+    </div>
+    <div class="frm-grid">
+      <div><label>System Role</label><select id="iv-role"><option value="member">Member</option><option value="admin">Org Admin</option><option value="owner">Owner</option></select></div>
+      <div><label>Position</label><select id="iv-pos"><option value="">— Select —</option>${roles.map(r=>`<option value="${r.id}">${esc(r.role_name)} (L${r.role_level})</option>`).join("")}</select></div>
+    </div>
+    ${invMode==="single"
+      ?`<div class="frm-row"><label>Email Address</label><input id="iv-email" type="email" placeholder="newrep@company.com"/></div>`
+      :`<div class="frm-row"><label>Paste emails — one per line (optional: email, role)</label>
+        <textarea id="iv-bulk" rows="6" style="font-family:monospace;font-size:12px" placeholder="rep1@company.com&#10;rep2@company.com, member&#10;manager@company.com, admin"></textarea></div>`}
+    <div id="iv-result"></div>
+    <button class="btn btn-green btn-block" id="iv-btn" onclick="sendInvites()">Send Invite${invMode==="bulk"?"s":""}</button>
+  </div>
+</div></div>`}
+
+async function sendInvites(){
+  const btn=document.getElementById("iv-btn");
+  const role=document.getElementById("iv-role").value;
+  const pos=document.getElementById("iv-pos").value||null;
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Sending…';
+  let ok=0,fail=0;
+  const send=(em,rl)=>api("/rest/v1/org_invites",{method:"POST",body:JSON.stringify({
+    organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,invited_by:S.user.id,status:"pending"})});
+  try{
+    if(invMode==="single"){
+      const em=document.getElementById("iv-email").value.trim();
+      if(!em){btn.disabled=false;btn.textContent="Send Invite";return}
+      try{await send(em,role);ok++}catch{fail++}
+    }else{
+      const lines=document.getElementById("iv-bulk").value.split("\n").map(l=>l.trim()).filter(Boolean);
+      for(const line of lines){
+        const parts=line.split(",").map(p=>p.trim());
+        try{await send(parts[0],parts[1]||role);ok++}catch{fail++}
+      }
+    }
+  }finally{
+    document.getElementById("iv-result").innerHTML=fail
+      ?`<div class="result-warn">✓ ${ok} sent · ${fail} failed (check emails / duplicates)</div>`
+      :`<div class="result-ok">✓ ${ok} invite${ok!==1?"s":""} sent</div>`;
+    btn.disabled=false;btn.textContent="Send More";
+    await loadOrg(S.org.id);
+  }
+}
+
+function closeModal(){document.getElementById("modal-slot").innerHTML=""}
+
+/* ─── CREATE ORG MODAL ─── */
+function openCreateOrg(){
+  document.getElementById("modal-slot").innerHTML=`
+<div class="overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+  <div class="modal-head"><h3>Create Organization</h3><button class="modal-x" onclick="closeModal()">×</button></div>
+  <div class="modal-body">
+    <div class="frm-row"><label>Organization Name</label><input id="co-name" placeholder="Burlington Appliance Centre"/></div>
+    <div class="frm-grid">
+      <div><label>Type</label><select id="co-type">
+        <option value="retail_company">Retailer</option><option value="manufacturer">Manufacturer</option>
+        <option value="buying_group">Buying Group</option><option value="builder_designer">Builder / Designer</option>
+        <option value="developer">Developer (API)</option></select></div>
+      <div><label>Starting Tier</label><select id="co-tier">${TIERS.map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select></div>
+    </div>
+    <div class="frm-row"><label>Billing Email</label><input id="co-bill" type="email" placeholder="billing@company.com"/></div>
+    <div class="err" id="co-err"></div>
+    <button class="btn btn-green btn-block" id="co-btn" onclick="createOrg()">Create Organization</button>
+  </div>
+</div></div>`;
+}
+
+async function createOrg(){
+  const name=document.getElementById("co-name").value.trim();
+  if(!name)return;
+  const btn=document.getElementById("co-btn");
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Creating…';
+  try{
+    const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+    await api("/rest/v1/organizations",{method:"POST",headers:{Prefer:"return=representation"},
+      body:JSON.stringify({name,slug,tenant_type:document.getElementById("co-type").value,
+        tier:document.getElementById("co-tier").value,
+        billing_email:document.getElementById("co-bill").value.trim()||null,status:"active"})});
+    S.orgs=await api("/rest/v1/organizations?status=eq.active&order=name.asc");
+    closeModal();render();
+  }catch(e){
+    document.getElementById("co-err").textContent="Failed — slug may already exist";
+    btn.disabled=false;btn.textContent="Create Organization";
+  }
+}
+
+/* ─── HIERARCHY VIEW ─── */
+function hierarchyView(){return `
+<div class="page-head"><div><h1>Role Hierarchy</h1><p>Standard command structure for retailer organizations. Each org can customize role names in their Roles tab.</p></div></div>
+<div style="max-width:620px">
+${HIERARCHY.map((r,i)=>`
+<div style="display:flex;align-items:stretch">
+  <div style="width:60px;display:flex;flex-direction:column;align-items:center">
+    <div class="lvl" style="width:40px;height:40px;border-radius:50%;background:hsl(${220-i*15},65%,${35+i*5}%)">L${r.l}</div>
+    ${i<HIERARCHY.length-1?'<div style="width:2px;flex:1;background:var(--line);margin:4px 0"></div>':""}
+  </div>
+  <div style="flex:1;padding:0 0 24px 14px">
+    <div style="font-weight:700;font-size:14px;color:var(--navy)">${r.n}</div>
+    <div style="font-size:12px;color:#94a3b8;margin-top:2px">${r.p}</div>
+  </div>
+</div>`).join("")}
+<div class="note"><b>How it works:</b> Super Admins set up the initial organization and assign the first Owner. From there, the org is self-administered — Owners invite admins, admins invite members, each level manages the levels below. Seat counts are tracked per-app for billing.</div>
+</div>`}
+
+/* ─── REGISTRY VIEW ─── */
+function registryView(){return `
+<div class="page-head"><div><h1>App Registry</h1><p>All apps in the ApplianceIQ ecosystem. Assign to organizations via their Apps &amp; Billing tab.</p></div></div>
+<div class="grid">
+${Object.entries(APPS).map(([k,a])=>`
+<div class="card" style="cursor:default">
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-size:26px">${a.icon}</span>
+    <div><h3>${a.name}</h3><div class="tp" style="font-family:monospace;font-size:11px">${k}</div></div>
+  </div>
+</div>`).join("")}
+</div>`}
+
+/* ─── PLATFORM ADMINS ─── */
+let adminList=[];
+function adminsView(){return `
+<div class="page-head">
+  <div><h1>Platform Admins</h1><p>Super admins have god-mode across every organization. Keep this list short.</p></div>
+  <button class="btn btn-green" onclick="openAddAdmin()">+ Add Admin</button>
+</div>
+<div id="admin-list"><div class="empty">Loading…</div></div>
+<div id="modal-slot"></div>`}
+
+async function loadAdmins(){
+  try{
+    adminList=await api("/rest/v1/platform_admins?order=created_at.asc");
+    const el=document.getElementById("admin-list");
+    if(el)el.innerHTML=adminList.map(a=>`
+<div class="row-item">
+  <div class="avatar" style="background:var(--green)">${esc((a.full_name||a.email)[0].toUpperCase())}</div>
+  <div class="fx"><div class="nm">${esc(a.full_name||"—")}</div><div class="sb">${esc(a.email)}</div></div>
+  <span class="badge bg-green">⚡ ${esc(a.role)}</span>
+  ${a.user_id!==S.user.id?`<button class="link-danger" onclick="removeAdmin('${a.id}')">Remove</button>`:'<span style="font-size:11px;color:#cbd5e1">you</span>'}
+</div>`).join("");
+  }catch(e){
+    const el=document.getElementById("admin-list");
+    if(el)el.innerHTML='<div class="empty">Could not load admins.</div>';
+  }
+}
+
+function openAddAdmin(){
+  document.getElementById("modal-slot").innerHTML=`
+<div class="overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+  <div class="modal-head"><h3>Add Platform Admin</h3><button class="modal-x" onclick="closeModal()">×</button></div>
+  <div class="modal-body">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">The person must already have an account (they've logged in at least once). Enter their email to grant super admin access.</p>
+    <div class="frm-row"><label>Email</label><input id="pa-email" type="email" placeholder="natalie@company.com"/></div>
+    <div class="frm-row"><label>Full Name</label><input id="pa-name" placeholder="Natalie"/></div>
+    <div class="err" id="pa-err"></div>
+    <button class="btn btn-green btn-block" id="pa-btn" onclick="addAdmin()">Grant Super Admin</button>
+  </div>
+</div></div>`;
+}
+
+async function addAdmin(){
+  const email=document.getElementById("pa-email").value.trim().toLowerCase();
+  const name=document.getElementById("pa-name").value.trim();
+  const err=document.getElementById("pa-err"),btn=document.getElementById("pa-btn");
+  if(!email)return;
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Granting…';
+  try{
+    const profs=await api("/rest/v1/profiles?email=eq."+encodeURIComponent(email)+"&select=id,email,full_name");
+    if(!profs.length)throw new Error("no-account");
+    await api("/rest/v1/platform_admins",{method:"POST",body:JSON.stringify({
+      user_id:profs[0].id,email,full_name:name||profs[0].full_name,role:"super_admin",created_by:S.user.id})});
+    closeModal();loadAdmins();
+  }catch(e){
+    err.textContent=e.message==="no-account"
+      ?"No account found for that email — they need to sign up first."
+      :"Failed to grant access (may already be an admin).";
+    btn.disabled=false;btn.textContent="Grant Super Admin";
+  }
+}
+
+async function removeAdmin(id){
+  if(!confirm("Remove this platform admin? They will lose access to all organizations."))return;
+  try{
+    await api("/rest/v1/platform_admins?id=eq."+id,{method:"DELETE"});
+    loadAdmins();
+  }catch(e){alert("Failed: "+e.message)}
+}
+
+/* ─── PARTICLES ─── */
+function initParticles(){
+  const c=document.getElementById("pt");if(!c)return;
+  const x=c.getContext("2d");
+  let W,H,pts=[];
+  const resize=()=>{W=c.width=c.offsetWidth;H=c.height=c.offsetHeight};
+  resize();window.addEventListener("resize",resize);
+  for(let i=0;i<55;i++)pts.push({x:Math.random()*2000,y:Math.random()*1200,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4});
+  const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tick(){
+    if(!document.getElementById("pt"))return;
+    x.clearRect(0,0,W,H);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      x.beginPath();x.arc(p.x,p.y,1.6,0,7);x.fillStyle="rgba(6,182,212,.5)";x.fill();
+    });
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=dx*dx+dy*dy;
+      if(d<16000){x.beginPath();x.moveTo(pts[i].x,pts[i].y);x.lineTo(pts[j].x,pts[j].y);
+        x.strokeStyle="rgba(37,99,235,"+(0.25*(1-d/16000))+")";x.lineWidth=.6;x.stroke()}
+    }
+    if(!reduced)requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+boot();
+</script>
+</body>
+</html>
