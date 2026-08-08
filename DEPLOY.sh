@@ -7,7 +7,7 @@
 #   bash DEPLOY.sh
 # ═══════════════════════════════════════════════════════════
 set -e
-IG_SITE_ID="9aba62a7"
+IG_SITE_ID="9aba62a7-90db-4001-86f9-438f72adeea7"
 
 echo "═══ ApplianceIQ Master Deploy ═══"
 
