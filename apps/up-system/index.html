@@ -965,7 +965,8 @@ async function onbCreateStore(){
 async function onbInviteTeam(){
   const raw=$('#onbEmails').value.trim();
   if(raw){
-    const emails=raw.split(/[\n,]+/).map(e=>e.trim().toLowerCase()).filter(e=>e.includes('@'));
+    const emails=raw.split(/[
+,]+/).map(e=>e.trim().toLowerCase()).filter(e=>e.includes('@'));
     for(const email of emails){
       const code=crypto.randomUUID().slice(0,8);
       await sb.from('org_invites').insert({organization_id:currentOrg.id,invited_email:email,invite_code:code,role:'member',invited_by:currentUser.id,status:'pending',expires_at:new Date(Date.now()+7*86400000).toISOString()});
@@ -1915,7 +1916,8 @@ async function renderSAAI(sid){
       return`${fmtHourLabel(Number(hr))}:${avgT}`;
     }).join(', ');
     return`${days[dow]}: ${hourSummaries}`;
-  }).join('\n');
+  }).join('
+');
 
   const repNames=Object.values(profiles);
 
@@ -1930,7 +1932,7 @@ async function renderSAAI(sid){
     <div class="sa-ai-panel">
       <h3>🤖 AI Schedule Builder</h3>
       <p>Analyzes your 4-week traffic patterns to recommend optimal shift schedules, coverage windows, and staffing levels for each day of the week.</p>
-      <div class="field"><label>Anthropic API Key</label><input id="sa_apikey" type="password" placeholder="sk-ant-..." value="${localStorage.getItem('aiq_anthropic_key')||''}" style="font-size:13px"></div>
+      <div style="padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;color:#166534;margin-bottom:8px">✅ AI Schedule Builder is powered by your ApplianceIQ platform — no API key needed.</div>
       <div class="field"><label>Store hours</label><div class="field-row"><input id="sa_open" type="number" value="9" min="0" max="23" style="font-size:13px"><input id="sa_close" type="number" value="21" min="0" max="23" style="font-size:13px"></div></div>
       <button class="btn btn-primary" id="sa_generate" ${h.length<20?'disabled title="Need more data — at least 1 week of traffic"':''}>Generate AI Schedule Recommendations</button>
       ${h.length<20?`<p style="font-size:12px;color:var(--amber);margin-top:8px">Need at least 1 week of traffic data for accurate recommendations. Currently have ${totalDays} day${totalDays!==1?'s':''} of data.</p>`:''}
@@ -1942,9 +1944,8 @@ async function renderSAAI(sid){
     </div>`;
 
   $('#sa_generate')?.addEventListener('click',async()=>{
-    const apiKey=$('#sa_apikey').value.trim();
-    if(!apiKey)return alert('Enter your Anthropic API key.');
-    localStorage.setItem('aiq_anthropic_key',apiKey);
+    const{data:{session:aiSession}}=await sb.auth.getSession();
+    if(!aiSession)return alert('Please sign in to use AI Schedule Builder.');
     const openHr=Number($('#sa_open').value)||9;
     const closeHr=Number($('#sa_close').value)||21;
     const resultEl=$('#sa_aiResult');
@@ -1980,14 +1981,15 @@ Based on these traffic patterns, provide:
 Be specific with times and names. This is actionable — the manager will use this to build next week's schedule.`;
 
     try{
-      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      const resp=await fetch('https://fumwwhyozeouoqscolke.supabase.co/functions/v1/ai-proxy',{
         method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}]})
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+aiSession.access_token,'apikey':'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:prompt}],_task_type:'schedule_builder',_source_app:'up-system'})
       });
-      if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(err.error?.message||'API error '+resp.status);}
+      if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(err.error?.message||'AI service error '+resp.status);}
       const data=await resp.json();
-      const text=data.content?.map(c=>c.text||'').join('\n')||'No response received.';
+      const text=data.content?.map(c=>c.text||'').join('
+')||'No response received.';
       resultEl.innerHTML=`<div class="sa-ai-result">${esc(text)}</div>`;
     }catch(e){
       resultEl.innerHTML=`<div class="sa-ai-result" style="border-color:var(--danger);color:var(--danger)">Error: ${esc(e.message)}</div>`;

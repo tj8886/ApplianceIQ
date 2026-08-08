@@ -422,7 +422,16 @@ a{color:var(--accent);text-decoration:none}
     <input type="email" id="login-email" placeholder="your@email.com">
     <label>Password</label>
     <input type="password" id="login-pass" placeholder="••••••••">
-    <button onclick="doLogin()">Sign In</button>
+    <button onclick="doLogin()" id="auth-btn">Sign In</button>
+    <div id="signup-fields" style="display:none">
+      <label>Full Name</label>
+      <input type="text" id="signup-name" placeholder="Your name">
+      <label>Confirm Password</label>
+      <input type="password" id="signup-confirm" placeholder="Confirm password">
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:13px">
+      <a href="javascript:void(0)" id="auth-toggle" onclick="toggleAuthMode()" style="color:var(--accent)">Create an account</a>
+    </div>
   </div>
 </div>
 
@@ -610,12 +619,36 @@ var rpState = { coach: null, messages: [], loading: false, context: null, mode: 
 // ══════════════════════════════════════════════════════════════════════════════
 // AUTH
 // ══════════════════════════════════════════════════════════════════════════════
+var authMode = 'login';
+window.toggleAuthMode = function() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('signup-fields').style.display = authMode === 'signup' ? 'block' : 'none';
+  document.getElementById('auth-btn').textContent = authMode === 'signup' ? 'Create Account' : 'Sign In';
+  document.getElementById('auth-toggle').textContent = authMode === 'signup' ? 'Already have an account? Sign in' : 'Create an account';
+};
+
 window.doLogin = async function() {
   var email = document.getElementById('login-email').value.trim();
   var pass = document.getElementById('login-pass').value;
   var errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   if (!email || !pass) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
+
+  if (authMode === 'signup') {
+    var name = document.getElementById('signup-name').value.trim();
+    var confirm = document.getElementById('signup-confirm').value;
+    if (pass !== confirm) { errEl.textContent = 'Passwords do not match'; errEl.style.display = 'block'; return; }
+    if (pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; errEl.style.display = 'block'; return; }
+    var { data: su, error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name || email.split('@')[0] } } });
+    if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+    var { error: e2 } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (e2) { errEl.textContent = 'Account created! Check your email to confirm, then sign in.'; errEl.style.display = 'block'; errEl.style.color = '#166534'; return; }
+    if (name && su.user) { await sb.from('profiles').upsert({ user_id: su.user.id, full_name: name, email }, { onConflict: 'user_id' }); }
+    S.user = su.user;
+    await initApp();
+    return;
+  }
+
   var { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   S.user = data.user;

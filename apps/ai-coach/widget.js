@@ -8,12 +8,13 @@
  * 
  * One brain. One router. Six personas. Every app.
  * All conversations feed through ai-intelligence-router → shared memory → unified learning.
+ * v2: feedback thumbs (learning loop), current publishable key, rate-limit handling.
  */
 (function(){
 'use strict';
 
 const SB_URL='https://fumwwhyozeouoqscolke.supabase.co';
-const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMTkwNjEsImV4cCI6MjA1ODY5NTA2MX0.FgGW0BAb1AuMFaMBmOkqjVaOx1JxRvHASrzP3LNpMrg';
+const SB_ANON='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const ROUTER_URL=`${SB_URL}/functions/v1/ai-intelligence-router`;
 
 const script=document.currentScript;
@@ -99,8 +100,14 @@ css.textContent=`
 .aiq-wm.assistant .aiq-wm-body p{margin:4px 0}
 .aiq-wm.assistant .aiq-wm-body p:first-child{margin-top:0}
 .aiq-wm.assistant .aiq-wm-body p:last-child{margin-bottom:0}
-.aiq-wm-meta{font-size:9px;color:#8896aa;margin-top:3px;display:flex;gap:6px}
+.aiq-wm-meta{font-size:9px;color:#8896aa;margin-top:3px;display:flex;gap:6px;align-items:center}
 .aiq-wm-meta span{padding:1px 5px;border-radius:4px;background:#f4f6f9}
+.aiq-fb{display:inline-flex;gap:2px;margin-left:auto}
+.aiq-fb button{background:none;border:none;cursor:pointer;font-size:11px;padding:1px 4px;border-radius:4px;opacity:.45;transition:all .12s;line-height:1}
+.aiq-fb button:hover{opacity:1;background:#f4f6f9}
+.aiq-fb button.voted{opacity:1;background:rgba(20,184,166,.12)}
+.aiq-fb button.voted-down{opacity:1;background:rgba(239,68,68,.1)}
+.aiq-fb .fb-thanks{font-size:9px;color:#0d9488;font-weight:600}
 
 .aiq-w-typing{display:flex;gap:3px;padding:4px 0}
 .aiq-w-typing span{width:4px;height:4px;border-radius:50%;background:#14b8a6;animation:aiq-blink 1.4s infinite both}
@@ -214,7 +221,9 @@ window.__aiqSend=async function(text){
     const data=await res.json();
     removeWidgetTyping();
 
-    if(!data.ok){
+    if(res.status===429){
+      addWidgetMsg('assistant','⏸️ You are sending messages very quickly — give me about a minute to catch up, then try again.',{persona:'System'});
+    }else if(!data.ok){
       addWidgetMsg('assistant','⚠️ '+(data.detail||'Router error'),{persona:'System'});
     }else{
       conversationId=data.conversation_id;
@@ -231,7 +240,8 @@ window.__aiqSend=async function(text){
         tierEl.textContent=mode==='deterministic'?'DB':tier==='fast'?'Fast':tier.charAt(0).toUpperCase()+tier.slice(1);
       }
 
-      addWidgetMsg('assistant',answer,{persona,tier:mode==='deterministic'?'deterministic':tier,cost:data.cost_estimate_usd});
+      const chunkKeys=(data.specialists||[]).flatMap(s=>s.chunk_keys_used||[]).concat(data.chunk_keys_used||[]);
+      addWidgetMsg('assistant',answer,{persona,tier:mode==='deterministic'?'deterministic':tier,cost:data.cost_estimate_usd,question:text,chunkKeys,convId:data.conversation_id});
       history.push({role:'user',text});
       history.push({role:'assistant',text:answer,metadata:{tier,persona}});
     }
@@ -244,6 +254,8 @@ window.__aiqSend=async function(text){
   document.getElementById('aiqInp')?.focus();
 };
 
+let msgSeq=0;
+const fbStore={};
 function addWidgetMsg(role,content,meta){
   const area=document.getElementById('aiqMsgs');
   const isU=role==='user';
@@ -255,11 +267,30 @@ function addWidgetMsg(role,content,meta){
     if(meta.persona)tags.push('<span>'+meta.persona+'</span>');
     if(meta.tier)tags.push('<span>'+meta.tier+'</span>');
     if(meta.cost!=null)tags.push('<span>~$'+meta.cost.toFixed(4)+'</span>');
+    const id='fb'+(++msgSeq);
+    fbStore[id]={persona:meta.persona,question:meta.question||'',answer:String(content).slice(0,300),chunkKeys:meta.chunkKeys||[],convId:meta.convId||null};
+    tags.push('<span class="aiq-fb" id="'+id+'"><button title="Helpful" onclick="window.__aiqVote(\''+id+'\',1)">👍</button><button title="Not helpful" onclick="window.__aiqVote(\''+id+'\',-1)">👎</button></span>');
     if(tags.length)metaHtml='<div class="aiq-wm-meta">'+tags.join('')+'</div>';
   }
   area.innerHTML+=`<div class="aiq-wm ${role}">${av}<div><div class="aiq-wm-body">${isU?esc(content):fmtMd(content)}</div>${metaHtml}</div></div>`;
   area.scrollTop=1e9;
 }
+
+window.__aiqVote=async function(id,rating){
+  const el=document.getElementById(id);
+  const info=fbStore[id];
+  if(!el||!info)return;
+  el.innerHTML='<span class="fb-thanks">'+(rating>0?'Thanks! 👍':'Noted 👎')+'</span>';
+  try{
+    const s=await getSession();
+    if(!s)return;
+    await fetch(SB_URL+'/rest/v1/ai_answer_feedback',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.access_token,'apikey':SB_ANON,'Prefer':'return=minimal'},
+      body:JSON.stringify({conversation_id:info.convId,persona_name:info.persona,question:info.question.slice(0,500),answer_preview:info.answer,rating:rating,chunk_keys_used:info.chunkKeys,source_app:appContext})
+    });
+  }catch(e){/* feedback is best-effort */}
+};
 function showWidgetTyping(){
   document.getElementById('aiqMsgs').innerHTML+='<div class="aiq-wm assistant" id="aiqTyp"><div class="aiq-wm-av" style="background:#14b8a6">IQ</div><div class="aiq-wm-body"><div class="aiq-w-typing"><span></span><span></span><span></span></div></div></div>';
   document.getElementById('aiqMsgs').scrollTop=1e9;

@@ -232,7 +232,7 @@ footer a:hover{color:#fff}
     <a href="#" onclick="go('pricing');return false">Pricing</a>
     <a href="#" onclick="go('about');return false">About</a>
     <a href="#" onclick="go('contact');return false">Contact</a>
-    <a href="/admin.html">Sign In</a>
+    <a href='/admin'>Sign In</a>
     <a href="#" onclick="go('contact');return false" class="cta-btn">Request Demo</a>
   </div>
 </div>
@@ -392,9 +392,23 @@ footer a:hover{color:#fff}
 
 <!-- ═══════════════ PRODUCTS PAGE ═══════════════ -->
 <div class="page" id="page-products">
-<div class="page-hero"><div class="container"><h1>Products</h1><p>The complete IQ Intelligence platform — ten products, one ecosystem.</p></div></div>
+<div class="page-hero"><div class="container"><h1>Products</h1><p>Ten complete products. Buy one, buy a few, or run them all — each stands entirely on its own.</p></div></div>
 <div class="content-section"><div class="container">
   <div class="ecosystem-grid" id="products-grid" style="grid-template-columns:repeat(3,1fr)"></div>
+
+  <div style="margin-top:56px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:36px">
+    <h2 style="margin-bottom:6px">And If You Ever Want More: The Flywheel</h2>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Every product is complete alone. But because they share one data layer, each one you add makes the others smarter — automatically, with zero integration work. Here is how value flows when products are used together:</p>
+    <div style="display:grid;gap:14px">
+      <div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:20px;flex-shrink:0">🏠➜📞</div><div><strong style="font-size:13px;color:var(--navy)">ApplianceIQ.ai ➜ IQ CRM:</strong> <span style="font-size:13px;color:var(--muted)">Consumers research on applianceiq.ai; qualified, high-intent leads land directly in your CRM pipeline with their preferences already captured.</span></div></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:20px;flex-shrink:0">📦➜📋</div><div><strong style="font-size:13px;color:var(--navy)">Product IQ ➜ Spec IQ &amp; AI Coach:</strong> <span style="font-size:13px;color:var(--muted)">7,000+ products with verified specs power catalog autocomplete in Spec IQ and give the AI Coach real data to sell from — no stale spec sheets, ever.</span></div></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:20px;flex-shrink:0">🎓➜🔄</div><div><strong style="font-size:13px;color:var(--navy)">IQ Academy ➜ IQ Up System:</strong> <span style="font-size:13px;color:var(--muted)">Training certifications meet closing-rate analytics — see exactly which training moves which rep's numbers on the floor.</span></div></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:20px;flex-shrink:0">📍➜📈</div><div><strong style="font-size:13px;color:var(--navy)">IQ Field ➜ Brand Portal:</strong> <span style="font-size:13px;color:var(--muted)">Store walks become manufacturer-facing execution data — retailers prove compliance, brands fund what works.</span></div></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:20px;flex-shrink:0">🧠</div><div><strong style="font-size:13px;color:var(--navy)">One AI Coach across everything:</strong> <span style="font-size:13px;color:var(--muted)">The same AI brain — six specialist personas, the 11 Steps methodology, 8,400+ knowledge entries — appears in every app you own. It remembers context across all of them.</span></div></div>
+      <div style="display:flex;gap:12px;align-items:flex-start"><div style="font-size:20px;flex-shrink:0">📊</div><div><strong style="font-size:13px;color:var(--navy)">Everything ➜ Command Center:</strong> <span style="font-size:13px;color:var(--muted)">Every app you run feeds the executive view. Two apps = two lenses. Ten apps = the whole business in one screen.</span></div></div>
+    </div>
+    <p style="margin-top:22px;font-size:13px;color:var(--navy);background:rgba(26,158,86,.07);border-radius:10px;padding:12px 16px"><strong>No lock-in, no pressure.</strong> The flywheel is what happens naturally when products share a data layer — not something you have to buy into. Start where your biggest pain is. The rest will be there if you ever want it.</p>
+  </div>
 </div></div>
 </div>
 
@@ -649,14 +663,22 @@ footer a:hover{color:#fff}
 <div class="page" id="page-contact">
 <div class="page-hero"><div class="container"><h1>Get in Touch</h1><p>See how IQ Intelligence can transform your business.</p></div></div>
 <div class="content-section"><div class="container">
-  <div class="contact-form">
+  <div class="contact-form" id="contactForm">
     <h2>Request a Demo</h2>
-    <div class="form-row"><label>Your Name</label><input type="text" placeholder="Full name"/></div>
-    <div class="form-row"><label>Email</label><input type="email" placeholder="you@company.com"/></div>
-    <div class="form-row"><label>Company</label><input type="text" placeholder="Company name"/></div>
-    <div class="form-row"><label>I am a...</label><select><option value="">Select your role</option><option>Retailer</option><option>Manufacturer</option><option>Consumer</option><option>Builder / Designer</option><option>Buying Group</option><option>Other</option></select></div>
-    <div class="form-row"><label>Tell us about your needs</label><textarea rows="4" placeholder="What challenges are you looking to solve?"></textarea></div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="alert('Demo request received! We will be in touch within 24 hours.')">Submit Request</button>
+    <div id="contactSuccess" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;padding:20px;border-radius:12px;text-align:center">
+      <div style="font-size:32px;margin-bottom:8px">✅</div>
+      <h3 style="color:#166534;margin-bottom:8px">Demo Request Received!</h3>
+      <p style="color:#15803d;font-size:14px">We'll be in touch within 24 hours to schedule your personalized demo.</p>
+    </div>
+    <div id="contactFields">
+    <div class="form-row"><label>Your Name *</label><input type="text" id="cf-name" placeholder="Full name" required/></div>
+    <div class="form-row"><label>Email *</label><input type="email" id="cf-email" placeholder="you@company.com" required/></div>
+    <div class="form-row"><label>Company</label><input type="text" id="cf-company" placeholder="Company name"/></div>
+    <div class="form-row"><label>I am a...</label><select id="cf-role"><option value="">Select your role</option><option>Retailer</option><option>Manufacturer</option><option>Consumer</option><option>Builder / Designer</option><option>Buying Group</option><option>Other</option></select></div>
+    <div class="form-row"><label>Tell us about your needs</label><textarea id="cf-message" rows="4" placeholder="What challenges are you looking to solve?"></textarea></div>
+    <div id="contactError" style="display:none;color:#ef4444;font-size:13px;margin-bottom:12px"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" id="cf-submit" onclick="submitContact()">Submit Request</button>
+    </div>
   </div>
 </div></div>
 </div>
@@ -676,7 +698,142 @@ footer a:hover{color:#fff}
 </div>
 </footer>
 
+<!-- ═══════════════ TERMS OF SERVICE ═══════════════ -->
+<div class="page" id="page-terms">
+<div class="page-hero"><div class="container"><h1>Terms of Service</h1><p>Last updated: August 7, 2026</p></div></div>
+<div class="content-section"><div class="container" style="max-width:800px">
+  <div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:40px">
+  <h2>1. Acceptance of Terms</h2>
+  <p>By accessing or using any IQ Intelligence Group product or service ("Services"), you agree to be bound by these Terms of Service. If you are using the Services on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these terms.</p>
+
+  <h2>2. Description of Services</h2>
+  <p>IQ Intelligence Group provides a suite of software-as-a-service (SaaS) products for the appliance retail industry, including but not limited to: IQ CRM, Spec IQ, IQ Academy, IQ Up System, IQ Field, Product IQ (PIM), AI Coach, and Command Center. Services may include AI-powered features, data analytics, and integrations with third-party platforms.</p>
+
+  <h2>3. Accounts and Access</h2>
+  <p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You must notify us immediately of any unauthorized use.</p>
+
+  <h2>4. Subscription and Payment</h2>
+  <p>Access to Services requires a paid subscription unless otherwise specified. Prices are listed in USD (or CAD at the posted rate) and are subject to change with 30 days' notice. Annual billing includes a 20% discount. Refunds are handled on a case-by-case basis during the first 30 days of service.</p>
+
+  <h2>5. Data Ownership</h2>
+  <p>You retain ownership of all data you submit to the Services ("Your Data"). We do not sell, rent, or share Your Data with third parties except as necessary to provide the Services. You grant us a limited license to process Your Data solely for the purpose of delivering the Services.</p>
+
+  <h2>6. AI-Powered Features</h2>
+  <p>Certain features use artificial intelligence to generate recommendations, coaching, and analysis. AI outputs are informational and should not be relied upon as the sole basis for business decisions. We do not guarantee the accuracy of AI-generated content.</p>
+
+  <h2>7. Acceptable Use</h2>
+  <p>You agree not to: (a) use the Services to transmit harmful, illegal, or infringing content; (b) attempt to reverse-engineer, decompile, or extract source code from the Services; (c) share account credentials with unauthorized users; (d) use automated tools to scrape, crawl, or otherwise extract data from the Services beyond authorized API access.</p>
+
+  <h2>8. Uptime and Support</h2>
+  <p>We target 99.9% uptime for all Services. Scheduled maintenance windows will be communicated in advance. Support is available via email during business hours (Eastern Time), with priority support available on Enterprise plans.</p>
+
+  <h2>9. Limitation of Liability</h2>
+  <p>To the maximum extent permitted by law, IQ Intelligence Group shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including loss of profits, data, or business opportunities, arising out of or related to your use of the Services.</p>
+
+  <h2>10. Termination</h2>
+  <p>Either party may terminate the subscription with 30 days' written notice. Upon termination, you may export Your Data within 30 days. After that period, Your Data may be deleted. We reserve the right to suspend or terminate access for violation of these terms.</p>
+
+  <h2>11. Governing Law</h2>
+  <p>These terms are governed by the laws of the Province of Ontario, Canada, without regard to conflict of law principles. Any disputes shall be resolved in the courts of Ontario.</p>
+
+  <h2>12. Contact</h2>
+  <p>Questions about these terms? Contact us at <a href="javascript:go('contact')">our contact page</a> or email legal@applianceiq.com.</p>
+  </div>
+</div></div>
+</div>
+
+<!-- ═══════════════ PRIVACY POLICY ═══════════════ -->
+<div class="page" id="page-privacy">
+<div class="page-hero"><div class="container"><h1>Privacy Policy</h1><p>Last updated: August 7, 2026</p></div></div>
+<div class="content-section"><div class="container" style="max-width:800px">
+  <div style="background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:40px">
+  <h2>1. Information We Collect</h2>
+  <p><strong>Account Information:</strong> When you create an account, we collect your name, email address, company name, and role. <strong>Usage Data:</strong> We collect information about how you use the Services, including pages visited, features used, and interaction patterns. <strong>Product Data:</strong> Data you enter into the Services (deals, contacts, products, training progress) is stored to provide the Services. <strong>Device Information:</strong> We collect browser type, operating system, and IP address for security and analytics.</p>
+
+  <h2>2. How We Use Your Information</h2>
+  <p>We use your information to: provide, maintain, and improve the Services; personalize your experience including AI-powered recommendations; communicate with you about your account, updates, and support; ensure security and prevent fraud; comply with legal obligations; and generate anonymized, aggregated analytics about industry trends (no individual data is shared).</p>
+
+  <h2>3. AI Data Processing</h2>
+  <p>Our AI features process your data to generate coaching recommendations, product insights, and analytics. AI processing occurs on secure servers. Your data is not used to train general-purpose AI models — it is used solely within the context of your organization's Services.</p>
+
+  <h2>4. Data Sharing</h2>
+  <p>We do not sell your personal information. We may share data with: <strong>Service providers</strong> who help us deliver the Services (hosting, email, payment processing), under strict confidentiality agreements; <strong>Legal authorities</strong> when required by law or to protect rights and safety; <strong>Business transfers</strong> in the event of a merger, acquisition, or asset sale, with notice to affected users.</p>
+
+  <h2>5. Data Storage and Security</h2>
+  <p>Your data is stored on secure servers hosted in Canada (ca-central-1 region) via Supabase. We implement industry-standard security measures including encryption in transit (TLS 1.2+), encryption at rest, row-level security policies, and regular security audits. API keys are stored server-side and never exposed to client browsers.</p>
+
+  <h2>6. Data Retention</h2>
+  <p>We retain your data for the duration of your subscription plus 30 days. After account termination, you may request data export. Intelligence events and notifications are subject to automated retention policies (90 days for events, 30-90 days for notifications). Product data versions are retained for 180 days.</p>
+
+  <h2>7. Your Rights</h2>
+  <p>You have the right to: access your personal data; correct inaccurate data; request deletion of your data; export your data in a portable format; withdraw consent for optional data processing; and lodge a complaint with the Office of the Privacy Commissioner of Canada.</p>
+
+  <h2>8. Cookies</h2>
+  <p>We use essential cookies for authentication and session management. We do not use advertising or tracking cookies. No third-party ad networks operate within our Services.</p>
+
+  <h2>9. Children's Privacy</h2>
+  <p>Our Services are not directed at individuals under 18. We do not knowingly collect personal information from children.</p>
+
+  <h2>10. Changes to This Policy</h2>
+  <p>We may update this policy periodically. Material changes will be communicated via email or in-app notification at least 30 days before taking effect.</p>
+
+  <h2>11. Contact</h2>
+  <p>For privacy questions or data requests, contact us at privacy@applianceiq.com or visit our <a href="javascript:go('contact')">contact page</a>.</p>
+  </div>
+</div></div>
+</div>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer style="background:#0f1f3d;color:rgba(255,255,255,.6);padding:40px 20px;text-align:center;font-size:13px">
+  <div style="max-width:900px;margin:0 auto">
+    <div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:16px">
+      <a href="javascript:go('home')" style="color:rgba(255,255,255,.8);text-decoration:none">Home</a>
+      <a href="javascript:go('products')" style="color:rgba(255,255,255,.8);text-decoration:none">Products</a>
+      <a href="javascript:go('pricing')" style="color:rgba(255,255,255,.8);text-decoration:none">Pricing</a>
+      <a href="javascript:go('about')" style="color:rgba(255,255,255,.8);text-decoration:none">About</a>
+      <a href="javascript:go('contact')" style="color:rgba(255,255,255,.8);text-decoration:none">Contact</a>
+      <a href="javascript:go('terms')" style="color:rgba(255,255,255,.8);text-decoration:none">Terms of Service</a>
+      <a href="javascript:go('privacy')" style="color:rgba(255,255,255,.8);text-decoration:none">Privacy Policy</a>
+    </div>
+    <p style="margin:0">&copy; 2026 IQ Intelligence Group. Built in Hamilton, Ontario, Canada.</p>
+  </div>
+</footer>
+
 <script>
+/* ═══ CONTACT FORM ═══ */
+async function submitContact(){
+  var name=document.getElementById('cf-name').value.trim();
+  var email=document.getElementById('cf-email').value.trim();
+  var company=document.getElementById('cf-company').value.trim();
+  var role=document.getElementById('cf-role').value;
+  var message=document.getElementById('cf-message').value.trim();
+  var errEl=document.getElementById('contactError');
+  var btn=document.getElementById('cf-submit');
+
+  errEl.style.display='none';
+  if(!name||!email){errEl.textContent='Name and email are required.';errEl.style.display='block';return}
+  if(!email.includes('@')){errEl.textContent='Please enter a valid email address.';errEl.style.display='block';return}
+
+  btn.disabled=true;btn.textContent='Submitting...';
+  try{
+    var resp=await fetch('https://fumwwhyozeouoqscolke.supabase.co/functions/v1/contact-form',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:name,email:email,company:company,role:role,message:message,source:'intelligence-group'})
+    });
+    var data=await resp.json();
+    if(data.success){
+      document.getElementById('contactFields').style.display='none';
+      document.getElementById('contactSuccess').style.display='block';
+    } else {
+      errEl.textContent=data.error||'Something went wrong. Please try again.';errEl.style.display='block';
+      btn.disabled=false;btn.textContent='Submit Request';
+    }
+  }catch(e){
+    errEl.textContent='Connection error. Please try again.';errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Submit Request';
+  }
+}
+
 /* ═══ 3D CONSTELLATION PARTICLE ENGINE ═══ */
 (function(){
   const canvas = document.getElementById('hero-canvas');
@@ -829,28 +986,94 @@ footer a:hover{color:#fff}
 
 /* ═══ PRODUCTS DATA ═══ */
 var products=[
-  {id:'crm',name:'IQ CRM',desc:'AI-powered CRM with deal coaching, pipeline management, buying groups, and sales recording.',icon:'\u{1F4DE}',live:true,url:'https://applianceiq-crm.netlify.app'},
-  {id:'academy',name:'IQ Academy',desc:'Training platform with brand certifications, AI roleplay coaching, quizzes, and personalized learning.',icon:'\u{1F393}',live:true,url:'https://iqacademy-appliance-training.netlify.app'},
-  {id:'up',name:'IQ Up System',desc:'Real-time floor rotation with fair queue, walk-in tracking, and shift analytics.',icon:'\u{1F504}',live:true,url:'https://applianceiq-iq-up-system.netlify.app'},
-  {id:'spec',name:'Spec IQ',desc:'Digital spec package builder with product catalog, pricing toggle, and premium PDF generation.',icon:'\u{1F4CB}',live:true,url:'https://appliance-spec-iq.netlify.app'},
-  {id:'command',name:'Command Center',desc:'Executive analytics dashboard with budgets, KPIs, leaderboards, and drill-down reporting.',icon:'\u{1F4CA}',live:true,url:'https://applianceiq-intelligence-group.netlify.app/command-center'},
-  {id:'field',name:'IQ Field',desc:'Mobile store visit app with AI photo analysis, compliance scoring, and action tracking.',icon:'\u{1F4CD}',live:true,url:'https://applianceiq-ai-field.netlify.app'},
-  {id:'portal',name:'Brand Portal',desc:'Manufacturer intelligence dashboard with field execution metrics and program analytics.',icon:'\u{1F4C8}',live:true,url:'https://iq-field-report-analytics.netlify.app'},
-  {id:'pim',name:'Product IQ (PIM)',desc:'Product Information Management — the Syndigo for appliances. Manufacturers publish, retailers consume.',icon:'\u{1F4E6}',live:true,url:'https://applianceiq-product-iq-pim.netlify.app'},
-  {id:'consumer',name:'ApplianceIQ.ai',desc:'Consumer-facing AI appliance research and recommendation engine.',icon:'\u{1F3E0}',live:true,url:'https://applianceiq.ai'},
-  {id:'scraper',name:'PIM Scraper',desc:'AI-powered product data extraction from manufacturer websites with web search discovery.',icon:'\u{1F916}',live:true,url:'https://applianceiq-product-iq-pim.netlify.app'}
+  {id:'crm',name:'IQ CRM',icon:'\u{1F4DE}',live:true,url:'https://applianceiq-crm.netlify.app',
+   tag:'Close more of the traffic you already have',
+   desc:'A CRM built for the appliance floor \u2014 not adapted from software made for SaaS sales teams. Every deal, contact, quote, and delivery lives in one pipeline your reps will actually use.',
+   features:['Deal pipeline with idle-deal alerts \u2014 no more quotes dying in a drawer','AI deal coaching on every opportunity: what to say next, when to follow up','Communications intelligence: email composer, sequences, call recording review','Full delivery workflow: inventory check \u2192 install review \u2192 delivered \u2192 warranty registered','Buying group support and per-rep activity analytics'],
+   outcome:'A rep who follows up on every quote closes 20-30% more of the same traffic. The CRM makes follow-up automatic instead of optional.',
+   pairs:'Feeds Command Center analytics and receives leads from ApplianceIQ.ai \u2014 but runs complete on its own.'},
+  {id:'academy',name:'IQ Academy',icon:'\u{1F393}',live:true,url:'https://iqacademy-appliance-training.netlify.app',
+   tag:'Turn new hires into confident closers',
+   desc:'The complete appliance sales education: 5 pillars, 18 volumes, 583 learning cards, 156 brand selling guides, and an AI roleplay coach that scores reps against the 11 Steps of Selling.',
+   features:['Sales IQ, Product IQ, Brand IQ, Service IQ, and Leadership IQ curricula','AI roleplay with KPI scoring \u2014 practice the tough customer before they walk in','156-brand browser with selling angles, right-customer profiles, and cross-references','Beat the Bot challenges, quizzes, badges, and brand certifications','Manager dashboards and team leaderboards'],
+   outcome:'The gap between a 90-day rookie and a 5-year vet is knowledge and reps. Academy compresses years of floor learning into structured weeks.',
+   pairs:'Certifications and progress can surface in Command Center \u2014 but the full curriculum works day one, standalone.'},
+  {id:'up',name:'IQ Up System',icon:'\u{1F504}',live:true,url:'https://applianceiq-iq-up-system.netlify.app',
+   tag:'Fair floor rotation. Zero arguments. Full visibility.',
+   desc:'Real-time up rotation with a greeter station, customer queue, missed-up tracking, dispute resolution, and shift analytics that finally answer "who actually closes the traffic we get?"',
+   features:['Live floor board \u2014 every rep sees the rotation, no whiteboard fights','Greeter station and customer waiting queue','Missed-up tracking with dispute workflow','Closing-rate analytics per rep, per shift, per daypart','AI schedule builder that reads your actual traffic patterns'],
+   outcome:'Stores discover 15-25% of walk-ins were never engaged. Fixing just that \u2014 with zero new traffic \u2014 is the cheapest revenue you will ever find.',
+   pairs:'Traffic data can inform Command Center staffing insight \u2014 the rotation itself needs nothing else to run.'},
+  {id:'spec',name:'Spec IQ',icon:'\u{1F4CB}',live:true,url:'https://appliance-spec-iq.netlify.app',
+   tag:'Professional spec packages in minutes, not evenings',
+   desc:'Build polished, customer-facing specification packages with catalog autocomplete, customer-pricing toggle, and premium PDF output. The quote that follows the customer home and sells while you sleep.',
+   features:['5-step package builder with product catalog autocomplete','Customer-facing pricing toggle \u2014 one document, two views','Premium branded PDF generation, send / share / print','Quote numbering, status tracking, CRM contact linking','AI package insights and multi-product kitchen packages'],
+   outcome:'The rep who sends a professional spec package within the hour beats the rep whose customer "will think about it." It is the follow-up that does not feel like a follow-up.',
+   pairs:'Links packages to CRM deals when both are present \u2014 and produces stunning quotes entirely on its own.'},
+  {id:'command',name:'Command Center',icon:'\u{1F4CA}',live:true,url:'https://applianceiq-intelligence-group.netlify.app/command-center',
+   tag:'See the whole business \u2014 corporate to rep \u2014 in one screen',
+   desc:'Executive analytics with drill-down from corporate \u2192 region \u2192 store \u2192 rep. Budgets, KPIs, leaderboards, brand catalog performance, and growth trends without exporting a single spreadsheet.',
+   features:['Four-level drill-down reporting','Budget hierarchy and tracking','Rep leaderboards and growth metrics','Brand catalog performance (35 brands, 4 tiers)'],
+   outcome:'Managers stop managing by gut and start managing by daypart, by rep, by brand. The questions that used to take a week of spreadsheets take a click.',
+   pairs:'Gets richer with every IQ app you run \u2014 and delivers standalone value on your existing sales data.'},
+  {id:'field',name:'IQ Field',icon:'\u{1F4CD}',live:true,url:'https://applianceiq-ai-field.netlify.app',
+   tag:'Every store walk becomes data. Every issue becomes an action.',
+   desc:'Mobile store-visit app with 126-item checklists across 11 categories, AI photo analysis, compliance scoring, and action plans that actually get closed out.',
+   features:['10 walkthrough zones, 11 categories, 126 checklist items','AI photo analysis and compliance scoring','Action plan system with owner and due date','Multi-store dashboards and trend analytics'],
+   outcome:'Display compliance and merchandising directly move conversion. Field turns "walk the store" from a vibe into a scored, tracked, improving system.',
+   pairs:'Findings can flow to Brand Portal for manufacturer programs \u2014 or stay entirely in-house.'},
+  {id:'portal',name:'Brand Portal',icon:'\u{1F4C8}',live:true,url:'https://iq-field-report-analytics.netlify.app',
+   tag:'Manufacturers finally see what happens at retail',
+   desc:'Field execution metrics, store compliance heatmaps, and program performance analytics for brands and their field teams.',
+   features:['Real-time field execution metrics','Store compliance heatmaps','Program ROI analytics','Training deployment tracking'],
+   outcome:'Brands spend millions on retail programs with no visibility. The Portal shows exactly which stores execute and which programs pay.',
+   pairs:'Powered by IQ Field visits \u2014 the retailer and manufacturer each see their own side.'},
+  {id:'pim',name:'Product IQ (PIM)',icon:'\u{1F4E6}',live:true,url:'https://applianceiq-product-iq-pim.netlify.app',
+   tag:'One source of truth for every product you sell',
+   desc:'7,000+ appliances with 69K images, 15K documents, 9K features, warranties, recalls, and competitor pricing \u2014 the appliance industry PIM. Manufacturers publish once; retailers consume everywhere.',
+   features:['Full specs, images, documents, and feature data per model','Competitor price checks and MAP compliance alerts','Warranty policies, recall database, vendor contacts','Data quality scoring and governance workflow','CAD/BIM access on higher tiers'],
+   outcome:'Reps stop googling spec sheets mid-pitch. Wrong-spec returns drop. Price positioning stops being a guess.',
+   pairs:'The data backbone every other IQ app can draw from \u2014 and a complete product-data platform by itself.'},
+  {id:'consumer',name:'ApplianceIQ.ai',icon:'\u{1F3E0}',live:true,url:'https://applianceiq.ai',
+   tag:'Where tomorrow\u2019s customers do their research',
+   desc:'Consumer-facing AI appliance research and recommendation engine \u2014 and a lead source that sends ready-to-buy shoppers to participating retailers.',
+   features:['AI-guided product research for consumers','Qualified lead generation into retailer pipelines','Quote-value or flat-fee lead pricing'],
+   outcome:'Customers arrive already educated and already matched \u2014 the highest-intent traffic a floor can get.',
+   pairs:'Leads flow into IQ CRM for participating retailers.'},
+  {id:'scraper',name:'PIM Scraper',icon:'\u{1F916}',live:true,url:'https://applianceiq-pim-scraper.netlify.app',
+   tag:'The engine that keeps product data alive',
+   desc:'AI-powered extraction from manufacturer sites with tiered intelligence \u2014 free extraction first, escalating to AI only when needed. Discovery, enrichment, price sync, recalls, and industry intelligence.',
+   features:['Tiered AI pipeline that minimizes cost per product','41+ brand sources, 35 retailer sources','Price sync, recall monitoring, industry news intelligence'],
+   outcome:'Product catalogs go stale in weeks. The Scraper keeps 7,000+ products current without an army of data-entry staff.',
+   pairs:'Feeds Product IQ \u2014 the pick-and-shovel behind the source of truth.'}
 ];
 
+var expandedCard=null;
 function renderEcosystem(targetId){
   var el=document.getElementById(targetId);if(!el)return;
-  el.innerHTML=products.map(function(p){
-    return '<div class="eco-card"' + (p.url ? ' style="cursor:pointer" onclick="window.open(\'' + p.url + '\',\'_blank\')"' : '') + '>' +
+  el.innerHTML='<div style="grid-column:1/-1;background:linear-gradient(135deg,rgba(26,158,86,.06),rgba(47,111,237,.06));border:1px solid var(--line);border-radius:12px;padding:14px 18px;font-size:13px;color:var(--navy)"><strong>Buy exactly what you need.</strong> Every product below is complete on its own \u2014 start with one, add another whenever it makes sense, or run the full ecosystem. No product requires any other.</div>'+
+  products.map(function(p,i){
+    var isOpen=expandedCard===targetId+'-'+i;
+    return '<div class="eco-card" style="cursor:pointer" onclick="window.__toggleCard(\''+targetId+'-'+i+'\',\''+targetId+'\')">' +
       '<div class="eco-head"><h4>' + p.icon + ' ' + p.name + '</h4>' + (p.live ? '<span class="eco-live">Live</span>' : '<span style="font-size:11px;color:var(--muted);font-weight:700">Coming Soon</span>') + '</div>' +
+      '<div style="font-size:12px;font-weight:700;color:var(--green,#1a9e56);margin-bottom:6px">' + (p.tag||'') + '</div>' +
       '<p>' + p.desc + '</p>' +
-      (p.url ? '<span class="eco-link">Visit ' + p.name + ' \u2197</span>' : '') +
+      (isOpen ? '<div style="margin:10px 0;padding-top:10px;border-top:1px solid var(--line)">' +
+        '<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);margin-bottom:6px">What you get</div>' +
+        '<ul style="margin:0 0 12px 16px;padding:0">' + (p.features||[]).map(function(f){return '<li style="font-size:12px;color:var(--muted);margin:4px 0;line-height:1.5">'+f+'</li>'}).join('') + '</ul>' +
+        '<div style="background:rgba(26,158,86,.07);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--navy);line-height:1.55;margin-bottom:8px"><strong>Why it pays:</strong> ' + (p.outcome||'') + '</div>' +
+        (p.pairs?'<div style="font-size:11px;color:var(--muted);line-height:1.5">\u{1F517} ' + p.pairs + '</div>':'') +
+        (p.url?'<div style="margin-top:10px"><span class="eco-link" onclick="event.stopPropagation();window.open(\''+p.url+'\',\'_blank\')">Visit ' + p.name + ' \u2197</span></div>':'') +
+      '</div>' :
+      '<span class="eco-link">' + (isOpen?'Show less':'See full details \u25be') + '</span>') +
     '</div>';
   }).join('');
 }
+window.__toggleCard=function(id,targetId){
+  expandedCard=(expandedCard===id)?null:id;
+  renderEcosystem('ecosystem-grid');
+  renderEcosystem('products-grid');
+};
 
 /* ═══ PRICING TAB SWITCHING ═══ */
 function prTab(id){

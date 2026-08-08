@@ -192,16 +192,42 @@ header .right{display:flex;align-items:center;gap:12px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--txt2)}
+
+/* Auth gate */
+#loginGate{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#0a0f1e 0%,#0f1f3d 50%,#0f766e 100%);display:flex;align-items:center;justify-content:center;padding:24px}
+#loginGate .auth-card{background:#fff;border-radius:14px;padding:32px 28px;max-width:360px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#loginGate h2{font-family:Sora;font-size:22px;font-weight:800;color:#0f1f3d;text-align:center;margin-bottom:4px}
+#loginGate h2 span{color:#1a9e56}
+#loginGate .sub{text-align:center;font-size:13px;color:#5b6b85;margin-bottom:24px}
+#loginGate .field{margin-bottom:14px}
+#loginGate .field label{display:block;font-size:12px;font-weight:600;color:#0f1f3d;margin-bottom:4px}
+#loginGate .field input{width:100%;padding:10px 13px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f1f3d;outline:none}
+#loginGate .field input:focus{border-color:#1a9e56}
+#loginGate .btn-login{width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+#loginGate .btn-login:hover{background:#0f766e}
+#loginGate .auth-err{background:#fef2f2;border:1px solid #fecaca;color:#ef4444;padding:8px 12px;border-radius:10px;font-size:12px;margin-bottom:14px;display:none}
 </style>
 </head>
 <body>
-<div id="app">
+<div id="loginGate">
+  <div class="auth-card">
+    <h2>Appliance<span>IQ</span></h2>
+    <div class="sub">PIM Scraper — Admin Access Required</div>
+    <div class="auth-err" id="loginErr"></div>
+    <div class="field"><label>Email</label><input id="loginEmail" type="email" placeholder="you@applianceiq.com"></div>
+    <div class="field"><label>Password</label><input id="loginPw" type="password" placeholder="••••••••"></div>
+    <button class="btn-login" id="loginBtn">Sign In</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
   <header>
     <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v4.0</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
       <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
       <div id="processingBadge" style="display:none"></div>
+      <button onclick="sb.auth.signOut().then(()=>{location.reload()})" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer" title="Sign out">Sign Out</button>
     </div>
   </header>
   <div class="tab-bar">
@@ -232,6 +258,61 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
 const sb = createClient(SB_URL, SB_KEY);
+
+/* ═══ AUTH GATE ═══ */
+let currentSession = null;
+async function initAuth(){
+  const{data:{session}}=await sb.auth.getSession();
+  if(session){currentSession=session;document.getElementById('loginGate').style.display='none';document.getElementById('app').style.display='flex';return true}
+  document.getElementById('loginBtn').addEventListener('click',async()=>{
+    const email=document.getElementById('loginEmail').value.trim();
+    const pw=document.getElementById('loginPw').value;
+    const errEl=document.getElementById('loginErr');
+    if(!email||!pw){errEl.textContent='Enter email and password.';errEl.style.display='block';return}
+    try{const{data,error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error){errEl.textContent=error.message;errEl.style.display='block';return}
+    currentSession=data.session;document.getElementById('loginGate').style.display='none';document.getElementById('app').style.display='flex';loadBrands();}
+    catch(e){errEl.textContent='Connection error: '+e.message;errEl.style.display='block';}
+  });
+  document.getElementById('loginPw').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click()});
+  sb.auth.onAuthStateChange((_,session)=>{currentSession=session});
+  return false;
+}
+
+/* ═══ CENTRALIZED AI PROXY ═══ */
+async function callAIProxy(model, messages, options={}){
+  if(!currentSession){const{data:{session}}=await sb.auth.getSession();currentSession=session}
+  if(!currentSession)throw new Error('Not authenticated — please sign in.');
+  const body={model,...options,messages,_task_type:options._task_type||'scraper',_source_app:'pim-scraper'};
+  // Clean internal fields
+  delete body._task_type;
+  const resp=await fetch(SB_URL+'/functions/v1/ai-proxy',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
+    body:JSON.stringify({...body,_task_type:options._task_type||'scraper',_source_app:'pim-scraper'})
+  });
+  if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(err.error||'AI proxy error '+resp.status)}
+  return await resp.json();
+}
+
+// Timeout wrapper for proxy calls
+async function callAIProxyWithTimeout(model, messages, options={}, timeoutMs=45000){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),timeoutMs);
+  try{
+    if(!currentSession){const{data:{session}}=await sb.auth.getSession();currentSession=session}
+    if(!currentSession)throw new Error('Not authenticated');
+    const body={model,...options,messages,_task_type:options._task_type||'scraper',_source_app:'pim-scraper'};
+    const resp=await fetch(SB_URL+'/functions/v1/ai-proxy',{
+      method:'POST',signal:controller.signal,
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
+      body:JSON.stringify({...body,_task_type:options._task_type||'scraper',_source_app:'pim-scraper'})
+    });
+    clearTimeout(timer);
+    if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(err.error||'AI proxy error '+resp.status)}
+    return await resp.json();
+  }catch(e){clearTimeout(timer);throw e}
+}
 
 /* ═══ STATE ═══ */
 let allBrands = [];
@@ -269,7 +350,7 @@ const SUBCAT_RULES={
   'Ranges':[
     {re:/dual\s*fuel/i,slide:/slide.?in/i,fs:'Dual Fuel Freestanding',si:'Dual Fuel Slide-In'},
     {re:/induction/i,slide:/slide.?in/i,fs:'Induction Freestanding',si:'Induction Slide-In'},
-    {re:/\bgas\b/i,slide:/slide.?in/i,fs:'Gas Freestanding',si:'Gas Slide-In'},
+    {re:/gas/i,slide:/slide.?in/i,fs:'Gas Freestanding',si:'Gas Slide-In'},
     {re:/electric|radiant|coil|smooth/i,slide:/slide.?in/i,fs:'Electric Freestanding',si:'Electric Slide-In'},
     {re:/professional|pro.?style|48.?inch|60.?inch/i,fs:'Professional'}
   ],
@@ -296,11 +377,11 @@ const SUBCAT_RULES={
     {re:/front\s*load/i,v:'Front Load'},{re:/top\s*load/i,v:'Top Load'},{re:/compact|24.?inch/i,v:'Compact'}
   ],
   'Dryers':[
-    {re:/heat\s*pump|ventless/i,v:'Heat Pump / Ventless'},{re:/\bgas\b/i,v:'Gas Vented'},
+    {re:/heat\s*pump|ventless/i,v:'Heat Pump / Ventless'},{re:/gas/i,v:'Gas Vented'},
     {re:/compact|24.?inch/i,v:'Compact'},{re:/./,v:'Electric Vented'}
   ],
   'Cooktops':[
-    {re:/induction/i,v:'Induction'},{re:/\bgas\b/i,v:'Gas'},{re:/electric|radiant/i,v:'Electric Radiant'}
+    {re:/induction/i,v:'Induction'},{re:/gas/i,v:'Gas'},{re:/electric|radiant/i,v:'Electric Radiant'}
   ],
   'Wall Ovens':[
     {re:/combination|combo|micro/i,v:'Combination Wall Oven'},{re:/double/i,v:'Double Wall Oven'},
@@ -324,7 +405,7 @@ const SUBCAT_RULES={
     {re:/mini.?split|ductless/i,v:'Mini Split / Ductless'},{re:/window/i,v:'Window'},
     {re:/portable/i,v:'Portable'},{re:/through.?the.?wall|thru.?wall/i,v:'Through-the-Wall'},
     {re:/dehumidifier/i,v:'Dehumidifier'},{re:/purifier/i,v:'Air Purifier'},
-    {re:/heater/i,v:'Heater'},{re:/\bfan\b/i,v:'Fan'}
+    {re:/heater/i,v:'Heater'},{re:/fan/i,v:'Fan'}
   ]
 };
 function classifySubcategory(d,category){
@@ -355,7 +436,7 @@ function normalizeCondition(raw){
   if(/end\s*of\s*life|eol|last\s*chance/i.test(s))return 'end_of_life';
   if(/discontinued/i.test(s))return 'discontinued';
   if(/return/i.test(s))return 'returned';
-  if(/\bused\b|pre.?owned/i.test(s))return 'used';
+  if(/used|pre.?owned/i.test(s))return 'used';
   if(/as.?is|no\s*warranty/i.test(s))return 'as_is';
   if(/sale|promo|deal|special/i.test(s))return 'sale';
   return 'new';
@@ -530,65 +611,43 @@ async function callTier1(params){
 
 let geminiModel = 'gemini-3.5-flash-lite';
 async function callTier2(partial,fallback){
-  const key=localStorage.getItem('aiq_google_key');
-  if(!key){logEntry('Tier 2 skip: no Google key','err');return null}
-  logEntry('Tier 2 → '+geminiModel+'…');
+  logEntry('Tier 2 → '+geminiModel+' (via proxy)…');
   const sys='You extract COMPREHENSIVE appliance product data. Return ONLY valid JSON with these fields: brand_name, model, product_name, short_description (1-2 sentence summary), product_description (the FULL marketing overview/description paragraph — the detailed text that describes the product, its purpose, and how it fits the customer\'s life), category, subcategory (specific type: French Door, Side-by-Side, Top Freezer, Gas Freestanding, Gas Slide-In, Electric Freestanding, Induction Slide-In, Dual Fuel Freestanding, Front Load, Top Load, Under-Cabinet, Chimney, Island, Chest, Upright, Countertop, Over-the-Range, Drawer, Single Wall Oven, Double Wall Oven, etc), msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string like "120V"), amperage (number), wattage (number), energy_star (boolean), installation_type (string like "Freestanding" or "Built-in"), series (string), upc (string), specs (object of ADDITIONAL key-value pairs NOT already in top-level fields — do NOT duplicate voltage/dimensions/color/capacity here), images (array of {url,type} — ONLY include actual product photos like front view, angle view, interior, lifestyle-in-kitchen, detail shots, and dimensional drawings. DO NOT include social media icons, logos, banners, UI elements, navigation images, blog photos, or any non-product images), availability, features (array of KEY FEATURE strings exactly as listed — e.g. "Fingerprint Resistant", "Humidity-Controlled Crispers", "Adjustable Gallon Door Bins", "FreshFlow™ Produce Preserver", "SmartHQ™ WiFi Connected"), documents (array of {url,title,doc_type} — IMPORTANT: Look for ALL document links: spec sheets (doc_type:"spec_sheet"), installation manuals/guides (doc_type:"installation_manual"), use & care manuals (doc_type:"use_care_manual"), energy guides/energy star certificates (doc_type:"energy_guide"), quick start guides (doc_type:"quick_start_guide"), dimensional diagrams/drawings (doc_type:"dimensional_diagram"), product brochures (doc_type:"product_brochure"), warranty documents (doc_type:"warranty")). IMPORTANT: Put dimensions, voltage, amperage, wattage, capacity, color, finish, energy_star, installation_type as TOP-LEVEL fields, not inside specs. The specs object is only for additional specs like noise level, cycles, fuel type, controls, door style, refrigerant type, certifications, etc. Extract EVERY feature bullet point and EVERY downloadable document/manual link you can find. Omit fields you do not know. Return ONLY the JSON object, no other text.';
   const usr=partial?'Partial data:\n'+JSON.stringify(partial,null,2)+'\n\nFill in missing fields.':'Extract appliance product data:\n'+(fallback||'').substring(0,8000);
   try{
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+key,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        systemInstruction:{parts:[{text:sys}]},
-        contents:[{parts:[{text:usr}]}],
-        generationConfig:{responseMimeType:'application/json',temperature:0.1,maxOutputTokens:2000}
-      })
-    });
-    const data=await r.json();
-    if(data.error){logEntry('Tier 2 err: '+(data.error.message||JSON.stringify(data.error)),'err');return null}
-    const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    const data=await callAIProxy(geminiModel,[{role:'user',content:usr}],{system:sys,max_tokens:2000,temperature:0.1});
+    const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     const parsed=JSON.parse(txt.replace(/```json\s*|```/g,'').trim());
-    const pt=data.usageMetadata?.promptTokenCount||0;
-    const ct=data.usageMetadata?.candidatesTokenCount||0;
-    const cost=(pt*0.0000003+ct*0.0000025);
+    const it=data.usage?.input_tokens||0;const ot=data.usage?.output_tokens||0;
+    const cost=(it*0.0000003+ot*0.0000025);
     addCost(cost);logEntry('Tier 2 ✓ $'+cost.toFixed(4),'cost');
     parsed._tier=2;parsed._cost=cost;parsed._model=geminiModel;return parsed;
   }catch(e){logEntry('Tier 2 err: '+e.message,'err');return null}
 }
 
 async function callTier3(partial,fallback,mo){
-  const key=localStorage.getItem('aiq_openai_key');
-  if(!key){logEntry('Tier 3 skip: no OpenAI key','err');return null}
   const model=mo||aiModel;
-  logEntry('Tier 3 → '+model+'…');
+  logEntry('Tier 3 → '+model+' (via proxy)…');
   const sys='You extract COMPREHENSIVE appliance product data. Return ONLY JSON: brand_name, model, product_name, short_description (1-2 sentences), product_description (the FULL marketing overview paragraph describing the product), category, subcategory (specific type like French Door or Gas Freestanding), msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type (string), series (string), upc (string), specs (object of ADDITIONAL specs not in top-level fields like noise level, cycles, fuel type, controls, certifications), images (arr of {url,type}), features (arr of KEY FEATURE strings exactly as listed e.g. "Fingerprint Resistant", "Humidity-Controlled Crispers", "Adjustable Gallon Door Bins"), documents (arr of {url,title,doc_type} — look for spec sheets doc_type:"spec_sheet", installation manuals doc_type:"installation_manual", use & care manuals doc_type:"use_care_manual", energy guides doc_type:"energy_guide", quick start guides doc_type:"quick_start_guide", dimensional diagrams doc_type:"dimensional_diagram", warranty docs doc_type:"warranty"). Extract EVERY feature and EVERY document/manual link. Put dimensions/voltage/color as top-level fields, NOT inside specs. Omit unknowns.';
   const usr=partial?'Partial:\n'+JSON.stringify(partial,null,2)+'\n\nFill gaps.':'Extract:\n'+(fallback||'').substring(0,8000);
   try{
-    const body={model,temperature:0.1,response_format:{type:'json_object'},messages:[{role:'system',content:sys},{role:'user',content:usr}]};
-    if(model.startsWith('gpt-5')||model.startsWith('o')){body.max_completion_tokens=2000;if(model.startsWith('gpt-5'))body.reasoning_effort='none'}else{body.max_tokens=2000}
-    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
-    const data=await r.json();
-    if(data.error){logEntry('Tier 3 err: '+data.error.message,'err');return null}
-    const txt=data.choices?.[0]?.message?.content||'';
+    const data=await callAIProxy(model,[{role:'user',content:usr}],{system:sys,max_tokens:2000,temperature:0.1});
+    const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
     const parsed=JSON.parse(txt.replace(/```json\s*|```/g,'').trim());
-    const cost=((data.usage?.prompt_tokens||0)*0.0000004+(data.usage?.completion_tokens||0)*0.0000016);
+    const it=data.usage?.input_tokens||0;const ot=data.usage?.output_tokens||0;
+    const cost=(it*0.0000004+ot*0.0000016);
     addCost(cost);logEntry('Tier 3 ✓ $'+cost.toFixed(4),'cost');
     parsed._tier=3;parsed._cost=cost;parsed._model=model;return parsed;
   }catch(e){logEntry('Tier 3 err: '+e.message,'err');return null}
 }
 
 async function callTier4(query,brandInfo){
-  const key=localStorage.getItem('aiq_anthropic_key');
-  if(!key){logEntry('Tier 4 skip: no Anthropic key','err');return null}
-  logEntry('Tier 4 → Haiku + web search…');
+  logEntry('Tier 4 → Haiku + web search (via proxy)…');
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:2000,
-        system:'Extract COMPREHENSIVE appliance data. Return ONLY JSON: brand_name, model, product_name, short_description (1-2 sentences), product_description (FULL marketing overview paragraph), category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type, series, upc, specs (object of ADDITIONAL specs not in top-level fields like noise level, cycles, fuel type, controls, certifications), images, features (array of KEY FEATURE bullet strings exactly as listed e.g. "Fingerprint Resistant", "SmartHQ™ WiFi"), documents (arr of {url,title,doc_type} — find ALL: spec sheets doc_type:"spec_sheet", installation manuals doc_type:"installation_manual", use & care manuals doc_type:"use_care_manual", energy guides doc_type:"energy_guide", quick start guides doc_type:"quick_start_guide", dimensional diagrams doc_type:"dimensional_diagram", warranty doc_type:"warranty", product brochures doc_type:"product_brochure"), source_url. Extract EVERY feature bullet and EVERY document/manual link. Put dimensions/voltage/color as top-level fields NOT inside specs. Omit unknowns.',
-        tools:[{type:'web_search_20250305',name:'web_search'}],
-        messages:[{role:'user',content:'Find specs for: '+query+'. Brand: '+(brandInfo?.brand_name||'unknown')+'. Check manufacturer site first.'}]})});
-    const data=await r.json();
-    if(data.error){logEntry('Tier 4 err: '+data.error.message,'err');return null}
+    const data=await callAIProxy('claude-haiku-4-5-20251001',[{role:'user',content:'Find specs for: '+query+'. Brand: '+(brandInfo?.brand_name||'unknown')+'. Check manufacturer site first.'}],{
+      system:'Extract COMPREHENSIVE appliance data. Return ONLY JSON: brand_name, model, product_name, short_description (1-2 sentences), product_description (FULL marketing overview paragraph), category, msrp, currency, color, finish, width_inches (number), height_inches (number), depth_inches (number), weight_lbs (number), capacity_cu_ft (number), voltage (string), amperage (number), wattage (number), energy_star (boolean), installation_type, series, upc, specs (object of ADDITIONAL specs not in top-level fields like noise level, cycles, fuel type, controls, certifications), images, features (array of KEY FEATURE bullet strings exactly as listed e.g. "Fingerprint Resistant", "SmartHQ™ WiFi"), documents (arr of {url,title,doc_type} — find ALL: spec sheets doc_type:"spec_sheet", installation manuals doc_type:"installation_manual", use & care manuals doc_type:"use_care_manual", energy guides doc_type:"energy_guide", quick start guides doc_type:"quick_start_guide", dimensional diagrams doc_type:"dimensional_diagram", warranty doc_type:"warranty", product brochures doc_type:"product_brochure"), source_url. Extract EVERY feature bullet and EVERY document/manual link. Put dimensions/voltage/color as top-level fields NOT inside specs. Omit unknowns.',
+      max_tokens:2000
+    });
     const texts=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text);
     const jm=texts.join('\n').match(/\{[\s\S]*\}/);
     if(jm){const p=JSON.parse(jm[0]);addCost(0.30);logEntry('Tier 4 ✓ $0.30','cost');p._tier=4;p._cost=0.30;return p}
@@ -665,11 +724,11 @@ function classifySegment(data) {
   // Vacuums
   if (/vacuum|roomba|floor care|robot cleaner/.test(name)) return 'vacuum_floor_care';
   // Outdoor
-  if (/\bgrill\b|bbq|barbecue|smoker|pizza oven|outdoor kitchen|outdoor fridge/.test(name)) return 'outdoor';
+  if (/grill|bbq|barbecue|smoker|pizza oven|outdoor kitchen|outdoor fridge/.test(name)) return 'outdoor';
   // Not relevant
   if (/water cooler|water dispenser|bathroom fan|bath fan|ceiling fan|furnace|air condition|humidifier|dehumidifier|air purifier|water heater/.test(name)) return 'not_relevant';
   // Small appliance
-  if (/\btoaster\b|blender|kettle|food processor|stand mixer|coffee maker|slow cooker|waffle|bread maker|juicer/.test(name)) return 'small_appliance';
+  if (/toaster|blender|kettle|food processor|stand mixer|coffee maker|slow cooker|waffle|bread maker|juicer/.test(name)) return 'small_appliance';
   // Default
   return 'major_appliance';
 }
@@ -797,21 +856,12 @@ async function extractProductUrls(url,brand){
     // Fallback: if the page has very few links but looks like a category, try Gemini/GPT to find products
     if(isCategoryLikely&&html.length>1000&&productLinks.length<2){
       logEntry('Category heuristic matched but only '+productLinks.length+' product links found — trying AI extraction…');
-      const gkey=localStorage.getItem('aiq_google_key');
-      if(gkey){
+      if(currentSession){
         try{
-          const aiResp=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+gkey,{
-            method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-              systemInstruction:{parts:[{text:'Extract all individual product page URLs from this HTML page. Return ONLY a JSON array of objects: [{url, model}]. The URLs should be direct links to individual product detail pages, NOT category or listing pages. If no product links found, return empty array [].'}]},
-              contents:[{parts:[{text:'Extract product URLs from this '+brand+' category page ('+url+'):\n\n'+html.substring(0,12000)}]}],
-              generationConfig:{responseMimeType:'application/json',temperature:0.1,maxOutputTokens:3000}
-            })
-          });
-          const aiData=await aiResp.json();
-          const txt=aiData.candidates?.[0]?.content?.parts?.[0]?.text||'';
+          const aiData=await callAIProxy(geminiModel,[{role:'user',content:'Extract product URLs from this '+brand+' category page ('+url+'):\n\n'+html.substring(0,12000)}],{system:'Extract all individual product page URLs from this HTML page. Return ONLY a JSON array of objects: [{url, model}]. The URLs should be direct links to individual product detail pages, NOT category or listing pages. If no product links found, return empty array [].',max_tokens:3000,temperature:0.1});
+          const txt=(aiData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
           const parsed=JSON.parse(txt.replace(/```json\s*|```/g,'').trim());
-          const cost=((aiData.usageMetadata?.promptTokenCount||0)*0.0000003+(aiData.usageMetadata?.candidatesTokenCount||0)*0.0000025);
+          const cost=((aiData.usage?.input_tokens||0)*0.0000003+(aiData.usage?.output_tokens||0)*0.0000025);
           addCost(cost);
           if(Array.isArray(parsed)&&parsed.length>=2){
             // Normalize relative URLs
@@ -1567,7 +1617,7 @@ function renderDiscover(){
         } else if(scraped&&scraped._autoSkip){
           h+='<span style="font-size:10px;color:var(--txt2)">—</span>';
         } else if(!scraped&&!cachedDone){
-          h+='<button class="btn btn-sm btn-secondary" onclick="window.S.scrapeUrl(\''+esc(r.url).replace(/'/g,"\\'")+'\')">Scrape</button>';
+          h+='<button class="btn btn-sm btn-secondary" onclick="window.S.scrapeUrl(\''+esc(r.url).replace(/'/g,"\'")+'\')">Scrape</button>';
         } else if(scraped&&scraped.data && !scraped._saved){
           h+='<button class="btn btn-sm btn-primary" onclick="window.S.saveResult('+scrapeResults.indexOf(scraped)+')">Save</button>';
         } else if((scraped&&scraped._saved)||cachedDone){
@@ -2402,12 +2452,7 @@ window.S = {
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pim-export-'+new Date().toISOString().split('T')[0]+'.json';a.click();
   },
   setKeys(){
-    const gk=prompt('Google API Key (Tier 2 — Gemini):',localStorage.getItem('aiq_google_key')||'');
-    if(gk!==null)localStorage.setItem('aiq_google_key',gk);
-    const ok=prompt('OpenAI API Key (Tier 3 — Luna):',localStorage.getItem('aiq_openai_key')||'');
-    if(ok!==null)localStorage.setItem('aiq_openai_key',ok);
-    const ak=prompt('Anthropic API Key (Tier 4 — Haiku):',localStorage.getItem('aiq_anthropic_key')||'');
-    if(ak!==null)localStorage.setItem('aiq_anthropic_key',ak);
+    alert('✅ AI keys are now managed server-side via Supabase Edge Function Secrets.\n\nAll AI calls route through the ai-proxy — no client-side keys needed.\n\nTier 2: Gemini (GOOGLE_API_KEY)\nTier 3: Luna (OPENAI_API_KEY)\nTier 4: Haiku (ANTHROPIC_API_KEY)');
   },
 
   /* ── Retailer Discovery ── */
@@ -2446,113 +2491,60 @@ window.S = {
   rdSelectAllCats(){rdSelectedCategories=new Set(rdCategories);renderTab()},
   rdSelectNoneCats(){rdSelectedCategories.clear();renderTab()},
 
-  // ── TIERED AI CALL — tries T2 Gemini → T3 GPT → T4 Haiku ──
+  // ── TIERED AI CALL via ai-proxy — tries T2 Gemini → T3 GPT → T4 Haiku ──
   // mode='fallback' (default): stops at first success
   // mode='additive': runs all available tiers and combines results (for discovery)
   async _crawlAI(systemPrompt, userPrompt, maxTokens, mode){
     maxTokens=maxTokens||4000;
     mode=mode||'fallback';
     let result=null;
-    const allResults=[];  // for additive mode
+    const allResults=[];
 
-    // Helper: fetch with timeout
-    async function fetchWithTimeout(url,opts,timeoutMs){
-      const ctrl=new AbortController();
-      const timer=setTimeout(()=>ctrl.abort(),timeoutMs||30000);
-      try{const r=await fetch(url,{...opts,signal:ctrl.signal});clearTimeout(timer);return r}
-      catch(e){clearTimeout(timer);throw e}
-    }
-
-    // T2 — Gemini (cheapest, has Google Search grounding)
-    const gKey=localStorage.getItem('aiq_google_key');
-    if((!result||mode==='additive')&&gKey){
-      logEntry('Tier 2 → '+geminiModel+' + Google Search…');
+    // T2 — Gemini via proxy
+    if(!result||mode==='additive'){
+      logEntry('Tier 2 → '+geminiModel+' (via proxy)…');
       try{
-        const r=await fetchWithTimeout('https://generativelanguage.googleapis.com/v1beta/models/'+geminiModel+':generateContent?key='+gKey,{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            systemInstruction:{parts:[{text:systemPrompt}]},
-            contents:[{parts:[{text:userPrompt}]}],
-            tools:[{google_search:{}}],
-            generationConfig:{temperature:0.1,maxOutputTokens:maxTokens}
-          })
-        },45000);
-        const data=await r.json();
-        if(data.error){logEntry('T2 err: '+(data.error.message||JSON.stringify(data.error)),'err')}
-        else{
-          const txt=data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('\n')||'';
-          const pt=data.usageMetadata?.promptTokenCount||0;
-          const ct=data.usageMetadata?.candidatesTokenCount||0;
-          const cost=(pt*0.0000003+ct*0.0000025);
-          addCost(cost);
-          if(txt.trim()){
-            logEntry('T2 ✓ $'+cost.toFixed(4),'cost');
-            result={text:txt,tier:2,cost};
-            allResults.push(result);
-          } else {logEntry('T2: empty response','err')}
-        }
+        const data=await callAIProxyWithTimeout(geminiModel,[{role:'user',content:userPrompt}],{system:systemPrompt,max_tokens:maxTokens,temperature:0.1},45000);
+        const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n')||'';
+        const it=data.usage?.input_tokens||0;const ot=data.usage?.output_tokens||0;
+        const cost=(it*0.0000003+ot*0.0000025);
+        addCost(cost);
+        if(txt.trim()){logEntry('T2 ✓ $'+cost.toFixed(4),'cost');result={text:txt,tier:2,cost};allResults.push(result)}
+        else{logEntry('T2: empty response','err')}
       }catch(e){logEntry('T2 '+(e.name==='AbortError'?'timeout (45s)':'err: '+e.message),'err')}
     }
 
-    // T3 — GPT Luna (uses Responses API for web search)
-    const oKey=localStorage.getItem('aiq_openai_key');
-    if((!result||mode==='additive')&&oKey){
+    // T3 — GPT Luna via proxy
+    if(!result||mode==='additive'){
       const model=aiModel||'gpt-5.6-luna';
-      logEntry('Tier 3 → '+model+'…');
+      logEntry('Tier 3 → '+model+' (via proxy)…');
       try{
-        // Use Responses API which supports web_search_preview
-        const body={model,temperature:0.1,
-          input:[{role:'system',content:systemPrompt},{role:'user',content:userPrompt}],
-          tools:[{type:'web_search_preview'}]};
-        if(model.startsWith('gpt-5'))body.reasoning={effort:'none'};
-        body.max_output_tokens=maxTokens;
-        const r=await fetchWithTimeout('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+oKey},body:JSON.stringify(body)},45000);
-        const data=await r.json();
-        if(data.error){logEntry('T3 err: '+data.error.message,'err')}
-        else{
-          // Responses API returns output array
-          const txt=(data.output||[]).filter(o=>o.type==='message').map(o=>(o.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('')).join('\n')||'';
-          const cost=((data.usage?.input_tokens||0)*0.0000004+(data.usage?.output_tokens||0)*0.0000016);
-          addCost(cost);
-          if(txt.trim()){
-            logEntry('T3 ✓ $'+cost.toFixed(4),'cost');
-            result={text:txt,tier:3,cost};
-            allResults.push(result);
-          } else {logEntry('T3: empty response','err')}
-        }
+        const data=await callAIProxyWithTimeout(model,[{role:'user',content:userPrompt}],{system:systemPrompt,max_tokens:maxTokens,temperature:0.1},45000);
+        const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n')||'';
+        const it=data.usage?.input_tokens||0;const ot=data.usage?.output_tokens||0;
+        const cost=(it*0.0000004+ot*0.0000016);
+        addCost(cost);
+        if(txt.trim()){logEntry('T3 ✓ $'+cost.toFixed(4),'cost');result={text:txt,tier:3,cost};allResults.push(result)}
+        else{logEntry('T3: empty response','err')}
       }catch(e){logEntry('T3 '+(e.name==='AbortError'?'timeout (45s)':'err: '+e.message),'err')}
     }
 
-    // T4 — Haiku + web search (most powerful, most expensive)
-    const aKey=localStorage.getItem('aiq_anthropic_key');
-    if((!result||mode==='additive')&&aKey){
-      logEntry('Tier 4 → Haiku + web search…');
+    // T4 — Haiku via proxy
+    if(!result||mode==='additive'){
+      logEntry('Tier 4 → Haiku (via proxy)…');
       try{
-        const r=await fetchWithTimeout('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':aKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-          body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,
-            system:systemPrompt,
-            tools:[{type:'web_search_20250305',name:'web_search'}],
-            messages:[{role:'user',content:userPrompt}]})},45000);
-        const data=await r.json();
-        if(data.error){logEntry('T4 err: '+data.error.message,'err')}
-        else{
-          const texts=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text);
-          const txt=texts.join('\n');
-          addCost(0.30);
-          if(txt.trim()){
-            logEntry('T4 ✓ $0.30','cost');
-            result={text:txt,tier:4,cost:0.30};
-            allResults.push(result);
-          } else {logEntry('T4: empty response','err')}
-        }
+        const data=await callAIProxyWithTimeout('claude-haiku-4-5-20251001',[{role:'user',content:userPrompt}],{system:systemPrompt,max_tokens:maxTokens},45000);
+        const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n')||'';
+        addCost(0.30);
+        if(txt.trim()){logEntry('T4 ✓ $0.30','cost');result={text:txt,tier:4,cost:0.30};allResults.push(result)}
+        else{logEntry('T4: empty response','err')}
       }catch(e){logEntry('T4 '+(e.name==='AbortError'?'timeout (45s)':'err: '+e.message),'err')}
     }
 
     if(!result&&allResults.length===0){
-      logEntry('All tiers failed — check API keys (🔑 Keys button)','err');
+      logEntry('All tiers failed — check Supabase Edge Function Secrets','err');
     }
 
-    // In additive mode, merge all results into one
     if(mode==='additive'&&allResults.length>1){
       return{text:allResults.map(r=>r.text).join('\n'),tier:'multi',cost:allResults.reduce((s,r)=>s+r.cost,0)};
     }
@@ -2650,8 +2642,7 @@ window.S = {
   // ── CATEGORY CRAWL: Find ALL products on a category page ──
   async rdCategoryCrawl(){
     if(isProcessing)return;
-    const hasAnyKey=localStorage.getItem('aiq_google_key')||localStorage.getItem('aiq_openai_key')||localStorage.getItem('aiq_anthropic_key');
-    if(!hasAnyKey){logEntry('Need at least one API key (🔑 Keys) — Google, OpenAI, or Anthropic','err');return}
+    if(!currentSession){logEntry('Please sign in to use AI features','err');return}
 
     // Determine retailer from URL or selection
     let retailerName=rdSelectedRetailer||'';
@@ -2697,7 +2688,9 @@ window.S = {
           // Send the raw HTML/text to AI to extract ALL product listings from it
           const extractResult=await window.S._crawlAI(
             'You are parsing raw text extracted from a retailer product listing page. Find EVERY product listed on this page. Return ONLY a JSON array. Each object: brand_name, model (EXACT model number), product_name, price (number), product_url (full URL), category, in_stock (boolean). Extract ALL products — there may be 20-100+ on the page.',
-            'Extract ALL product listings from this retailer page text. The page is from '+retailerSite+':\n\n'+rawText.substring(0,12000),
+            'Extract ALL product listings from this retailer page text. The page is from '+retailerSite+':
+
+'+rawText.substring(0,12000),
             8000
           );
           if(extractResult){
@@ -2865,7 +2858,8 @@ Find EVERY product matching the search. If you find none, return [].`;
 
         // Extract all JSON arrays from response (handles multi-tier merged text)
         let allParsed=[];
-        const jsonBlocks=aiResult.text.match(/\[[\s\S]*?\](?=\s*[\n\r]|\s*$|\s*\[)/g)||[aiResult.text.match(/\[[\s\S]*\]/)?.[ 0]||''];
+        const jsonBlocks=aiResult.text.match(/\[[\s\S]*?\](?=\s*[
+]|\s*$|\s*\[)/g)||[aiResult.text.match(/\[[\s\S]*\]/)?.[ 0]||''];
         for(const block of jsonBlocks){
           if(!block)continue;
           try{const p=JSON.parse(block);if(Array.isArray(p))allParsed.push(...p)}catch(e){
@@ -3062,8 +3056,17 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
       if(!t1HasPrice)gapList.push('price');
 
       const aiPrompt=t1RawText.length>500?
-        'Here is the raw page text from '+r.product_url+'. Extract ALL product data, especially: '+gapList.join(', ')+'.\n\nPARTIAL DATA ALREADY EXTRACTED:\n'+JSON.stringify(parsed||{},null,1).substring(0,2000)+'\n\nPAGE TEXT:\n'+t1RawText.substring(0,10000) :
-        'Visit this product page and extract ALL data, especially: '+gapList.join(', ')+'. URL: '+r.product_url+(parsed?'\n\nPartial data already found:\n'+JSON.stringify(parsed,null,1).substring(0,1500):'');
+        'Here is the raw page text from '+r.product_url+'. Extract ALL product data, especially: '+gapList.join(', ')+'.
+
+PARTIAL DATA ALREADY EXTRACTED:
+'+JSON.stringify(parsed||{},null,1).substring(0,2000)+'
+
+PAGE TEXT:
+'+t1RawText.substring(0,10000) :
+        'Visit this product page and extract ALL data, especially: '+gapList.join(', ')+'. URL: '+r.product_url+(parsed?'
+
+Partial data already found:
+'+JSON.stringify(parsed,null,1).substring(0,1500):'');
 
       const aiResult=await window.S._crawlAI(DEEP_PROMPT, aiPrompt, 8000);
       if(aiResult){
@@ -3671,12 +3674,12 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
         }
       }
 
-      if(!listing&&localStorage.getItem('aiq_google_key')){
+      if(!listing&&currentSession){
         const t2=await callTier2({brand_name:selectedBrand,model:cp.model,retailer:retailer.retailer_name},'Find price for '+selectedBrand+' '+cp.model+' at '+retailer.retailer_name+' ('+retailer.website+').'+PRICE_PROMPT);
         if(t2&&(t2.price||t2.msrp)){listing={price:t2.price||t2.msrp,regular_price:t2.regular_price||null,on_sale:!!t2.on_sale,in_stock:t2.in_stock!==false,condition:t2.condition||null,product_url:t2.product_url||null};tierUsed=2;cost=t2._cost||0}
       }
 
-      if(!listing&&localStorage.getItem('aiq_anthropic_key')){
+      if(!listing&&currentSession){
         const t4=await callTier4(selectedBrand+' '+cp.model+' price '+retailer.retailer_name+' '+retailer.website+PRICE_PROMPT,brandSourceMap[selectedBrand]);
         if(t4&&(t4.price||t4.msrp)){listing={price:t4.price||t4.msrp,regular_price:t4.regular_price||null,on_sale:!!t4.on_sale,in_stock:t4.in_stock!==false,condition:t4.condition||null,product_url:t4.product_url||null};tierUsed=4;cost=t4._cost||0}
       }
@@ -3760,19 +3763,19 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
       if(t1){price=t1.msrp||t1.price||null}
 
       // T2 fallback (Gemini)
-      if(price===null&&localStorage.getItem('aiq_google_key')){
+      if(price===null&&currentSession){
         const t2=await callTier2({brand_name:selectedBrand,model:p.model},'Find the manufacturer MSRP for '+query+'. Return JSON with msrp field.');
         if(t2&&t2.msrp){price=t2.msrp;tierUsed=2;cost=t2._cost||0}
       }
 
       // T3 fallback (Luna)
-      if(price===null&&localStorage.getItem('aiq_openai_key')){
+      if(price===null&&currentSession){
         const t3=await callTier3({brand_name:selectedBrand,model:p.model},'Find the manufacturer MSRP for '+query+'. Return JSON with msrp field.');
         if(t3&&t3.msrp){price=t3.msrp;tierUsed=3;cost=t3._cost||0}
       }
 
       // T4 fallback (Haiku)
-      if(price===null&&localStorage.getItem('aiq_anthropic_key')){
+      if(price===null&&currentSession){
         const t4=await callTier4(query+' MSRP price'+(website?' '+website:''),src);
         if(t4&&t4.msrp){price=t4.msrp;tierUsed=4;cost=t4._cost||0}
       }
@@ -3816,17 +3819,17 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
         const t1=await callTier1({query:siteQuery,market:psMarket});
         if(t1&&(t1.msrp||t1.price)){listing={price:t1.price||t1.msrp,regular_price:t1.regular_price||null,on_sale:!!t1.on_sale,in_stock:t1.in_stock!==false,condition:t1.condition||null,product_url:t1.product_url||t1.source_url||null}}
 
-        if(!listing&&localStorage.getItem('aiq_google_key')){
+        if(!listing&&currentSession){
           const t2=await callTier2({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+').'+PRICE_PROMPT);
           if(t2&&(t2.price||t2.msrp)){listing={price:t2.price||t2.msrp,regular_price:t2.regular_price||null,on_sale:!!t2.on_sale,in_stock:t2.in_stock!==false,condition:t2.condition||null,product_url:t2.product_url||null,quantity_available:t2.quantity_available||null};tierUsed=2;cost=t2._cost||0}
         }
 
-        if(!listing&&retailer.scrape_tier<=2&&localStorage.getItem('aiq_openai_key')){
+        if(!listing&&retailer.scrape_tier<=2&&currentSession){
           const t3=await callTier3({brand_name:selectedBrand,model:p.model,retailer:retailer.retailer_name},'Find price for '+query+' at '+retailer.retailer_name+' ('+retailer.website+').'+PRICE_PROMPT);
           if(t3&&(t3.price||t3.msrp)){listing={price:t3.price||t3.msrp,regular_price:t3.regular_price||null,on_sale:!!t3.on_sale,in_stock:t3.in_stock!==false,condition:t3.condition||null,product_url:t3.product_url||null,quantity_available:t3.quantity_available||null};tierUsed=3;cost=t3._cost||0}
         }
 
-        if(!listing&&localStorage.getItem('aiq_anthropic_key')){
+        if(!listing&&currentSession){
           const t4=await callTier4(query+' price '+retailer.retailer_name+' '+retailer.website+PRICE_PROMPT,brandSourceMap[selectedBrand]);
           if(t4&&(t4.price||t4.msrp)){listing={price:t4.price||t4.msrp,regular_price:t4.regular_price||null,on_sale:!!t4.on_sale,in_stock:t4.in_stock!==false,condition:t4.condition||null,product_url:t4.product_url||null};tierUsed=4;cost=t4._cost||0}
         }
@@ -4099,7 +4102,7 @@ async function loadDashboard(){
 }
 
 /* ═══ INIT ═══ */
-async function init(){
+async function loadBrands(){
   try{
     const{data:bc,error:e1}=await sb.from('brand_catalog').select('id,brand_name,parent_company').order('brand_name');
     if(e1)console.error('brand_catalog:',e1);
@@ -4130,6 +4133,11 @@ async function init(){
     console.error('Init:',err);
     document.getElementById('mainContent').innerHTML='<div style="padding:40px;color:var(--red)">Init error: '+err.message+'</div>';
   }
+}
+
+async function init(){
+  const authed = await initAuth();
+  if(authed) await loadBrands();
 }
 
 init();
@@ -4184,24 +4192,15 @@ async function scanNews(brand) {
     logEntry('T1 DDG: found ' + intelResults.length + ' URLs', 'ok');
   } catch (e) { logEntry('DDG error: ' + e.message, 'err'); }
 
-  // ── T2: Gemini categorize + extract (if key available) ──
-  const gkey = localStorage.getItem('aiq_google_key');
-  if (gkey && intelResults.length > 0) {
-    logEntry('T2: categorizing ' + intelResults.length + ' articles with Gemini…');
+  // ── T2: Gemini categorize + extract (via proxy) ──
+  if (currentSession && intelResults.length > 0) {
+    logEntry('T2: categorizing ' + intelResults.length + ' articles with Gemini (via proxy)…');
     const urlList = intelResults.slice(0, 30).map((r, i) => (i + 1) + '. ' + r.title + ' — ' + r.url).join('\n');
     try {
-      const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + gkey, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: 'You categorize appliance industry news articles. For each article, classify into one category: product_launch, financial, acquisition, partnership, executive, regulation, recall, technology, expansion, closure, trade_show, award, sustainability, price_change. Also write a 1-sentence summary. Return ONLY a JSON array: [{index, category, summary, headline, source_name, is_appliance_relevant}]. Omit articles not related to the appliance/home goods industry.' }] },
-          contents: [{ parts: [{ text: 'Categorize these articles about ' + brand + ':\n' + urlList }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 3000 }
-        })
-      });
-      const data = await resp.json();
-      const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const data = await callAIProxy(geminiModel,[{role:'user',content:'Categorize these articles about ' + brand + ':\n' + urlList}],{system:'You categorize appliance industry news articles. For each article, classify into one category: product_launch, financial, acquisition, partnership, executive, regulation, recall, technology, expansion, closure, trade_show, award, sustainability, price_change. Also write a 1-sentence summary. Return ONLY a JSON array: [{index, category, summary, headline, source_name, is_appliance_relevant}]. Omit articles not related to the appliance/home goods industry.',max_tokens:3000,temperature:0.1});
+      const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
       const parsed = JSON.parse(txt.replace(/```json\s*|```/g, '').trim());
-      const cost = ((data.usageMetadata?.promptTokenCount || 0) * 0.0000003 + (data.usageMetadata?.candidatesTokenCount || 0) * 0.0000025);
+      const cost = ((data.usage?.input_tokens || 0) * 0.0000003 + (data.usage?.output_tokens || 0) * 0.0000025);
       addCost(cost);
       for (const item of parsed) {
         const idx = (item.index || item.i || 1) - 1;
@@ -4219,7 +4218,7 @@ async function scanNews(brand) {
   }
 
   // ── T3: Deeper search if few results — newswires, specialty media ──
-  if (intelResults.filter(r => r.relevant !== false).length < 5 && gkey) {
+  if (intelResults.filter(r => r.relevant !== false).length < 5 && currentSession) {
     logEntry('T3: Searching deeper — newswires, trade media…');
     const deepQueries = [
       '"' + brand + '" site:prnewswire.com OR site:businesswire.com OR site:globenewswire.com appliance',
@@ -4281,7 +4280,7 @@ function renderIntelligence() {
   }
   h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b style="font-size:16px">📰 News Intelligence: ' + esc(selectedBrand) + '</b><span style="margin-left:12px;font-size:12px;color:var(--txt2)">' + intelExisting.length + ' saved articles</span></div>';
   h += '<div style="display:flex;gap:8px">';
-  if (!intelLoading) h += '<button class="btn btn-primary" onclick="scanNews(\'' + esc(selectedBrand).replace(/'/g, "\\'") + '\')">🔍 Scan News</button>';
+  if (!intelLoading) h += '<button class="btn btn-primary" onclick="scanNews(\'' + esc(selectedBrand).replace(/'/g, "\'") + '\')">🔍 Scan News</button>';
   if (intelResults.filter(r => r.status !== 'saved' && r.relevant !== false).length > 0)
     h += '<button class="btn btn-primary" style="background:var(--green)" onclick="saveAllNews()">💾 Save All (' + intelResults.filter(r => r.status !== 'saved' && r.relevant !== false).length + ')</button>';
   h += '</div></div>';
@@ -4419,24 +4418,14 @@ async function scanRecalls(brand) {
     logEntry('Health Canada: ' + recallResults.filter(r => r.source === 'Health Canada').length + ' found', 'ok');
   } catch (e) { logEntry('Health Canada error: ' + e.message, 'err'); }
 
-  // ── T2 enrichment: Use Gemini to extract details from HC recall pages ──
-  const gkey = localStorage.getItem('aiq_google_key');
+  // ── T2 enrichment: Use Gemini via proxy to extract details from HC recall pages ──
   const hcRecalls = recallResults.filter(r => r.source === 'Health Canada' && !r.description);
-  if (gkey && hcRecalls.length > 0 && hcRecalls.length <= 10) {
-    logEntry('T2: Enriching ' + hcRecalls.length + ' Health Canada recalls with Gemini…');
+  if (currentSession && hcRecalls.length > 0 && hcRecalls.length <= 10) {
+    logEntry('T2: Enriching ' + hcRecalls.length + ' Health Canada recalls (via proxy)…');
     for (const rec of hcRecalls) {
       try {
-        const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + geminiModel + ':generateContent?key=' + gkey, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: 'Extract recall details. Return JSON: {product_name, brand_name, model_numbers (array), hazard, remedy, units_affected, recall_date (YYYY-MM-DD), category, description}. Omit unknowns.' }] },
-            contents: [{ parts: [{ text: 'Extract recall details from this Health Canada recall page: ' + rec.url }] }],
-            generationConfig: { responseMimeType: 'application/json', temperature: 0.1, maxOutputTokens: 1000 },
-            tools: [{ googleSearch: {} }]
-          })
-        });
-        const data = await resp.json();
-        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const data = await callAIProxy(geminiModel,[{role:'user',content:'Extract recall details from this Health Canada recall page: ' + rec.url}],{system:'Extract recall details. Return JSON: {product_name, brand_name, model_numbers (array), hazard, remedy, units_affected, recall_date (YYYY-MM-DD), category, description}. Omit unknowns.',max_tokens:1000,temperature:0.1});
+        const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
         if (txt) {
           const details = JSON.parse(txt.replace(/```json\s*|```/g, '').trim());
           Object.assign(rec, {
@@ -4447,7 +4436,7 @@ async function scanRecalls(brand) {
             recall_date: details.recall_date || null,
             category: details.category || '', description: details.description || ''
           });
-          const cost = ((data.usageMetadata?.promptTokenCount || 0) * 0.0000003 + (data.usageMetadata?.candidatesTokenCount || 0) * 0.0000025);
+          const cost = ((data.usage?.input_tokens || 0) * 0.0000003 + (data.usage?.output_tokens || 0) * 0.0000025);
           addCost(cost);
         }
       } catch (_) {}
@@ -4491,7 +4480,7 @@ function renderRecalls() {
   }
   h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b style="font-size:16px">⚠️ Recall Check: ' + esc(selectedBrand) + '</b><span style="margin-left:12px;font-size:12px;color:var(--txt2)">' + recallExisting.length + ' in database</span></div>';
   h += '<div style="display:flex;gap:8px">';
-  if (!recallLoading) h += '<button class="btn btn-primary" onclick="scanRecalls(\'' + esc(selectedBrand).replace(/'/g, "\\'") + '\')">🔍 Check Recalls</button>';
+  if (!recallLoading) h += '<button class="btn btn-primary" onclick="scanRecalls(\'' + esc(selectedBrand).replace(/'/g, "\'") + '\')">🔍 Check Recalls</button>';
   if (recallResults.filter(r => r.status !== 'saved').length > 0)
     h += '<button class="btn btn-primary" style="background:var(--green)" onclick="saveAllRecalls()">💾 Save All (' + recallResults.filter(r => r.status !== 'saved').length + ')</button>';
   h += '</div></div>';
