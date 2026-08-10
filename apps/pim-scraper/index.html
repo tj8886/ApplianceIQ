@@ -1793,8 +1793,8 @@ function renderRDDiscover(retailers) {
   h+='<div style="font-size:11px;font-weight:600;color:var(--txt2);margin-bottom:6px">OR QUICK PICK</div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">';
   h+='<div class="field"><label>Retailer</label><select onchange="window.S.rdSelectRetailer(this.value);window.S.rdBuildQuickUrl()" style="min-width:180px"><option value="">— pick —</option>';
-  for(const r of retailers.filter(r=>r.search_url_template)){
-    h+='<option value="'+esc(r.retailer_name)+'" '+(rdSelectedRetailer===r.retailer_name?'selected':'')+'>'+esc(r.retailer_name)+'</option>';
+  for(const r of retailers.filter(r=>r.search_url_template||r.is_shopify)){
+    h+='<option value="'+esc(r.retailer_name)+'" '+(rdSelectedRetailer===r.retailer_name?'selected':'')+'>'+(r.is_shopify?'🛒 ':'')+esc(r.retailer_name)+'</option>';
   }
   h+='</select></div>';
   h+='<div class="field"><label>Category</label><select id="rdCatSelect" onchange="window.S.rdSetCrawlCat(this.value);window.S.rdBuildQuickUrl()" style="min-width:160px"><option value="">— all categories —</option>';
