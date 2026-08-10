@@ -2823,6 +2823,39 @@ window.S = {
           const brand=p.vendor||'';
           brandSet.add(brand);
 
+          // ── Detect product condition from tags and title ──
+          const tagStr=(p.tags||[]).join(' ').toLowerCase();
+          const titleLower=(p.title||'').toLowerCase();
+          const combined=tagStr+' '+titleLower;
+          let condition='new';
+          let is_discontinued=false, is_clearance=false, is_floor_model=false;
+          let is_open_box=false, is_scratch_dent=false, is_refurbished=false;
+          // Discontinued
+          if(tagStr.includes('disco')||combined.includes('discontinued')||combined.includes('end of life')){
+            is_discontinued=true;
+          }
+          // Floor model / display
+          if(combined.includes('floor model')||combined.includes('display model')||tagStr.includes('floor_model')){
+            condition='floor_model';is_floor_model=true;
+          }
+          // Clearance
+          if(combined.includes('clearance')||tagStr.includes('clearance')){
+            is_clearance=true;
+            if(condition==='new')condition='clearance';
+          }
+          // Open box
+          if(combined.includes('open box')||combined.includes('open-box')||combined.includes('openbox')){
+            condition='open_box';is_open_box=true;
+          }
+          // Scratch & dent
+          if(combined.includes('scratch')&&combined.includes('dent')||combined.includes('scratch_dent')||combined.includes('scratch and dent')){
+            condition='scratch_dent';is_scratch_dent=true;
+          }
+          // Refurbished
+          if(combined.includes('refurbish')||combined.includes('recondition')){
+            condition='refurbished';is_refurbished=true;
+          }
+
           rdDiscoveryResults.push({
             model:model,
             retailer_sku:sku||null,
@@ -2831,11 +2864,16 @@ window.S = {
             category:normalizeShopifyCategory(p.product_type)||p.product_type||'uncategorized',
             price:price,
             regular_price:(comparePrice&&comparePrice>price)?comparePrice:null,
-            on_sale:!!(comparePrice&&comparePrice>price),
+            on_sale:!!(comparePrice&&comparePrice>price)||is_clearance,
             in_stock:v.available!==false,
             product_url:baseUrl+'/products/'+p.handle,
-            condition:'new',
-            is_discontinued:false,
+            condition:condition,
+            is_discontinued:is_discontinued,
+            is_clearance:is_clearance,
+            is_floor_model:is_floor_model,
+            is_open_box:is_open_box,
+            is_scratch_dent:is_scratch_dent,
+            is_refurbished:is_refurbished,
             is_exclusive:false,
             retailer_name:rdSelectedRetailer,
             country:psMarket,
@@ -2935,6 +2973,12 @@ window.S = {
       for(const r of rdDiscoveryResults){
         if(!r.price)continue;
         const pim=pimMap.get(r.model.toUpperCase());
+        const condNorm=r.condition==='new'?'new':
+          r.condition==='open_box'?'open_box_excellent':
+          r.condition==='floor_model'?'floor_model':
+          r.condition==='scratch_dent'?'scratch_dent':
+          r.condition==='refurbished'?'refurbished':
+          r.condition==='clearance'?'new':'new';
         priceRecs.push({
           product_id:pim?.id||null,
           brand_name:r.brand_name, model:r.model,
@@ -2943,14 +2987,20 @@ window.S = {
           product_url:r.product_url,
           price:r.price,
           regular_price:r.regular_price||null,
-          on_sale:r.on_sale||false,
+          on_sale:r.on_sale||r.is_clearance||false,
           in_stock:r.in_stock!==false,
           condition:r.condition||'new',
-          condition_normalized:'new',
+          condition_normalized:condNorm,
           listing_status:'active',
           price_currency:psMarket==='CA'?'CAD':'USD',
           country:r.country||psMarket,
           retailer_sku:r.retailer_sku||null,
+          is_open_box:r.is_open_box||false,
+          is_clearance:r.is_clearance||false,
+          is_floor_model:r.is_floor_model||false,
+          is_scratch_dent:r.is_scratch_dent||false,
+          is_refurbished:r.is_refurbished||false,
+          is_end_of_life:r.is_discontinued||false,
           checked_at:now,
           first_seen_at:now,
           last_seen_at:now
