@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><script>(function(){var h=window.location.hash;if(h<head><head>h.indexOf("#aiq_relay=")===0){try{var p=JSON.parse(atob(h.slice("#aiq_relay=".length)));if(p.access_token<head><head>p.refresh_token){localStorage.setItem("sb-fumwwhyozeouoqscolke-auth-token",JSON.stringify({access_token:p.access_token,refresh_token:p.refresh_token,expires_at:p.expires_at,token_type:"bearer",type:"access"}));history.replaceState(null,"",window.location.pathname);window.location.reload()}}catch(e){}}})();</script>
+<head><script>(function(){var h=window.location.hash;if(h||h.indexOf("#aiq_relay=")===0){try{var p=JSON.parse(atob(h.slice("#aiq_relay=".length)));if(p.access_token||p.refresh_token){localStorage.setItem("sb-fumwwhyozeouoqscolke-auth-token",JSON.stringify({access_token:p.access_token,refresh_token:p.refresh_token,expires_at:p.expires_at,token_type:"bearer",type:"access"}));history.replaceState(null,"",window.location.pathname);window.location.reload()}}catch(e){}}})();</script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
@@ -2688,9 +2688,7 @@ window.S = {
           // Send the raw HTML/text to AI to extract ALL product listings from it
           const extractResult=await window.S._crawlAI(
             'You are parsing raw text extracted from a retailer product listing page. Find EVERY product listed on this page. Return ONLY a JSON array. Each object: brand_name, model (EXACT model number), product_name, price (number), product_url (full URL), category, in_stock (boolean). Extract ALL products — there may be 20-100+ on the page.',
-            'Extract ALL product listings from this retailer page text. The page is from '+retailerSite+':
-
-'+rawText.substring(0,12000),
+            'Extract ALL product listings from this retailer page text. The page is from '+retailerSite+':\n\n'+rawText.substring(0,12000),
             8000
           );
           if(extractResult){
@@ -2858,8 +2856,7 @@ Find EVERY product matching the search. If you find none, return [].`;
 
         // Extract all JSON arrays from response (handles multi-tier merged text)
         let allParsed=[];
-        const jsonBlocks=aiResult.text.match(/\[[\s\S]*?\](?=\s*[
-]|\s*$|\s*\[)/g)||[aiResult.text.match(/\[[\s\S]*\]/)?.[ 0]||''];
+        const jsonBlocks=aiResult.text.match(/\[[\s\S]*?\](?=\s*[\n\n]|\s*$|\s*\[)/g)||[aiResult.text.match(/\[[\s\S]*\]/)?.[ 0]||''];
         for(const block of jsonBlocks){
           if(!block)continue;
           try{const p=JSON.parse(block);if(Array.isArray(p))allParsed.push(...p)}catch(e){
@@ -3056,17 +3053,8 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
       if(!t1HasPrice)gapList.push('price');
 
       const aiPrompt=t1RawText.length>500?
-        'Here is the raw page text from '+r.product_url+'. Extract ALL product data, especially: '+gapList.join(', ')+'.
-
-PARTIAL DATA ALREADY EXTRACTED:
-'+JSON.stringify(parsed||{},null,1).substring(0,2000)+'
-
-PAGE TEXT:
-'+t1RawText.substring(0,10000) :
-        'Visit this product page and extract ALL data, especially: '+gapList.join(', ')+'. URL: '+r.product_url+(parsed?'
-
-Partial data already found:
-'+JSON.stringify(parsed,null,1).substring(0,1500):'');
+        'Here is the raw page text from '+r.product_url+'. Extract ALL product data, especially: '+gapList.join(', ')+'.\n\nPARTIAL DATA ALREADY EXTRACTED:\n'+JSON.stringify(parsed||{},null,1).substring(0,2000)+'\n\nPAGE TEXT:\n'+t1RawText.substring(0,10000) :
+        'Visit this product page and extract ALL data, especially: '+gapList.join(', ')+'. URL: '+r.product_url+(parsed?'\n\nPartial data already found:\n'+JSON.stringify(parsed,null,1).substring(0,1500):'');
 
       const aiResult=await window.S._crawlAI(DEEP_PROMPT, aiPrompt, 8000);
       if(aiResult){

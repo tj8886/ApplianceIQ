@@ -965,8 +965,7 @@ async function onbCreateStore(){
 async function onbInviteTeam(){
   const raw=$('#onbEmails').value.trim();
   if(raw){
-    const emails=raw.split(/[
-,]+/).map(e=>e.trim().toLowerCase()).filter(e=>e.includes('@'));
+    const emails=raw.split(/[\n,]+/).map(e=>e.trim().toLowerCase()).filter(e=>e.includes('@'));
     for(const email of emails){
       const code=crypto.randomUUID().slice(0,8);
       await sb.from('org_invites').insert({organization_id:currentOrg.id,invited_email:email,invite_code:code,role:'member',invited_by:currentUser.id,status:'pending',expires_at:new Date(Date.now()+7*86400000).toISOString()});
@@ -1916,8 +1915,7 @@ async function renderSAAI(sid){
       return`${fmtHourLabel(Number(hr))}:${avgT}`;
     }).join(', ');
     return`${days[dow]}: ${hourSummaries}`;
-  }).join('
-');
+  }).join('\n');
 
   const repNames=Object.values(profiles);
 
@@ -1988,8 +1986,7 @@ Be specific with times and names. This is actionable — the manager will use th
       });
       if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(err.error?.message||'AI service error '+resp.status);}
       const data=await resp.json();
-      const text=data.content?.map(c=>c.text||'').join('
-')||'No response received.';
+      const text=data.content?.map(c=>c.text||'').join('\n')||'No response received.';
       resultEl.innerHTML=`<div class="sa-ai-result">${esc(text)}</div>`;
     }catch(e){
       resultEl.innerHTML=`<div class="sa-ai-result" style="border-color:var(--danger);color:var(--danger)">Error: ${esc(e.message)}</div>`;
