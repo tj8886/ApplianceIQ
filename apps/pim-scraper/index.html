@@ -2554,7 +2554,83 @@ window.S = {
     return result;
   },
 
-  // ── DISCOVER BRANDS: Find which brands a retailer carries (run once) ──
+  // ═══ SHOPIFY HELPERS — real data from Shopify API, no AI ═══
+  _isShopifyRetailer(retailerName){
+    const r=psRetailers.find(r=>r.retailer_name===retailerName);
+    return r?.is_shopify||false;
+  },
+  _getShopifyWebsite(retailerName){
+    const r=psRetailers.find(r=>r.retailer_name===retailerName);
+    return r?.website||null;
+  },
+  _isShopifyUrl(url){
+    if(!url)return false;
+    try{
+      const host=new URL(url).hostname.replace('www.','');
+      return psRetailers.some(r=>r.is_shopify&&r.website===host);
+    }catch(e){return false}
+  },
+  async _shopifyFetchProduct(website, handle){
+    try{
+      const ctrl=new AbortController();
+      const timer=setTimeout(()=>ctrl.abort(),10000);
+      const resp=await fetch('https://'+website+'/products/'+handle+'.json',{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0'}});
+      clearTimeout(timer);
+      if(!resp.ok)return null;
+      const d=await resp.json();
+      return d.product||null;
+    }catch(e){return null}
+  },
+  async _shopifySearchProduct(website, model){
+    // Search by iterating pages — try to find by SKU match
+    try{
+      const ctrl=new AbortController();
+      const timer=setTimeout(()=>ctrl.abort(),10000);
+      // Try Shopify search endpoint first
+      const resp=await fetch('https://'+website+'/search/suggest.json?q='+encodeURIComponent(model)+'&resources[type]=product&resources[limit]=5',{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0'}});
+      clearTimeout(timer);
+      if(resp.ok){
+        const d=await resp.json();
+        const products=d?.resources?.results?.products||[];
+        if(products.length>0){
+          // Fetch full product data for the first match
+          const full=await window.S._shopifyFetchProduct(website,products[0].handle);
+          if(full){
+            const v=(full.variants||[])[0];
+            if(v&&v.sku&&v.sku.toUpperCase()===model.toUpperCase())return full;
+            // Partial match — return anyway
+            return full;
+          }
+        }
+      }
+    }catch(e){}
+    return null;
+  },
+  _shopifyProductToListing(p, website){
+    if(!p)return null;
+    const v=(p.variants||[])[0];
+    if(!v)return null;
+    const price=parseFloat(v.price)||null;
+    const comparePrice=parseFloat(v.compare_at_price)||null;
+    return{
+      price:price,
+      regular_price:(comparePrice&&comparePrice>price)?comparePrice:null,
+      on_sale:!!(comparePrice&&comparePrice>price),
+      in_stock:v.available!==false,
+      condition:'new',
+      product_url:'https://'+website+'/products/'+p.handle,
+      brand_name:p.vendor||null,
+      model:v.sku||null,
+      product_name:p.title||null,
+      product_type:p.product_type||null,
+      images:(p.images||[]).map(i=>({url:i.src,type:'product'})),
+      description:p.body_html||null,
+      tags:p.tags||[],
+      shopify_id:p.id
+    };
+  },
+
+  // ── DISCOVER BRANDS: Find which brands a retailer carries ──
   async rdDiscoverBrands(){
     if(isProcessing||!rdSelectedRetailer)return;
     const retailer=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
@@ -2563,40 +2639,61 @@ window.S = {
     logEntry('🏷️ Discovering brands at '+rdSelectedRetailer+'…');
     scrapeProgress={current:0,total:1,label:'Brand Discovery'};renderTab();
 
-    const BRAND_PROMPT=`You are identifying which appliance brands a retailer carries. Search their website thoroughly. Return ONLY a JSON array of brand name strings. Include ALL brands they sell for major appliances (refrigerators, ranges, dishwashers, washers, dryers, cooktops, wall ovens, microwaves, range hoods, freezers). Return ONLY the JSON array of strings, nothing else. Example: ["Samsung","LG","GE","Whirlpool","Bosch"]`;
+    let brands=[];
 
-    const aiResult=await window.S._crawlAI(BRAND_PROMPT, 
-      'What appliance brands does '+retailer.website+' carry? Search '+retailer.website+' and list every major appliance brand they sell. Include all brands visible on their website.', 4000);
-    
-    if(aiResult){
-      const arrMatch=aiResult.text.match(/\[[\s\S]*?\]/);
-      if(arrMatch){
+    // ── SHOPIFY PATH: Pull real vendors from products.json ──
+    if(retailer.is_shopify){
+      logEntry('🛒 Shopify store detected — pulling real brand data from API');
+      const vendorSet=new Set();
+      let page=1;
+      while(page<=50&&!stopRequested){
         try{
-          const brands=JSON.parse(arrMatch[0]);
-          if(Array.isArray(brands)&&brands.length>0){
-            // Save to retailer_brand_pages
-            const recs=brands.filter(b=>typeof b==='string'&&b.trim()).map(b=>({
-              retailer_name:rdSelectedRetailer,
-              brand_name:b.trim(),
-              category:'all',
-              crawl_status:'discovered'
-            }));
-            const{data,error}=await sb.from('retailer_brand_pages')
-              .upsert(recs,{onConflict:'retailer_name,brand_name,category'}).select('id');
-            if(error)logEntry('Brand save err: '+error.message,'err');
-            else logEntry('✅ Found '+brands.length+' brands at '+rdSelectedRetailer+': '+brands.slice(0,10).join(', ')+(brands.length>10?' +'+( brands.length-10)+' more':''),'ok');
-            
-            // Check for new brands not in our catalog
-            for(const b of brands){
-              const exists=allBrands.some(ab=>ab.brand_name.toUpperCase()===b.trim().toUpperCase());
-              if(!exists){
-                logEntry('🆕 New brand discovered: '+b+' — adding to catalog');
-                const{data:nb}=await sb.from('brand_catalog').insert({brand_name:b.trim(),parent_company:b.trim()}).select('id,brand_name').single();
-                if(nb){allBrands.push(nb);document.getElementById('brandCount').textContent=allBrands.length}
-              }
-            }
-          }
-        }catch(e){logEntry('Brand parse err: '+e.message,'err')}
+          const ctrl=new AbortController();
+          const timer=setTimeout(()=>ctrl.abort(),10000);
+          const resp=await fetch('https://'+retailer.website+'/products.json?limit=250&page='+page,{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0'}});
+          clearTimeout(timer);
+          if(!resp.ok)break;
+          const d=await resp.json();
+          const products=d.products||[];
+          if(products.length===0)break;
+          for(const p of products){if(p.vendor)vendorSet.add(p.vendor)}
+          logEntry('Page '+page+': scanned '+products.length+' products ('+vendorSet.size+' brands so far)');
+          if(products.length<250)break;
+          page++;
+          await new Promise(r=>setTimeout(r,300));
+        }catch(e){logEntry('Page '+page+': '+(e.name==='AbortError'?'timeout':'err: '+e.message),'err');break}
+      }
+      brands=[...vendorSet].sort();
+      logEntry('✅ Found '+brands.length+' real brands at '+rdSelectedRetailer+': '+brands.slice(0,15).join(', ')+(brands.length>15?' +'+( brands.length-15)+' more':''),'ok');
+    } else {
+      // ── NON-SHOPIFY: Use AI (less reliable) ──
+      const BRAND_PROMPT=`You are identifying which appliance brands a retailer carries. Search their website thoroughly. Return ONLY a JSON array of brand name strings. Include ALL brands they sell for major appliances (refrigerators, ranges, dishwashers, washers, dryers, cooktops, wall ovens, microwaves, range hoods, freezers). Return ONLY the JSON array of strings, nothing else. Example: ["Samsung","LG","GE","Whirlpool","Bosch"]`;
+      const aiResult=await window.S._crawlAI(BRAND_PROMPT, 
+        'What appliance brands does '+retailer.website+' carry? Search '+retailer.website+' and list every major appliance brand they sell.', 4000);
+      if(aiResult){
+        const arrMatch=aiResult.text.match(/\[[\s\S]*?\]/);
+        if(arrMatch){try{const parsed=JSON.parse(arrMatch[0]);if(Array.isArray(parsed))brands=parsed.filter(b=>typeof b==='string'&&b.trim()).map(b=>b.trim())}catch(e){logEntry('Parse err: '+e.message,'err')}}
+      }
+      if(brands.length>0)logEntry('Found '+brands.length+' brands (AI-sourced — verify manually): '+brands.slice(0,10).join(', '),'ok');
+    }
+
+    // Save brands
+    if(brands.length>0){
+      const recs=brands.map(b=>({
+        retailer_name:rdSelectedRetailer, brand_name:b,
+        category:'all', crawl_status:retailer.is_shopify?'shopify_confirmed':'discovered'
+      }));
+      const{error}=await sb.from('retailer_brand_pages').upsert(recs,{onConflict:'retailer_name,brand_name,category'}).select('id');
+      if(error)logEntry('Brand save err: '+error.message,'err');
+
+      // Add new brands to catalog
+      for(const b of brands){
+        const exists=allBrands.some(ab=>ab.brand_name.toUpperCase()===b.toUpperCase());
+        if(!exists){
+          logEntry('🆕 New brand: '+b+' — adding to catalog');
+          const{data:nb}=await sb.from('brand_catalog').insert({brand_name:b,parent_company:b}).select('id,brand_name').single();
+          if(nb){allBrands.push(nb);document.getElementById('brandCount').textContent=allBrands.length}
+        }
       }
     }
     isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};renderTab();
@@ -2807,6 +2904,12 @@ window.S = {
   // ── CRAWL ALL CATEGORIES at one retailer ──
   async rdCrawlAllCategories(){
     if(isProcessing||!rdSelectedRetailer)return;
+    // Shopify stores: just do one Shopify crawl — gets everything
+    const ret=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
+    if(ret?.is_shopify){
+      logEntry('🛒 Shopify store — running Shopify Crawl (gets all categories in one pass)');
+      return await window.S.rdShopifyCrawl();
+    }
     const allCats=['refrigerators','ranges','dishwashers','washers','dryers','microwaves','range hoods','cooktops','wall ovens','freezers'];
     logEntry('🚀 FULL CRAWL: '+rdSelectedRetailer+' — '+allCats.length+' categories');
     
@@ -2838,6 +2941,15 @@ window.S = {
   async rdCategoryCrawl(){
     if(isProcessing)return;
     if(!currentSession){logEntry('Please sign in to use AI features','err');return}
+
+    // Shopify stores: redirect to Shopify crawl
+    if(rdSelectedRetailer){
+      const ret=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
+      if(ret?.is_shopify){
+        logEntry('🛒 Shopify store detected — using Shopify API crawl');
+        return await window.S.rdShopifyCrawl();
+      }
+    }
 
     // Determine retailer from URL or selection
     let retailerName=rdSelectedRetailer||'';
@@ -3067,6 +3179,48 @@ window.S = {
     if(!r||r._deepScraped||!r.product_url)return;
 
     logEntry('🔬 Deep scraping '+r.model+' at '+r.product_url+'…');
+
+    // ── SHOPIFY PATH: Direct API fetch — instant, real data ──
+    if(window.S._isShopifyUrl(r.product_url)){
+      try{
+        const urlObj=new URL(r.product_url);
+        const handle=urlObj.pathname.split('/products/')[1]?.split('?')[0]?.split('#')[0];
+        if(handle){
+          const website=urlObj.hostname.replace('www.','');
+          logEntry('🛒 Shopify product — fetching via API');
+          const sp=await window.S._shopifyFetchProduct(website,handle);
+          if(sp){
+            const v=(sp.variants||[])[0]||{};
+            const price=parseFloat(v.price)||null;
+            const comparePrice=parseFloat(v.compare_at_price)||null;
+            r._deepScraped=true;
+            r._description=sp.body_html||null;
+            r._images=(sp.images||[]).map(i=>({url:i.src,type:'product'}));
+            r._features=[];
+            r._docs=[];
+            r._alsoViewed=[];
+            r._bundles=[];
+            r._specs={sku:v.sku||null,weight:sp.variants?.[0]?.grams?sp.variants[0].grams+'g':null,product_type:sp.product_type||null,tags:(sp.tags||[]).join(', ')};
+            r._shopify_data=sp;
+            if(price)r.price=price;
+            if(comparePrice&&comparePrice>price)r.regular_price=comparePrice;
+            if(sp.title)r.product_name=sp.title;
+            if(sp.vendor)r.brand_name=sp.vendor;
+            if(r._saved){
+              await sb.from('retailer_discovered_products').update({
+                price:r.price,regular_price:r.regular_price||null,
+                last_verified:new Date().toISOString()
+              }).eq('retailer_name',r.retailer_name).eq('model',r.model).eq('country',r.country||'CA');
+            }
+            logEntry('Shopify ✓ '+r.model+': '+(r.price?'$'+r.price+' ':'')+r._images.length+' images','ok');
+            renderTab();
+            return;
+          }
+        }
+      }catch(e){logEntry('Shopify fetch err: '+e.message+' — falling back','err')}
+    }
+
+    // ── NON-SHOPIFY: Standard free-extract + AI deep scrape ──
 
     const DEEP_PROMPT=`You are scraping a product detail page on a retailer website. Extract EVERYTHING available. Return ONLY a JSON object with:
 - brand_name, model, product_name
@@ -3734,8 +3888,27 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
 
       let listing=null;let tierUsed=1;let cost=0;
 
+      // ── SHOPIFY PATH: Direct API price lookup ──
+      if(retailer.is_shopify&&cp.product_url){
+        try{
+          const urlObj=new URL(cp.product_url);
+          const handle=urlObj.pathname.split('/products/')[1]?.split('?')[0]?.split('#')[0];
+          if(handle){
+            const sp=await window.S._shopifyFetchProduct(retailer.website,handle);
+            if(sp){
+              const sl=window.S._shopifyProductToListing(sp,retailer.website);
+              if(sl&&sl.price){
+                listing={price:sl.price,regular_price:sl.regular_price,on_sale:sl.on_sale,in_stock:sl.in_stock,condition:'new',product_url:sl.product_url};
+                tierUsed=0;
+                logEntry('🛒 Shopify: $'+sl.price+(sl.on_sale?' (sale)':'')+(sl.in_stock?'':' OUT OF STOCK'),'ok');
+              }
+            }
+          }
+        }catch(e){logEntry('Shopify price err: '+e.message,'err')}
+      }
+
       // If we have a product URL, try fetching it directly first
-      if(cp.product_url){
+      if(!listing&&cp.product_url){
         const t1=await callTier1({url:cp.product_url});
         if(t1&&(t1.msrp||t1.price)){
           listing={price:t1.price||t1.msrp,regular_price:t1.regular_price||null,on_sale:!!t1.on_sale,in_stock:t1.in_stock!==false,condition:t1.condition||null,product_url:cp.product_url};
