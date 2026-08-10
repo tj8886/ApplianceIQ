@@ -2821,7 +2821,7 @@ window.S = {
             _shopify_id:p.id,
             _shopify_type:p.product_type,
             _shopify_tags:p.tags,
-            _shopify_images:(p.images||[]).map(i=>i.src),
+            _images:(p.images||[]).map((i,idx)=>({url:i.src,type:idx===0?'front':'product'})),
             _specs:null,_docs:null,_images:null,_features:null,
             _alsoViewed:null,_bundles:null,_description:p.body_html||null
           });
@@ -3530,7 +3530,7 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
       is_retailer_exclusive:!!r.is_exclusive,
       exclusive_retailer:r.is_exclusive?r.retailer_name:null,
       discovered_via:'retailer_crawl',
-      retailer_description:d.long_description||null,
+      retailer_description:d.long_description||r._description||null,
       bundle_skus:d.bundle_models||null,
       public_visible:true, approval_status:'approved'
     };
