@@ -1794,7 +1794,7 @@ function renderRDDiscover(retailers) {
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">';
   h+='<div class="field"><label>Retailer</label><select onchange="window.S.rdSelectRetailer(this.value);window.S.rdBuildQuickUrl()" style="min-width:180px"><option value="">— pick —</option>';
   for(const r of retailers.filter(r=>r.search_url_template||r.is_shopify)){
-    h+='<option value="'+esc(r.retailer_name)+'" '+(rdSelectedRetailer===r.retailer_name?'selected':'')+'>'+(r.is_shopify?'🛒 ':'')+esc(r.retailer_name)+'</option>';
+    h+='<option value="'+esc(r.retailer_name)+'" '+(rdSelectedRetailer===r.retailer_name?'selected':'')+'>'+(r.is_shopify?'\u{1F6D2} ':'')+(r.retailer_type==='manufacturer'?'\u{1F3ED} ':'')+esc(r.retailer_name)+'</option>';
   }
   h+='</select></div>';
   h+='<div class="field"><label>Category</label><select id="rdCatSelect" onchange="window.S.rdSetCrawlCat(this.value);window.S.rdBuildQuickUrl()" style="min-width:160px"><option value="">— all categories —</option>';
@@ -3040,7 +3040,7 @@ window.S = {
               image_type:i===0?'hero':'product',
               slot_key:i===0?'hero_front':null,
               file_url:img.url, alt_text:r.brand_name+' '+r.model,
-              display_order:i, source:'shopify_crawl', source_priority:2,
+              display_order:i, source:retailer.retailer_type==='manufacturer'?'manufacturer':'shopify_crawl', source_priority:retailer.retailer_type==='manufacturer'?1:2,
               approved:false, needs_classification:i>0
             }));
             if(imgRecs.length){
