@@ -225,7 +225,7 @@ header .right{display:flex;align-items:center;gap:12px}
     <div class="logo">Appliance<span>IQ</span> PIM Scraper <span style="font-size:10px;opacity:.5;margin-left:4px">v4.0</span></div>
     <div class="right">
       <div class="cost-pill">Session: <span class="val" id="sessionCost">$0.00</span></div>
-      <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span></div>
+      <div class="cost-pill">Brands: <span class="val" id="brandCount">…</span> <button id="reloadBrandsBtn" onclick="loadBrands()" style="display:none;background:none;border:none;color:#fbbf24;cursor:pointer;font-size:11px;padding:0 2px" title="Reload brands">↻</button></div>
       <div id="processingBadge" style="display:none"></div>
       <button onclick="sb.auth.signOut().then(()=>{location.reload()})" style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer" title="Sign out">Sign Out</button>
     </div>
@@ -2731,9 +2731,24 @@ window.S = {
         brandsToSweep=retailerBrands;
         logEntry('Using '+retailerBrands.length+' known brands for '+retailerName);
       } else {
+        // Resilience: if allBrands is empty, re-fetch from database
+        if(allBrands.length===0){
+          logEntry('⏳ Brand catalog empty — reloading from database…');
+          const{data:reloadBc,error:reloadErr}=await sb.from('brand_catalog').select('id,brand_name,parent_company').order('brand_name');
+          if(reloadErr)logEntry('Brand reload error: '+reloadErr.message,'err');
+          if(reloadBc&&reloadBc.length>0){
+            allBrands=reloadBc;
+            document.getElementById('brandCount').textContent=allBrands.length;
+            logEntry('✅ Reloaded '+allBrands.length+' brands from catalog','ok');
+          }
+        }
         // Not yet discovered — use all brands from catalog
         brandsToSweep=allBrands.map(b=>b.brand_name).filter(Boolean);
-        logEntry('⚠️ Brands not yet discovered for '+retailerName+' — using all '+brandsToSweep.length+' brands (run 🏷️ Discover Brands first for speed)');
+        if(brandsToSweep.length===0){
+          logEntry('❌ No brands available. Run 🏷️ Discover Brands first, or check that brand_catalog has data.','err');
+        } else {
+          logEntry('⚠️ Brands not yet discovered for '+retailerName+' — using all '+brandsToSweep.length+' brands (run 🏷️ Discover Brands first for speed)');
+        }
       }
     }
 
@@ -4093,8 +4108,16 @@ async function loadDashboard(){
 async function loadBrands(){
   try{
     const{data:bc,error:e1}=await sb.from('brand_catalog').select('id,brand_name,parent_company').order('brand_name');
-    if(e1)console.error('brand_catalog:',e1);
+    if(e1){console.error('brand_catalog:',e1);logEntry&&logEntry('⚠️ brand_catalog load error: '+e1.message,'err')}
     allBrands=bc||[];
+    if(allBrands.length===0){
+      console.warn('brand_catalog returned 0 rows — retrying in 2s…');
+      await new Promise(r=>setTimeout(r,2000));
+      const{data:bc2,error:e1b}=await sb.from('brand_catalog').select('id,brand_name,parent_company').order('brand_name');
+      if(e1b)console.error('brand_catalog retry:',e1b);
+      if(bc2&&bc2.length>0){allBrands=bc2;console.log('brand_catalog retry: got '+allBrands.length+' brands')}
+      else{console.error('brand_catalog retry still 0 — check browser console for errors')}
+    }
 
     const{data:sbs,error:e2}=await sb.from('scraper_brand_sources').select('brand_name,parent_company,scrape_tier,server_fetchable,has_json_ld,has_spec_tables,bot_protection,url_pattern,url_pattern_type,sitemap_url,sells_direct');
     if(e2)console.error('scraper_brand_sources:',e2);
@@ -4115,6 +4138,8 @@ async function loadBrands(){
     }
 
     document.getElementById('brandCount').textContent=allBrands.length;
+    const rlBtn=document.getElementById('reloadBrandsBtn');
+    if(rlBtn)rlBtn.style.display=allBrands.length===0?'inline':'none';
     loadDashboard().then(()=>renderTab());
     renderTab();
   }catch(err){
