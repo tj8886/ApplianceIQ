@@ -2702,94 +2702,10 @@ window.S = {
       }catch(e){logEntry('Phase 1: '+(e.name==='AbortError'?'timeout (15s)':'fetch err: '+e.message)+', falling back to AI search','err')}
     }
 
-    // ── PHASE 2: Build comprehensive search targets ──
-    // ALWAYS runs — brand sweep finds products the HTML phase misses
-    const searchTargets=[];
+    // ── PHASE 2: REMOVED — AI cannot browse retailer websites ──
+    // AI models hallucinate product listings when asked to "search" sites they can't access.
+    // Only Phase 1 (real HTML from real pages) produces trustworthy data.
     const cat=rdCrawlCat||'appliances';
-    const siteForSearch=retailerSite||((crawlUrl)?(new URL(crawlUrl)).hostname.replace('www.',''):'');
-
-    // Sub-category maps per category for thorough sweeps
-    const subCatMap={
-      'refrigerators':['french door','side by side','top freezer','bottom freezer','counter depth','mini fridge','freezerless'],
-      'ranges':['gas freestanding','electric freestanding','gas slide-in','electric slide-in','induction','dual fuel','double oven'],
-      'dishwashers':['built-in','portable','drawer','slimline','countertop','18 inch','24 inch'],
-      'washers':['front load','top load','portable','all-in-one','compact'],
-      'dryers':['electric','gas','compact','ventless','heat pump'],
-      'microwaves':['over-the-range','countertop','built-in','drawer'],
-      'cooktops':['gas','electric','induction','modular','downdraft'],
-      'wall ovens':['single','double','combination','convection','steam'],
-      'range hoods':['under-cabinet','wall mount','island','downdraft','insert'],
-      'freezers':['upright','chest','compact','garage ready'],
-    };
-    const subCats=subCatMap[cat]||['standard'];
-
-    // Get brands to sweep — use retailer-specific brands if discovered, else all
-    let brandsToSweep=[];
-    if(selectedBrand){
-      brandsToSweep=[selectedBrand];
-    } else {
-      // Check if we've discovered this retailer's brands
-      const retailerBrands=await window.S._getRetailerBrands(retailerName);
-      if(retailerBrands){
-        brandsToSweep=retailerBrands;
-        logEntry('Using '+retailerBrands.length+' known brands for '+retailerName);
-      } else {
-        // Resilience: if allBrands is empty, re-fetch from database
-        if(allBrands.length===0){
-          logEntry('⏳ Brand catalog empty — reloading from database…');
-          const{data:reloadBc,error:reloadErr}=await sb.from('brand_catalog').select('id,brand_name,parent_company').order('brand_name');
-          if(reloadErr)logEntry('Brand reload error: '+reloadErr.message,'err');
-          if(reloadBc&&reloadBc.length>0){
-            allBrands=reloadBc;
-            document.getElementById('brandCount').textContent=allBrands.length;
-            logEntry('✅ Reloaded '+allBrands.length+' brands from catalog','ok');
-          }
-        }
-        // Not yet discovered — use all brands from catalog
-        brandsToSweep=allBrands.map(b=>b.brand_name).filter(Boolean);
-        if(brandsToSweep.length===0){
-          logEntry('❌ No brands available. Run 🏷️ Discover Brands first, or check that brand_catalog has data.','err');
-        } else {
-          logEntry('⚠️ Brands not yet discovered for '+retailerName+' — using all '+brandsToSweep.length+' brands (run 🏷️ Discover Brands first for speed)');
-        }
-      }
-    }
-
-    // Build targets: each brand × category (main), then brand × sub-categories
-    for(const brand of brandsToSweep){
-      searchTargets.push({
-        query:'Search '+siteForSearch+' for ALL '+brand+' '+cat+'. List every product with exact model number, price, and full product page URL. Find as many as possible.',
-        label:brand+' '+cat, brand
-      });
-    }
-    // Add sub-category sweeps for the selected brand (or top 5 brands) to catch more
-    const deepSweepBrands=selectedBrand?[selectedBrand]:brandsToSweep.slice(0,8);
-    for(const brand of deepSweepBrands){
-      for(const sc of subCats){
-        searchTargets.push({
-          query:'Search '+siteForSearch+' for '+brand+' '+sc+' '+cat+'. Find ALL models with model numbers, prices, and product URLs.',
-          label:brand+' '+sc, brand, isSubCat:true
-        });
-      }
-    }
-
-    logEntry('Phase 2: '+searchTargets.length+' search passes planned ('+brandsToSweep.length+' brands × '+cat+')');
-    scrapeProgress={current:0,total:searchTargets.length+(htmlProducts.length>0?1:0),label:'Searching'};
-    renderTab();
-
-    const LISTING_PROMPT=`You are searching a retailer's website to find appliance products. Return ONLY a JSON array. Each object MUST have:
-- brand_name (string)
-- model (string — the EXACT alphanumeric model number like "JBS86SPSS" or "NE63A6511SS")
-- product_name (string — full name)
-- price (number — selling price, no $ sign)
-- regular_price (number or null)
-- product_url (string — FULL URL on the retailer site)
-- category (string)
-- in_stock (boolean)
-- is_discontinued (boolean)
-- is_exclusive (boolean)
-
-Find EVERY product matching the search. If you find none, return [].`;
 
     // Load PIM models for matching
     let allPimModels=new Set();
@@ -2812,7 +2728,6 @@ Find EVERY product matching the search. If you find none, return [].`;
         if(existingModels.has(mk))continue;
         existingModels.add(mk);
         const inPim=allPimModels.has(mk);
-        // Track new brands discovered during crawl
         if(p.brand_name&&!allBrands.some(b=>b.brand_name.toUpperCase()===p.brand_name.toUpperCase())){
           newBrandsFound.add(p.brand_name);
         }
@@ -2831,7 +2746,6 @@ Find EVERY product matching the search. If you find none, return [].`;
         });
         added++;
       }
-      // Auto-add newly discovered brands to catalog + retailer brand list
       for(const nb of newBrandsFound){
         logEntry('🆕 New brand: '+nb+' — adding to catalog & retailer');
         sb.from('brand_catalog').insert({brand_name:nb,parent_company:nb}).select('id,brand_name').single().then(({data})=>{if(data){allBrands.push(data);document.getElementById('brandCount').textContent=allBrands.length}});
@@ -2841,56 +2755,14 @@ Find EVERY product matching the search. If you find none, return [].`;
       return added;
     };
 
-    // First, add any products from HTML phase
+    // Add products from HTML phase (the ONLY source of real data)
     if(htmlProducts.length>0){
       addProducts(htmlProducts,'HTML extract');
       renderTab();
     }
 
-    // Run AI search passes
-    let consecutiveEmpty=0;
-    for(let ti=0;ti<searchTargets.length;ti++){
-      if(stopRequested)break;
-      // Skip sub-category passes if main pass for that brand found 0 products
-      // (brand likely not carried by this retailer)
-      const target=searchTargets[ti];
-      if(target.isSubCat){
-        const mainResults=rdDiscoveryResults.filter(r=>(r.brand_name||'').toUpperCase()===(target.brand||'').toUpperCase());
-        if(mainResults.length===0){continue} // skip sub-cats if brand not found at all
-      }
-
-      scrapeProgress.current=ti+1;scrapeProgress.total=searchTargets.length;updateHeaderProgress();
-
-      // For follow-up passes, tell AI which models we already found
-      let searchInstruction=target.query;
-      const existingForBrand=rdDiscoveryResults.filter(r=>(r.brand_name||'').toUpperCase()===(target.brand||'').toUpperCase()).map(r=>r.model);
-      if(existingForBrand.length>0&&target.isSubCat){
-        searchInstruction+=' I already found: '+existingForBrand.join(', ')+'. Find ADDITIONAL models.';
-      }
-
-      try{
-        const aiResult=await window.S._crawlAI(LISTING_PROMPT, searchInstruction, 8000);
-        if(!aiResult){consecutiveEmpty++;continue}
-
-        // Extract all JSON arrays from response (handles multi-tier merged text)
-        let allParsed=[];
-        const jsonBlocks=aiResult.text.match(/\[[\s\S]*?\](?=\s*[\n\n]|\s*$|\s*\[)/g)||[aiResult.text.match(/\[[\s\S]*\]/)?.[ 0]||''];
-        for(const block of jsonBlocks){
-          if(!block)continue;
-          try{const p=JSON.parse(block);if(Array.isArray(p))allParsed.push(...p)}catch(e){
-            // Try cleaning common issues
-            try{const clean=block.replace(/,\s*\]/g,']').replace(/,\s*,/g,',');const p2=JSON.parse(clean);if(Array.isArray(p2))allParsed.push(...p2)}catch(e2){}
-          }
-        }
-        if(allParsed.length>0){
-              const added=addProducts(allParsed,target.label);
-              if(added===0)consecutiveEmpty++;
-              else consecutiveEmpty=0;
-        } else {consecutiveEmpty++}
-      }catch(e){logEntry('Err: '+e.message,'err');consecutiveEmpty++}
-      renderTab();
-      // Adaptive delay — shorter if finding products, longer if not
-      await new Promise(r=>setTimeout(r,consecutiveEmpty>3?500:1200));
+    if(rdDiscoveryResults.length===0){
+      logEntry('⚠️ No products extracted — this retailer\'s page is JS-rendered and cannot be scraped via HTTP fetch. A headless browser (Puppeteer/Playwright) would be needed to crawl this site.','err');
     }
 
     // ── AUTO-SAVE all discovered products to catalog ──
