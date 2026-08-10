@@ -2790,10 +2790,25 @@ window.S = {
           if(!v)continue;
 
           const sku=v.sku||'';
-          // Extract real manufacturer model from title (always the last word)
-          // Title format: "Brand-Color-Type REALMODEL" or just "REALMODEL"
-          const titleWords=(p.title||'').trim().split(/\s+/);
-          const realModel=titleWords.length>0?titleWords[titleWords.length-1]:'';
+          // Extract real manufacturer model from title
+          // Pattern 1: "Brand-Color-Type REALMODEL" (Appliance Canada) → last word
+          // Pattern 2: "Brand description (REALMODEL) - Color" (Dufresne) → in parens
+          // Pattern 3: "REALMODEL" (single word title) → the whole title
+          const title=(p.title||'').trim();
+          let realModel='';
+          // Try parentheses first — most reliable when present
+          const parenMatch=title.match(/\(\s*([A-Za-z0-9][A-Za-z0-9/._-]{4,})\s*\)(?:\s*-|$)/);
+          // Also try unclosed paren at end like "(MODEL"
+          const openParenMatch=!parenMatch&&title.match(/\(\s*([A-Za-z0-9][A-Za-z0-9/._-]{4,})$/);
+          if(parenMatch&&/\d/.test(parenMatch[1])){
+            realModel=parenMatch[1].trim();
+          } else if(openParenMatch&&/\d/.test(openParenMatch[1])){
+            realModel=openParenMatch[1].trim();
+          } else {
+            // Fallback: last word of title
+            const words=title.split(/\s+/);
+            realModel=words.length>0?words[words.length-1]:'';
+          }
           const model=realModel||sku||p.handle||'';
           if(!model)continue;
           const mk=model.toUpperCase();
