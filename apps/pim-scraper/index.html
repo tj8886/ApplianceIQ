@@ -2871,9 +2871,9 @@ window.S = {
     logEntry('📊 '+totalFetched+' total products scanned, '+totalAppliances+' appliances found, '+brandSet.size+' brands');
     logEntry('🏷️ Brands: '+[...brandSet].sort().join(', '));
 
-    // Auto-save to retailer_discovered_products
     if(rdDiscoveryResults.length>0){
-      logEntry('💾 Saving '+rdDiscoveryResults.length+' products to catalog…');
+      // ── STEP 1: Save to retailer_discovered_products ──
+      logEntry('💾 Step 1/4: Saving '+rdDiscoveryResults.length+' products to retailer catalog…');
       const recs=rdDiscoveryResults.filter(r=>r.model).map(r=>({
         retailer_name:r.retailer_name, brand_name:r.brand_name, model:r.model, retailer_sku:r.retailer_sku||null,
         product_name:r.product_name, product_url:r.product_url, category:r.category,
@@ -2884,14 +2884,122 @@ window.S = {
       }));
       for(let ci=0;ci<recs.length;ci+=50){
         const chunk=recs.slice(ci,ci+50);
-        const{data,error}=await sb.from('retailer_discovered_products')
+        const{error}=await sb.from('retailer_discovered_products')
           .upsert(chunk,{onConflict:'retailer_name,brand_name,model,condition,country'}).select('id');
         if(error)logEntry('Save err: '+error.message,'err');
       }
       for(const r of rdDiscoveryResults)r._saved=true;
-      logEntry('✅ '+rdDiscoveryResults.length+' real products saved to catalog','ok');
+      logEntry('✅ '+rdDiscoveryResults.length+' products saved to retailer catalog','ok');
 
-      // Save brand discovery
+      // ── STEP 2: Link to PIM — match discovered products to aiq_products ──
+      logEntry('🔗 Step 2/4: Linking to PIM products…');
+      const matchedModels=rdDiscoveryResults.filter(r=>r._pimMatch).map(r=>r.model.toUpperCase());
+      // Batch-fetch PIM product IDs for all matched models
+      let pimMap=new Map(); // model -> {id, brand_name}
+      if(matchedModels.length>0){
+        for(let bi=0;bi<matchedModels.length;bi+=100){
+          const batch=matchedModels.slice(bi,bi+100);
+          const{data:pimProducts}=await sb.from('aiq_products')
+            .select('id,model,brand_name').eq('status','active')
+            .in('model',batch.map(m=>{
+              // Try both upper and original case
+              const orig=rdDiscoveryResults.find(r=>r.model.toUpperCase()===m);
+              return orig?orig.model:m;
+            }));
+          if(pimProducts){
+            for(const p of pimProducts)pimMap.set(p.model.toUpperCase(),{id:p.id,brand_name:p.brand_name});
+          }
+        }
+        logEntry('Matched '+pimMap.size+' PIM products by model');
+
+        // Update retailer_discovered_products with aiq_product_id
+        let linkedCount=0;
+        for(const r of rdDiscoveryResults){
+          const pim=pimMap.get(r.model.toUpperCase());
+          if(pim){
+            await sb.from('retailer_discovered_products').update({aiq_product_id:pim.id})
+              .eq('retailer_name',r.retailer_name).eq('model',r.model)
+              .eq('condition',r.condition||'new').eq('country',r.country||psMarket);
+            linkedCount++;
+          }
+        }
+        logEntry('✅ '+linkedCount+' products linked to PIM','ok');
+      }
+
+      // ── STEP 3: Write to pim_retailer_prices for matched products ──
+      logEntry('💰 Step 3/4: Writing prices to price tracking…');
+      let priceCount=0;
+      const now=new Date().toISOString();
+      const retailerWebsite=retailer.website;
+      const priceRecs=[];
+      for(const r of rdDiscoveryResults){
+        if(!r.price)continue;
+        const pim=pimMap.get(r.model.toUpperCase());
+        priceRecs.push({
+          product_id:pim?.id||null,
+          brand_name:r.brand_name, model:r.model,
+          retailer_name:r.retailer_name,
+          retailer_url:retailerWebsite,
+          product_url:r.product_url,
+          price:r.price,
+          regular_price:r.regular_price||null,
+          on_sale:r.on_sale||false,
+          in_stock:r.in_stock!==false,
+          condition:r.condition||'new',
+          condition_normalized:'new',
+          listing_status:'active',
+          price_currency:psMarket==='CA'?'CAD':'USD',
+          country:r.country||psMarket,
+          retailer_sku:r.retailer_sku||null,
+          checked_at:now,
+          first_seen_at:now,
+          last_seen_at:now
+        });
+      }
+      // Batch upsert prices
+      for(let ci=0;ci<priceRecs.length;ci+=50){
+        if(stopRequested)break;
+        const chunk=priceRecs.slice(ci,ci+50);
+        const{error}=await sb.from('pim_retailer_prices')
+          .upsert(chunk,{onConflict:'brand_name,model,retailer_name,condition_normalized'}).select('id');
+        if(error&&!error.message.includes('duplicate'))logEntry('Price save err: '+error.message,'err');
+        else priceCount+=chunk.length;
+        if(ci%500===0&&ci>0)logEntry('  …'+priceCount+' prices written');
+      }
+      logEntry('✅ '+priceCount+' prices written to pim_retailer_prices','ok');
+
+      // ── STEP 4: Enrich existing PIM products with retailer data ──
+      logEntry('📦 Step 4/4: Enriching PIM products with retailer descriptions & images…');
+      let enrichCount=0;
+      for(const r of rdDiscoveryResults){
+        const pim=pimMap.get(r.model.toUpperCase());
+        if(!pim)continue;
+        // Update retailer_description if PIM product doesn't have one
+        if(r._description){
+          await sb.from('aiq_products').update({
+            retailer_description:r._description
+          }).eq('id',pim.id).is('retailer_description',null);
+        }
+        // Save images if we have them and PIM doesn't
+        if(r._images?.length>0){
+          const{data:existingImgs}=await sb.from('pim_product_images')
+            .select('id').eq('product_id',pim.id).limit(1);
+          if(!existingImgs||existingImgs.length===0){
+            const imgRecs=r._images.filter(i=>i.url).map((img,i)=>({
+              product_id:pim.id, image_type:img.type||'product_photo',
+              file_url:img.url, alt_text:r.brand_name+' '+r.model,
+              display_order:i, source:'shopify_crawl', approved:false
+            }));
+            if(imgRecs.length){
+              await sb.from('pim_product_images').insert(imgRecs);
+              enrichCount++;
+            }
+          }
+        }
+      }
+      if(enrichCount>0)logEntry('✅ '+enrichCount+' PIM products enriched with images','ok');
+
+      // ── Save brand discovery ──
       const brandRecs=[...brandSet].filter(b=>b).map(b=>({
         retailer_name:rdSelectedRetailer, brand_name:b, category:'all', crawl_status:'shopify_confirmed'
       }));
