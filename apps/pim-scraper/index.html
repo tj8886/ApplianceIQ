@@ -237,6 +237,7 @@ header .right{display:flex;align-items:center;gap:12px}
     <button class="tab-btn" onclick="window.S.switchTab('enrich')">Enrich &amp; Complete</button>
     <button class="tab-btn" onclick="window.S.switchTab('intelligence')">Intelligence</button>
     <button class="tab-btn" onclick="window.S.switchTab('recalls')">Recalls</button>
+    <button class="tab-btn" onclick="window.S.switchTab('cas')" style="color:var(--blue)">🇨🇦 CAS</button>
   </div>
   <div class="main" id="mainContent">
     <div style="text-align:center;padding:80px 0;color:var(--txt2)">Loading brands…</div>
@@ -547,6 +548,15 @@ let rdPriceResults = [];
 let rdCrawlUrl = '';
 let rdCrawlCat = '';
 let rdDashboard = null; // loaded on init/tab switch
+
+// CAS (Canadian Appliance Source) state
+let casProductUrls = []; // discovered from sitemap
+let casScrapeResults = []; // scraped products
+let casLoading = false;
+let casProgress = {current:0,total:0,phase:''};
+let casFilter = ''; // search filter
+let casStats = {discovered:0,scraped:0,saved:0,failed:0};
+let casStopRequested = false;
 
 // Verify & Audit state
 let vaResults = [];
@@ -1515,6 +1525,7 @@ function renderTab(){
   else if(currentTab==='enrich') h+=renderEnrich();
   else if(currentTab==='intelligence') h+=renderIntelligence();
   else if(currentTab==='recalls') h+=renderRecalls();
+  else if(currentTab==='cas') h+=renderCAS();
 
   // Save scroll position before DOM replace
   const prevScroll=el.scrollTop;
@@ -2143,7 +2154,7 @@ function renderEnrich() {
 window.S = {
   switchTab(tab){
     currentTab=tab;
-    const tabs=['discover','price-sync','verify','enrich','intelligence','recalls'];
+    const tabs=['discover','price-sync','verify','enrich','intelligence','recalls','cas'];
     document.querySelectorAll('.tab-btn').forEach((b,i)=>{
       const isActive=tabs[i]===tab;
       b.classList.toggle('active',isActive);
@@ -4980,6 +4991,394 @@ window.saveAllNews = saveAllNews;
 window.scanRecalls = scanRecalls;
 window.saveRecall = saveRecall;
 window.saveAllRecalls = saveAllRecalls;
+
+/* ═══════════════════════════════════════════
+   CAS — Canadian Appliance Source Scraper
+   Sitemap → T4 Haiku Web Search → Parse → PIM
+   ═══════════════════════════════════════════ */
+
+const CAS_SITEMAP_INDEX = 'https://www.canadianappliance.ca/sitemap.xml';
+const CAS_BASE = 'https://www.canadianappliance.ca';
+const CAS_RETAILER = 'canadian_appliance_source';
+
+function renderCAS(){
+  let h='<div style="margin-bottom:20px">';
+  h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+  h+='<span style="font-size:20px;font-weight:800;color:var(--txt)">🇨🇦 Canadian Appliance Source</span>';
+  h+='<span style="font-size:12px;color:var(--txt2);background:var(--surface);padding:4px 10px;border-radius:20px">Retailer Scraper</span>';
+  h+='</div>';
+  h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px;max-width:700px">Discovers CAS\'s full product catalog via sitemap, then extracts pricing, specs, showroom availability, and open-box inventory using AI web search. Retailer data fills blank PIM fields only — manufacturer data is never overwritten.</p>';
+
+  // Stats row
+  h+='<div class="stats-row">';
+  h+='<div class="stat-card"><div class="label">Discovered</div><div class="value">'+casProductUrls.length+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Scraped</div><div class="value green">'+casStats.scraped+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Saved</div><div class="value green">'+casStats.saved+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(casStats.failed>0?'red':'')+'">'+casStats.failed+'</div></div>';
+  h+='</div>';
+
+  // Controls
+  h+='<div class="controls" style="margin-bottom:16px">';
+  h+='<button class="btn btn-primary" onclick="window.S.casDiscoverSitemap()" '+(casLoading?'disabled':'')+'>'+
+    (casLoading&&casProgress.phase==='sitemap'?'⏳ Discovering…':'🔍 Discover Catalog (Sitemap)')+'</button>';
+  if(casProductUrls.length>0){
+    h+='<button class="btn btn-primary" onclick="window.S.casScrapeAll()" '+(casLoading?'disabled':'')+'>'+
+      (casLoading&&casProgress.phase==='scrape'?'⏳ Scraping '+casProgress.current+'/'+casProgress.total+'…':'🚀 Scrape All ('+casProductUrls.length+')')+'</button>';
+    h+='<button class="btn btn-secondary" onclick="window.S.casScrapeNext(50)" '+(casLoading?'disabled':'')+'>Scrape Next 50</button>';
+  }
+  if(casLoading){
+    h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.casStop()">⏹ Stop</button>';
+  }
+  h+='<div style="margin-left:auto;display:flex;gap:8px;align-items:center">';
+  if(casProductUrls.length>0){
+    h+='<input type="text" placeholder="Filter by model/brand…" value="'+esc(casFilter)+'" onkeyup="window.S.casSetFilter(this.value)" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;font-size:12px;width:220px;color:var(--txt);font-family:inherit">';
+  }
+  h+='<button class="btn btn-secondary" onclick="window.S.casClear()">Clear</button>';
+  h+='</div></div>';
+
+  // Progress bar
+  if(casLoading && casProgress.total>0){
+    const pct=Math.round((casProgress.current/casProgress.total)*100);
+    h+='<div style="margin-bottom:16px"><div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);transition:width .3s"></div></div>';
+    h+='<div style="font-size:11px;color:var(--txt2);margin-top:4px">'+casProgress.phase+' — '+casProgress.current+' / '+casProgress.total+' ('+pct+'%)</div></div>';
+  }
+
+  // Results table
+  const display = casFilter
+    ? casScrapeResults.filter(r=>(r.model||'').toLowerCase().includes(casFilter.toLowerCase())||(r.brand||'').toLowerCase().includes(casFilter.toLowerCase()))
+    : casScrapeResults;
+
+  if(display.length>0){
+    h+='<div style="max-height:600px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius)">';
+    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Price</th><th>Was</th><th>Low</th><th>UPC</th><th>Specs</th><th>Open Box</th><th>Status</th></tr></thead><tbody>';
+    for(const r of display.slice(-200).reverse()){
+      const d=r.data||{};
+      const statusCls=r.status==='ok'?'diff-added':r.status==='fail'?'diff-removed':'diff-changed';
+      h+='<tr>';
+      h+='<td class="brand-cell">'+esc(d.brand||r.brand||'—')+'</td>';
+      h+='<td class="model-cell">'+esc(d.model||r.model||'—')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2)">'+esc(d.category||'—')+'</td>';
+      h+='<td style="font-weight:600;color:var(--accent)">'+esc(d.current_price||'—')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2);text-decoration:line-through">'+esc(d.regular_price||'')+'</td>';
+      h+='<td style="font-size:11px;color:var(--blue)">'+esc(d.lowest_price||'')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2)">'+esc(d.upc||'—')+'</td>';
+      h+='<td style="font-size:11px">'+(d.spec_count?'<span style="color:var(--accent)">'+d.spec_count+'</span>':'—')+'</td>';
+      h+='<td style="font-size:11px">'+(d.open_box_count?'<span style="color:var(--amber)">'+d.open_box_count+' units</span>':'—')+'</td>';
+      h+='<td><span class="'+statusCls+'">'+esc(r.status)+'</span></td>';
+      h+='</tr>';
+    }
+    h+='</tbody></table></div>';
+  } else if(casProductUrls.length>0 && casScrapeResults.length===0){
+    // Show discovered URLs
+    const filtered=casFilter
+      ? casProductUrls.filter(u=>u.toLowerCase().includes(casFilter.toLowerCase()))
+      : casProductUrls;
+    h+='<div style="font-size:13px;color:var(--txt);margin-bottom:8px;font-weight:600">'+casProductUrls.length+' product URLs discovered'+(casFilter?' ('+filtered.length+' matching filter)':'')+'</div>';
+    h+='<div style="max-height:400px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg2);padding:4px">';
+    for(const u of filtered.slice(0,200)){
+      const slug=u.replace(CAS_BASE+'/product/','').replace('.html','');
+      const parts=slug.split('_');
+      const brand=parts[0]||'';
+      const model=parts[1]||'';
+      h+='<div style="padding:4px 10px;font-size:11px;font-family:monospace;border-bottom:1px solid var(--line);display:flex;gap:8px">';
+      h+='<span style="color:var(--blue);font-weight:600;min-width:100px">'+esc(brand)+'</span>';
+      h+='<span style="color:var(--txt)">'+esc(model)+'</span>';
+      h+='<a href="'+esc(u)+'" target="_blank" style="color:var(--txt2);margin-left:auto;font-size:10px">↗</a>';
+      h+='</div>';
+    }
+    if(filtered.length>200) h+='<div style="padding:8px;text-align:center;font-size:11px;color:var(--txt2)">…and '+(filtered.length-200)+' more</div>';
+    h+='</div>';
+  } else {
+    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)">';
+    h+='<div style="font-size:32px;margin-bottom:12px">🇨🇦</div>';
+    h+='<div style="font-size:14px;font-weight:600">Canadian Appliance Source</div>';
+    h+='<div style="font-size:12px;margin-top:8px">Click "Discover Catalog" to parse the CAS sitemap and find all product pages.</div>';
+    h+='<div style="font-size:11px;margin-top:4px;color:var(--txt2)">Then scrape products using T4 Haiku + web search → deterministic field extraction.</div>';
+    h+='</div>';
+  }
+
+  h+='</div>';
+  return h;
+}
+
+// ── Sitemap Discovery ──
+async function casDiscoverSitemap(){
+  casLoading=true;casProgress={current:0,total:3,phase:'sitemap'};casProductUrls=[];renderTab();
+  logEntry('CAS: Fetching sitemap index…','info');
+
+  try{
+    // Fetch sitemap index via free-extract (server-side, sitemaps usually pass Cloudflare)
+    const sitemapUrls=[
+      CAS_BASE+'/sitemaps/sitemap1.xml',
+      CAS_BASE+'/sitemaps/sitemap2.xml',
+      CAS_BASE+'/sitemaps/sitemap3.xml'
+    ];
+    const allUrls=new Set();
+    for(let i=0;i<sitemapUrls.length;i++){
+      casProgress.current=i+1;renderTab();
+      logEntry('CAS: Fetching sitemap '+(i+1)+'/3…','info');
+      try{
+        const resp=await fetch(SB_URL+'/functions/v1/free-extract',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
+          body:JSON.stringify({url:sitemapUrls[i],raw_text_only:true})
+        });
+        const raw=await resp.json();
+        const text=raw?.text||raw?.raw_text||'';
+        // Parse <loc> tags from sitemap XML
+        const locRegex=/<loc>(https:\/\/www\.canadianappliance\.ca\/product\/[^<]+\.html)<\/loc>/g;
+        let m;
+        while((m=locRegex.exec(text))!==null){
+          const url=m[1].replace(/&amp;/g,'&');
+          // English only, exclude open-box and French
+          if(!url.includes('/fr-CA/')&&!url.includes('_OB.html')){
+            allUrls.add(url);
+          }
+        }
+      }catch(e){logEntry('CAS: Sitemap '+(i+1)+' fetch error: '+e.message,'err')}
+    }
+
+    casProductUrls=[...allUrls];
+    casStats.discovered=casProductUrls.length;
+    logEntry('CAS: Discovered '+casProductUrls.length+' product URLs from sitemaps','ok');
+
+    // Cache discovered URLs in localStorage
+    try{localStorage.setItem('aiq_cas_urls',JSON.stringify(casProductUrls))}catch(_){}
+  }catch(e){
+    logEntry('CAS: Sitemap discovery failed: '+e.message,'err');
+  }
+  casLoading=false;renderTab();
+}
+
+// ── Load cached URLs on init ──
+try{
+  const cached=JSON.parse(localStorage.getItem('aiq_cas_urls')||'[]');
+  if(cached.length>0){casProductUrls=cached;casStats.discovered=cached.length}
+}catch(_){}
+
+// ── Scrape a single CAS product via T4 Haiku ──
+async function casScrapeOne(url){
+  const slug=url.replace(CAS_BASE+'/product/','').replace('.html','');
+  const parts=slug.split('_');
+  const brand=parts[0]||'Unknown';
+  const model=parts[1]||slug;
+
+  const r={brand,model,url,status:'pending',data:null};
+  casScrapeResults.push(r);
+
+  try{
+    // Use T4 (Haiku + web search) to fetch and parse the CAS product page
+    const prompt=`Visit this exact URL and extract product data: ${url}
+
+Extract these fields as JSON (return ONLY valid JSON, no markdown):
+{
+  "brand": "manufacturer brand name",
+  "model": "model number",
+  "category": "product category (e.g. French Door Refrigerator)",
+  "title": "full product title",
+  "current_price": "current selling price in CAD (number only)",
+  "regular_price": "previous/regular price if shown (number only)",
+  "lowest_price": "historical lowest price if shown (number only)",
+  "highest_price": "historical highest price if shown (number only)",
+  "lowest_price_date": "date of lowest price if shown",
+  "highest_price_date": "date of highest price if shown",
+  "savings": "savings amount if shown (number only)",
+  "upc": "Canadian UPC code if shown",
+  "ean": "EAN if shown",
+  "energy_star": true/false,
+  "warranty": "warranty text",
+  "color": "colour/finish",
+  "width": "width in inches",
+  "height": "height in inches",
+  "depth": "depth with handles in inches",
+  "capacity": "capacity in cu ft",
+  "installation_type": "Freestanding/Built-In etc",
+  "counter_depth": true/false,
+  "spec_count": number of specification rows,
+  "specs": {"key": "value"} for all specification table rows,
+  "features": ["feature 1", "feature 2"] first 10 feature bullets,
+  "images": ["url1", "url2"] all xxlarge image URLs,
+  "similar_models": ["MODEL1", "MODEL2"] from Similar section,
+  "variant_models": [{"model":"X","color":"Y"}] from colour variants,
+  "in_stock": true/false,
+  "showroom_count": number of showrooms displaying this product,
+  "open_box_count": number of open box units,
+  "open_box": [{"location":"X","price":"Y","condition":"Z"}],
+  "documents": [{"title":"X","url":"Y"}] any PDF links
+}`;
+
+    const aiResp=await callAI('claude-haiku-4-5-20251001',{
+      max_tokens:4000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}]
+    });
+
+    // Parse response
+    let text='';
+    if(aiResp.content){
+      for(const block of aiResp.content){
+        if(block.type==='text')text+=block.text;
+      }
+    }
+
+    // Extract JSON from response
+    const jsonMatch=text.match(/\{[\s\S]*\}/);
+    if(jsonMatch){
+      try{
+        const data=JSON.parse(jsonMatch[0]);
+        r.data=data;
+        r.status=data.model?'ok':'partial';
+        r.brand=data.brand||brand;
+        r.model=data.model||model;
+        casStats.scraped++;
+
+        // Auto-save to retailer_discovered_products
+        if(autoSave && data.model){
+          await casSaveProduct(data,url);
+          casStats.saved++;
+        }
+      }catch(e){
+        logEntry('CAS: JSON parse error for '+model+': '+e.message,'err');
+        r.status='fail';r.data={_raw:text.substring(0,500)};
+        casStats.failed++;
+      }
+    } else {
+      r.status='fail';r.data={_raw:text.substring(0,500)};
+      casStats.failed++;
+    }
+  }catch(e){
+    logEntry('CAS: Scrape error for '+model+': '+e.message,'err');
+    r.status='fail';casStats.failed++;
+  }
+
+  renderTab();
+  return r;
+}
+
+// ── Save CAS product to PIM ──
+async function casSaveProduct(data,sourceUrl){
+  try{
+    // 1. Upsert into retailer_discovered_products
+    const{error:rdErr}=await sb.from('retailer_discovered_products').upsert({
+      retailer_id: await getCASRetailerId(),
+      source_url: sourceUrl,
+      brand_name: data.brand,
+      model_number: data.model,
+      product_title: data.title,
+      category: normalizeCategory(data.category)||data.category,
+      current_price: parseFloat(data.current_price)||null,
+      regular_price: parseFloat(data.regular_price)||null,
+      in_stock: data.in_stock!==false,
+      raw_data: data,
+      scraped_at: new Date().toISOString(),
+      status: 'active'
+    },{onConflict:'retailer_id,source_url',ignoreDuplicates:false});
+
+    if(rdErr)logEntry('CAS: retailer_discovered save error: '+rdErr.message,'err');
+
+    // 2. Try to match + fill gaps in aiq_products
+    const{data:existing}=await sb.from('aiq_products')
+      .select('id,brand,model,upc,specifications,images')
+      .eq('brand',data.brand).eq('model',data.model)
+      .maybeSingle();
+
+    if(existing){
+      // Fill blanks only — never overwrite manufacturer data
+      const updates={};
+      if(!existing.upc && data.upc) updates.upc=data.upc;
+      if((!existing.specifications || Object.keys(existing.specifications||{}).length===0) && data.specs)
+        updates.specifications=data.specs;
+      if((!existing.images || existing.images.length===0) && data.images && data.images.length>0)
+        updates.images=data.images;
+
+      if(Object.keys(updates).length>0){
+        updates.updated_at=new Date().toISOString();
+        await sb.from('aiq_products').update(updates).eq('id',existing.id);
+        logEntry('CAS: Filled '+Object.keys(updates).length+' gaps for '+data.brand+' '+data.model,'ok');
+      }
+
+      // 3. Save pricing observation
+      await sb.from('pim_retailer_prices').upsert({
+        product_id: existing.id,
+        retailer_source_id: await getCASRetailerSourceId(),
+        price: parseFloat(data.current_price)||null,
+        regular_price: parseFloat(data.regular_price)||null,
+        source_url: sourceUrl,
+        listing_condition: 'new_sealed',
+        observed_at: new Date().toISOString(),
+        is_active: true,
+        raw_data: {
+          lowest_price: data.lowest_price,
+          highest_price: data.highest_price,
+          lowest_price_date: data.lowest_price_date,
+          highest_price_date: data.highest_price_date,
+          savings: data.savings,
+          showroom_count: data.showroom_count,
+          open_box_count: data.open_box_count
+        }
+      },{onConflict:'product_id,retailer_source_id,listing_condition'});
+    }
+
+    logEntry('CAS: Saved '+data.brand+' '+data.model+' ✓','ok');
+  }catch(e){
+    logEntry('CAS: Save error: '+e.message,'err');
+  }
+}
+
+// ── Retailer ID helpers ──
+let _casRetailerId=null;
+let _casRetailerSourceId=null;
+
+async function getCASRetailerId(){
+  if(_casRetailerId)return _casRetailerId;
+  const{data}=await sb.from('scraper_retailer_sources').select('id').eq('retailer_key','canadian_appliance_source').maybeSingle();
+  if(data){_casRetailerId=data.id;return data.id}
+  // Try to find by name
+  const{data:d2}=await sb.from('scraper_retailer_sources').select('id').ilike('retailer_name','%Canadian Appliance%').maybeSingle();
+  if(d2){_casRetailerId=d2.id;return d2.id}
+  return null;
+}
+async function getCASRetailerSourceId(){
+  if(_casRetailerSourceId)return _casRetailerSourceId;
+  _casRetailerSourceId=await getCASRetailerId();
+  return _casRetailerSourceId;
+}
+
+// ── Batch scrape ──
+async function casScrapeAll(){
+  const unscraped=casProductUrls.filter(u=>!casScrapeResults.find(r=>r.url===u));
+  await casScrapeNext(unscraped.length);
+}
+
+async function casScrapeNext(count){
+  const unscraped=casProductUrls.filter(u=>!casScrapeResults.find(r=>r.url===u));
+  const batch=unscraped.slice(0,count);
+  if(batch.length===0){logEntry('CAS: No unscraped URLs remaining','info');return}
+
+  casLoading=true;casStopRequested=false;
+  casProgress={current:0,total:batch.length,phase:'scrape'};
+  renderTab();
+  logEntry('CAS: Starting batch scrape of '+batch.length+' products…','info');
+
+  for(let i=0;i<batch.length;i++){
+    if(casStopRequested){logEntry('CAS: Stopped by user at '+i+'/'+batch.length,'info');break}
+    casProgress.current=i+1;renderTab();
+    await casScrapeOne(batch[i]);
+    // Rate limit: 2-3 second delay between requests
+    if(i<batch.length-1) await new Promise(r=>setTimeout(r,2500));
+  }
+
+  casLoading=false;renderTab();
+  logEntry('CAS: Batch complete — '+casStats.scraped+' scraped, '+casStats.saved+' saved, '+casStats.failed+' failed','ok');
+}
+
+// ── Window API for CAS ──
+window.S.casDiscoverSitemap = ()=>casDiscoverSitemap();
+window.S.casScrapeAll = ()=>casScrapeAll();
+window.S.casScrapeNext = (n)=>casScrapeNext(n);
+window.S.casStop = ()=>{casStopRequested=true};
+window.S.casSetFilter = (v)=>{casFilter=v;renderTab()};
+window.S.casClear = ()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls')}catch(_){}renderTab()};
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="scraper"></script>
 </body>
