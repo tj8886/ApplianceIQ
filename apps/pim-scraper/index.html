@@ -555,7 +555,7 @@ let casScrapeResults = []; // scraped products
 let casLoading = false;
 let casProgress = {current:0,total:0,phase:''};
 let casFilter = ''; // search filter
-let casStats = {discovered:0,scraped:0,saved:0,failed:0};
+let casStats = {discovered:0,scraped:0,saved:0,failed:0,blocked:0};
 let casStopRequested = false;
 
 // Verify & Audit state
@@ -5193,7 +5193,7 @@ async function casScrapeOne(url){
     if(!result.ok||!result.html){r.status='blocked';casStats.blocked++;logEntry('CAS: CF blocked '+model,'err');renderTab();return r}
     const data=casParseHTML(result.html,url);
     r.data=data;r.brand=data.brand||brand;r.model=data.model||model;
-    r.status=data.current_price||data.spec_count?'ok':'partial';casStats.scraped++;
+    r.status=(data.current_price||data.spec_count||data.upc||data.images)?'ok':'partial';casStats.scraped++;
     if(autoSave&&(data.model||model)){await casSaveProduct(data,url);casStats.saved++}
     logEntry('CAS: '+brand+' '+model+' → '+(data.spec_count||0)+' specs, $'+(data.current_price||'?'),'ok');
   }catch(e){r.status='fail';casStats.failed++;logEntry('CAS: Error '+model+': '+e.message,'err')}
