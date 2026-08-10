@@ -3036,9 +3036,12 @@ window.S = {
             .select('id').eq('product_id',pim.id).limit(1);
           if(!existingImgs||existingImgs.length===0){
             const imgRecs=r._images.filter(i=>i.url).map((img,i)=>({
-              product_id:pim.id, image_type:img.type||'product_photo',
+              product_id:pim.id,
+              image_type:i===0?'hero':'product',
+              slot_key:i===0?'hero_front':null,
               file_url:img.url, alt_text:r.brand_name+' '+r.model,
-              display_order:i, source:'shopify_crawl', approved:false
+              display_order:i, source:'shopify_crawl', source_priority:2,
+              approved:false, needs_classification:i>0
             }));
             if(imgRecs.length){
               await sb.from('pim_product_images').insert(imgRecs);
@@ -3758,9 +3761,12 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
     // Save images
     if(r._images?.length){
       const imgRecs=r._images.filter(img=>img.url).map((img,i)=>({
-        product_id:pid, image_type:img.type||'product_photo',
-        file_url:img.url, alt_text:r.brand_name+' '+r.model+' '+(img.type||''),
-        display_order:i, source:'retailer_crawl', approved:false
+        product_id:pid,
+        image_type:i===0?'hero':(img.type||'product'),
+        slot_key:i===0?'hero_front':null,
+        file_url:img.url, alt_text:r.brand_name+' '+r.model,
+        display_order:i, source:r._shopify_id?'shopify_crawl':'retailer_crawl',
+        source_priority:2, approved:false, needs_classification:i>0
       }));
       if(imgRecs.length){
         const{error:ie}=await sb.from('pim_product_images').insert(imgRecs);
