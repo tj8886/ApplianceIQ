@@ -555,7 +555,7 @@ let casScrapeResults = []; // scraped products
 let casLoading = false;
 let casProgress = {current:0,total:0,phase:''};
 let casFilter = ''; // search filter
-let casStats = {discovered:0,scraped:0,saved:0,failed:0,blocked:0};
+let casStats = {discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};
 let casStopRequested = false;
 
 // Verify & Audit state
@@ -5013,6 +5013,7 @@ function renderCAS(){
   h+='<div class="stat-card"><div class="label">Discovered</div><div class="value">'+casProductUrls.length+'</div></div>';
   h+='<div class="stat-card"><div class="label">Scraped</div><div class="value green">'+casStats.scraped+'</div></div>';
   h+='<div class="stat-card"><div class="label">Saved</div><div class="value green">'+casStats.saved+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Discontinued</div><div class="value" style="color:var(--txt2)">'+casStats.discontinued+'</div></div>';
   h+='<div class="stat-card"><div class="label">CF Blocked</div><div class="value '+(casStats.blocked>0?'red':'')+'">'+casStats.blocked+'</div></div>';
   h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(casStats.failed>0?'red':'')+'">'+casStats.failed+'</div></div>';
   h+='</div>';
@@ -5052,7 +5053,7 @@ function renderCAS(){
     h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Price</th><th>Was</th><th>Low/High</th><th>UPC</th><th>Specs</th><th>OB</th><th>Display</th><th>Status</th></tr></thead><tbody>';
     for(const r of display.slice(-300).reverse()){
       const d=r.data||{};const st=r.status;
-      const cls=st==='ok'?'diff-added':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
+      const cls=st==='ok'?'diff-added':st==='discontinued'?'diff-changed':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
       h+='<tr>';
       h+='<td class="brand-cell">'+esc(d.brand||r.brand||'—')+'</td>';
       h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(d.model||r.model||'—')+'</a></td>';
@@ -5168,6 +5169,7 @@ function casParseHTML(html,url){
   }
   if(images.length)d.images=images;
   d.in_stock=bt.includes('In Stock');
+  d.discontinued=bt.includes('Discontinued')&&!bt.includes("Today's Price");
   const shm=bt.match(/(\d+)\s+Showrooms?\s/);if(shm)d.showroom_count=parseInt(shm[1]);
   if(bt.includes('Out-of-box units available')){const op=bt.match(/\$[\d,]+\.\d{2}/g);d.open_box_count=op?Math.min(op.length,20):1}
   const sim=bt.match(/Similar to\s+([\w,\s-]+)/);if(sim)d.similar_models=sim[1].split(',').map(s=>s.trim()).filter(Boolean);
@@ -5193,6 +5195,7 @@ async function casScrapeOne(url){
     if(!result.ok||!result.html){r.status='blocked';casStats.blocked++;logEntry('CAS: CF blocked '+model,'err');renderTab();return r}
     const data=casParseHTML(result.html,url);
     r.data=data;r.brand=data.brand||brand;r.model=data.model||model;
+    if(data.discontinued){r.status='discontinued';casStats.scraped++;casStats.discontinued++;logEntry('CAS: '+brand+' '+model+' → discontinued','info');renderTab();return r}
     r.status=(data.current_price||data.spec_count||data.upc||data.images)?'ok':'partial';casStats.scraped++;
     if(autoSave&&(data.model||model)){await casSaveProduct(data,url);casStats.saved++}
     logEntry('CAS: '+brand+' '+model+' → '+(data.spec_count||0)+' specs, $'+(data.current_price||'?'),'ok');
@@ -5255,7 +5258,7 @@ window.S.casScrapeAll=()=>casScrapeAll();
 window.S.casScrapeNext=(n)=>casScrapeNext(n);
 window.S.casStop=()=>{casStopRequested=true};
 window.S.casSetFilter=(v)=>{casFilter=v;renderTab()};
-window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls')}catch(_){}renderTab()};
+window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls')}catch(_){}renderTab()};
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="scraper"></script>
 </body>
