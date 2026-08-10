@@ -2791,24 +2791,24 @@ window.S = {
 
           const sku=v.sku||'';
           // Extract real manufacturer model from title
-          // Pattern 1: "Brand-Color-Type REALMODEL" (Appliance Canada) → last word
-          // Pattern 2: "Brand description (REALMODEL) - Color" (Dufresne) → in parens
-          // Pattern 3: "REALMODEL" (single word title) → the whole title
+          // Pattern 1: "(REALMODEL)" in parens (Dufresne)
+          // Pattern 2: Last word if it looks like a model (Appliance Canada)
+          // Pattern 3: Second word if it looks like a model (Future Appliances, TA)
+          // Fallback: SKU (often IS the model)
+          // Validation: must have digit+letter, 4+ chars, not a common word
           const title=(p.title||'').trim();
           let realModel='';
-          // Try parentheses first — most reliable when present
+          const _isModel=(m)=>m&&m.length>=4&&/[0-9]/.test(m)&&/[A-Za-z]/.test(m)&&!/^(colour|color|white|black|stainless|steel|silver|gray|grey|inch|series|model|width|finish|capacity|interior|exterior)$/i.test(m);
+          // Try parentheses
           const parenMatch=title.match(/\(\s*([A-Za-z0-9][A-Za-z0-9/._-]{4,})\s*\)(?:\s*-|$)/);
-          // Also try unclosed paren at end like "(MODEL"
           const openParenMatch=!parenMatch&&title.match(/\(\s*([A-Za-z0-9][A-Za-z0-9/._-]{4,})$/);
-          if(parenMatch&&/\d/.test(parenMatch[1])){
-            realModel=parenMatch[1].trim();
-          } else if(openParenMatch&&/\d/.test(openParenMatch[1])){
-            realModel=openParenMatch[1].trim();
-          } else {
-            // Fallback: last word of title
-            const words=title.split(/\s+/);
-            realModel=words.length>0?words[words.length-1]:'';
-          }
+          if(parenMatch&&_isModel(parenMatch[1]))realModel=parenMatch[1].trim();
+          else if(openParenMatch&&_isModel(openParenMatch[1]))realModel=openParenMatch[1].trim();
+          // Try last word
+          if(!realModel){const w=title.split(/\s+/);if(_isModel(w[w.length-1]))realModel=w[w.length-1]}
+          // Try second word (Brand MODEL Description...)
+          if(!realModel){const w=title.split(/\s+/);if(w.length>=2&&_isModel(w[1]))realModel=w[1]}
+          // Fallback to SKU
           const model=realModel||sku||p.handle||'';
           if(!model)continue;
           const mk=model.toUpperCase();
@@ -3011,7 +3011,7 @@ window.S = {
         if(stopRequested)break;
         const chunk=priceRecs.slice(ci,ci+50);
         const{error}=await sb.from('pim_retailer_prices')
-          .upsert(chunk,{onConflict:'brand_name,model,retailer_name,condition_normalized'}).select('id');
+          .upsert(chunk,{onConflict:'brand_name,model,retailer_name,condition_normalized,country'}).select('id');
         if(error&&!error.message.includes('duplicate'))logEntry('Price save err: '+error.message,'err');
         else priceCount+=chunk.length;
         if(ci%500===0&&ci>0)logEntry('  …'+priceCount+' prices written');
