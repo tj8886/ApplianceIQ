@@ -1815,6 +1815,8 @@ function renderRDDiscover(retailers) {
     const hasUrl=!!rdCrawlUrl;
     h+='<button class="btn btn-primary" onclick="window.S.rdCategoryCrawl()" '+((!hasUrl&&!hasRetailer)?'disabled':'')+'>';
     h+='🌐 Crawl '+(hasUrl?'URL':(hasRetailer?esc(rdSelectedRetailer):' Retailer'))+(hasBrand?' ('+esc(selectedBrand)+')':' (all brands)')+'</button>';
+    const selRetailer=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
+    if(hasRetailer&&selRetailer?.is_shopify)h+='<button class="btn" style="background:#96bf48;color:#fff" onclick="window.S.rdShopifyCrawl()" title="Pull ALL products directly from Shopify API — 100% real data, no AI">🛒 Shopify Crawl (real data)</button>';
     if(hasRetailer)h+='<button class="btn" style="background:#2f6fed;color:#fff" onclick="window.S.rdCrawlAllCategories()" title="Crawl all 10 appliance categories at this retailer">🚀 Crawl ALL Categories</button>';
     if(hasRetailer)h+='<button class="btn btn-sm btn-secondary" onclick="window.S.rdDiscoverBrands()" title="Find which brands this retailer carries">🏷️ Discover Brands</button>';
   }
@@ -2608,6 +2610,198 @@ window.S = {
       return data.map(d=>d.brand_name);
     }
     return null; // null = use all brands (not yet discovered)
+  },
+
+  // ── SHOPIFY CRAWL: Pull ALL products from Shopify products.json API ──
+  // 100% real data — no AI, no guessing. Paginates through the entire catalog.
+  async rdShopifyCrawl(){
+    if(isProcessing||!rdSelectedRetailer)return;
+    const retailer=psRetailers.find(r=>r.retailer_name===rdSelectedRetailer);
+    if(!retailer||!retailer.is_shopify){logEntry('❌ Not a Shopify store','err');return}
+
+    isProcessing=true;stopRequested=false;rdDiscoveryResults=[];
+    logEntry('🛒 SHOPIFY CRAWL: '+rdSelectedRetailer+' ('+retailer.website+')');
+    logEntry('Pulling real product data from Shopify API — no AI involved');
+
+    // Appliance category mapping: Shopify product_type → our categories
+    const APPLIANCE_TYPES=new Set([
+      'REFRIGERATOR','REFRIGERATORS','FRIDGE',
+      'RANGE','RANGES','STOVE','STOVES',
+      'DISHWASHER','DISHWASHERS',
+      'WASHER','WASHERS','WASHING MACHINE',
+      'DRYER','DRYERS',
+      'MICROWAVE','MICROWAVES',
+      'RANGE HOOD','RANGE HOODS','HOOD',
+      'COOKTOP','COOKTOPS',
+      'WALL OVEN','WALL OVENS','OVEN','OVENS',
+      'FREEZER','FREEZERS',
+      'LAUNDRY','OUTDOOR','OUTDOOR GRILL','GRILL','GRILLS','BBQ',
+      'WINE COOLER','BEVERAGE CENTER','ICE MAKER',
+      'GARBAGE DISPOSAL','COMPACTOR','WATER TREATMENT',
+    ]);
+
+    const normalizeShopifyCategory=(pt)=>{
+      if(!pt)return null;
+      const u=pt.toUpperCase().trim();
+      if(u.includes('REFRIGERAT')||u.includes('FRIDGE'))return 'refrigerators';
+      if(u.includes('RANGE')&&!u.includes('HOOD'))return 'ranges';
+      if(u.includes('DISHWASH'))return 'dishwashers';
+      if(u.includes('WASHER')&&!u.includes('DISH'))return 'washers';
+      if(u.includes('DRYER'))return 'dryers';
+      if(u.includes('MICROWAVE'))return 'microwaves';
+      if(u.includes('HOOD'))return 'range hoods';
+      if(u.includes('COOKTOP'))return 'cooktops';
+      if(u.includes('OVEN')&&!u.includes('MICROWAVE'))return 'wall ovens';
+      if(u.includes('FREEZER'))return 'freezers';
+      if(u.includes('LAUNDRY'))return 'laundry';
+      if(u.includes('GRILL')||u.includes('BBQ'))return 'outdoor grills';
+      if(u.includes('WINE')||u.includes('BEVERAGE'))return 'beverage & wine';
+      return pt.toLowerCase();
+    };
+
+    // Load PIM models for matching
+    const{data:pm}=await sb.from('aiq_products').select('model').eq('status','active').limit(10000);
+    const allPimModels=new Set((pm||[]).map(p=>(p.model||'').toUpperCase()));
+
+    const appliancesOnlyMode=appliancesOnly;
+    const baseUrl='https://'+retailer.website;
+    let page=1;
+    let totalFetched=0;
+    let totalAppliances=0;
+    const existingModels=new Set();
+    const brandSet=new Set();
+
+    scrapeProgress={current:0,total:1,label:'Fetching Shopify catalog'};
+    renderTab();
+
+    while(!stopRequested){
+      try{
+        logEntry('📄 Page '+page+'…');
+        const ctrl=new AbortController();
+        const timer=setTimeout(()=>ctrl.abort(),15000);
+        const resp=await fetch(baseUrl+'/products.json?limit=250&page='+page,{
+          headers:{'User-Agent':'Mozilla/5.0'},
+          signal:ctrl.signal
+        });
+        clearTimeout(timer);
+
+        if(!resp.ok){logEntry('HTTP '+resp.status+' on page '+page,'err');break}
+        const data=await resp.json();
+        const products=data.products||[];
+        if(products.length===0){logEntry('Page '+page+': empty — end of catalog');break}
+
+        totalFetched+=products.length;
+        let pageAdded=0;
+
+        for(const p of products){
+          const pt=(p.product_type||'').toUpperCase().trim();
+          // Filter to appliances if toggle is on
+          if(appliancesOnlyMode&&pt&&!APPLIANCE_TYPES.has(pt)){
+            // Check partial matches
+            const isAppliance=normalizeShopifyCategory(p.product_type)!==p.product_type?.toLowerCase();
+            if(!isAppliance)continue;
+          }
+          // Skip products without variants
+          const v=(p.variants||[])[0];
+          if(!v)continue;
+
+          const sku=v.sku||'';
+          const model=sku||p.handle||'';
+          if(!model)continue;
+          const mk=model.toUpperCase();
+          if(existingModels.has(mk))continue;
+          existingModels.add(mk);
+
+          const price=parseFloat(v.price)||null;
+          const comparePrice=parseFloat(v.compare_at_price)||null;
+          const inPim=allPimModels.has(mk);
+          const brand=p.vendor||'';
+          brandSet.add(brand);
+
+          rdDiscoveryResults.push({
+            model:model,
+            brand_name:brand,
+            product_name:p.title||null,
+            category:normalizeShopifyCategory(p.product_type)||p.product_type||'uncategorized',
+            price:price,
+            regular_price:(comparePrice&&comparePrice>price)?comparePrice:null,
+            on_sale:!!(comparePrice&&comparePrice>price),
+            in_stock:v.available!==false,
+            product_url:baseUrl+'/products/'+p.handle,
+            condition:'new',
+            is_discontinued:false,
+            is_exclusive:false,
+            retailer_name:rdSelectedRetailer,
+            country:psMarket,
+            _pimMatch:inPim,_deepScraped:false,_saved:false,_enriched:false,
+            _shopify_id:p.id,
+            _shopify_type:p.product_type,
+            _shopify_tags:p.tags,
+            _shopify_images:(p.images||[]).map(i=>i.src),
+            _specs:null,_docs:null,_images:null,_features:null,
+            _alsoViewed:null,_bundles:null,_description:p.body_html||null
+          });
+          pageAdded++;
+          totalAppliances++;
+        }
+
+        logEntry('Page '+page+': '+products.length+' products, '+pageAdded+' appliances added (total: '+totalAppliances+')','ok');
+        scrapeProgress={current:totalFetched,total:totalFetched+250,label:'Shopify catalog'};
+        renderTab();
+
+        if(products.length<250){logEntry('Last page reached');break}
+        page++;
+        // Brief pause between pages to be polite
+        await new Promise(r=>setTimeout(r,500));
+      }catch(e){
+        logEntry('Page '+page+': '+(e.name==='AbortError'?'timeout (15s)':'error: '+e.message),'err');
+        break;
+      }
+    }
+
+    // Summary
+    logEntry('━━━ SHOPIFY CRAWL COMPLETE ━━━');
+    logEntry('📊 '+totalFetched+' total products scanned, '+totalAppliances+' appliances found, '+brandSet.size+' brands');
+    logEntry('🏷️ Brands: '+[...brandSet].sort().join(', '));
+
+    // Auto-save to retailer_discovered_products
+    if(rdDiscoveryResults.length>0){
+      logEntry('💾 Saving '+rdDiscoveryResults.length+' products to catalog…');
+      const recs=rdDiscoveryResults.filter(r=>r.model).map(r=>({
+        retailer_name:r.retailer_name, brand_name:r.brand_name, model:r.model,
+        product_name:r.product_name, product_url:r.product_url, category:r.category,
+        price:r.price, regular_price:r.regular_price,
+        on_sale:r.on_sale, in_stock:r.in_stock, condition:r.condition||'new',
+        country:r.country||psMarket, discovered_at:new Date().toISOString(),
+        last_verified:new Date().toISOString(), status:'active'
+      }));
+      for(let ci=0;ci<recs.length;ci+=50){
+        const chunk=recs.slice(ci,ci+50);
+        const{data,error}=await sb.from('retailer_discovered_products')
+          .upsert(chunk,{onConflict:'retailer_name,brand_name,model,condition,country'}).select('id');
+        if(error)logEntry('Save err: '+error.message,'err');
+      }
+      for(const r of rdDiscoveryResults)r._saved=true;
+      logEntry('✅ '+rdDiscoveryResults.length+' real products saved to catalog','ok');
+
+      // Save brand discovery
+      const brandRecs=[...brandSet].filter(b=>b).map(b=>({
+        retailer_name:rdSelectedRetailer, brand_name:b, category:'all', crawl_status:'shopify_confirmed'
+      }));
+      if(brandRecs.length>0){
+        await sb.from('retailer_brand_pages').upsert(brandRecs,{onConflict:'retailer_name,brand_name,category'});
+        logEntry('🏷️ '+brandRecs.length+' brands confirmed for '+rdSelectedRetailer);
+      }
+
+      // Update retailer stats
+      await sb.from('scraper_retailer_sources').update({
+        last_crawled:new Date().toISOString(),
+        total_products_found:rdDiscoveryResults.length
+      }).eq('retailer_name',rdSelectedRetailer);
+    }
+
+    isProcessing=false;stopRequested=false;scrapeProgress={current:0,total:0,label:''};
+    renderTab();
   },
 
   // ── CRAWL ALL CATEGORIES at one retailer ──
