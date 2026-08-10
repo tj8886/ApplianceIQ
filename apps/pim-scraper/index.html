@@ -2562,7 +2562,7 @@ window.S = {
     try{
       const resp=await fetch(SB_URL+'/functions/v1/shopify-proxy',{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
         signal:ctrl.signal,
         body:JSON.stringify({url})
       });
@@ -2838,7 +2838,8 @@ window.S = {
         // Brief pause between pages to be polite
         await new Promise(r=>setTimeout(r,500));
       }catch(e){
-        logEntry('Page '+page+': '+(e.name==='AbortError'?'timeout (15s)':'error: '+e.message),'err');
+        logEntry('Page '+page+': '+(e.name==='AbortError'?'timeout (15s)':'error: '+e.message+' ['+e.name+']'),'err');
+        logEntry('Debug: proxy URL = '+SB_URL+'/functions/v1/shopify-proxy','err');
         break;
       }
     }
