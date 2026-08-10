@@ -1442,7 +1442,8 @@ function renderTab(){
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">T2: <select onchange="geminiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gemini-3.5-flash-lite" '+(geminiModel==='gemini-3.5-flash-lite'?'selected':'')+'>Flash Lite 3.5</option><option value="gemini-3.6-flash" '+(geminiModel==='gemini-3.6-flash'?'selected':'')+'>Flash 3.6</option></select></label>';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px">T3: <select onchange="aiModel=this.value" style="background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;font-family:inherit"><option value="gpt-5.6-luna" '+(aiModel==='gpt-5.6-luna'?'selected':'')+'>GPT-5.6 Luna</option><option value="gpt-4.1-mini" '+(aiModel==='gpt-4.1-mini'?'selected':'')+'>GPT-4.1 Mini</option><option value="gpt-4.1-nano" '+(aiModel==='gpt-4.1-nano'?'selected':'')+'>GPT-4.1 Nano</option></select></label>';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(appliancesOnly?'checked':'')+' onchange="window.S.toggleAppliancesOnly()" style="accent-color:var(--accent)"/> Appliances only</label>';
-  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-save</label>';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-Save</label>';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px" title="After crawl, auto deep-scrape + import each product (slow — runs AI on every product URL)"><input type="checkbox" id="autoDeepScrapeToggle" style="accent-color:#f59e0b"/> Auto Deep-Scrape</label>';
   h+='<button class="btn btn-sm btn-secondary" onclick="window.S.setKeys()">🔑 Keys</button>';
   h+='</div></div>';
 
@@ -2677,15 +2678,17 @@ window.S = {
       logEntry('Phase 1: Fetching page HTML…');
       scrapeProgress={current:0,total:1,label:'Fetching HTML'};renderTab();
       try{
+        const p1ctrl=new AbortController();
+        const p1timer=setTimeout(()=>p1ctrl.abort(),15000);
         const resp=await fetch(SB_URL+'/functions/v1/free-extract',{
-          method:'POST',headers:{'Content-Type':'application/json'},
+          method:'POST',headers:{'Content-Type':'application/json'},signal:p1ctrl.signal,
           body:JSON.stringify({url:fetchUrl,raw_text_only:true})
         });
+        clearTimeout(p1timer);
         const html=await resp.json();
         const rawText=html.raw_text||html.text||'';
         if(rawText.length>500){
           logEntry('Got '+Math.round(rawText.length/1024)+'KB of page text, extracting products…');
-          // Send the raw HTML/text to AI to extract ALL product listings from it
           const extractResult=await window.S._crawlAI(
             'You are parsing raw text extracted from a retailer product listing page. Find EVERY product listed on this page. Return ONLY a JSON array. Each object: brand_name, model (EXACT model number), product_name, price (number), product_url (full URL), category, in_stock (boolean). Extract ALL products — there may be 20-100+ on the page.',
             'Extract ALL product listings from this retailer page text. The page is from '+retailerSite+':\n\n'+rawText.substring(0,12000),
@@ -2696,7 +2699,7 @@ window.S = {
             if(arr){try{htmlProducts=JSON.parse(arr[0]);logEntry('Phase 1: extracted '+htmlProducts.length+' products from HTML','ok')}catch(e){}}
           }
         } else {logEntry('Phase 1: JS-rendered page — AI search will handle it')}
-      }catch(e){logEntry('Phase 1: fetch err: '+e.message+', falling back to AI search','err')}
+      }catch(e){logEntry('Phase 1: '+(e.name==='AbortError'?'timeout (15s)':'fetch err: '+e.message)+', falling back to AI search','err')}
     }
 
     // ── PHASE 2: Build comprehensive search targets ──
@@ -2915,9 +2918,11 @@ Find EVERY product matching the search. If you find none, return [].`;
       logEntry('✅ '+rdDiscoveryResults.length+' saved to catalog','ok');
       renderTab();
 
-      // ── AUTO DEEP SCRAPE + IMPORT/ENRICH — fully automatic pipeline ──
+      // ── AUTO DEEP SCRAPE + IMPORT/ENRICH — only if user opted in ──
+      const autoDeepEl=document.getElementById('autoDeepScrapeToggle');
+      const autoDeepEnabled=autoDeepEl&&autoDeepEl.checked;
       const toProcess=rdDiscoveryResults.filter(r=>r.product_url&&!r._deepScraped);
-      if(toProcess.length>0&&!stopRequested){
+      if(toProcess.length>0&&!stopRequested&&autoDeepEnabled){
         logEntry('🔬 Auto deep-scraping '+toProcess.length+' products…');
         scrapeProgress={current:0,total:toProcess.length,label:'Deep Scrape + Import'};
         renderTab();
@@ -2925,10 +2930,8 @@ Find EVERY product matching the search. If you find none, return [].`;
           if(stopRequested){logEntry('⏹ Stopped','err');break}
           scrapeProgress.current=i+1;updateHeaderProgress();
           const idx=rdDiscoveryResults.indexOf(toProcess[i]);
-          // Deep scrape
           await window.S.rdDeepScrapeOne(idx);
           await new Promise(r=>setTimeout(r,800));
-          // Auto import if NEW, auto enrich if EXISTS
           const item=rdDiscoveryResults[idx];
           if(item._deepScraped){
             if(!item._pimMatch){
@@ -2940,6 +2943,8 @@ Find EVERY product matching the search. If you find none, return [].`;
           renderTab();
           await new Promise(r=>setTimeout(r,300));
         }
+      } else if(toProcess.length>0&&!autoDeepEnabled){
+        logEntry('💡 '+toProcess.length+' products ready for deep scrape — enable "Auto Deep-Scrape" toggle or use Deep Scrape All button','ok');
       }
     }
 
@@ -3022,33 +3027,36 @@ Extract EVERY spec, feature, document link. Return ONLY the JSON object.`;
     let parsed=null;
     let t1RawText='';
 
-    // ── TIER 1 FREE: Fetch page HTML directly ──
+    // ── TIER 1 FREE: Fetch page HTML directly (15s timeout) ──
     try{
       logEntry('T1 → free-extract (free)…');
+      const t1ctrl=new AbortController();
+      const t1timer=setTimeout(()=>t1ctrl.abort(),15000);
       const resp=await fetch(SB_URL+'/functions/v1/free-extract',{
-        method:'POST',headers:{'Content-Type':'application/json'},
+        method:'POST',headers:{'Content-Type':'application/json'},signal:t1ctrl.signal,
         body:JSON.stringify({url:r.product_url})
       });
+      clearTimeout(t1timer);
       const t1=await resp.json();
-      // Check if free-extract got structured data
       if(t1.found||t1._partial){
         parsed={...t1};
         delete parsed.found;delete parsed._partial;delete parsed._tier;
         logEntry('T1 ✓ free data: '+(t1.model||'')+(t1.msrp?' $'+t1.msrp:''),'ok');
       }
-      // Also grab raw text for AI to analyze
       if(t1.raw_text)t1RawText=t1.raw_text;
       else{
-        // Try fetching raw text separately
+        const t1bctrl=new AbortController();
+        const t1btimer=setTimeout(()=>t1bctrl.abort(),15000);
         const resp2=await fetch(SB_URL+'/functions/v1/free-extract',{
-          method:'POST',headers:{'Content-Type':'application/json'},
+          method:'POST',headers:{'Content-Type':'application/json'},signal:t1bctrl.signal,
           body:JSON.stringify({url:r.product_url,raw_text_only:true})
         });
+        clearTimeout(t1btimer);
         const t1b=await resp2.json();
         t1RawText=t1b.raw_text||t1b.text||'';
       }
       if(t1RawText.length>200)logEntry('T1 got '+Math.round(t1RawText.length/1024)+'KB page text');
-    }catch(e){logEntry('T1 err: '+e.message,'err')}
+    }catch(e){logEntry('T1 '+(e.name==='AbortError'?'timeout (15s)':'err: '+e.message),'err')}
 
     // ── Check what T1 got vs what's missing ──
     const t1HasSpecs=parsed?.specs&&Object.keys(parsed.specs).length>3;
