@@ -2555,6 +2555,22 @@ window.S = {
   },
 
   // ═══ SHOPIFY HELPERS — real data from Shopify API, no AI ═══
+  async _shopifyFetch(url, timeoutMs=15000){
+    // All Shopify API calls go through the edge function proxy to avoid CORS
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+    try{
+      const resp=await fetch(SB_URL+'/functions/v1/shopify-proxy',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        signal:ctrl.signal,
+        body:JSON.stringify({url})
+      });
+      clearTimeout(timer);
+      if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||'HTTP '+resp.status)}
+      return await resp.json();
+    }catch(e){clearTimeout(timer);throw e}
+  },
   _isShopifyRetailer(retailerName){
     const r=psRetailers.find(r=>r.retailer_name===retailerName);
     return r?.is_shopify||false;
@@ -2572,35 +2588,20 @@ window.S = {
   },
   async _shopifyFetchProduct(website, handle){
     try{
-      const ctrl=new AbortController();
-      const timer=setTimeout(()=>ctrl.abort(),10000);
-      const resp=await fetch('https://'+website+'/products/'+handle+'.json',{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0'}});
-      clearTimeout(timer);
-      if(!resp.ok)return null;
-      const d=await resp.json();
+      const d=await window.S._shopifyFetch('https://'+website+'/products/'+handle+'.json');
       return d.product||null;
     }catch(e){return null}
   },
   async _shopifySearchProduct(website, model){
-    // Search by iterating pages — try to find by SKU match
     try{
-      const ctrl=new AbortController();
-      const timer=setTimeout(()=>ctrl.abort(),10000);
-      // Try Shopify search endpoint first
-      const resp=await fetch('https://'+website+'/search/suggest.json?q='+encodeURIComponent(model)+'&resources[type]=product&resources[limit]=5',{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0'}});
-      clearTimeout(timer);
-      if(resp.ok){
-        const d=await resp.json();
-        const products=d?.resources?.results?.products||[];
-        if(products.length>0){
-          // Fetch full product data for the first match
-          const full=await window.S._shopifyFetchProduct(website,products[0].handle);
-          if(full){
-            const v=(full.variants||[])[0];
-            if(v&&v.sku&&v.sku.toUpperCase()===model.toUpperCase())return full;
-            // Partial match — return anyway
-            return full;
-          }
+      const d=await window.S._shopifyFetch('https://'+website+'/search/suggest.json?q='+encodeURIComponent(model)+'&resources[type]=product&resources[limit]=5');
+      const products=d?.resources?.results?.products||[];
+      if(products.length>0){
+        const full=await window.S._shopifyFetchProduct(website,products[0].handle);
+        if(full){
+          const v=(full.variants||[])[0];
+          if(v&&v.sku&&v.sku.toUpperCase()===model.toUpperCase())return full;
+          return full;
         }
       }
     }catch(e){}
@@ -2648,12 +2649,7 @@ window.S = {
       let page=1;
       while(page<=50&&!stopRequested){
         try{
-          const ctrl=new AbortController();
-          const timer=setTimeout(()=>ctrl.abort(),10000);
-          const resp=await fetch('https://'+retailer.website+'/products.json?limit=250&page='+page,{signal:ctrl.signal,headers:{'User-Agent':'Mozilla/5.0'}});
-          clearTimeout(timer);
-          if(!resp.ok)break;
-          const d=await resp.json();
+          const d=await window.S._shopifyFetch('https://'+retailer.website+'/products.json?limit=250&page='+page);
           const products=d.products||[];
           if(products.length===0)break;
           for(const p of products){if(p.vendor)vendorSet.add(p.vendor)}
@@ -2774,16 +2770,7 @@ window.S = {
     while(!stopRequested){
       try{
         logEntry('📄 Page '+page+'…');
-        const ctrl=new AbortController();
-        const timer=setTimeout(()=>ctrl.abort(),15000);
-        const resp=await fetch(baseUrl+'/products.json?limit=250&page='+page,{
-          headers:{'User-Agent':'Mozilla/5.0'},
-          signal:ctrl.signal
-        });
-        clearTimeout(timer);
-
-        if(!resp.ok){logEntry('HTTP '+resp.status+' on page '+page,'err');break}
-        const data=await resp.json();
+        const data=await window.S._shopifyFetch(baseUrl+'/products.json?limit=250&page='+page);
         const products=data.products||[];
         if(products.length===0){logEntry('Page '+page+': empty — end of catalog');break}
 
