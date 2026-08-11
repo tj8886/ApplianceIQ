@@ -5176,6 +5176,28 @@ async function casDiscoverSitemap(){
 }
 try{const c=JSON.parse(localStorage.getItem('aiq_cas_urls')||'[]');if(c.length){casProductUrls=c;casStats.discovered=c.length}}catch(_){}
 
+// Auto-seed resume cache from DB if empty (handles pre-update scrapes)
+async function casSyncResumeFromDB(){
+  try{
+    const existing=JSON.parse(localStorage.getItem('aiq_cas_done')||'[]');
+    if(existing.length>0)return; // Already have resume data
+    logEntry('CAS: Syncing resume cache from database…','info');
+    const{data,error}=await sb.from('retailer_discovered_products')
+      .select('product_url')
+      .eq('retailer_name','Canadian Appliance Source')
+      .not('product_url','is',null);
+    if(error){logEntry('CAS: Resume sync error: '+error.message,'err');return}
+    if(data&&data.length>0){
+      const urls=data.map(r=>r.product_url).filter(Boolean);
+      localStorage.setItem('aiq_cas_done',JSON.stringify(urls));
+      logEntry('CAS: Loaded '+urls.length+' previously scraped URLs into resume cache','ok');
+      renderTab();
+    }
+  }catch(e){logEntry('CAS: Resume sync failed: '+e.message,'err')}
+}
+// Run sync after auth is ready
+setTimeout(()=>{if(currentSession)casSyncResumeFromDB()},2000);
+
 function casParseHTML(html,url){
   const doc=new DOMParser().parseFromString(html,'text/html');
   const d={};
