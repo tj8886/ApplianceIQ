@@ -5965,11 +5965,24 @@ function apexParseCategory(html,site){
       const imgs=card.querySelectorAll('img[src*="brandlogo"]');
       for(const img of imgs){
         const src=img.getAttribute('src')||'';
-        const m=src.match(/\d+_(.+?)\.png/i);
-        if(m){brand=m[1].replace(/_/g,' ');
-          const fixes={'Samsung':'Samsung','KitchenAid':'KitchenAid','Bluestar':'BlueStar','Jenn-Air':'Jenn-Air','SubZero':'Sub-Zero','Frigidaire':'Frigidaire','a 19 frigidaire':'Frigidaire','a 299 SMEG':'SMEG'};
-          brand=fixes[brand]||brand.replace(/\b\w/g,c=>c.toUpperCase());
-        }
+        const fname=src.split('brandlogo/').pop()?.replace('.png','').replace('.jpg','')||'';
+        // Explicit mapping for Apex brand logo filenames
+        const brandMap={
+          '1_Samsung':'Samsung','5_Asko':'Asko','6_best1':'Best','8_Bluestar':'BlueStar',
+          '9_Bosch-1':'Bosch','14_electrolux':'Electrolux','17_Faber':'Faber',
+          '19_a_19_frigidaire':'Frigidaire','26_KitchenAid':'KitchenAid',
+          '28_Liebherr':'Liebherr','31_Marvel':'Marvel','32_Maytag':'Maytag',
+          '44_Whirlpool':'Whirlpool','46_Zephyr':'Zephyr',
+          '47_a_47_frigidaire-gallery':'Frigidaire Gallery',
+          '48_a_48_frigidaire-professional':'Frigidaire Professional',
+          '49_bertazzoni':'Bertazzoni','50_Elica':'Elica',
+          '51_a_51_LG':'LG','63_a_466_lg-stodio':'LG Studio',
+          '64_a_299_SMEG':'SMEG','brand_logo_65':'Signature Kitchen Suite',
+          '66_a_335_brand_logo_11':'Jenn-Air',
+        };
+        brand=brandMap[fname]||null;
+        // Fallback: try to extract readable name from filename
+        if(!brand){const m=fname.match(/[a-z][\w-]+$/i);if(m)brand=m[0].replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
       }
     }
     if(!brand&&title){const first=title.replace(/^\d+"\s*/,'').split(' ')[0];if(first&&first.length>1)brand=first}
