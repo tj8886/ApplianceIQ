@@ -5090,6 +5090,7 @@ function renderCAS(){
   }
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-Save</label>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClearResults()" title="Wipe scraped results but keep discovered URL list">Clear Results</button>';
+  h+='<button class="btn btn-secondary" onclick="window.S.casSyncResume()" title="Pull previously scraped URLs from database into resume cache" style="font-size:11px">📥 Sync Resume</button>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClearResume()" title="Clear resume cache — next scrape re-does previously done URLs" style="font-size:11px">🔄 Clear Resume</button>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClear()" title="Wipe everything including discovered URLs" style="color:var(--red)">Reset All</button>';
   h+='</div></div>';
@@ -5176,27 +5177,48 @@ async function casDiscoverSitemap(){
 }
 try{const c=JSON.parse(localStorage.getItem('aiq_cas_urls')||'[]');if(c.length){casProductUrls=c;casStats.discovered=c.length}}catch(_){}
 
-// Auto-seed resume cache from DB if empty (handles pre-update scrapes)
+// Seed resume cache from DB if empty (handles pre-update scrapes)
 async function casSyncResumeFromDB(){
   try{
     const existing=JSON.parse(localStorage.getItem('aiq_cas_done')||'[]');
-    if(existing.length>0)return; // Already have resume data
+    if(existing.length>50){console.log('[CAS RESUME] Already have '+existing.length+' in cache');return existing.length}
+    console.log('[CAS RESUME] Cache has '+existing.length+' — syncing from DB…');
     logEntry('CAS: Syncing resume cache from database…','info');
-    const{data,error}=await sb.from('retailer_discovered_products')
+    // Pull all CAS URLs from retailer_discovered_products
+    let allUrls=[];
+    let offset=0;
+    while(true){
+      const{data,error}=await sb.from('retailer_discovered_products')
+        .select('product_url')
+        .eq('retailer_name','Canadian Appliance Source')
+        .not('product_url','is',null)
+        .range(offset,offset+999);
+      if(error){logEntry('CAS: Resume sync error: '+error.message,'err');console.error('[CAS RESUME]',error);break}
+      if(!data||data.length===0)break;
+      allUrls=allUrls.concat(data.map(r=>r.product_url).filter(Boolean));
+      if(data.length<1000)break;
+      offset+=1000;
+    }
+    // Also pull from pim_retailer_prices as backup
+    const{data:priceUrls}=await sb.from('pim_retailer_prices')
       .select('product_url')
       .eq('retailer_name','Canadian Appliance Source')
-      .not('product_url','is',null);
-    if(error){logEntry('CAS: Resume sync error: '+error.message,'err');return}
-    if(data&&data.length>0){
-      const urls=data.map(r=>r.product_url).filter(Boolean);
-      localStorage.setItem('aiq_cas_done',JSON.stringify(urls));
-      logEntry('CAS: Loaded '+urls.length+' previously scraped URLs into resume cache','ok');
+      .not('product_url','is',null)
+      .range(0,999);
+    if(priceUrls)allUrls=allUrls.concat(priceUrls.map(r=>r.product_url).filter(Boolean));
+    
+    // Merge with any existing cache entries
+    const merged=[...new Set([...existing,...allUrls])];
+    if(merged.length>0){
+      localStorage.setItem('aiq_cas_done',JSON.stringify(merged));
+      logEntry('CAS: Loaded '+merged.length+' previously scraped URLs into resume cache','ok');
+      console.log('[CAS RESUME] Synced '+merged.length+' URLs');
       renderTab();
+      return merged.length;
     }
-  }catch(e){logEntry('CAS: Resume sync failed: '+e.message,'err')}
+    return 0;
+  }catch(e){logEntry('CAS: Resume sync failed: '+e.message,'err');console.error('[CAS RESUME]',e);return 0}
 }
-// Run sync after auth is ready
-setTimeout(()=>{if(currentSession)casSyncResumeFromDB()},2000);
 
 function casParseHTML(html,url){
   const doc=new DOMParser().parseFromString(html,'text/html');
@@ -5604,6 +5626,8 @@ async function casSaveProduct(data,sourceUrl){
 async function getCASRetailerId(){return 'f4071593-5463-4634-8275-4c386f2703e4'}
 async function casScrapeAll(){await casScrapeNext(casProductUrls.length)}
 async function casScrapeNext(count){
+  // Ensure resume cache is seeded from DB before first scrape
+  await casSyncResumeFromDB();
   // Load previously scraped URLs for resume
   let doneBefore=new Set();
   try{doneBefore=new Set(JSON.parse(localStorage.getItem('aiq_cas_done')||'[]'))}catch(_){}
@@ -5655,6 +5679,7 @@ window.S.casSetFilter=(v)=>{casFilter=v;renderTab()};
 window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls');localStorage.removeItem('aiq_cas_done')}catch(_){}renderTab()};
 window.S.casClearResults=()=>{casScrapeResults=[];casStats={discovered:casProductUrls.length,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';renderTab()};
 window.S.casClearResume=()=>{try{localStorage.removeItem('aiq_cas_done')}catch(_){}logEntry('CAS: Resume cache cleared — next scrape starts fresh','ok');renderTab()};
+window.S.casSyncResume=()=>casSyncResumeFromDB();
 
 /* ═══════════════════════════════════════════════════════════════════
    TRAIL APPLIANCES ENGINE
