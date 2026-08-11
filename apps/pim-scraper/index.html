@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v4 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-cas-v7-2026-08-10"/>
+<meta name="aiq-version" content="pim-scraper-cas-v8-2026-08-10"/>
 <!-- VERSION: PIM Scraper v3.5 — Brand content capture + auto-skip useless URLs -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
@@ -5357,7 +5357,7 @@ async function casSaveProduct(data,sourceUrl){
       regular_price:regularPrice,
       on_sale:!!(currentPrice&&regularPrice&&currentPrice<regularPrice),
       in_stock:inStock,
-      condition:soldOut?'sold_out':'new_sealed',
+      condition:soldOut?'sold_out':'new',
       country:'CA',
       last_verified:now,
       status:soldOut?'sold_out':'active'
@@ -5429,13 +5429,13 @@ async function casSaveProduct(data,sourceUrl){
       in_stock:inStock,
       stock_note:data.availability,
       condition:soldOut?'sold_out':'new_sealed',
-      condition_normalized:'new_sealed',
+      condition_normalized:'new',  // enum: new|sale|open_box|refurbished|floor_model|scratch_dent|clearance|end_of_life|returned|discontinued|used|as_is
       condition_raw:soldOut?'Sold Out':'New',
       is_open_box:false,is_clearance:false,is_refurbished:false,is_floor_model:false,
       free_delivery:true,
       price_currency:'CAD',
       country:'CA',
-      listing_status:soldOut?'inactive':'active',
+      listing_status:soldOut?'out_of_stock':'active',  // enum: active|out_of_stock|sold|delisted|archived
       savings_amount:data.savings?parseFloat(data.savings):null,
       checked_at:now,
       last_seen_at:now
