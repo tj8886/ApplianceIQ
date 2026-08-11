@@ -5942,39 +5942,44 @@ window.S.trailClear=()=>{trailProducts=[];trailStats={discovered:0,saved:0,faile
 
 function apexParseCategory(html,site){
   const products=[];const doc=new DOMParser().parseFromString(html,'text/html');
-  // Product cards have: model in h4 > a, title in preceding link, brand from logo img
-  // Pattern: <a href="/products/view/slug">Title</a> ... <h4><a>MODEL</a></h4>
-  const links=doc.querySelectorAll('a[href*="/products/view/"]');
   const seen=new Set();
-  for(const a of links){
-    const href=a.getAttribute('href')||'';
-    if(seen.has(href))continue;seen.add(href);
-    const title=a.textContent?.trim()||'';
-    if(!title||title.length<10||title==='Compare Products')continue;
-    // Look for model in nearby h4
-    const card=a.closest('.product-item,.product-card,.col-lg-3,.col-md-4,.col-sm-6,div')||a.parentElement;
-    let model=null;
-    const h4s=card?.querySelectorAll('h4 a, h5 a')||[];
-    for(const h of h4s){const t=h.textContent?.trim();if(t&&t.length>=3&&t.length<=40&&/[A-Z0-9]/.test(t)){model=t.replace(/\s*\(.*\)/,'').trim();break}}
-    // Extract model from URL slug if not found
-    if(!model){const slugParts=href.split('/').pop()?.split('-');if(slugParts)model=slugParts[slugParts.length-1]?.toUpperCase()}
+  // Apex structure: SKU links have class="sku_XXXX" and rel="MODEL_NUMBER"
+  const skuLinks=doc.querySelectorAll('a[class^="sku_"][rel]');
+  for(const skuEl of skuLinks){
+    const model=(skuEl.getAttribute('rel')||'').trim();
+    if(!model||model.includes('?')||seen.has(model))continue;
+    seen.add(model);
+    const href=skuEl.getAttribute('href')||'';
+    if(!href.includes('/products/view/'))continue;
+    // Find the title link — sibling or nearby link with same href
+    let title=null;
+    const allLinks=doc.querySelectorAll('a[href="'+href+'"]');
+    for(const a of allLinks){
+      const t=(a.textContent||'').trim();
+      if(t.length>15&&t!==model&&!t.includes('Compare'))title=t;
+    }
     // Brand from logo img nearby
     let brand=null;
-    const imgs=card?.querySelectorAll('img[src*="brandlogo"]')||[];
-    for(const img of imgs){
-      const src=img.getAttribute('src')||'';
-      const m=src.match(/\d+_(.+?)\.png/);
-      if(m)brand=m[1].replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const card=skuEl.closest('.product-default,.product-item,.product,.col-lg-3,.col-md-4,.col-sm-6')||skuEl.parentElement?.parentElement;
+    if(card){
+      const imgs=card.querySelectorAll('img[src*="brandlogo"]');
+      for(const img of imgs){
+        const src=img.getAttribute('src')||'';
+        const m=src.match(/\d+_(.+?)\.png/i);
+        if(m){brand=m[1].replace(/_/g,' ');
+          const fixes={'Samsung':'Samsung','KitchenAid':'KitchenAid','Bluestar':'BlueStar','Jenn-Air':'Jenn-Air','SubZero':'Sub-Zero','Frigidaire':'Frigidaire','a 19 frigidaire':'Frigidaire','a 299 SMEG':'SMEG'};
+          brand=fixes[brand]||brand.replace(/\b\w/g,c=>c.toUpperCase());
+        }
+      }
     }
-    // Brand from title
-    if(!brand&&title){const words=title.split(' ');if(words[0]&&words[0].length>1)brand=words[0]}
+    if(!brand&&title){const first=title.replace(/^\d+"\s*/,'').split(' ')[0];if(first&&first.length>1)brand=first}
     // Availability
     const cardText=card?.textContent||'';
     const inStock=cardText.includes('In Stock');
     const available=cardText.includes('Available to ship')||inStock;
     const clearance=cardText.includes('Clearance');
-    const url='https://'+APEX_SITES[apexSite].domain+href;
-    if(model)products.push({brand,model,title,url,inStock,available,clearance,price:null});
+    const fullUrl=href.startsWith('http')?href:'https://'+APEX_SITES[apexSite].domain+href;
+    products.push({brand,model,title,url:fullUrl,inStock,available,clearance,price:null});
   }
   return products;
 }
