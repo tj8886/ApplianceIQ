@@ -5064,6 +5064,8 @@ function renderCAS(){
   h+='<div class="stat-card"><div class="label">Discovered</div><div class="value">'+casProductUrls.length+'</div></div>';
   h+='<div class="stat-card"><div class="label">Scraped</div><div class="value green">'+casStats.scraped+'</div></div>';
   h+='<div class="stat-card"><div class="label">Saved</div><div class="value green">'+casStats.saved+'</div></div>';
+  const prevDone=(()=>{try{return JSON.parse(localStorage.getItem('aiq_cas_done')||'[]').length}catch(_){return 0}})();
+  h+='<div class="stat-card"><div class="label">Previously Done</div><div class="value" style="color:var(--blue)">'+prevDone+'</div></div>';
   h+='<div class="stat-card"><div class="label">Sold Out</div><div class="value" style="color:var(--txt2)">'+casStats.discontinued+'</div></div>';
   h+='<div class="stat-card"><div class="label">CF Blocked</div><div class="value '+(casStats.blocked>0?'red':'')+'">'+casStats.blocked+'</div></div>';
   h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(casStats.failed>0?'red':'')+'">'+casStats.failed+'</div></div>';
@@ -5088,6 +5090,7 @@ function renderCAS(){
   }
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-Save</label>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClearResults()" title="Wipe scraped results but keep discovered URL list">Clear Results</button>';
+  h+='<button class="btn btn-secondary" onclick="window.S.casClearResume()" title="Clear resume cache — next scrape re-does previously done URLs" style="font-size:11px">🔄 Clear Resume</button>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClear()" title="Wipe everything including discovered URLs" style="color:var(--red)">Reset All</button>';
   h+='</div></div>';
 
@@ -5102,23 +5105,23 @@ function renderCAS(){
   if(display.length>0){
     h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+Math.min(display.length,300)+' of '+display.length+' results</div>';
     h+='<div style="max-height:550px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius)">';
-    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>MSRP</th><th>Regular</th><th>Online</th><th>MAP</th><th>Promo</th><th>UPC</th><th>Specs</th><th>OB</th><th>Status</th></tr></thead><tbody>';
+    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>MSRP</th><th>Recent</th><th>Online</th><th>In-Cart</th><th>MAP</th><th>Promo</th><th>OB From</th><th>Specs</th><th>Status</th></tr></thead><tbody>';
     for(const r of display.slice(-300).reverse()){
       const d=r.data||{};const st=r.status;
-      const cls=st==='ok'?'diff-added':st==='sold_out'?'diff-changed':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
+      const cls=st==='ok'?'diff-added':st==='sold_out'||st==='not_avail'?'diff-changed':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
       const fmtP=v=>v?'$'+Number(v).toLocaleString():'—';
       h+='<tr>';
       h+='<td class="brand-cell">'+esc(d.brand||r.brand||'—')+'</td>';
       h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(d.model||r.model||'—')+'</a></td>';
       h+='<td style="font-size:11px;color:var(--txt2)">'+esc(d.category||'—')+'</td>';
       h+='<td style="font-size:11px;color:var(--txt2);text-decoration:line-through">'+fmtP(d.msrp_price)+'</td>';
-      h+='<td style="font-size:11px;color:var(--txt2)">'+fmtP(d.regular_price)+'</td>';
-      h+='<td style="font-weight:600;color:var(--accent)">'+fmtP(d.current_price)+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2)">'+fmtP(d.recent_price)+'</td>';
+      h+='<td style="font-weight:600;color:var(--accent)">'+fmtP(d.current_price||d.online_price)+'</td>';
+      h+='<td style="font-size:11px;color:var(--accent)">'+(d.in_cart_price?fmtP(d.in_cart_price)+'<span style="font-size:9px;color:var(--amber)"> '+esc(d.in_cart_discount||'')+'</span>':'—')+'</td>';
       h+='<td style="font-size:11px;color:var(--blue)">'+fmtP(d.map_price)+'</td>';
-      h+='<td style="font-size:10px;color:var(--amber)">'+(d.promo_tiers?.length?d.promo_tiers.length+' tier'+(d.promo_tiers.length>1?'s':''):'—')+'</td>';
-      h+='<td style="font-size:10px;color:var(--txt2)">'+esc(d.upc||'—')+'</td>';
+      h+='<td style="font-size:10px;color:var(--amber)">'+(d.promo_tiers?.length?d.promo_tiers.length+' tier'+(d.promo_tiers.length>1?'s':''):(d.bundle_save?'Bundle':'—'))+'</td>';
+      h+='<td style="font-size:11px;color:var(--amber)">'+(d.open_box_from_price?fmtP(d.open_box_from_price)+(d.open_box_count?' ('+d.open_box_count+')':''):'—')+'</td>';
       h+='<td style="font-size:11px">'+(d.spec_count?'<span style="color:var(--accent)">'+d.spec_count+'</span>':'—')+'</td>';
-      h+='<td style="font-size:11px">'+(d.open_box_count?'<span style="color:var(--amber)">'+d.open_box_count+'</span>':'—')+'</td>';
       h+='<td><span class="'+cls+'">'+esc(st)+'</span></td></tr>';
     }
     h+='</tbody></table></div>';
@@ -5211,17 +5214,51 @@ function casParseHTML(html,url){
 
   const bt=doc.body?doc.body.textContent:'';
 
+  // ── "Not available for sale" detection ──
+  if(bt.includes('Not available for sale at CAS')||bt.includes('Not Available For Sale')||bt.includes('not available for sale')){
+    d.not_available=true;d.availability='not_available';d.in_stock=false;
+  }
+
   // UPC + EAN
   const um=bt.match(/Canadian UPC:\s*(\d+)/);if(um)d.upc=um[1];
   const em=bt.match(/EAN:\s*(\d+)/);if(em)d.ean=em[1];
 
-  // Price waterfall — CAS shows up to four price levels
-  // MSRP Price (highest) → Regular Price → Online MAP Price → Online Price (lowest)
-  const msrpM=bt.match(/MSRP Price\s*\$?([\d,]+)/i);
+  // ── FULL PRICE WATERFALL ──
+  // CAS shows up to 6 price levels depending on product status:
+  // MSRP Price → Regular Price → Recent Price → Online MAP Price → Online Price → In-Cart Price
+
+  // MSRP (crossed out manufacturer price)
+  const msrpM=bt.match(/MSRP\s*(?:Price)?\s*\$?([\d,]+(?:\.\d{2})?)/i);
   if(msrpM)d.msrp_price=msrpM[1].replace(/,/g,'');
 
-  const regM=bt.match(/Regular Price\s*\$?([\d,]+)/i);
+  // Regular Price (retailer list price before any sale)
+  const regM=bt.match(/Regular Price\s*\$?([\d,]+(?:\.\d{2})?)/i);
   if(regM)d.regular_price=regM[1].replace(/,/g,'');
+
+  // Recent Price (what it was selling for recently — shows with down arrow ▼X%)
+  const recentM=bt.match(/Recent Price[s]?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+  if(recentM)d.recent_price=recentM[1].replace(/,/g,'');
+  // Also check for the ▼X% $XXX pattern near "Recent Price"
+  const recentPctM=bt.match(/[▼↓]\s*(\d+)%\s*\$([\d,]+(?:\.\d{2})?)/);
+  if(recentPctM){
+    if(!d.recent_price)d.recent_price=recentPctM[2].replace(/,/g,'');
+    d.recent_discount_pct=parseInt(recentPctM[1]);
+  }
+
+  // Online Price (the actual selling price shown on page)
+  const onlineM=bt.match(/Online Price\s*(?:\[.\]\s*Info)?\s*\$?([\d,]+(?:\.\d{2})?)/i);
+  if(onlineM)d.online_price=onlineM[1].replace(/,/g,'');
+
+  // In-Cart Discount ("10% off in-cart!" pattern)
+  const inCartM=bt.match(/(\d+)%\s+off\s+in[- ]cart/i);
+  if(inCartM){
+    d.in_cart_discount=inCartM[1]+'% off in-cart';
+    d.in_cart_discount_pct=parseInt(inCartM[1]);
+    // Calculate in-cart price if we have online price
+    if(d.online_price){
+      d.in_cart_price=(parseFloat(d.online_price)*(1-parseInt(inCartM[1])/100)).toFixed(2);
+    }
+  }
 
   // Primary price source: schema.org itemprop="price" — most reliable
   const itempropPrice=doc.querySelector('[itemprop="price"]');
@@ -5231,11 +5268,8 @@ function casParseHTML(html,url){
     if(m)d.current_price=m[1].replace(/,/g,'');
   }
 
-  // Fallback price labels
-  if(!d.current_price){
-    const onlineM=bt.match(/Online Price\s*\$?([\d,]+)/i);
-    if(onlineM)d.current_price=onlineM[1].replace(/,/g,'');
-  }
+  // Fallback current price cascade
+  if(!d.current_price&&d.online_price)d.current_price=d.online_price;
   if(!d.current_price){
     const promoM=bt.match(/Promo\s*\$?([\d,]+)/);
     if(promoM)d.current_price=promoM[1].replace(/,/g,'');
@@ -5245,10 +5279,41 @@ function casParseHTML(html,url){
     if(todayM)d.current_price=todayM[1].replace(/,/g,'');
   }
 
-  // MAP Price label — may be far from the price value on some layouts
-  const mapM=bt.match(/Online MAP Price[\s\S]{0,600}?\$([\d,]+)/i);
+  // MAP Price label
+  const mapM=bt.match(/Online MAP Price[\s\S]{0,600}?\$([\d,]+(?:\.\d{2})?)/i);
   if(mapM)d.map_price=mapM[1].replace(/,/g,'');
   if(!d.current_price&&d.map_price)d.current_price=d.map_price;
+
+  // ── OPEN BOX / FLOOR MODEL per-showroom pricing ──
+  // Pattern: "Out of Box / Floor Model Sale" then showroom blocks with prices
+  if(bt.includes('Out of Box')||bt.includes('Floor Model Sale')||bt.includes('Open Box')){
+    d.has_open_box=true;
+    const obPriceM=bt.match(/(?:Out of Box|Floor Model|Open Box)[\s\S]{0,100}?from\s*\$([\d,]+(?:\.\d{2})?)/i);
+    if(obPriceM)d.open_box_from_price=obPriceM[1].replace(/,/g,'');
+    
+    // Per-showroom open box units
+    const showroomBlocks=[];
+    // Match showroom name + price pairs
+    const showroomRe=/([\w\s]+?Showroom|[\w\s]+?Centre)\s*\$([\d,]+\.\d{2})/gi;
+    let sm2;while((sm2=showroomRe.exec(bt))!==null){
+      const name=sm2[1].trim();
+      const srPrice=sm2[2].replace(/,/g,'');
+      // Try to find condition near this showroom entry
+      let condition='open_box';
+      const condCtx=bt.substring(Math.max(0,sm2.index-20),sm2.index+200);
+      if(condCtx.includes('Perfect (Floor Display)'))condition='floor_model_perfect';
+      else if(condCtx.includes('Scratch & Dent')||condCtx.includes('Scratch &amp; Dent'))condition='scratch_dent';
+      else if(condCtx.includes('Slight Damage'))condition='slight_damage';
+      else if(condCtx.includes('Cosmetic'))condition='cosmetic_damage';
+      showroomBlocks.push({showroom:name,price:parseFloat(srPrice),condition});
+    }
+    if(showroomBlocks.length){d.open_box_units=showroomBlocks;d.open_box_count=showroomBlocks.length}
+  }
+
+  // Clearance status
+  if(bt.includes('Clearance (Floor Models Only)')||bt.includes('Clearance')){
+    d.is_clearance=true;
+  }
 
   // Promo pricing (JennAir "Buy 2 Save 15%", CAS Mix & Match, etc)
   const promoTiers=[];
@@ -5263,6 +5328,9 @@ function casParseHTML(html,url){
   const promoPrices=[];
   for(const m of promoNetM){promoPrices.push({price:parseFloat(m[1].replace(/,/g,'')),discount_percent:parseInt(m[2]),buy_qty:parseInt(m[3])})}
   if(promoPrices.length)d.promo_prices=promoPrices;
+
+  // Bundle & Save
+  if(bt.includes('Bundle & Save')||bt.includes('Bundle &amp; Save'))d.bundle_save=true;
 
   // Historical low/high with dates
   const lm=bt.match(/Lowest Price:?\s*\$?([\d,]+)\s*on\s*([\d-]+)/);
@@ -5372,15 +5440,20 @@ async function casScrapeOne(url){
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
       body:JSON.stringify({url})});
     const result=await resp.json();
-    if(!result.ok||!result.html){r.status='blocked';casStats.blocked++;logEntry('CAS: CF blocked '+model,'err');renderTab();return r}
+    if(result.blocked){r.status='blocked';casStats.blocked++;logEntry('CAS: CF blocked '+model+' — backing off','err');renderTab();return r}
+    if(!result.ok||!result.html){r.status='fail';casStats.failed++;logEntry('CAS: No HTML for '+model,'err');renderTab();return r}
     const data=casParseHTML(result.html,url);
     r.data=data;r.brand=data.brand||brand;r.model=data.model||model;
-    // Status priority: has price → ok; has specs or upc → ok (product data captured); sold_out → sold_out; otherwise partial
-    if(data.current_price||data.spec_count>=3||data.upc){r.status='ok';casStats.scraped++}
+    if(data.not_available){r.status='not_avail';casStats.scraped++;casStats.discontinued++}
+    else if(data.current_price||data.spec_count>=3||data.upc){r.status='ok';casStats.scraped++}
     else if(data.availability==='sold_out'){r.status='sold_out';casStats.scraped++;casStats.discontinued++}
     else{r.status='partial';casStats.scraped++}
     if(autoSave&&(data.model||model)){await casSaveProduct(data,url);casStats.saved++}
-    logEntry('CAS: '+brand+' '+model+' → '+(data.spec_count||0)+' specs, $'+(data.current_price||'?'),'ok');
+    // Persist scraped URL so we can resume
+    try{const done=JSON.parse(localStorage.getItem('aiq_cas_done')||'[]');done.push(url);if(done.length%50===0)localStorage.setItem('aiq_cas_done',JSON.stringify(done));else localStorage.setItem('aiq_cas_done',JSON.stringify(done))}catch(_){}
+    logEntry('CAS: '+brand+' '+model+' → '+(data.spec_count||0)+' specs, $'+(data.current_price||'?')+
+      (data.recent_price?' recent:$'+data.recent_price:'')+
+      (data.in_cart_discount?' '+data.in_cart_discount:''),'ok');
   }catch(e){r.status='fail';casStats.failed++;logEntry('CAS: Error '+model+': '+e.message,'err')}
   renderTab();return r;
 }
@@ -5509,16 +5582,45 @@ async function casSaveProduct(data,sourceUrl){
 async function getCASRetailerId(){return 'f4071593-5463-4634-8275-4c386f2703e4'}
 async function casScrapeAll(){await casScrapeNext(casProductUrls.length)}
 async function casScrapeNext(count){
-  const done=new Set(casScrapeResults.map(r=>r.url));
-  const batch=casProductUrls.filter(u=>!done.has(u)).slice(0,count);
-  if(!batch.length){logEntry('CAS: Nothing left','info');return}
+  // Load previously scraped URLs for resume
+  let doneBefore=new Set();
+  try{doneBefore=new Set(JSON.parse(localStorage.getItem('aiq_cas_done')||'[]'))}catch(_){}
+  const doneThisSession=new Set(casScrapeResults.map(r=>r.url));
+  const allDone=new Set([...doneBefore,...doneThisSession]);
+  const remaining=casProductUrls.filter(u=>!allDone.has(u));
+  const batch=remaining.slice(0,count);
+  if(!batch.length){logEntry('CAS: Nothing left to scrape ('+allDone.size+' already done)','info');return}
   casLoading=true;casStopRequested=false;casProgress={current:0,total:batch.length,phase:'scrape'};renderTab();
-  logEntry('CAS: Batch of '+batch.length+'…','info');
+  logEntry('CAS: Batch of '+batch.length+' (skipped '+allDone.size+' already done)','info');
+  let consecutiveBlocks=0;
+  let delay=3000; // Start with 3s delay — respectful baseline
   for(let i=0;i<batch.length;i++){
     if(casStopRequested){logEntry('CAS: Stopped at '+i+'/'+batch.length,'info');break}
     casProgress.current=i+1;renderTab();
-    await casScrapeOne(batch[i]);
-    if(i<batch.length-1)await new Promise(r=>setTimeout(r,2000));
+    const result=await casScrapeOne(batch[i]);
+    // Adaptive delay — back off when blocked, speed up when clear
+    if(result&&result.status==='blocked'){
+      consecutiveBlocks++;
+      if(consecutiveBlocks>=3){
+        // Heavy backoff — 30s pause + increase base delay
+        delay=Math.min(delay*2,15000);
+        logEntry('CAS: '+consecutiveBlocks+' consecutive blocks — pausing 30s, delay now '+Math.round(delay/1000)+'s','err');
+        await new Promise(r=>setTimeout(r,30000));
+      } else if(consecutiveBlocks>=2){
+        delay=Math.min(delay*1.5,12000);
+        logEntry('CAS: Block #'+consecutiveBlocks+' — pausing 15s','err');
+        await new Promise(r=>setTimeout(r,15000));
+      }
+    } else {
+      consecutiveBlocks=0;
+      // Gradually ease back to faster pacing after success
+      if(delay>3000)delay=Math.max(3000,delay*0.85);
+    }
+    if(i<batch.length-1){
+      // Randomize delay ±30% to avoid patterns
+      const jitter=delay*(0.7+Math.random()*0.6);
+      await new Promise(r=>setTimeout(r,jitter));
+    }
   }
   casLoading=false;renderTab();
   logEntry('CAS: Done — '+casStats.scraped+' scraped, '+casStats.saved+' saved, '+casStats.blocked+' blocked','ok');
@@ -5528,8 +5630,9 @@ window.S.casScrapeAll=()=>casScrapeAll();
 window.S.casScrapeNext=(n)=>casScrapeNext(n);
 window.S.casStop=()=>{casStopRequested=true};
 window.S.casSetFilter=(v)=>{casFilter=v;renderTab()};
-window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls')}catch(_){}renderTab()};
+window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls');localStorage.removeItem('aiq_cas_done')}catch(_){}renderTab()};
 window.S.casClearResults=()=>{casScrapeResults=[];casStats={discovered:casProductUrls.length,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';renderTab()};
+window.S.casClearResume=()=>{try{localStorage.removeItem('aiq_cas_done')}catch(_){}logEntry('CAS: Resume cache cleared — next scrape starts fresh','ok');renderTab()};
 
 /* ═══════════════════════════════════════════════════════════════════
    TRAIL APPLIANCES ENGINE
