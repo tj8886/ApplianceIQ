@@ -240,6 +240,7 @@ header .right{display:flex;align-items:center;gap:12px}
     <button class="tab-btn" onclick="window.S.switchTab('cas')" style="color:var(--blue)">🇨🇦 CAS</button>
     <button class="tab-btn" onclick="window.S.switchTab('trail')" style="color:var(--blue)">🏔️ Trail</button>
     <button class="tab-btn" onclick="window.S.switchTab('apex')" style="color:var(--blue)">🔷 Apex</button>
+    <button class="tab-btn" onclick="window.S.switchTab('tg')" style="color:var(--blue)">🏪 TG</button>
   </div>
   <div class="main" id="mainContent">
     <div style="text-align:center;padding:80px 0;color:var(--txt2)">Loading brands…</div>
@@ -632,6 +633,19 @@ const APEX_SITES = {
     {slug:'dishwashers',label:'Dishwashers'},{slug:'washers',label:'Washers'},
     {slug:'dryers',label:'Dryers'},
   ]},
+};
+
+// TG Appliance (HawkSearch) state
+let tgProducts = [];
+let tgLoading = false;
+let tgProgress = {current:0,total:0,phase:''};
+let tgFilter = '';
+let tgStats = {discovered:0,saved:0,failed:0,pages:0,matched:0};
+let tgStopRequested = false;
+let tgSite = 'tasco';
+const TG_SITES = {
+  tasco:{name:'Tasco Appliances',hawk:'tascoappliances',guid:'53e84e1e74d0443db0240ac411954538',region:'ON'},
+  goemans:{name:'Goemans Appliances',hawk:'goemans',guid:'f16610f05c27457d8230ad483228e115',region:'ON'},
 };
 
 // Verify & Audit state
@@ -1604,6 +1618,7 @@ function renderTab(){
   else if(currentTab==='cas') h+=renderCAS();
   else if(currentTab==='trail') h+=renderTrail();
   else if(currentTab==='apex') h+=renderApex();
+  else if(currentTab==='tg') h+=renderTG();
 
   // Save scroll position before DOM replace
   const prevScroll=el.scrollTop;
@@ -2232,7 +2247,7 @@ function renderEnrich() {
 window.S = {
   switchTab(tab){
     currentTab=tab;
-    const tabs=['discover','price-sync','verify','enrich','intelligence','recalls','cas','trail','apex'];
+    const tabs=['discover','price-sync','verify','enrich','intelligence','recalls','cas','trail','apex','tg'];
     document.querySelectorAll('.tab-btn').forEach((b,i)=>{
       const isActive=tabs[i]===tab;
       b.classList.toggle('active',isActive);
@@ -6115,6 +6130,175 @@ window.S.apexSaveAll=()=>apexSaveBatch();
 window.S.apexExportCSV=()=>apexExportCSV();
 window.S.apexStop=()=>{apexStopRequested=true};
 window.S.apexClear=()=>{apexProducts=[];apexStats={discovered:0,saved:0,failed:0,pages:0};apexFilter='';renderTab()};
+
+/* ═══════════════════════════════════════════════════════════════════
+   TG APPLIANCE ENGINE — HAWKSEARCH API
+   Tasco (14,415) + Goemans (15,080) = ~29,500 products
+   One adapter, two retailers. Full prices, brands, categories.
+   ═══════════════════════════════════════════════════════════════════ */
+
+async function tgHawkQuery(site,params){
+  const s=TG_SITES[site];
+  const resp=await fetch('https://'+s.hawk+'.searchapi-na.hawksearch.com/api/v2/search',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ClientGuid:s.guid,MaxPerPage:24,...params})
+  });
+  return resp.json();
+}
+
+function tgMapHit(r,siteName){
+  const d=r.Document||{};
+  const v=k=>(d[k]||[''])[0]; // HawkSearch values are arrays
+  const price=parseFloat(v('price_retail'))||null;
+  const salePrice=parseFloat(v('price_sale'))||null;
+  const cat=[v('category_level_1'),v('category_level_2'),v('category_level_3'),v('category_level_4')].filter(Boolean);
+  return {
+    brand:v('brand'),model:v('sku'),title:v('name'),
+    price:salePrice||price,retailPrice:price,salePrice,
+    category:cat.pop()||null,categoryPath:cat.join(' > '),
+    url:v('url_detail'),image:v('image'),
+    color:v('color'),width:v('width'),height:v('height'),depth:v('depth'),
+    description:v('description_short'),
+    onSale:v('on_sale')==='1'||(salePrice&&salePrice<price),
+    liquidation:v('liquidation')==='1',
+    callForPricing:v('call_for_pricing')==='1',
+    ecoProduct:v('eco_product')==='1',
+    bestSeller:v('best_seller')==='1',
+    nextDayDelivery:v('next_day_delivery')==='1',
+    retailer:siteName,inStock:true
+  };
+}
+
+function renderTG(){
+  const site=TG_SITES[tgSite];
+  let h='<div style="margin-bottom:20px">';
+  h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+  h+='<span style="font-size:20px;font-weight:800;color:var(--txt)">🏪 TG Appliance Group</span>';
+  h+='<span style="font-size:12px;color:var(--accent);background:rgba(26,158,86,.1);padding:4px 10px;border-radius:20px;font-weight:600">$0 — HawkSearch API</span>';
+  h+='</div>';
+  h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px;max-width:700px">Direct JSON from HawkSearch. One adapter, two retailers. Tasco: ~14,400 | Goemans: ~15,000. Full retail + sale prices, brands, categories, dimensions.</p>';
+  h+='<div class="stats-row">';
+  h+='<div class="stat-card"><div class="label">Products</div><div class="value">'+tgProducts.length+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Brands Queried</div><div class="value green">'+tgStats.pages+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Saved</div><div class="value green">'+tgStats.saved+'</div></div>';
+  h+='<div class="stat-card"><div class="label">PIM Matched</div><div class="value" style="color:var(--blue)">'+tgStats.matched+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(tgStats.failed>0?'red':'')+'">'+tgStats.failed+'</div></div>';
+  h+='</div>';
+  h+='<div class="controls" style="margin-bottom:16px">';
+  h+='<div class="mode-toggle">';
+  for(const[k,v]of Object.entries(TG_SITES))h+='<button class="'+(tgSite===k?'active':'')+'" onclick="window.S.tgSetSite(\''+k+'\')">'+esc(v.name)+'</button>';
+  h+='<button class="'+(tgSite==='both'?'active':'')+'" onclick="window.S.tgSetSite(\'both\')">Both</button>';
+  h+='</div>';
+  h+='<button class="btn btn-primary" onclick="window.S.tgCrawl()" '+(tgLoading?'disabled':'')+'>'+(tgLoading?'⏳ '+tgProgress.current+'/'+tgProgress.total+' brands':'🔍 Pull Full Catalog')+'</button>';
+  if(tgLoading)h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.tgStop()">⏹ Stop</button>';
+  h+='<div style="margin-left:auto;display:flex;gap:8px;align-items:center">';
+  if(tgProducts.length>0)h+='<input type="text" placeholder="Filter…" value="'+esc(tgFilter)+'" oninput="window.S.tgSetFilter(this.value)" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;font-size:12px;width:180px;color:var(--txt);font-family:inherit">';
+  h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-Save</label>';
+  if(tgProducts.length>0){h+='<button class="btn btn-sm btn-secondary" onclick="window.S.tgSaveAll()">💾 Save All</button>';h+='<button class="btn btn-sm btn-secondary" onclick="window.S.tgExportCSV()">📥 CSV</button>'}
+  h+='<button class="btn btn-secondary" onclick="window.S.tgClear()" style="color:var(--red)">Reset</button></div></div>';
+  if(tgLoading&&tgProgress.total>0){const pct=Math.round((tgProgress.current/tgProgress.total)*100);h+='<div style="margin-bottom:16px"><div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);transition:width .3s"></div></div><div style="font-size:11px;color:var(--txt2);margin-top:4px">'+tgProgress.phase+' — '+pct+'%</div></div>'}
+  const display=tgFilter?tgProducts.filter(r=>{const s=(r.brand||'')+(r.model||'')+(r.title||'')+(r.category||'');return s.toLowerCase().includes(tgFilter.toLowerCase())}):tgProducts;
+  if(display.length>0){
+    const bc={};for(const p of display)if(p.brand)bc[p.brand]=(bc[p.brand]||0)+1;
+    const tb=Object.entries(bc).sort((a,b)=>b[1]-a[1]).slice(0,20);
+    h+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">';for(const[b,c]of tb)h+='<span style="font-size:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 8px;cursor:pointer" onclick="window.S.tgSetFilter(\''+esc(b)+'\')">'+esc(b)+' <b>'+c+'</b></span>';h+='</div>';
+    h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+Math.min(display.length,500)+' of '+display.length+'</div>';
+    h+='<div style="max-height:550px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius)">';
+    h+='<table class="prod-table"><thead><tr><th>Retailer</th><th>Brand</th><th>Model</th><th>Product</th><th>Retail</th><th>Sale</th><th>Save</th><th>Sale?</th><th>Category</th></tr></thead><tbody>';
+    for(const r of display.slice(0,500)){
+      const savePct=r.retailPrice&&r.salePrice&&r.salePrice<r.retailPrice?Math.round((1-r.salePrice/r.retailPrice)*100):0;
+      h+='<tr><td style="font-size:10px;color:var(--txt2)">'+esc(r.retailer==='Tasco Appliances'?'Tasco':'Goemans')+'</td>';
+      h+='<td class="brand-cell">'+esc(r.brand||'')+'</td>';
+      h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(r.model||'')+'</a></td>';
+      h+='<td style="font-size:11px;color:var(--txt2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.title||'')+'">'+esc(r.title||'')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2);text-decoration:'+(savePct?'line-through':'none')+'">'+(r.retailPrice?'$'+Number(r.retailPrice).toLocaleString():'')+'</td>';
+      h+='<td style="font-weight:600;color:var(--accent)">'+(r.salePrice?'$'+Number(r.salePrice).toLocaleString():'')+'</td>';
+      h+='<td style="font-size:10px;color:var(--amber)">'+(savePct?savePct+'%':'')+'</td>';
+      h+='<td>'+(r.onSale?'<span style="color:var(--accent)">✓</span>':'')+(r.liquidation?'<span style="color:var(--red)">LIQ</span>':'')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2)">'+esc(r.category||'')+'</td></tr>';
+    }
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px">🏪</div><div style="font-size:14px;font-weight:600">TG Appliance — HawkSearch</div><div style="font-size:12px;margin-top:8px">One adapter, two major Ontario retailers. ~29,500 products with full pricing via HawkSearch API.</div></div>';
+  }
+  h+='</div>';return h;
+}
+
+async function tgCrawl(){
+  const sites=tgSite==='both'?['tasco','goemans']:[tgSite];
+  tgLoading=true;tgStopRequested=false;tgProducts=[];
+  tgStats={discovered:0,saved:0,failed:0,pages:0,matched:0};renderTab();
+  for(const siteKey of sites){
+    const site=TG_SITES[siteKey];
+    logEntry('TG: Pulling '+site.name+' via HawkSearch (brand-by-brand)','info');
+    try{
+      // Get brand list via faceted query
+      const facetQ=await tgHawkQuery(siteKey,{PageNo:1,MaxPerPage:1});
+      let brands=[];
+      for(const f of facetQ.Facets||[]){if(f.Field==='brand'){brands=f.Values.map(v=>v.Label).filter(Boolean)}}
+      tgProgress={current:0,total:brands.length,phase:site.name+' — '+brands.length+' brands'};
+      logEntry('TG: '+site.name+' has '+brands.length+' brands, '+(facetQ.Pagination?.NofResults||0)+' products','ok');
+      renderTab();
+      for(let b=0;b<brands.length;b++){
+        if(tgStopRequested)break;
+        const brand=brands[b];
+        tgProgress.current=b+1;tgProgress.phase=site.name+' — '+brand+' ('+(b+1)+'/'+brands.length+')';
+        if(b%5===0)renderTab();
+        try{
+          // Page through this brand
+          let page=1;let hasMore=true;
+          while(hasMore){
+            const r=await tgHawkQuery(siteKey,{PageNo:page,FacetSelections:{brand:[brand]}});
+            const results=r.Results||[];
+            for(const hit of results)tgProducts.push(tgMapHit(hit,site.name));
+            tgStats.pages++;tgStats.discovered=tgProducts.length;
+            const pag=r.Pagination||{};
+            hasMore=page<(pag.NofPages||0);
+            page++;
+            if(tgStopRequested)break;
+          }
+        }catch(e){tgStats.failed++;logEntry('TG: '+brand+' error: '+e.message,'err')}
+      }
+      renderTab();
+    }catch(e){tgStats.failed++;logEntry('TG: '+site.name+' failed: '+e.message,'err')}
+    if(tgStopRequested)break;
+  }
+  if(autoSave&&tgProducts.length>0){logEntry('TG: Auto-saving '+tgProducts.length+'…','info');await tgSaveBatch(tgProducts)}
+  tgLoading=false;renderTab();
+  logEntry('TG: Done — '+tgProducts.length+' products from '+tgStats.pages+' queries','ok');
+}
+
+async function tgSaveBatch(products){
+  tgProgress.phase='Saving…';renderTab();let saved=0;
+  for(let i=0;i<products.length;i+=20){
+    if(tgStopRequested)break;
+    const chunk=products.slice(i,i+20).filter(p=>p.model&&!p.callForPricing);
+    if(!chunk.length)continue;const now=new Date().toISOString();
+    const rdp=chunk.map(p=>({retailer_name:p.retailer,brand_name:p.brand||'Unknown',model:p.model,product_name:p.title||null,product_url:p.url||null,category:p.category||null,price:p.salePrice||p.retailPrice||null,on_sale:p.onSale||false,in_stock:true,condition:p.liquidation?'clearance':'new',country:'CA',last_verified:now,status:'active'}));
+    await sb.from('retailer_discovered_products').upsert(rdp,{onConflict:'product_url',ignoreDuplicates:false});
+    const prp=chunk.filter(p=>p.salePrice||p.retailPrice).map(p=>({product_id:null,brand_name:p.brand||'Unknown',model:p.model,retailer_name:p.retailer,retailer_url:p.url?new URL(p.url).origin:'',product_url:p.url||null,price:p.salePrice||p.retailPrice,regular_price:p.retailPrice||null,on_sale:p.onSale||false,in_stock:true,condition_normalized:p.liquidation?'clearance':'new',condition_raw:p.liquidation?'Liquidation':'New',is_open_box:false,is_clearance:p.liquidation||false,is_refurbished:false,is_floor_model:false,price_currency:'CAD',country:'CA',listing_status:'active',checked_at:now,last_seen_at:now}));
+    const res=await sb.from('pim_retailer_prices').upsert(prp,{onConflict:'product_url,condition_normalized',ignoreDuplicates:false});
+    if(!res.error)saved+=chunk.length;
+    if(i%200===0&&i>0){tgStats.saved=saved;renderTab()}
+  }
+  tgStats.saved=saved;logEntry('TG: Saved '+saved+' to DB','ok');renderTab();
+}
+
+function tgExportCSV(){
+  if(!tgProducts.length)return;
+  let csv='Retailer,Brand,Model,Title,RetailPrice,SalePrice,OnSale,Liquidation,Category,Color,Width,Height,Depth,URL\n';
+  for(const p of tgProducts)csv+=[p.retailer||'',p.brand||'',p.model||'','"'+(p.title||'').replace(/"/g,'""')+'"',p.retailPrice||'',p.salePrice||'',p.onSale?'Y':'N',p.liquidation?'Y':'N','"'+(p.category||'')+'"',p.color||'',p.width||'',p.height||'',p.depth||'',p.url||''].join(',')+'\n';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='tg-'+tgSite+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+window.S.tgSetSite=(s)=>{tgSite=s;renderTab()};
+window.S.tgSetFilter=(v)=>{tgFilter=v;renderTab()};
+window.S.tgCrawl=()=>tgCrawl();
+window.S.tgSaveAll=()=>tgSaveBatch(tgProducts);
+window.S.tgExportCSV=()=>tgExportCSV();
+window.S.tgStop=()=>{tgStopRequested=true};
+window.S.tgClear=()=>{tgProducts=[];tgStats={discovered:0,saved:0,failed:0,pages:0,matched:0};tgFilter='';renderTab()};
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="scraper"></script>
 </body>
