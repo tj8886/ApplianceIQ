@@ -5760,22 +5760,37 @@ async function trailCrawlCatalog(){
   const regions=trailRegion==='both'?['bc','ab']:[trailRegion];
   trailLoading=true;trailStopRequested=false;trailProducts=[];
   trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};renderTab();
-  logEntry('Trail: Pulling full catalog via Algolia — '+regions.join('+'),'info');
+  logEntry('Trail: Pulling full catalog via Algolia (brand-by-brand) — '+regions.join('+'),'info');
   for(const region of regions){
     const idx=TRAIL_INDEX[region];
     try{
-      const first=await trailAlgoliaQuery(idx,{},0,100);
-      const totalPages=first.nbPages||0;
-      trailProgress={current:1,total:totalPages,phase:region.toUpperCase()+' pulling…'};
-      logEntry('Trail: '+region.toUpperCase()+' = '+first.nbHits+' products, '+totalPages+' pages','ok');
-      for(const hit of first.hits||[])trailProducts.push(trailMapHit(hit,region));
-      trailStats.pages++;trailStats.discovered=trailProducts.length;renderTab();
-      for(let p=1;p<totalPages;p++){
-        if(trailStopRequested){logEntry('Trail: Stopped at page '+p,'info');break}
-        trailProgress.current=p+1;trailProgress.phase=region.toUpperCase()+' page '+(p+1)+'/'+totalPages;
-        if(p%10===0)renderTab();
-        try{const r=await trailAlgoliaQuery(idx,{},p,100);for(const hit of r.hits||[])trailProducts.push(trailMapHit(hit,region));trailStats.pages++;trailStats.discovered=trailProducts.length}
-        catch(e){trailStats.failed++;logEntry('Trail: p'+p+' error: '+e.message,'err')}
+      // Step 1: Get all brand names via faceted query
+      const facetQ=await trailAlgoliaQuery(idx,{hitsPerPage:0,facets:['brandName']},0,0);
+      const brands=Object.keys(facetQ.facets?.brandName||{});
+      trailProgress={current:0,total:brands.length,phase:region.toUpperCase()+' — '+brands.length+' brands'};
+      logEntry('Trail: '+region.toUpperCase()+' has '+brands.length+' brands, ~'+(facetQ.nbHits||0)+' products','ok');
+      renderTab();
+      // Step 2: Query each brand (all under 1000 products each)
+      for(let b=0;b<brands.length;b++){
+        if(trailStopRequested){logEntry('Trail: Stopped at brand '+b,'info');break}
+        const brand=brands[b];
+        trailProgress.current=b+1;trailProgress.phase=region.toUpperCase()+' — '+brand+' ('+(b+1)+'/'+brands.length+')';
+        if(b%5===0)renderTab();
+        try{
+          // First page
+          const r1=await trailAlgoliaQuery(idx,{filters:'brandName:"'+brand+'"'},0,1000);
+          for(const hit of r1.hits||[])trailProducts.push(trailMapHit(hit,region));
+          trailStats.pages++;
+          // If brand has >1000 (unlikely), paginate
+          if((r1.nbPages||0)>1){
+            for(let p=1;p<r1.nbPages;p++){
+              const rn=await trailAlgoliaQuery(idx,{filters:'brandName:"'+brand+'"'},p,1000);
+              for(const hit of rn.hits||[])trailProducts.push(trailMapHit(hit,region));
+              trailStats.pages++;
+            }
+          }
+          trailStats.discovered=trailProducts.length;
+        }catch(e){trailStats.failed++;logEntry('Trail: '+brand+' error: '+e.message,'err')}
       }
       renderTab();
     }catch(e){trailStats.failed++;logEntry('Trail: '+region.toUpperCase()+' failed: '+e.message,'err')}
@@ -5783,7 +5798,7 @@ async function trailCrawlCatalog(){
   }
   if(autoSave&&trailProducts.length>0){logEntry('Trail: Auto-saving '+trailProducts.length+'…','info');await trailSaveBatch(trailProducts)}
   trailLoading=false;renderTab();
-  logEntry('Trail: Done — '+trailProducts.length+' products from '+trailStats.pages+' pages','ok');
+  logEntry('Trail: Done — '+trailProducts.length+' products from '+trailStats.pages+' queries','ok');
 }
 
 async function trailCrawlCategory(){
@@ -5822,14 +5837,15 @@ async function trailPriceCompare(){
   trailProgress={current:0,total:2,phase:'Pulling BC+AB…'};renderTab();
   const byModel={};
   for(const region of ['bc','ab']){
-    trailProgress.phase=region.toUpperCase();renderTab();
+    trailProgress.phase=region.toUpperCase()+' brands…';renderTab();
     try{
-      const first=await trailAlgoliaQuery(TRAIL_INDEX[region],{},0,100);
+      const facetQ=await trailAlgoliaQuery(TRAIL_INDEX[region],{hitsPerPage:0,facets:['brandName']},0,0);
+      const brands=Object.keys(facetQ.facets?.brandName||{});
       const proc=(hits)=>{for(const h of hits){if(h.sku&&h.price)byModel[h.sku]={...byModel[h.sku]||{},brand:h.brandName,model:h.sku,title:h.title,[region+'_price']:h.price/100,category:h.categories?.lvl2?.[0]?.split(' > ').pop()||null}}};
-      proc(first.hits||[]);
-      for(let p=1;p<(first.nbPages||0);p++){
-        if(trailStopRequested)break;if(p%20===0)renderTab();
-        const r=await trailAlgoliaQuery(TRAIL_INDEX[region],{},p,100);proc(r.hits||[]);trailStats.pages++;
+      for(const brand of brands){
+        if(trailStopRequested)break;
+        const r=await trailAlgoliaQuery(TRAIL_INDEX[region],{filters:'brandName:"'+brand+'"'},0,1000);
+        proc(r.hits||[]);trailStats.pages++;
       }
     }catch(e){logEntry('Trail: '+region+' error: '+e.message,'err')}
     trailProgress.current++;if(trailStopRequested)break;
