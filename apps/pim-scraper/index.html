@@ -5050,21 +5050,23 @@ function renderCAS(){
   if(display.length>0){
     h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+Math.min(display.length,300)+' of '+display.length+' results</div>';
     h+='<div style="max-height:550px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius)">';
-    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Price</th><th>Was</th><th>Low/High</th><th>UPC</th><th>Specs</th><th>OB</th><th>Display</th><th>Status</th></tr></thead><tbody>';
+    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>MSRP</th><th>Regular</th><th>Online</th><th>MAP</th><th>Promo</th><th>UPC</th><th>Specs</th><th>OB</th><th>Status</th></tr></thead><tbody>';
     for(const r of display.slice(-300).reverse()){
       const d=r.data||{};const st=r.status;
       const cls=st==='ok'?'diff-added':st==='sold_out'?'diff-changed':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
+      const fmtP=v=>v?'$'+Number(v).toLocaleString():'—';
       h+='<tr>';
       h+='<td class="brand-cell">'+esc(d.brand||r.brand||'—')+'</td>';
       h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(d.model||r.model||'—')+'</a></td>';
       h+='<td style="font-size:11px;color:var(--txt2)">'+esc(d.category||'—')+'</td>';
-      h+='<td style="font-weight:600;color:var(--accent)">'+(d.current_price?'$'+Number(d.current_price).toLocaleString():'—')+'</td>';
-      h+='<td style="font-size:11px;color:var(--txt2);text-decoration:line-through">'+(d.regular_price?'$'+Number(d.regular_price).toLocaleString():'')+'</td>';
-      h+='<td style="font-size:10px;color:var(--blue)">'+(d.lowest_price?'$'+d.lowest_price:'')+(d.highest_price?' / $'+d.highest_price:'')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2);text-decoration:line-through">'+fmtP(d.msrp_price)+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2)">'+fmtP(d.regular_price)+'</td>';
+      h+='<td style="font-weight:600;color:var(--accent)">'+fmtP(d.current_price)+'</td>';
+      h+='<td style="font-size:11px;color:var(--blue)">'+fmtP(d.map_price)+'</td>';
+      h+='<td style="font-size:10px;color:var(--amber)">'+(d.promo_tiers?.length?d.promo_tiers.length+' tier'+(d.promo_tiers.length>1?'s':''):'—')+'</td>';
       h+='<td style="font-size:10px;color:var(--txt2)">'+esc(d.upc||'—')+'</td>';
       h+='<td style="font-size:11px">'+(d.spec_count?'<span style="color:var(--accent)">'+d.spec_count+'</span>':'—')+'</td>';
       h+='<td style="font-size:11px">'+(d.open_box_count?'<span style="color:var(--amber)">'+d.open_box_count+'</span>':'—')+'</td>';
-      h+='<td style="font-size:11px">'+(d.showroom_count?'<span style="color:var(--blue)">'+d.showroom_count+'</span>':'—')+'</td>';
       h+='<td><span class="'+cls+'">'+esc(st)+'</span></td></tr>';
     }
     h+='</tbody></table></div>';
@@ -5161,34 +5163,54 @@ function casParseHTML(html,url){
   const um=bt.match(/Canadian UPC:\s*(\d+)/);if(um)d.upc=um[1];
   const em=bt.match(/EAN:\s*(\d+)/);if(em)d.ean=em[1];
 
-  // Price — try multiple label patterns (active vs sold-out pages differ)
-  const priceLabels=[
-    /Today.s Price:\s*\$?([\d,]+)/,
-    /Online Price\s*\$?([\d,]+)/,
-    /Sale Price:?\s*\$?([\d,]+)/,
-    /Our Price:?\s*\$?([\d,]+)/,
-  ];
-  for(const pat of priceLabels){
-    const m=bt.match(pat);
-    if(m){d.current_price=m[1].replace(/,/g,'');break}
-  }
-  // Fallback: MAP Price
-  if(!d.current_price){
-    const mm=bt.match(/MAP Price[^$]{0,50}\$([\d,]+)/i);
-    if(mm)d.current_price=mm[1].replace(/,/g,'');
+  // Price waterfall — CAS shows up to four price levels
+  // MSRP Price (highest) → Regular Price → Online MAP Price → Online Price (lowest)
+  const msrpM=bt.match(/MSRP Price\s*\$?([\d,]+)/i);
+  if(msrpM)d.msrp_price=msrpM[1].replace(/,/g,'');
+
+  const regM=bt.match(/Regular Price\s*\$?([\d,]+)/i);
+  if(regM)d.regular_price=regM[1].replace(/,/g,'');
+
+  // Primary price source: schema.org itemprop="price" — most reliable
+  const itempropPrice=doc.querySelector('[itemprop="price"]');
+  if(itempropPrice){
+    const raw=itempropPrice.getAttribute('content')||itempropPrice.textContent;
+    const m=(raw||'').match(/([\d,]+(?:\.\d+)?)/);
+    if(m)d.current_price=m[1].replace(/,/g,'');
   }
 
-  // Regular/recent/list price
-  const regPatterns=[
-    /Recent Price[^\d$]*\$?([\d,]+)/,
-    /Was:?\s*\$?([\d,]+)/,
-    /Regular Price:?\s*\$?([\d,]+)/,
-    /List Price:?\s*\$?([\d,]+)/,
-  ];
-  for(const pat of regPatterns){
-    const m=bt.match(pat);
-    if(m){d.regular_price=m[1].replace(/,/g,'');break}
+  // Fallback price labels
+  if(!d.current_price){
+    const onlineM=bt.match(/Online Price\s*\$?([\d,]+)/i);
+    if(onlineM)d.current_price=onlineM[1].replace(/,/g,'');
   }
+  if(!d.current_price){
+    const promoM=bt.match(/Promo\s*\$?([\d,]+)/);
+    if(promoM)d.current_price=promoM[1].replace(/,/g,'');
+  }
+  if(!d.current_price){
+    const todayM=bt.match(/Today.s Price:\s*\$?([\d,]+)/);
+    if(todayM)d.current_price=todayM[1].replace(/,/g,'');
+  }
+
+  // MAP Price label — may be far from the price value on some layouts
+  const mapM=bt.match(/Online MAP Price[\s\S]{0,600}?\$([\d,]+)/i);
+  if(mapM)d.map_price=mapM[1].replace(/,/g,'');
+  if(!d.current_price&&d.map_price)d.current_price=d.map_price;
+
+  // Promo pricing (JennAir "Buy 2 Save 15%", CAS Mix & Match, etc)
+  const promoTiers=[];
+  const buyMoreM=bt.matchAll(/Buy\s+(\d+)(?:\s*or\s*(?:more|\d+))?\s+Save\s+(\d+)%/gi);
+  for(const m of buyMoreM){promoTiers.push({buy_qty:parseInt(m[1]),save_percent:parseInt(m[2])})}
+  const buyMoreDollarM=bt.matchAll(/BUY\s+(\d+)\s+ITEMS?,?\s*GET\s+\$([\d,]+)\s+OFF/gi);
+  for(const m of buyMoreDollarM){promoTiers.push({buy_qty:parseInt(m[1]),save_dollars:parseInt(m[2].replace(/,/g,''))})}
+  if(promoTiers.length)d.promo_tiers=promoTiers;
+
+  // Promo net prices (e.g., "$3,655 (15% off) if you buy 2 or 3 items")
+  const promoNetM=bt.matchAll(/\$([\d,]+)\s*\((\d+)%\s*off\)\s*if you buy\s+(\d+)/gi);
+  const promoPrices=[];
+  for(const m of promoNetM){promoPrices.push({price:parseFloat(m[1].replace(/,/g,'')),discount_percent:parseInt(m[2]),buy_qty:parseInt(m[3])})}
+  if(promoPrices.length)d.promo_prices=promoPrices;
 
   // Historical low/high with dates
   const lm=bt.match(/Lowest Price:?\s*\$?([\d,]+)\s*on\s*([\d-]+)/);
@@ -5313,38 +5335,113 @@ async function casScrapeOne(url){
 
 async function casSaveProduct(data,sourceUrl){
   try{
-    const rid=await getCASRetailerId();
-    await sb.from('retailer_discovered_products').upsert({
-      retailer_id:rid,source_url:sourceUrl,brand_name:data.brand,model_number:data.model||data.brand,
-      product_title:data.title||data.meta_description,category:normalizeCategory(data.category)||data.category,
-      current_price:parseFloat(data.current_price)||null,regular_price:parseFloat(data.regular_price)||null,
-      in_stock:data.in_stock!==false,raw_data:data,scraped_at:new Date().toISOString(),status:'active'
-    },{onConflict:'retailer_id,source_url',ignoreDuplicates:false});
-    const{data:existing}=await sb.from('aiq_products').select('id,brand,model,upc,specifications,images')
-      .eq('brand',data.brand).eq('model',data.model).maybeSingle();
+    const now=new Date().toISOString();
+    const currentPrice=parseFloat(data.current_price)||null;
+    const regularPrice=parseFloat(data.regular_price||data.msrp_price)||null;
+    const inStock=data.availability==='in_stock';
+    const soldOut=data.availability==='sold_out';
+
+    // ── 1. retailer_discovered_products (dedupe by product_url) ──
+    const{error:rdErr}=await sb.from('retailer_discovered_products').upsert({
+      retailer_name:'Canadian Appliance Source',
+      brand_name:data.brand,
+      model:data.model,
+      product_name:data.title||data.meta_description||null,
+      product_url:sourceUrl,
+      category:normalizeCategory(data.category)||data.category||null,
+      subcategory:null,
+      price:currentPrice,
+      regular_price:regularPrice,
+      on_sale:!!(currentPrice&&regularPrice&&currentPrice<regularPrice),
+      in_stock:inStock,
+      condition:soldOut?'sold_out':'new_sealed',
+      country:'CA',
+      last_verified:now,
+      status:soldOut?'sold_out':'active'
+    },{onConflict:'product_url',ignoreDuplicates:false});
+    if(rdErr){logEntry('CAS: retailer_discovered save error: '+rdErr.message,'err');return}
+
+    // ── 2. Match to aiq_products by brand+model ──
+    const{data:existing}=await sb.from('aiq_products')
+      .select('id,brand_name,model,upc,ean,specs_json,color,width_inches,height_inches,capacity_cu_ft,map_price,msrp,is_discontinued')
+      .eq('brand_name',data.brand).eq('model',data.model).maybeSingle();
+
+    let productId=null;
     if(existing){
+      productId=existing.id;
+      // Fill blanks only — never overwrite manufacturer data
       const upd={};
       if(!existing.upc&&data.upc)upd.upc=data.upc;
-      if((!existing.specifications||Object.keys(existing.specifications||{}).length===0)&&data.specs)upd.specifications=data.specs;
-      if((!existing.images||existing.images.length===0)&&data.images&&data.images.length>0)upd.images=data.images;
-      if(Object.keys(upd).length>0){upd.updated_at=new Date().toISOString();await sb.from('aiq_products').update(upd).eq('id',existing.id)}
-      await sb.from('pim_retailer_prices').upsert({
-        product_id:existing.id,retailer_source_id:rid,price:parseFloat(data.current_price)||null,
-        regular_price:parseFloat(data.regular_price)||null,source_url:sourceUrl,listing_condition:'new_sealed',
-        observed_at:new Date().toISOString(),is_active:true,
-        raw_data:{lowest_price:data.lowest_price,highest_price:data.highest_price,
-          lowest_price_date:data.lowest_price_date,highest_price_date:data.highest_price_date,
-          savings:data.savings,showroom_count:data.showroom_count,open_box_count:data.open_box_count}
-      },{onConflict:'product_id,retailer_source_id,listing_condition'});
+      if(!existing.ean&&data.ean)upd.ean=data.ean;
+      if(!existing.color&&data.color)upd.color=data.color;
+      if(!existing.map_price&&data.map_price)upd.map_price=parseFloat(data.map_price);
+      if(!existing.msrp&&data.msrp_price)upd.msrp=parseFloat(data.msrp_price);
+      // Parse width if it looks like "36 inches"
+      if(!existing.width_inches&&data.width){
+        const wn=parseFloat((data.width+'').match(/[\d.]+/)?.[0]);
+        if(wn)upd.width_inches=wn;
+      }
+      if(!existing.height_inches&&data.height){
+        const hn=parseFloat((data.height+'').match(/[\d.]+/)?.[0]);
+        if(hn)upd.height_inches=hn;
+      }
+      if(!existing.capacity_cu_ft&&data.capacity){
+        const cn=parseFloat((data.capacity+'').match(/[\d.]+/)?.[0]);
+        if(cn)upd.capacity_cu_ft=cn;
+      }
+      // Merge specs into specs_json — retailer specs fill blank keys only
+      if(data.specs&&Object.keys(data.specs).length>0){
+        const merged={...(existing.specs_json||{})};
+        let added=0;
+        for(const[k,v]of Object.entries(data.specs)){
+          if(!merged[k]){merged[k]=v;added++}
+        }
+        if(added>0)upd.specs_json=merged;
+      }
+      if(Object.keys(upd).length>0){
+        upd.updated_at=now;
+        const{error:pErr}=await sb.from('aiq_products').update(upd).eq('id',existing.id);
+        if(pErr)logEntry('CAS: aiq_products update error: '+pErr.message,'err');
+        else logEntry('CAS: filled '+Object.keys(upd).length+' blanks on '+data.brand+' '+data.model,'ok');
+      }
     }
-  }catch(e){logEntry('CAS: Save error: '+e.message,'err')}
+
+    // ── 3. pim_retailer_prices — new observation each time (with product_id link if matched) ──
+    const{error:priceErr}=await sb.from('pim_retailer_prices').upsert({
+      product_id:productId,
+      brand_name:data.brand,
+      model:data.model,
+      retailer_name:'Canadian Appliance Source',
+      retailer_id:'f4071593-5463-4634-8275-4c386f2703e4',
+      retailer_url:'https://www.canadianappliance.ca',
+      product_url:sourceUrl,
+      price:currentPrice,
+      regular_price:regularPrice,
+      on_sale:!!(currentPrice&&regularPrice&&currentPrice<regularPrice),
+      sale_label:data.promo_tiers?.length?'buy_more_save_more':(data.savings?'save_'+data.savings:null),
+      in_stock:inStock,
+      stock_note:data.availability,
+      condition:soldOut?'sold_out':'new_sealed',
+      condition_normalized:'new_sealed',
+      condition_raw:soldOut?'Sold Out':'New',
+      is_open_box:false,
+      is_clearance:false,
+      is_refurbished:false,
+      is_floor_model:false,
+      free_delivery:true,
+      price_currency:'CAD',
+      country:'CA',
+      listing_status:soldOut?'inactive':'active',
+      savings_amount:data.savings?parseFloat(data.savings):null,
+      checked_at:now,
+      last_seen_at:now
+    },{onConflict:'product_url,condition_normalized',ignoreDuplicates:false});
+    if(priceErr)logEntry('CAS: pim_retailer_prices error: '+priceErr.message,'err');
+  }catch(e){logEntry('CAS: save exception: '+e.message,'err')}
 }
-let _casRid=null;
-async function getCASRetailerId(){
-  if(_casRid)return _casRid;
-  const{data}=await sb.from('scraper_retailer_sources').select('id').or('retailer_key.eq.canadian_appliance_source,retailer_name.ilike.%Canadian Appliance%').maybeSingle();
-  if(data)_casRid=data.id;return _casRid;
-}
+
+// Cached CAS retailer ID (already exists in scraper_retailer_sources)
+async function getCASRetailerId(){return 'f4071593-5463-4634-8275-4c386f2703e4'}
 async function casScrapeAll(){await casScrapeNext(casProductUrls.length)}
 async function casScrapeNext(count){
   const done=new Set(casScrapeResults.map(r=>r.url));
