@@ -5064,8 +5064,8 @@ function renderCAS(){
   h+='<div class="stat-card"><div class="label">Discovered</div><div class="value">'+casProductUrls.length+'</div></div>';
   h+='<div class="stat-card"><div class="label">Scraped</div><div class="value green">'+casStats.scraped+'</div></div>';
   h+='<div class="stat-card"><div class="label">Saved</div><div class="value green">'+casStats.saved+'</div></div>';
-  const prevDone=(()=>{try{return JSON.parse(localStorage.getItem('aiq_cas_done')||'[]').length}catch(_){return 0}})();
-  h+='<div class="stat-card"><div class="label">Previously Done</div><div class="value" style="color:var(--blue)">'+prevDone+'</div></div>';
+  const prevDone=parseInt(localStorage.getItem('aiq_cas_resume_idx')||'0');
+  h+='<div class="stat-card"><div class="label">Resume From</div><div class="value" style="color:var(--blue)">#'+prevDone+'</div></div>';
   h+='<div class="stat-card"><div class="label">Sold Out</div><div class="value" style="color:var(--txt2)">'+casStats.discontinued+'</div></div>';
   h+='<div class="stat-card"><div class="label">CF Blocked</div><div class="value '+(casStats.blocked>0?'red':'')+'">'+casStats.blocked+'</div></div>';
   h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(casStats.failed>0?'red':'')+'">'+casStats.failed+'</div></div>';
@@ -5090,7 +5090,7 @@ function renderCAS(){
   }
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-Save</label>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClearResults()" title="Wipe scraped results but keep discovered URL list">Clear Results</button>';
-  h+='<button class="btn btn-secondary" onclick="window.S.casSyncResume()" title="Pull previously scraped URLs from database into resume cache" style="font-size:11px">📥 Sync Resume</button>';
+  h+='<button class="btn btn-secondary" onclick="window.S.casSetResume()" title="Set resume position — skip to a specific URL number" style="font-size:11px">📍 Set Position</button>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClearResume()" title="Clear resume cache — next scrape re-does previously done URLs" style="font-size:11px">🔄 Clear Resume</button>';
   h+='<button class="btn btn-secondary" onclick="window.S.casClear()" title="Wipe everything including discovered URLs" style="color:var(--red)">Reset All</button>';
   h+='</div></div>';
@@ -5493,8 +5493,6 @@ async function casScrapeOne(url){
     else if(data.availability==='sold_out'){r.status='sold_out';casStats.scraped++;casStats.discontinued++}
     else{r.status='partial';casStats.scraped++}
     if(autoSave&&(data.model||model)){await casSaveProduct(data,url);casStats.saved++}
-    // Persist scraped URL so we can resume
-    try{const done=JSON.parse(localStorage.getItem('aiq_cas_done')||'[]');done.push(url);if(done.length%50===0)localStorage.setItem('aiq_cas_done',JSON.stringify(done));else localStorage.setItem('aiq_cas_done',JSON.stringify(done))}catch(_){}
     logEntry('CAS: '+brand+' '+model+' → '+(data.spec_count||0)+' specs, $'+(data.current_price||'?')+
       (data.recent_price?' recent:$'+data.recent_price:'')+
       (data.in_cart_discount?' '+data.in_cart_discount:''),'ok');
@@ -5626,29 +5624,27 @@ async function casSaveProduct(data,sourceUrl){
 async function getCASRetailerId(){return 'f4071593-5463-4634-8275-4c386f2703e4'}
 async function casScrapeAll(){await casScrapeNext(casProductUrls.length)}
 async function casScrapeNext(count){
-  // Ensure resume cache is seeded from DB before first scrape
-  await casSyncResumeFromDB();
-  // Load previously scraped URLs for resume
-  let doneBefore=new Set();
-  try{doneBefore=new Set(JSON.parse(localStorage.getItem('aiq_cas_done')||'[]'))}catch(_){}
+  // Simple resume: track position in the URL list
+  let resumeIdx=parseInt(localStorage.getItem('aiq_cas_resume_idx')||'0');
   const doneThisSession=new Set(casScrapeResults.map(r=>r.url));
-  const allDone=new Set([...doneBefore,...doneThisSession]);
-  const remaining=casProductUrls.filter(u=>!allDone.has(u));
+  const remaining=casProductUrls.slice(resumeIdx).filter(u=>!doneThisSession.has(u));
   const batch=remaining.slice(0,count);
-  if(!batch.length){logEntry('CAS: Nothing left to scrape ('+allDone.size+' already done)','info');return}
+  if(!batch.length){logEntry('CAS: Nothing left to scrape (resume index: '+resumeIdx+'/'+casProductUrls.length+')','info');return}
   casLoading=true;casStopRequested=false;casProgress={current:0,total:batch.length,phase:'scrape'};renderTab();
-  logEntry('CAS: Batch of '+batch.length+' (skipped '+allDone.size+' already done)','info');
+  logEntry('CAS: Batch of '+batch.length+' starting from #'+resumeIdx+' (skipped '+resumeIdx+' previously done)','info');
   let consecutiveBlocks=0;
-  let delay=3000; // Start with 3s delay — respectful baseline
+  let delay=3000;
   for(let i=0;i<batch.length;i++){
     if(casStopRequested){logEntry('CAS: Stopped at '+i+'/'+batch.length,'info');break}
     casProgress.current=i+1;renderTab();
     const result=await casScrapeOne(batch[i]);
+    // Advance resume index on any result (ok, blocked, fail — we don't want to re-try blocks forever)
+    resumeIdx++;
+    localStorage.setItem('aiq_cas_resume_idx',String(resumeIdx));
     // Adaptive delay — back off when blocked, speed up when clear
     if(result&&result.status==='blocked'){
       consecutiveBlocks++;
       if(consecutiveBlocks>=3){
-        // Heavy backoff — 30s pause + increase base delay
         delay=Math.min(delay*2,15000);
         logEntry('CAS: '+consecutiveBlocks+' consecutive blocks — pausing 30s, delay now '+Math.round(delay/1000)+'s','err');
         await new Promise(r=>setTimeout(r,30000));
@@ -5659,27 +5655,34 @@ async function casScrapeNext(count){
       }
     } else {
       consecutiveBlocks=0;
-      // Gradually ease back to faster pacing after success
       if(delay>3000)delay=Math.max(3000,delay*0.85);
     }
     if(i<batch.length-1){
-      // Randomize delay ±30% to avoid patterns
       const jitter=delay*(0.7+Math.random()*0.6);
       await new Promise(r=>setTimeout(r,jitter));
     }
   }
   casLoading=false;renderTab();
-  logEntry('CAS: Done — '+casStats.scraped+' scraped, '+casStats.saved+' saved, '+casStats.blocked+' blocked','ok');
+  logEntry('CAS: Done — '+casStats.scraped+' scraped, '+casStats.saved+' saved, '+casStats.blocked+' blocked. Resume position: '+resumeIdx,'ok');
 }
 window.S.casDiscoverSitemap=()=>casDiscoverSitemap();
 window.S.casScrapeAll=()=>casScrapeAll();
 window.S.casScrapeNext=(n)=>casScrapeNext(n);
 window.S.casStop=()=>{casStopRequested=true};
 window.S.casSetFilter=(v)=>{casFilter=v;renderTab()};
-window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls');localStorage.removeItem('aiq_cas_done')}catch(_){}renderTab()};
+window.S.casClear=()=>{casScrapeResults=[];casProductUrls=[];casStats={discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';try{localStorage.removeItem('aiq_cas_urls');localStorage.removeItem('aiq_cas_done');localStorage.removeItem('aiq_cas_resume_idx')}catch(_){}renderTab()};
 window.S.casClearResults=()=>{casScrapeResults=[];casStats={discovered:casProductUrls.length,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};casFilter='';renderTab()};
-window.S.casClearResume=()=>{try{localStorage.removeItem('aiq_cas_done')}catch(_){}logEntry('CAS: Resume cache cleared — next scrape starts fresh','ok');renderTab()};
-window.S.casSyncResume=()=>casSyncResumeFromDB();
+window.S.casClearResume=()=>{try{localStorage.removeItem('aiq_cas_done');localStorage.removeItem('aiq_cas_resume_idx')}catch(_){}logEntry('CAS: Resume position reset to 0 — next scrape starts from beginning','ok');renderTab()};
+window.S.casSetResume=()=>{
+  const current=parseInt(localStorage.getItem('aiq_cas_resume_idx')||'0');
+  const val=prompt('Set resume position (0-'+casProductUrls.length+'). Current: '+current,String(current));
+  if(val===null)return;
+  const n=parseInt(val);
+  if(isNaN(n)||n<0){logEntry('CAS: Invalid position','err');return}
+  localStorage.setItem('aiq_cas_resume_idx',String(n));
+  logEntry('CAS: Resume position set to #'+n+' — next scrape starts there','ok');
+  renderTab();
+};
 
 /* ═══════════════════════════════════════════════════════════════════
    TRAIL APPLIANCES ENGINE
