@@ -559,53 +559,40 @@ let casFilter = ''; // search filter
 let casStats = {discovered:0,scraped:0,saved:0,failed:0,blocked:0,discontinued:0};
 let casStopRequested = false;
 
-// Trail Appliances state
-let trailProducts = []; // discovered products from category pages
+// Trail Appliances state — Algolia-powered
+let trailProducts = [];
 let trailLoading = false;
 let trailProgress = {current:0,total:0,phase:''};
 let trailFilter = '';
-let trailRegion = 'bc'; // 'bc' or 'ab'
+let trailRegion = 'bc';
 let trailStats = {discovered:0,saved:0,failed:0,pages:0,matched:0};
 let trailStopRequested = false;
 let trailMode = 'catalog'; // 'catalog' | 'category' | 'compare'
-let trailCategory = ''; // selected category slug
+let trailCategory = '';
 const TRAIL_BASE = 'https://www.trailappliances.com';
+const TRAIL_ALGOLIA_APP = 'OKNRYSHAJW';
+const TRAIL_ALGOLIA_KEY = '0ffc7bd6859b64ab5ca3fa006922ae3b';
+const TRAIL_INDEX = {bc:'prod_bc_products',ab:'prod_ab_products'};
 const TRAIL_CATEGORIES = [
-  {slug:'all-product-klevu',label:'All Products'},
-  {slug:'fridge-freezers',label:'Fridges & Freezers'},
-  {slug:'refrigerators',label:'Refrigerators'},
-  {slug:'french-door',label:'French Door Fridges'},
-  {slug:'top-freezer',label:'Top Freezer'},
-  {slug:'bottom-freezer',label:'Bottom Freezer'},
-  {slug:'side-by-side',label:'Side-by-Side'},
-  {slug:'ranges',label:'Ranges'},
-  {slug:'gas-range',label:'Gas Ranges'},
-  {slug:'electric-range',label:'Electric Ranges'},
-  {slug:'induction-range',label:'Induction Ranges'},
-  {slug:'dual-fuel-range',label:'Dual Fuel Ranges'},
-  {slug:'slide-in-ranges',label:'Slide-In Ranges'},
-  {slug:'dishwashers',label:'Dishwashers'},
-  {slug:'laundry',label:'Laundry'},
-  {slug:'washers',label:'Washers'},
-  {slug:'dryers',label:'Dryers'},
-  {slug:'cooking',label:'Cooking'},
-  {slug:'wall-ovens',label:'Wall Ovens'},
-  {slug:'cooktops',label:'Cooktops'},
-  {slug:'ventilation',label:'Ventilation'},
-  {slug:'chimney-hoodfan',label:'Chimney Hoodfans'},
-  {slug:'wall-mount-hoodfan',label:'Wall-Mount Hoodfans'},
-  {slug:'under-cabinet-hoodfan',label:'Under-Cabinet Hoodfans'},
-  {slug:'island-hoodfan',label:'Island Hoodfans'},
-  {slug:'downdraft-ventilation',label:'Downdraft'},
-  {slug:'otr-microwave-hoodfan',label:'OTR Microwave'},
-  {slug:'freezers',label:'Freezers'},
-  {slug:'microwaves',label:'Microwaves'},
-  {slug:'outdoor',label:'Outdoor'},
-  {slug:'bbqs-grills',label:'BBQs & Grills'},
-  {slug:'beverage-center-wine-cooler',label:'Beverage & Wine'},
-  {slug:'ice-makers',label:'Ice Makers'},
-  {slug:'compactors-disposers',label:'Compactors & Disposers'},
-  {slug:'clearance',label:'Clearance'},
+  {slug:'all-product-klevu',label:'All Products',filter:''},
+  {slug:'refrigerators',label:'Refrigerators',filter:'Refrigerators'},
+  {slug:'french-door',label:'French Door',filter:'French Door Refrigerators'},
+  {slug:'ranges',label:'Ranges',filter:'Ranges'},
+  {slug:'gas-range',label:'Gas Ranges',filter:'Gas Ranges'},
+  {slug:'electric-range',label:'Electric Ranges',filter:'Electric Ranges'},
+  {slug:'induction-range',label:'Induction Ranges',filter:'Induction Ranges'},
+  {slug:'dishwashers',label:'Dishwashers',filter:'Dishwashers'},
+  {slug:'washers',label:'Washers',filter:'Washers'},
+  {slug:'dryers',label:'Dryers',filter:'Dryers'},
+  {slug:'wall-ovens',label:'Wall Ovens',filter:'Wall Ovens'},
+  {slug:'cooktops',label:'Cooktops',filter:'Cooktops'},
+  {slug:'ventilation',label:'Ventilation',filter:'Ventilation'},
+  {slug:'freezers',label:'Freezers',filter:'Freezers'},
+  {slug:'microwaves',label:'Microwaves',filter:'Microwaves'},
+  {slug:'bbqs-new',label:'BBQs',filter:'BBQs'},
+  {slug:'beverage-center-wine-cooler',label:'Beverage & Wine',filter:'Beverage'},
+  {slug:'ice-makers',label:'Ice Makers',filter:'Ice Makers'},
+  {slug:'clearance',label:'Clearance',filter:''},
 ];
 
 // Verify & Audit state
@@ -5685,497 +5672,199 @@ window.S.casSetResume=()=>{
 };
 
 /* ═══════════════════════════════════════════════════════════════════
-   TRAIL APPLIANCES ENGINE
-   Crawls category pages from trailappliances.com (BC + AB)
-   Extracts brand, model, price, title, rating from listing HTML
-   No individual page scraping needed for discovery — $0 AI cost
+   TRAIL APPLIANCES ENGINE — ALGOLIA API
+   Direct JSON queries to Algolia search index. No Cloudflare, no
+   HTML parsing, no edge function. Full product data in JSON.
+   BC: prod_bc_products (8,895) | AB: prod_ab_products (6,220)
    ═══════════════════════════════════════════════════════════════════ */
+
+async function trailAlgoliaQuery(index,params,page=0,hitsPerPage=100){
+  const resp=await fetch('https://'+TRAIL_ALGOLIA_APP+'-dsn.algolia.net/1/indexes/'+index+'/query',{
+    method:'POST',headers:{'x-algolia-application-id':TRAIL_ALGOLIA_APP,'x-algolia-api-key':TRAIL_ALGOLIA_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({hitsPerPage,page,...(params||{})})
+  });
+  return resp.json();
+}
+
+function trailMapHit(h,region){
+  const price=h.price?h.price/100:null;
+  const origPrice=h.priceOriginal&&h.priceOriginal>0?h.priceOriginal/100:null;
+  let category=null;
+  if(h.categories){const lvls=h.categories.lvl2||h.categories.lvl1||h.categories.lvl0;if(lvls&&lvls.length){const last=lvls[lvls.length-1];category=last.split(' > ').pop()}}
+  return {
+    brand:h.brandName||null,model:h.sku||h.objectID,title:h.title||null,
+    price,origPrice,category,
+    rating:h.rating||null,ratingCount:h.ratingCount||0,
+    promo:h.isOnSale?'Sale':(h.isOnPromo?'Promo':(h.isClearance?'Clearance':(h.hasPromotion?'Offer':null))),
+    savePct:h.saveStorySalePercent||null,saveValue:h.saveStoryValue?h.saveStoryValue/100:null,
+    region,url:h.slug?TRAIL_BASE+'/'+region+'/products'+h.slug:null,
+    width:h.width||null,height:h.height||null,depth:h.depth||null,
+    color:h.colorGroup?h.colorGroup.split(';')[0]:null,
+    description:h.productDescription||null,
+    inStock:h.inStockInRegion||false,madeIn:h.madeIn||null,
+    isAccessory:h.isAccessory==='Yes',productId:h.productId||null
+  };
+}
 
 function renderTrail(){
   let h='<div style="margin-bottom:20px">';
   h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
   h+='<span style="font-size:20px;font-weight:800;color:var(--txt)">🏔️ Trail Appliances</span>';
-  h+='<span style="font-size:12px;color:var(--accent);background:rgba(26,158,86,.1);padding:4px 10px;border-radius:20px;font-weight:600">$0 — Category Crawl</span>';
+  h+='<span style="font-size:12px;color:var(--accent);background:rgba(26,158,86,.1);padding:4px 10px;border-radius:20px;font-weight:600">$0 — Algolia API</span>';
   h+='</div>';
-  h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px;max-width:700px">Crawls Trail category pages to discover products with brand, model, price, and ratings. Two regions (BC & AB) with separate pricing. No AI needed — deterministic HTML parsing. 16 products per page.</p>';
-
-  // Stats row
+  h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px;max-width:700px">Direct JSON from Trail\'s Algolia search index. No Cloudflare, no HTML parsing. BC: ~8,895 products | AB: ~6,220 products. Full specs, per-store stock, ratings, prices.</p>';
   h+='<div class="stats-row">';
   h+='<div class="stat-card"><div class="label">Products Found</div><div class="value">'+trailProducts.length+'</div></div>';
-  h+='<div class="stat-card"><div class="label">Pages Crawled</div><div class="value green">'+trailStats.pages+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Pages Fetched</div><div class="value green">'+trailStats.pages+'</div></div>';
   h+='<div class="stat-card"><div class="label">Saved to PIM</div><div class="value green">'+trailStats.saved+'</div></div>';
   h+='<div class="stat-card"><div class="label">PIM Matched</div><div class="value" style="color:var(--blue)">'+trailStats.matched+'</div></div>';
   h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(trailStats.failed>0?'red':'')+'">'+trailStats.failed+'</div></div>';
   h+='</div>';
-
-  // Controls
   h+='<div class="controls" style="margin-bottom:16px">';
-
-  // Region selector
-  h+='<div class="mode-toggle">';
-  h+='<button class="'+(trailRegion==='bc'?'active':'')+'" onclick="window.S.trailSetRegion(\'bc\')">🇨🇦 BC</button>';
-  h+='<button class="'+(trailRegion==='ab'?'active':'')+'" onclick="window.S.trailSetRegion(\'ab\')">🇨🇦 AB</button>';
-  h+='<button class="'+(trailRegion==='both'?'active':'')+'" onclick="window.S.trailSetRegion(\'both\')">Both</button>';
-  h+='</div>';
-
-  // Mode selector
-  h+='<div class="mode-toggle">';
-  h+='<button class="'+(trailMode==='catalog'?'active':'')+'" onclick="window.S.trailSetMode(\'catalog\')">Full Catalog</button>';
-  h+='<button class="'+(trailMode==='category'?'active':'')+'" onclick="window.S.trailSetMode(\'category\')">By Category</button>';
-  h+='<button class="'+(trailMode==='compare'?'active':'')+'" onclick="window.S.trailSetMode(\'compare\')">Price Compare</button>';
-  h+='</div>';
-
-  // Category selector (only in category mode)
-  if(trailMode==='category'){
-    h+='<div class="field"><label>Category</label><select id="trailCatSelect" onchange="window.S.trailSetCategory(this.value)" style="min-width:220px">';
-    h+='<option value="">— Select category —</option>';
-    for(const c of TRAIL_CATEGORIES) h+='<option value="'+c.slug+'" '+(trailCategory===c.slug?'selected':'')+'>'+esc(c.label)+'</option>';
-    h+='</select></div>';
-  }
-
-  // Action buttons
-  if(trailMode==='catalog'){
-    h+='<button class="btn btn-primary" onclick="window.S.trailCrawlCatalog()" '+(trailLoading?'disabled':'')+'>'+
-      (trailLoading?'⏳ '+trailProgress.current+'/'+trailProgress.total+' pages':'🔍 Crawl Full Catalog')+'</button>';
-    h+='<div class="field"><label>Max Pages</label><input type="number" id="trailMaxPages" value="30" min="1" max="500" style="width:80px;min-width:80px"/></div>';
-  } else if(trailMode==='category'&&trailCategory){
-    h+='<button class="btn btn-primary" onclick="window.S.trailCrawlCategory()" '+(trailLoading?'disabled':'')+'>'+
-      (trailLoading?'⏳ '+trailProgress.current+'/'+trailProgress.total+' pages':'🔍 Crawl Category')+'</button>';
-    h+='<div class="field"><label>Max Pages</label><input type="number" id="trailMaxPages" value="50" min="1" max="500" style="width:80px;min-width:80px"/></div>';
-  } else if(trailMode==='compare'){
-    h+='<button class="btn btn-primary" onclick="window.S.trailPriceCompare()" '+(trailLoading?'disabled':'')+'>'+
-      (trailLoading?'⏳ Comparing…':'💰 Compare BC vs AB Prices')+'</button>';
-  }
-
-  if(trailLoading){
-    h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.trailStop()">⏹ Stop</button>';
-  }
-
+  h+='<div class="mode-toggle"><button class="'+(trailRegion==='bc'?'active':'')+'" onclick="window.S.trailSetRegion(\'bc\')">🇨🇦 BC</button><button class="'+(trailRegion==='ab'?'active':'')+'" onclick="window.S.trailSetRegion(\'ab\')">🇨🇦 AB</button><button class="'+(trailRegion==='both'?'active':'')+'" onclick="window.S.trailSetRegion(\'both\')">Both</button></div>';
+  h+='<div class="mode-toggle"><button class="'+(trailMode==='catalog'?'active':'')+'" onclick="window.S.trailSetMode(\'catalog\')">Full Catalog</button><button class="'+(trailMode==='category'?'active':'')+'" onclick="window.S.trailSetMode(\'category\')">By Category</button><button class="'+(trailMode==='compare'?'active':'')+'" onclick="window.S.trailSetMode(\'compare\')">Price Compare</button></div>';
+  if(trailMode==='category'){h+='<div class="field"><label>Category</label><select id="trailCatSelect" onchange="window.S.trailSetCategory(this.value)" style="min-width:220px"><option value="">— Select —</option>';for(const c of TRAIL_CATEGORIES)if(c.filter)h+='<option value="'+c.slug+'" '+(trailCategory===c.slug?'selected':'')+'>'+esc(c.label)+'</option>';h+='</select></div>'}
+  if(trailMode==='catalog')h+='<button class="btn btn-primary" onclick="window.S.trailCrawlCatalog()" '+(trailLoading?'disabled':'')+'>'+(trailLoading?'⏳ '+trailProgress.current+'/'+trailProgress.total:'🔍 Pull Full Catalog')+'</button>';
+  else if(trailMode==='category'&&trailCategory)h+='<button class="btn btn-primary" onclick="window.S.trailCrawlCategory()" '+(trailLoading?'disabled':'')+'>'+(trailLoading?'⏳ '+trailProgress.current+'/'+trailProgress.total:'🔍 Pull Category')+'</button>';
+  else if(trailMode==='compare')h+='<button class="btn btn-primary" onclick="window.S.trailPriceCompare()" '+(trailLoading?'disabled':'')+'>'+(trailLoading?'⏳ Comparing…':'💰 Compare BC vs AB')+'</button>';
+  if(trailLoading)h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.trailStop()">⏹ Stop</button>';
   h+='<div style="margin-left:auto;display:flex;gap:8px;align-items:center">';
-  if(trailProducts.length>0){
-    h+='<input type="text" placeholder="Filter model/brand…" value="'+esc(trailFilter)+'" oninput="window.S.trailSetFilter(this.value)" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;font-size:12px;width:200px;color:var(--txt);font-family:inherit">';
-  }
+  if(trailProducts.length>0)h+='<input type="text" placeholder="Filter…" value="'+esc(trailFilter)+'" oninput="window.S.trailSetFilter(this.value)" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;font-size:12px;width:180px;color:var(--txt);font-family:inherit">';
   h+='<label style="font-size:12px;color:var(--txt2);display:flex;align-items:center;gap:4px"><input type="checkbox" '+(autoSave?'checked':'')+' onchange="window.S.toggleAuto()" style="accent-color:var(--accent)"/> Auto-Save</label>';
-  if(trailProducts.length>0){
-    h+='<button class="btn btn-sm btn-secondary" onclick="window.S.trailSaveAll()">💾 Save All</button>';
-    h+='<button class="btn btn-sm btn-secondary" onclick="window.S.trailExportCSV()">📥 CSV</button>';
-  }
-  h+='<button class="btn btn-secondary" onclick="window.S.trailClear()" style="color:var(--red)">Reset</button>';
-  h+='</div></div>';
-
-  // Progress bar
-  if(trailLoading&&trailProgress.total>0){
-    const pct=Math.round((trailProgress.current/trailProgress.total)*100);
-    h+='<div style="margin-bottom:16px"><div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);transition:width .3s"></div></div>';
-    h+='<div style="font-size:11px;color:var(--txt2);margin-top:4px">'+trailProgress.phase+' — '+trailProgress.current+' / '+trailProgress.total+' ('+pct+'%)</div></div>';
-  }
-
-  // Results table
-  const display=trailFilter?trailProducts.filter(r=>{const s=(r.brand||'')+(r.model||'')+(r.title||'');return s.toLowerCase().includes(trailFilter.toLowerCase())}):trailProducts;
-
+  if(trailProducts.length>0){h+='<button class="btn btn-sm btn-secondary" onclick="window.S.trailSaveAll()">💾 Save All</button>';h+='<button class="btn btn-sm btn-secondary" onclick="window.S.trailExportCSV()">📥 CSV</button>'}
+  h+='<button class="btn btn-secondary" onclick="window.S.trailClear()" style="color:var(--red)">Reset</button></div></div>';
+  if(trailLoading&&trailProgress.total>0){const pct=Math.round((trailProgress.current/trailProgress.total)*100);h+='<div style="margin-bottom:16px"><div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);transition:width .3s"></div></div><div style="font-size:11px;color:var(--txt2);margin-top:4px">'+trailProgress.phase+' — '+trailProgress.current+'/'+trailProgress.total+' ('+pct+'%)</div></div>'}
+  const display=trailFilter?trailProducts.filter(r=>{const s=(r.brand||'')+(r.model||'')+(r.title||'')+(r.category||'');return s.toLowerCase().includes(trailFilter.toLowerCase())}):trailProducts;
   if(display.length>0){
-    // Brand summary chips
-    const brandCounts={};for(const p of display){brandCounts[p.brand]=(brandCounts[p.brand]||0)+1}
-    const topBrands=Object.entries(brandCounts).sort((a,b)=>b[1]-a[1]).slice(0,15);
-    h+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">';
-    for(const[b,c]of topBrands)h+='<span style="font-size:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 8px;cursor:pointer" onclick="window.S.trailSetFilter(\''+esc(b)+'\')">'+esc(b)+' <b>'+c+'</b></span>';
-    h+='</div>';
-
-    h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+Math.min(display.length,500)+' of '+display.length+' products'+(trailFilter?' (filtered)':'')+'</div>';
+    const bc={};for(const p of display)if(p.brand)bc[p.brand]=(bc[p.brand]||0)+1;
+    const tb=Object.entries(bc).sort((a,b)=>b[1]-a[1]).slice(0,20);
+    h+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">';for(const[b,c]of tb)h+='<span style="font-size:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 8px;cursor:pointer" onclick="window.S.trailSetFilter(\''+esc(b)+'\')">'+esc(b)+' <b>'+c+'</b></span>';h+='</div>';
+    h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+Math.min(display.length,500)+' of '+display.length+'</div>';
     h+='<div style="max-height:550px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius)">';
-    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Product</th><th>Region</th><th>Price</th><th>Promo</th><th>Rating</th><th>PIM</th></tr></thead><tbody>';
-    for(const r of display.slice(0,500)){
-      const pimMatch=r._pimMatch;
-      h+='<tr>';
-      h+='<td class="brand-cell">'+esc(r.brand||'—')+'</td>';
-      h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(r.model||'—')+'</a></td>';
-      h+='<td style="font-size:11px;color:var(--txt2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.title||'')+'">'+esc(r.title||'—')+'</td>';
-      h+='<td style="font-size:11px"><span style="background:'+(r.region==='bc'?'rgba(47,111,237,.1);color:var(--blue)':'rgba(217,119,6,.1);color:var(--amber)')+';padding:2px 6px;border-radius:4px;font-weight:600">'+r.region.toUpperCase()+'</span></td>';
-      h+='<td style="font-weight:600;color:var(--accent)">'+(r.price?'$'+Number(r.price).toLocaleString():'—')+'</td>';
-      h+='<td style="font-size:10px;color:var(--amber)">'+esc(r.promo||'—')+'</td>';
-      h+='<td style="font-size:11px">'+(r.rating?'⭐ '+r.rating:'—')+'</td>';
-      h+='<td style="font-size:11px">'+(pimMatch?'<span style="color:var(--accent)">✓</span>':'<span style="color:var(--txt2)">—</span>')+'</td>';
-      h+='</tr>';
+    if(trailMode==='compare'){
+      h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Product</th><th>BC</th><th>AB</th><th>Δ$</th><th>Δ%</th><th>Category</th></tr></thead><tbody>';
+      for(const r of display.slice(0,500)){const dc=(r._priceDiff||0)>0?'var(--red)':(r._priceDiff||0)<0?'var(--accent)':'var(--txt2)';h+='<tr><td class="brand-cell">'+esc(r.brand||'')+'</td><td class="model-cell">'+esc(r.model)+'</td><td style="font-size:11px;color:var(--txt2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.title||'')+'</td><td style="font-weight:600;color:var(--accent)">$'+Number(r.price||0).toLocaleString()+'</td><td style="font-weight:600;color:var(--blue)">$'+Number(r._abPrice||0).toLocaleString()+'</td><td style="font-weight:600;color:'+dc+'">'+((r._priceDiff||0)>0?'+':'')+(r._priceDiff/100).toFixed(0)+'</td><td style="font-size:11px;color:'+dc+'">'+r._priceDiffPct+'%</td><td style="font-size:11px;color:var(--txt2)">'+esc(r.category||'')+'</td></tr>'}
+    } else {
+      h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Product</th><th>Rgn</th><th>Price</th><th>Was</th><th>Save</th><th>Rating</th><th>Stock</th><th>Category</th></tr></thead><tbody>';
+      for(const r of display.slice(0,500)){h+='<tr><td class="brand-cell">'+esc(r.brand||'')+'</td><td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(r.model)+'</a></td><td style="font-size:11px;color:var(--txt2);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.title||'')+'">'+esc(r.title||'')+'</td><td><span style="background:'+(r.region==='bc'?'rgba(47,111,237,.1);color:var(--blue)':'rgba(217,119,6,.1);color:var(--amber)')+';padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">'+r.region.toUpperCase()+'</span></td><td style="font-weight:600;color:var(--accent)">'+(r.price?'$'+Number(r.price).toLocaleString():'—')+'</td><td style="font-size:11px;color:var(--txt2);text-decoration:line-through">'+(r.origPrice?'$'+Number(r.origPrice).toLocaleString():'')+'</td><td style="font-size:10px;color:var(--amber)">'+(r.savePct?r.savePct+'%':(r.promo||''))+'</td><td style="font-size:11px">'+(r.rating?'⭐'+r.rating:'')+'</td><td>'+(r.inStock?'<span style="color:var(--accent)">✓</span>':'<span style="color:var(--txt2)">✕</span>')+'</td><td style="font-size:11px;color:var(--txt2)">'+esc(r.category||'')+'</td></tr>'}
     }
     h+='</tbody></table></div>';
     if(display.length>500)h+='<div style="padding:8px;text-align:center;font-size:11px;color:var(--txt2)">Showing 500 of '+display.length+'</div>';
   } else {
-    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px">🏔️</div>';
-    h+='<div style="font-size:14px;font-weight:600">Trail Appliances</div>';
-    h+='<div style="font-size:12px;margin-top:8px">Select a region and mode, then crawl. Category pages yield brand, model, price, and rating — no individual page hits needed. $0 cost.</div></div>';
+    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px">🏔️</div><div style="font-size:14px;font-weight:600">Trail Appliances — Algolia Powered</div><div style="font-size:12px;margin-top:8px">Select region and mode, then pull. Direct JSON — full product data, per-store stock, zero Cloudflare.</div></div>';
   }
   h+='</div>';return h;
 }
 
-/* ── Trail HTML Parser — extracts products from category listing page ── */
-function trailParseCategoryPage(html, region){
-  const products=[];
-  // Parse using DOMParser
-  const doc=new DOMParser().parseFromString(html,'text/html');
-
-  // Find all product links with model numbers
-  // Pattern: links to /bc/products/ or /ab/products/ containing "Model #XXX"
-  // The HTML structure has product cards with:
-  // - Product link: <a href="/bc/products/{slug}/{name}/{model}/{color}">Title</a>
-  // - Model: "Model #XXXXX"
-  // - Price: "$X,XXX.XX"
-  // - Rating: "4.0", "4.5", etc.
-  // - Brand logo in img src containing brand name
-
-  const text=html;
-
-  // Strategy: find all Model #XXX patterns and extract surrounding context
-  const modelRegex=/Model\s*#([A-Z0-9][\w\-\.\/]+)/gi;
-  let match;
-  const seenModels=new Set();
-
-  while((match=modelRegex.exec(text))!==null){
-    const model=match[1].trim();
-    if(seenModels.has(model))continue;
-    seenModels.add(model);
-
-    // Get context around this model number (500 chars before, 100 after)
-    const start=Math.max(0,match.index-1500);
-    const end=Math.min(text.length,match.index+200);
-    const ctx=text.substring(start,end);
-
-    // Extract product URL — link closest before the model number
-    let url=null;
-    const urlRe=new RegExp('href="(/'+region+'/products/[^"]+)"','g');
-    let um;let lastUrl=null;
-    while((um=urlRe.exec(ctx))!==null){lastUrl=um[1]}
-    if(lastUrl)url=TRAIL_BASE+lastUrl;
-
-    // Also try to find the product title from the link text
-    let title=null;
-    // Look for the linked title text — it appears as text within the product link
-    const titleRe=/>((?:[\w&;][\w\s&;.,'\u2019\u2013\u2014\/\-\(\)]+){3,})<\/a>/g;
-    let tm;let lastTitle=null;
-    while((tm=titleRe.exec(ctx))!==null){
-      const t=tm[1].replace(/&amp;/g,'&').replace(/&#x27;/g,"'").trim();
-      if(t.length>15&&t.length<200&&!t.includes('View details')&&!t.includes('Learn more')&&!t.includes('Read more'))lastTitle=t;
-    }
-    title=lastTitle;
-
-    // Extract price — look for $X,XXX.XX pattern near model
-    let price=null;
-    const priceRe=/\$([\d,]+\.\d{2})/g;
-    let pm;let lastPrice=null;
-    while((pm=priceRe.exec(ctx))!==null){
-      const p=parseFloat(pm[1].replace(/,/g,''));
-      if(p>50&&p<100000)lastPrice=p; // reasonable appliance price range
-    }
-    price=lastPrice;
-
-    // Extract brand from brand logo img src
-    let brand=null;
-    const brandRe=/\/([a-z_]+)_mono\.png/gi;
-    let bm;let lastBrand=null;
-    while((bm=brandRe.exec(ctx))!==null){lastBrand=bm[1]}
-    if(lastBrand){
-      brand=lastBrand.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-      // Fix known brand names
-      const brandFixes={'Kitchenaid':'KitchenAid','Lg':'LG','Ge':'GE','Ge Profile':'GE Profile','Sub Zero':'Sub-Zero','Fisher Paykel':'Fisher & Paykel',
-        'Frigidaire Gallery':'Frigidaire Gallery','Frigidaire Professional':'Frigidaire Professional','Cafe':'Café','Viking Professional':'Viking Professional'};
-      if(brandFixes[brand])brand=brandFixes[brand];
-    }
-    // Also try to get brand from title
-    if(!brand&&title){
-      const firstWord=title.split(' ')[0];
-      if(firstWord&&firstWord.length>1&&firstWord.length<20)brand=firstWord;
-    }
-
-    // Extract rating
-    let rating=null;
-    const ratingRe=/(?:^|>|\s)([\d]\.\d)(?:\s|<)/;
-    const rm=ctx.match(ratingRe);
-    if(rm){const rv=parseFloat(rm[1]);if(rv>=1&&rv<=5)rating=rv}
-
-    // Extract promo status
-    let promo=null;
-    if(ctx.includes('Price Drop'))promo='Price Drop';
-    else if(ctx.includes('Promo'))promo='Promo';
-    else if(ctx.includes('Offer available'))promo='Offer';
-    else if(ctx.includes('Sponsored'))promo='Sponsored';
-
-    products.push({brand,model,title,price,rating,promo,region,url});
-  }
-
-  return products;
-}
-
-/* ── Crawl full catalog (all-product-klevu) ── */
 async function trailCrawlCatalog(){
-  const maxPages=parseInt(document.getElementById('trailMaxPages')?.value||'30');
   const regions=trailRegion==='both'?['bc','ab']:[trailRegion];
-  const totalPages=maxPages*regions.length;
   trailLoading=true;trailStopRequested=false;trailProducts=[];
-  trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};
-  trailProgress={current:0,total:totalPages,phase:'Crawling catalog…'};
-  renderTab();
-  logEntry('Trail: Starting catalog crawl — '+regions.join('+')+', up to '+maxPages+' pages each','info');
-
+  trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};renderTab();
+  logEntry('Trail: Pulling full catalog via Algolia — '+regions.join('+'),'info');
   for(const region of regions){
-    for(let page=1;page<=maxPages;page++){
-      if(trailStopRequested){logEntry('Trail: Stopped at page '+page,'info');break}
-      const url=TRAIL_BASE+'/'+region+'/categories/all-product-klevu'+(page>1?'?page='+page:'');
-      trailProgress.current++;trailProgress.phase='Crawling '+region.toUpperCase()+' page '+page;renderTab();
-
-      try{
-        const resp=await fetch(SB_URL+'/functions/v1/trail-fetch',{method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
-          body:JSON.stringify({url})});
-        const result=await resp.json();
-        if(!result.ok||!result.html){trailStats.failed++;logEntry('Trail: Page '+page+' ('+region+') empty/blocked','err');continue}
-
-        const products=trailParseCategoryPage(result.html,region);
-        if(products.length===0){
-          logEntry('Trail: Page '+page+' ('+region+') — 0 products, likely end of catalog','info');
-          break; // No more products = past the last page
-        }
-
-        // Dedupe by model+region
-        const existingKeys=new Set(trailProducts.map(p=>p.model+'_'+p.region));
-        let added=0;
-        for(const p of products){
-          const key=p.model+'_'+p.region;
-          if(!existingKeys.has(key)){trailProducts.push(p);existingKeys.add(key);added++}
-        }
-        trailStats.pages++;trailStats.discovered=trailProducts.length;
-        logEntry('Trail: '+region.toUpperCase()+' p'+page+' → '+products.length+' products ('+added+' new, total: '+trailProducts.length+')','ok');
-
-        // Auto-save if enabled
-        if(autoSave){
-          for(const p of products){
-            if(p.model&&p.price)await trailSaveProduct(p);
-          }
-        }
-      }catch(e){
-        trailStats.failed++;
-        logEntry('Trail: Error page '+page+' ('+region+'): '+e.message,'err');
+    const idx=TRAIL_INDEX[region];
+    try{
+      const first=await trailAlgoliaQuery(idx,{},0,100);
+      const totalPages=first.nbPages||0;
+      trailProgress={current:1,total:totalPages,phase:region.toUpperCase()+' pulling…'};
+      logEntry('Trail: '+region.toUpperCase()+' = '+first.nbHits+' products, '+totalPages+' pages','ok');
+      for(const hit of first.hits||[])trailProducts.push(trailMapHit(hit,region));
+      trailStats.pages++;trailStats.discovered=trailProducts.length;renderTab();
+      for(let p=1;p<totalPages;p++){
+        if(trailStopRequested){logEntry('Trail: Stopped at page '+p,'info');break}
+        trailProgress.current=p+1;trailProgress.phase=region.toUpperCase()+' page '+(p+1)+'/'+totalPages;
+        if(p%10===0)renderTab();
+        try{const r=await trailAlgoliaQuery(idx,{},p,100);for(const hit of r.hits||[])trailProducts.push(trailMapHit(hit,region));trailStats.pages++;trailStats.discovered=trailProducts.length}
+        catch(e){trailStats.failed++;logEntry('Trail: p'+p+' error: '+e.message,'err')}
       }
-
-      // Polite delay between requests
-      if(page<maxPages)await new Promise(r=>setTimeout(r,1500));
-    }
+      renderTab();
+    }catch(e){trailStats.failed++;logEntry('Trail: '+region.toUpperCase()+' failed: '+e.message,'err')}
     if(trailStopRequested)break;
   }
-
+  if(autoSave&&trailProducts.length>0){logEntry('Trail: Auto-saving '+trailProducts.length+'…','info');await trailSaveBatch(trailProducts)}
   trailLoading=false;renderTab();
-  logEntry('Trail: Done — '+trailProducts.length+' products across '+trailStats.pages+' pages','ok');
+  logEntry('Trail: Done — '+trailProducts.length+' products from '+trailStats.pages+' pages','ok');
 }
 
-/* ── Crawl specific category ── */
 async function trailCrawlCategory(){
-  if(!trailCategory){logEntry('Trail: Select a category first','err');return}
-  const maxPages=parseInt(document.getElementById('trailMaxPages')?.value||'50');
+  if(!trailCategory)return;
+  const cat=TRAIL_CATEGORIES.find(c=>c.slug===trailCategory);
+  if(!cat||!cat.filter){logEntry('Trail: No filter','err');return}
   const regions=trailRegion==='both'?['bc','ab']:[trailRegion];
-  const totalPages=maxPages*regions.length;
   trailLoading=true;trailStopRequested=false;trailProducts=[];
-  trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};
-  trailProgress={current:0,total:totalPages,phase:'Crawling category…'};
-  renderTab();
-  const catLabel=TRAIL_CATEGORIES.find(c=>c.slug===trailCategory)?.label||trailCategory;
-  logEntry('Trail: Crawling "'+catLabel+'" — '+regions.join('+'),'info');
-
+  trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};renderTab();
   for(const region of regions){
-    for(let page=1;page<=maxPages;page++){
-      if(trailStopRequested)break;
-      const url=TRAIL_BASE+'/'+region+'/categories/'+trailCategory+(page>1?'?page='+page:'');
-      trailProgress.current++;trailProgress.phase='Crawling '+region.toUpperCase()+' '+catLabel+' p'+page;renderTab();
-
-      try{
-        const resp=await fetch(SB_URL+'/functions/v1/trail-fetch',{method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
-          body:JSON.stringify({url})});
-        const result=await resp.json();
-        if(!result.ok||!result.html){trailStats.failed++;continue}
-
-        const products=trailParseCategoryPage(result.html,region);
-        if(products.length===0){logEntry('Trail: End of '+catLabel+' at page '+page+' ('+region+')','info');break}
-
-        const existingKeys=new Set(trailProducts.map(p=>p.model+'_'+p.region));
-        let added=0;
-        for(const p of products){
-          const key=p.model+'_'+p.region;
-          if(!existingKeys.has(key)){trailProducts.push(p);existingKeys.add(key);added++}
-        }
-        trailStats.pages++;trailStats.discovered=trailProducts.length;
-        logEntry('Trail: '+region.toUpperCase()+' '+catLabel+' p'+page+' → '+products.length+' ('+added+' new)','ok');
-
-        if(autoSave){for(const p of products){if(p.model&&p.price)await trailSaveProduct(p)}}
-      }catch(e){trailStats.failed++;logEntry('Trail: Error: '+e.message,'err')}
-      if(page<maxPages)await new Promise(r=>setTimeout(r,1500));
-    }
+    try{
+      const first=await trailAlgoliaQuery(TRAIL_INDEX[region],{filters:'categories.lvl0:"All Products"'},0,100);
+      // Filter client-side by category name in title or categories
+      const filterLc=cat.filter.toLowerCase();
+      const totalPages=first.nbPages||0;
+      trailProgress={current:1,total:totalPages,phase:cat.label+' '+region.toUpperCase()};
+      logEntry('Trail: Scanning '+region.toUpperCase()+' for '+cat.label,'ok');
+      const addFiltered=(hits)=>{for(const h of hits){const mapped=trailMapHit(h,region);if((mapped.category||'').toLowerCase().includes(filterLc))trailProducts.push(mapped)}};
+      addFiltered(first.hits||[]);trailStats.pages++;renderTab();
+      for(let p=1;p<totalPages;p++){
+        if(trailStopRequested)break;trailProgress.current=p+1;if(p%10===0)renderTab();
+        try{const r=await trailAlgoliaQuery(TRAIL_INDEX[region],{},p,100);addFiltered(r.hits||[]);trailStats.pages++}catch(e){trailStats.failed++}
+      }
+      trailStats.discovered=trailProducts.length;renderTab();
+    }catch(e){logEntry('Trail: Error: '+e.message,'err')}
     if(trailStopRequested)break;
   }
-
+  if(autoSave&&trailProducts.length>0)await trailSaveBatch(trailProducts);
   trailLoading=false;renderTab();
-  logEntry('Trail: Done — '+trailProducts.length+' products from "'+catLabel+'"','ok');
+  logEntry('Trail: Done — '+trailProducts.length+' '+cat.label,'ok');
 }
 
-/* ── Price Compare: crawl both regions and show price differences ── */
 async function trailPriceCompare(){
   trailLoading=true;trailStopRequested=false;trailProducts=[];
   trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};
-  trailProgress={current:0,total:20,phase:'Comparing regions…'};
-  renderTab();
-  logEntry('Trail: Price comparison — crawling BC + AB to find price differences','info');
-
-  // Crawl first 10 pages from each region
-  const allByModel={};
-
+  trailProgress={current:0,total:2,phase:'Pulling BC+AB…'};renderTab();
+  const byModel={};
   for(const region of ['bc','ab']){
-    for(let page=1;page<=10;page++){
-      if(trailStopRequested)break;
-      const url=TRAIL_BASE+'/'+region+'/categories/all-product-klevu'+(page>1?'?page='+page:'');
-      trailProgress.current++;trailProgress.phase='Crawling '+region.toUpperCase()+' page '+page;renderTab();
-
-      try{
-        const resp=await fetch(SB_URL+'/functions/v1/trail-fetch',{method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
-          body:JSON.stringify({url})});
-        const result=await resp.json();
-        if(!result.ok||!result.html)continue;
-
-        const products=trailParseCategoryPage(result.html,region);
-        if(products.length===0)break;
-
-        for(const p of products){
-          if(!p.model||!p.price)continue;
-          if(!allByModel[p.model])allByModel[p.model]={brand:p.brand,title:p.title,model:p.model};
-          allByModel[p.model][region+'_price']=p.price;
-          allByModel[p.model][region+'_url']=p.url;
-          allByModel[p.model][region+'_promo']=p.promo;
-        }
-        trailStats.pages++;
-      }catch(e){trailStats.failed++}
-      await new Promise(r=>setTimeout(r,1500));
-    }
-    if(trailStopRequested)break;
+    trailProgress.phase=region.toUpperCase();renderTab();
+    try{
+      const first=await trailAlgoliaQuery(TRAIL_INDEX[region],{},0,100);
+      const proc=(hits)=>{for(const h of hits){if(h.sku&&h.price)byModel[h.sku]={...byModel[h.sku]||{},brand:h.brandName,model:h.sku,title:h.title,[region+'_price']:h.price/100,category:h.categories?.lvl2?.[0]?.split(' > ').pop()||null}}};
+      proc(first.hits||[]);
+      for(let p=1;p<(first.nbPages||0);p++){
+        if(trailStopRequested)break;if(p%20===0)renderTab();
+        const r=await trailAlgoliaQuery(TRAIL_INDEX[region],{},p,100);proc(r.hits||[]);trailStats.pages++;
+      }
+    }catch(e){logEntry('Trail: '+region+' error: '+e.message,'err')}
+    trailProgress.current++;if(trailStopRequested)break;
   }
-
-  // Build comparison results — only products that exist in both regions
-  for(const m of Object.values(allByModel)){
+  for(const m of Object.values(byModel)){
     if(m.bc_price&&m.ab_price){
-      const diff=m.bc_price-m.ab_price;
-      trailProducts.push({
-        brand:m.brand,model:m.model,title:m.title,
-        price:m.bc_price,region:'bc',url:m.bc_url,promo:m.bc_promo,
-        _abPrice:m.ab_price,_priceDiff:diff,_priceDiffPct:((diff/m.ab_price)*100).toFixed(1)
-      });
+      const diff=Math.round((m.bc_price-m.ab_price)*100);
+      trailProducts.push({brand:m.brand,model:m.model,title:m.title,category:m.category,price:m.bc_price,region:'bc',_abPrice:m.ab_price,_priceDiff:diff,_priceDiffPct:((diff/(m.ab_price*100))*100).toFixed(1)});
       trailStats.matched++;
     }
   }
-  // Sort by biggest price difference
   trailProducts.sort((a,b)=>Math.abs(b._priceDiff||0)-Math.abs(a._priceDiff||0));
-  trailStats.discovered=trailProducts.length;
-
-  trailLoading=false;renderTab();
-  logEntry('Trail: Price compare done — '+trailProducts.length+' products found in both regions','ok');
+  trailStats.discovered=trailProducts.length;trailLoading=false;renderTab();
+  logEntry('Trail: Compare done — '+trailProducts.length+' in both regions','ok');
 }
 
-/* ── Save Trail product to retailer_discovered_products + pim_retailer_prices ── */
-async function trailSaveProduct(p){
-  try{
-    const now=new Date().toISOString();
-    const price=parseFloat(p.price)||null;
-    if(!price||!p.model)return;
-
-    const regionLabel=p.region==='bc'?'Trail Appliances BC':'Trail Appliances AB';
-
-    // 1. retailer_discovered_products
-    const rdPayload={
-      retailer_name:regionLabel,
-      brand_name:p.brand||'Unknown',
-      model:p.model,
-      product_name:p.title||null,
-      product_url:p.url||null,
-      category:null,
-      price:price,
-      on_sale:!!(p.promo&&(p.promo==='Price Drop'||p.promo==='Promo')),
-      in_stock:true,
-      condition:'new',
-      country:'CA',
-      last_verified:now,
-      status:'active'
-    };
-    await sb.from('retailer_discovered_products').upsert(rdPayload,{onConflict:'product_url',ignoreDuplicates:false});
-
-    // 2. Match to PIM
-    const{data:existing}=await sb.from('aiq_products')
-      .select('id,brand_name,model,msrp')
-      .eq('model',p.model).maybeSingle();
-
-    if(existing){
-      p._pimMatch=true;
-      trailStats.matched++;
-    }
-
-    // 3. pim_retailer_prices
-    const pricePayload={
-      product_id:existing?.id||null,
-      brand_name:p.brand||'Unknown',
-      model:p.model,
-      retailer_name:regionLabel,
-      retailer_url:'https://www.trailappliances.com',
-      product_url:p.url||null,
-      price:price,
-      on_sale:!!(p.promo&&(p.promo==='Price Drop'||p.promo==='Promo')),
-      in_stock:true,
-      condition_normalized:'new',
-      condition_raw:'New',
-      is_open_box:false,is_clearance:false,is_refurbished:false,is_floor_model:false,
-      price_currency:'CAD',
-      country:'CA',
-      listing_status:'active',
-      checked_at:now,
-      last_seen_at:now
-    };
-    const res=await sb.from('pim_retailer_prices').upsert(pricePayload,{onConflict:'product_url,condition_normalized',ignoreDuplicates:false});
-    if(!res.error)trailStats.saved++;
-  }catch(e){
-    console.error('[Trail SAVE]',e);
-  }
-}
-
-/* ── Save all discovered Trail products ── */
-async function trailSaveAll(){
-  if(trailProducts.length===0)return;
-  trailLoading=true;trailStopRequested=false;
-  trailProgress={current:0,total:trailProducts.filter(p=>p.model&&p.price).length,phase:'Saving…'};
-  renderTab();
-  logEntry('Trail: Saving '+trailProgress.total+' products…','info');
-  let saved=0;
-  for(const p of trailProducts){
+async function trailSaveBatch(products){
+  trailProgress.phase='Saving…';renderTab();let saved=0;
+  for(let i=0;i<products.length;i+=20){
     if(trailStopRequested)break;
-    if(!p.model||!p.price)continue;
-    trailProgress.current++;
-    if(trailProgress.current%20===0)renderTab();
-    await trailSaveProduct(p);
-    saved++;
+    const chunk=products.slice(i,i+20).filter(p=>p.model&&p.price&&!p.isAccessory);
+    if(!chunk.length)continue;const now=new Date().toISOString();
+    const rl=r=>'Trail Appliances '+(r==='bc'?'BC':'AB');
+    const rdp=chunk.map(p=>({retailer_name:rl(p.region),brand_name:p.brand||'Unknown',model:p.model,product_name:p.title||null,product_url:p.url||null,category:p.category||null,price:p.price,on_sale:!!(p.promo&&p.promo!=='Offer'),in_stock:p.inStock,condition:p.promo==='Clearance'?'clearance':'new',country:'CA',last_verified:now,status:'active'}));
+    await sb.from('retailer_discovered_products').upsert(rdp,{onConflict:'product_url',ignoreDuplicates:false});
+    const prp=chunk.map(p=>({product_id:null,brand_name:p.brand||'Unknown',model:p.model,retailer_name:rl(p.region),retailer_url:'https://www.trailappliances.com',product_url:p.url||null,price:p.price,regular_price:p.origPrice||null,on_sale:!!(p.origPrice&&p.price<p.origPrice),in_stock:p.inStock,condition_normalized:p.promo==='Clearance'?'clearance':'new',condition_raw:p.promo==='Clearance'?'Clearance':'New',is_open_box:false,is_clearance:p.promo==='Clearance',is_refurbished:false,is_floor_model:false,price_currency:'CAD',country:'CA',listing_status:p.inStock?'active':'out_of_stock',checked_at:now,last_seen_at:now}));
+    const res=await sb.from('pim_retailer_prices').upsert(prp,{onConflict:'product_url,condition_normalized',ignoreDuplicates:false});
+    if(!res.error)saved+=chunk.length;
+    if(i%200===0&&i>0){trailStats.saved=saved;renderTab()}
   }
-  trailLoading=false;renderTab();
-  logEntry('Trail: Saved '+saved+' products','ok');
+  trailStats.saved=saved;logEntry('Trail: Saved '+saved+' to DB','ok');renderTab();
 }
+async function trailSaveAll(){if(!trailProducts.length)return;trailLoading=true;renderTab();await trailSaveBatch(trailProducts.filter(p=>p.model&&p.price));trailLoading=false;renderTab()}
+function trailExportCSV(){if(!trailProducts.length)return;let csv='Brand,Model,Title,Region,Price,OrigPrice,Save%,Rating,InStock,Category,Width,Height,Depth,Color,URL\n';for(const p of trailProducts)csv+=[p.brand||'',p.model||'','"'+(p.title||'').replace(/"/g,'""')+'"',p.region,p.price||'',p.origPrice||'',p.savePct||'',p.rating||'',p.inStock?'Y':'N','"'+(p.category||'')+'"',p.width||'',p.height||'',p.depth||'','"'+(p.color||'')+'"',p.url||''].join(',')+'\n';const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='trail-'+trailRegion+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();logEntry('Trail: Exported '+trailProducts.length,'ok')}
 
-/* ── Export to CSV ── */
-function trailExportCSV(){
-  if(trailProducts.length===0)return;
-  const headers=['Brand','Model','Title','Region','Price','Promo','Rating','URL'];
-  let csv=headers.join(',')+'\n';
-  for(const p of trailProducts){
-    csv+=[p.brand||'',p.model||'','"'+(p.title||'').replace(/"/g,'""')+'"',p.region||'',p.price||'',p.promo||'',p.rating||'',p.url||''].join(',')+'\n';
-  }
-  const blob=new Blob([csv],{type:'text/csv'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='trail-products-'+trailRegion+'-'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
-  logEntry('Trail: Exported '+trailProducts.length+' products to CSV','ok');
-}
-
-// ── Trail window.S exports ──
 window.S.trailSetRegion=(r)=>{trailRegion=r;renderTab()};
 window.S.trailSetMode=(m)=>{trailMode=m;renderTab()};
 window.S.trailSetCategory=(c)=>{trailCategory=c;renderTab()};
