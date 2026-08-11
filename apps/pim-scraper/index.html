@@ -239,6 +239,7 @@ header .right{display:flex;align-items:center;gap:12px}
     <button class="tab-btn" onclick="window.S.switchTab('recalls')">Recalls</button>
     <button class="tab-btn" onclick="window.S.switchTab('cas')" style="color:var(--blue)">🇨🇦 CAS</button>
     <button class="tab-btn" onclick="window.S.switchTab('trail')" style="color:var(--blue)">🏔️ Trail</button>
+    <button class="tab-btn" onclick="window.S.switchTab('apex')" style="color:var(--blue)">🔷 Apex</button>
   </div>
   <div class="main" id="mainContent">
     <div style="text-align:center;padding:80px 0;color:var(--txt2)">Loading brands…</div>
@@ -594,6 +595,44 @@ const TRAIL_CATEGORIES = [
   {slug:'ice-makers',label:'Ice Makers',filter:'Ice Makers'},
   {slug:'clearance',label:'Clearance',filter:''},
 ];
+
+// Apex Commerce state
+let apexProducts = [];
+let apexLoading = false;
+let apexProgress = {current:0,total:0,phase:''};
+let apexFilter = '';
+let apexStats = {discovered:0,saved:0,failed:0,pages:0};
+let apexStopRequested = false;
+let apexSite = 'bestbrand'; // which Apex retailer
+const APEX_SITES = {
+  bestbrand:{name:'Best Brand Appliance',domain:'www.bestbrandappliance.ca',region:'ON',categories:[
+    {slug:'full-size-refrigerators',label:'Refrigerators'},{slug:'compact-refrigerators',label:'Compact Fridges'},
+    {slug:'freezers',label:'Freezers'},{slug:'ice-makers',label:'Ice Makers'},
+    {slug:'ranges',label:'Ranges'},{slug:'single-double-combi-wall-oven',label:'Wall Ovens'},
+    {slug:'cooktops',label:'Cooktops'},{slug:'ventilation',label:'Ventilation'},
+    {slug:'microwave',label:'Microwaves'},{slug:'bbq',label:'BBQ'},
+    {slug:'warming-drawers',label:'Warming Drawers'},{slug:'coffee-espresso-maker',label:'Coffee'},
+    {slug:'dishwashers',label:'Dishwashers'},{slug:'front-load-washers',label:'Washers'},
+    {slug:'dryers',label:'Dryers'},{slug:'laundry-pairs',label:'Laundry Pairs'},
+    {slug:'pizza-oven',label:'Pizza Ovens'},
+  ]},
+  premium:{name:'Premium Appliances',domain:'www.premiumappliances.ca',region:'BC',categories:[
+    {slug:'refrigerators',label:'Refrigerators'},{slug:'compact-refrigerators',label:'Compact Fridges'},
+    {slug:'freezers',label:'Freezers'},{slug:'ranges',label:'Ranges'},
+    {slug:'wall-ovens',label:'Wall Ovens'},{slug:'cooktops',label:'Cooktops'},
+    {slug:'ventilation',label:'Ventilation'},{slug:'microwaves',label:'Microwaves'},
+    {slug:'dishwashers',label:'Dishwashers'},{slug:'washers',label:'Washers'},
+    {slug:'dryers',label:'Dryers'},{slug:'bbq',label:'BBQ'},
+  ]},
+  quan:{name:'Quan Appliances',domain:'www.quanappliances.com',region:'ON',categories:[
+    {slug:'refrigerators',label:'Refrigerators'},{slug:'compact-refrigerators',label:'Compact Fridges'},
+    {slug:'freezers',label:'Freezers'},{slug:'ranges',label:'Ranges'},
+    {slug:'wall-ovens',label:'Wall Ovens'},{slug:'cooktops',label:'Cooktops'},
+    {slug:'ventilation',label:'Ventilation'},{slug:'microwaves',label:'Microwaves'},
+    {slug:'dishwashers',label:'Dishwashers'},{slug:'washers',label:'Washers'},
+    {slug:'dryers',label:'Dryers'},
+  ]},
+};
 
 // Verify & Audit state
 let vaResults = [];
@@ -1564,6 +1603,7 @@ function renderTab(){
   else if(currentTab==='recalls') h+=renderRecalls();
   else if(currentTab==='cas') h+=renderCAS();
   else if(currentTab==='trail') h+=renderTrail();
+  else if(currentTab==='apex') h+=renderApex();
 
   // Save scroll position before DOM replace
   const prevScroll=el.scrollTop;
@@ -2192,7 +2232,7 @@ function renderEnrich() {
 window.S = {
   switchTab(tab){
     currentTab=tab;
-    const tabs=['discover','price-sync','verify','enrich','intelligence','recalls','cas','trail'];
+    const tabs=['discover','price-sync','verify','enrich','intelligence','recalls','cas','trail','apex'];
     document.querySelectorAll('.tab-btn').forEach((b,i)=>{
       const isActive=tabs[i]===tab;
       b.classList.toggle('active',isActive);
@@ -5892,6 +5932,171 @@ window.S.trailSaveAll=()=>trailSaveAll();
 window.S.trailExportCSV=()=>trailExportCSV();
 window.S.trailStop=()=>{trailStopRequested=true};
 window.S.trailClear=()=>{trailProducts=[];trailStats={discovered:0,saved:0,failed:0,pages:0,matched:0};trailFilter='';renderTab()};
+
+/* ═══════════════════════════════════════════════════════════════════
+   APEX COMMERCE ENGINE
+   Crawls Apex e-Commerce platform sites (Best Brand, Premium, Quan)
+   No Cloudflare, no bot protection. Catalog discovery + specs.
+   No prices (call-for-price model). $0 AI cost.
+   ═══════════════════════════════════════════════════════════════════ */
+
+function apexParseCategory(html,site){
+  const products=[];const doc=new DOMParser().parseFromString(html,'text/html');
+  // Product cards have: model in h4 > a, title in preceding link, brand from logo img
+  // Pattern: <a href="/products/view/slug">Title</a> ... <h4><a>MODEL</a></h4>
+  const links=doc.querySelectorAll('a[href*="/products/view/"]');
+  const seen=new Set();
+  for(const a of links){
+    const href=a.getAttribute('href')||'';
+    if(seen.has(href))continue;seen.add(href);
+    const title=a.textContent?.trim()||'';
+    if(!title||title.length<10||title==='Compare Products')continue;
+    // Look for model in nearby h4
+    const card=a.closest('.product-item,.product-card,.col-lg-3,.col-md-4,.col-sm-6,div')||a.parentElement;
+    let model=null;
+    const h4s=card?.querySelectorAll('h4 a, h5 a')||[];
+    for(const h of h4s){const t=h.textContent?.trim();if(t&&t.length>=3&&t.length<=40&&/[A-Z0-9]/.test(t)){model=t.replace(/\s*\(.*\)/,'').trim();break}}
+    // Extract model from URL slug if not found
+    if(!model){const slugParts=href.split('/').pop()?.split('-');if(slugParts)model=slugParts[slugParts.length-1]?.toUpperCase()}
+    // Brand from logo img nearby
+    let brand=null;
+    const imgs=card?.querySelectorAll('img[src*="brandlogo"]')||[];
+    for(const img of imgs){
+      const src=img.getAttribute('src')||'';
+      const m=src.match(/\d+_(.+?)\.png/);
+      if(m)brand=m[1].replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    }
+    // Brand from title
+    if(!brand&&title){const words=title.split(' ');if(words[0]&&words[0].length>1)brand=words[0]}
+    // Availability
+    const cardText=card?.textContent||'';
+    const inStock=cardText.includes('In Stock');
+    const available=cardText.includes('Available to ship')||inStock;
+    const clearance=cardText.includes('Clearance');
+    const url='https://'+APEX_SITES[apexSite].domain+href;
+    if(model)products.push({brand,model,title,url,inStock,available,clearance,price:null});
+  }
+  return products;
+}
+
+function renderApex(){
+  const site=APEX_SITES[apexSite];
+  let h='<div style="margin-bottom:20px">';
+  h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+  h+='<span style="font-size:20px;font-weight:800;color:var(--txt)">🔷 Apex Commerce</span>';
+  h+='<span style="font-size:12px;color:var(--blue);background:rgba(47,111,237,.1);padding:4px 10px;border-radius:20px;font-weight:600">$0 — Catalog Discovery</span>';
+  h+='</div>';
+  h+='<p style="font-size:13px;color:var(--txt2);margin-bottom:16px;max-width:700px">Crawls Apex e-Commerce platform retailers. No Cloudflare, no bot protection. Discovers brand, model, title, availability. No prices (call-for-price model).</p>';
+  h+='<div class="stats-row">';
+  h+='<div class="stat-card"><div class="label">Products Found</div><div class="value">'+apexProducts.length+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Pages Crawled</div><div class="value green">'+apexStats.pages+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Saved to PIM</div><div class="value green">'+apexStats.saved+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(apexStats.failed>0?'red':'')+'">'+apexStats.failed+'</div></div>';
+  h+='</div>';
+  // Site selector
+  h+='<div class="controls" style="margin-bottom:16px">';
+  h+='<div class="mode-toggle">';
+  for(const[k,v]of Object.entries(APEX_SITES))h+='<button class="'+(apexSite===k?'active':'')+'" onclick="window.S.apexSetSite(\''+k+'\')">'+esc(v.name)+' ('+v.region+')</button>';
+  h+='</div>';
+  h+='<button class="btn btn-primary" onclick="window.S.apexCrawlAll()" '+(apexLoading?'disabled':'')+'>'+(apexLoading?'⏳ '+apexProgress.current+'/'+apexProgress.total:'🔍 Crawl All Categories')+'</button>';
+  if(apexLoading)h+='<button class="btn" style="background:var(--red);color:#fff" onclick="window.S.apexStop()">⏹ Stop</button>';
+  h+='<div style="margin-left:auto;display:flex;gap:8px;align-items:center">';
+  if(apexProducts.length>0)h+='<input type="text" placeholder="Filter…" value="'+esc(apexFilter)+'" oninput="window.S.apexSetFilter(this.value)" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;font-size:12px;width:180px;color:var(--txt);font-family:inherit">';
+  if(apexProducts.length>0){h+='<button class="btn btn-sm btn-secondary" onclick="window.S.apexSaveAll()">💾 Save All</button>';h+='<button class="btn btn-sm btn-secondary" onclick="window.S.apexExportCSV()">📥 CSV</button>'}
+  h+='<button class="btn btn-secondary" onclick="window.S.apexClear()" style="color:var(--red)">Reset</button></div></div>';
+  if(apexLoading&&apexProgress.total>0){const pct=Math.round((apexProgress.current/apexProgress.total)*100);h+='<div style="margin-bottom:16px"><div style="height:6px;background:var(--surface);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:var(--accent);transition:width .3s"></div></div><div style="font-size:11px;color:var(--txt2);margin-top:4px">'+apexProgress.phase+' — '+pct+'%</div></div>'}
+  const display=apexFilter?apexProducts.filter(r=>{const s=(r.brand||'')+(r.model||'')+(r.title||'');return s.toLowerCase().includes(apexFilter.toLowerCase())}):apexProducts;
+  if(display.length>0){
+    const bc={};for(const p of display)if(p.brand)bc[p.brand]=(bc[p.brand]||0)+1;
+    const tb=Object.entries(bc).sort((a,b)=>b[1]-a[1]).slice(0,20);
+    h+='<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">';for(const[b,c]of tb)h+='<span style="font-size:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:2px 8px;cursor:pointer" onclick="window.S.apexSetFilter(\''+esc(b)+'\')">'+esc(b)+' <b>'+c+'</b></span>';h+='</div>';
+    h+='<div style="font-size:12px;color:var(--txt2);margin-bottom:6px">'+Math.min(display.length,500)+' of '+display.length+'</div>';
+    h+='<div style="max-height:550px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius)">';
+    h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Product</th><th>Available</th><th>Clearance</th><th>Category</th></tr></thead><tbody>';
+    for(const r of display.slice(0,500)){
+      h+='<tr><td class="brand-cell">'+esc(r.brand||'')+'</td>';
+      h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(r.model||'')+'</a></td>';
+      h+='<td style="font-size:11px;color:var(--txt2);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.title||'')+'">'+esc(r.title||'')+'</td>';
+      h+='<td>'+(r.available?'<span style="color:var(--accent)">✓</span>':'<span style="color:var(--txt2)">—</span>')+'</td>';
+      h+='<td>'+(r.clearance?'<span style="color:var(--amber)">CLR</span>':'')+'</td>';
+      h+='<td style="font-size:11px;color:var(--txt2)">'+esc(r.category||'')+'</td></tr>';
+    }
+    h+='</tbody></table></div>';
+  } else {
+    h+='<div style="text-align:center;padding:60px 0;color:var(--txt2)"><div style="font-size:48px;margin-bottom:12px">🔷</div><div style="font-size:14px;font-weight:600">Apex Commerce — '+esc(site.name)+'</div><div style="font-size:12px;margin-top:8px">Select a retailer and crawl. Discovers products, models, brands, availability. No prices (call-for-price).</div></div>';
+  }
+  h+='</div>';return h;
+}
+
+async function apexCrawlAll(){
+  const site=APEX_SITES[apexSite];
+  apexLoading=true;apexStopRequested=false;apexProducts=[];
+  apexStats={discovered:0,saved:0,failed:0,pages:0};renderTab();
+  logEntry('Apex: Crawling '+site.name+' ('+site.categories.length+' categories)','info');
+  let totalEstPages=site.categories.length*5;
+  apexProgress={current:0,total:totalEstPages,phase:'Starting…'};renderTab();
+  for(const cat of site.categories){
+    if(apexStopRequested)break;
+    let page=1;let hasMore=true;
+    while(hasMore&&page<=50){
+      if(apexStopRequested)break;
+      const url='https://'+site.domain+'/products/category/'+cat.slug+(page>1?'?page='+page:'');
+      apexProgress.current++;apexProgress.phase=cat.label+' p'+page;renderTab();
+      try{
+        const resp=await fetch(SB_URL+'/functions/v1/apex-fetch',{method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+currentSession.access_token,'apikey':SB_KEY},
+          body:JSON.stringify({url})});
+        const result=await resp.json();
+        if(!result.ok||!result.html){apexStats.failed++;hasMore=false;continue}
+        const products=apexParseCategory(result.html,apexSite);
+        if(products.length===0){hasMore=false;continue}
+        const existingModels=new Set(apexProducts.map(p=>p.model));
+        let added=0;
+        for(const p of products){
+          p.category=cat.label;p.retailer=site.name;
+          if(!existingModels.has(p.model)){apexProducts.push(p);existingModels.add(p.model);added++}
+        }
+        apexStats.pages++;apexStats.discovered=apexProducts.length;
+        logEntry('Apex: '+cat.label+' p'+page+' → '+products.length+' ('+added+' new, total: '+apexProducts.length+')','ok');
+        // Check if there's a next page
+        hasMore=result.html.includes('page='+(page+1));
+        page++;
+      }catch(e){apexStats.failed++;logEntry('Apex: Error: '+e.message,'err');hasMore=false}
+      await new Promise(r=>setTimeout(r,1500));
+    }
+  }
+  if(apexProducts.length>0){logEntry('Apex: Saving '+apexProducts.length+'…','info');await apexSaveBatch()}
+  apexLoading=false;renderTab();
+  logEntry('Apex: Done — '+apexProducts.length+' products from '+apexStats.pages+' pages','ok');
+}
+
+async function apexSaveBatch(){
+  const now=new Date().toISOString();const site=APEX_SITES[apexSite];let saved=0;
+  for(let i=0;i<apexProducts.length;i+=20){
+    const chunk=apexProducts.slice(i,i+20).filter(p=>p.model);
+    if(!chunk.length)continue;
+    const rdp=chunk.map(p=>({retailer_name:site.name,brand_name:p.brand||'Unknown',model:p.model,product_name:p.title||null,product_url:p.url||null,category:p.category||null,price:null,on_sale:p.clearance||false,in_stock:p.available||false,condition:p.clearance?'clearance':'new',country:'CA',last_verified:now,status:'active'}));
+    const res=await sb.from('retailer_discovered_products').upsert(rdp,{onConflict:'product_url',ignoreDuplicates:false});
+    if(!res.error)saved+=chunk.length;
+  }
+  apexStats.saved=saved;logEntry('Apex: Saved '+saved+' to DB','ok');renderTab();
+}
+
+function apexExportCSV(){
+  if(!apexProducts.length)return;
+  let csv='Brand,Model,Title,Available,Clearance,Category,Retailer,URL\n';
+  for(const p of apexProducts)csv+=[p.brand||'',p.model||'','"'+(p.title||'').replace(/"/g,'""')+'"',p.available?'Y':'N',p.clearance?'Y':'N',p.category||'',p.retailer||'',p.url||''].join(',')+'\n';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='apex-'+apexSite+'-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+window.S.apexSetSite=(s)=>{apexSite=s;renderTab()};
+window.S.apexSetFilter=(v)=>{apexFilter=v;renderTab()};
+window.S.apexCrawlAll=()=>apexCrawlAll();
+window.S.apexSaveAll=()=>apexSaveBatch();
+window.S.apexExportCSV=()=>apexExportCSV();
+window.S.apexStop=()=>{apexStopRequested=true};
+window.S.apexClear=()=>{apexProducts=[];apexStats={discovered:0,saved:0,failed:0,pages:0};apexFilter='';renderTab()};
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="scraper"></script>
 </body>
