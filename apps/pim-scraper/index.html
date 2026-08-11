@@ -5013,7 +5013,7 @@ function renderCAS(){
   h+='<div class="stat-card"><div class="label">Discovered</div><div class="value">'+casProductUrls.length+'</div></div>';
   h+='<div class="stat-card"><div class="label">Scraped</div><div class="value green">'+casStats.scraped+'</div></div>';
   h+='<div class="stat-card"><div class="label">Saved</div><div class="value green">'+casStats.saved+'</div></div>';
-  h+='<div class="stat-card"><div class="label">Discontinued</div><div class="value" style="color:var(--txt2)">'+casStats.discontinued+'</div></div>';
+  h+='<div class="stat-card"><div class="label">Sold Out</div><div class="value" style="color:var(--txt2)">'+casStats.discontinued+'</div></div>';
   h+='<div class="stat-card"><div class="label">CF Blocked</div><div class="value '+(casStats.blocked>0?'red':'')+'">'+casStats.blocked+'</div></div>';
   h+='<div class="stat-card"><div class="label">Failed</div><div class="value '+(casStats.failed>0?'red':'')+'">'+casStats.failed+'</div></div>';
   h+='</div>';
@@ -5053,7 +5053,7 @@ function renderCAS(){
     h+='<table class="prod-table"><thead><tr><th>Brand</th><th>Model</th><th>Category</th><th>Price</th><th>Was</th><th>Low/High</th><th>UPC</th><th>Specs</th><th>OB</th><th>Display</th><th>Status</th></tr></thead><tbody>';
     for(const r of display.slice(-300).reverse()){
       const d=r.data||{};const st=r.status;
-      const cls=st==='ok'?'diff-added':st==='discontinued'?'diff-changed':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
+      const cls=st==='ok'?'diff-added':st==='sold_out'?'diff-changed':st==='blocked'?'diff-changed':st==='fail'?'diff-removed':'diff-changed';
       h+='<tr>';
       h+='<td class="brand-cell">'+esc(d.brand||r.brand||'—')+'</td>';
       h+='<td class="model-cell"><a href="'+esc(r.url||'')+'" target="_blank" style="color:var(--txt);text-decoration:none">'+esc(d.model||r.model||'—')+'</a></td>';
@@ -5128,38 +5128,130 @@ function casParseHTML(html,url){
   const h1=doc.querySelector('h1');if(h1)d.title=h1.textContent.trim();
   const metaD=doc.querySelector('meta[name="description"]');
   if(metaD)d.meta_description=metaD.getAttribute('content')||'';
-  if(d.meta_description){const cm=d.meta_description.match(/^\w[\w\s]*?\s+\w[\w\-]+\s+(.+?),\s*\d/);if(cm)d.category=cm[1].trim()}
-  if(!d.category&&sp.length>=4)d.category=sp.slice(2,-2).join(' ').replace(/_/g,' ');
+
+  // Parse meta description — it contains structured spec data on every page
+  // Format: "Brand MODEL Category, NN inch Width, NN CFM, Feature1, Feature2, Colour colour Canada"
+  if(d.meta_description){
+    const md=d.meta_description;
+    const catMatch=md.match(/^\S+\s+\S+\s+(.+?),/);
+    if(catMatch)d.category=catMatch[1].trim();
+    // Extract structured fields from meta description
+    const widthM=md.match(/(\d+)\s*inch\s+(?:Exterior\s+)?Width/i);
+    if(widthM)d.width=widthM[1]+' inches';
+    const heightM=md.match(/(\d+(?:\.\d+)?)\s*inch\s+Height/i);
+    if(heightM)d.height=heightM[1]+' inches';
+    const capM=md.match(/([\d.]+)\s*cu\.?\s*ft/i);
+    if(capM)d.capacity=capM[1]+' cu ft';
+    const cfmM=md.match(/(\d+)\s*CFM/i);
+    if(cfmM)d.cfm=cfmM[1];
+    const colorM=md.match(/,\s*([\w\s]+?)\s+colou?r/i);
+    if(colorM)d.color=colorM[1].trim();
+    if(md.includes('ENERGY STAR'))d.energy_star=true;
+    if(md.includes('Counter Depth'))d.counter_depth=true;
+    // Feature list — everything between first comma and colour/Canada suffix
+    const featM=md.match(/,\s*(.+?)(?:,\s*[\w\s]+colou?r|,?\s*Canada\s*$)/);
+    if(featM){
+      d.meta_features=featM[1].split(',').map(s=>s.trim()).filter(s=>s.length>2&&s.length<100);
+    }
+  }
+
   const bt=doc.body?doc.body.textContent:'';
-  const um=bt.match(/Canadian UPC:\s*([\d]+)/);if(um)d.upc=um[1];
-  const em=bt.match(/EAN:\s*([\d]+)/);if(em)d.ean=em[1];
-  const pm=bt.match(/Today.s Price:\s*\*?\*?\$?([\d,]+)/);if(pm)d.current_price=pm[1].replace(/,/g,'');
-  if(!d.current_price){const mm=bt.match(/MAP Price[^$]*\$([\d,]+)/i);if(mm)d.current_price=mm[1].replace(/,/g,'')}
-  if(!d.current_price){const ap=bt.match(/\$([\d,]+)\s*CAD/);if(ap)d.current_price=ap[1].replace(/[^0-9]/g,'')}
-  const rm=bt.match(/Recent Price[^$]*\$?([\d,]+)/i);if(rm)d.regular_price=rm[1].replace(/,/g,'');
-  const lm=bt.match(/Lowest Price:\s*\*?\*?\$?([\d,]+)\*?\*?\s*on\s*([\d-]+)/);
+
+  // UPC + EAN
+  const um=bt.match(/Canadian UPC:\s*(\d+)/);if(um)d.upc=um[1];
+  const em=bt.match(/EAN:\s*(\d+)/);if(em)d.ean=em[1];
+
+  // Price — try multiple label patterns (active vs sold-out pages differ)
+  const priceLabels=[
+    /Today.s Price:\s*\$?([\d,]+)/,
+    /Online Price\s*\$?([\d,]+)/,
+    /Sale Price:?\s*\$?([\d,]+)/,
+    /Our Price:?\s*\$?([\d,]+)/,
+  ];
+  for(const pat of priceLabels){
+    const m=bt.match(pat);
+    if(m){d.current_price=m[1].replace(/,/g,'');break}
+  }
+  // Fallback: MAP Price
+  if(!d.current_price){
+    const mm=bt.match(/MAP Price[^$]{0,50}\$([\d,]+)/i);
+    if(mm)d.current_price=mm[1].replace(/,/g,'');
+  }
+
+  // Regular/recent/list price
+  const regPatterns=[
+    /Recent Price[^\d$]*\$?([\d,]+)/,
+    /Was:?\s*\$?([\d,]+)/,
+    /Regular Price:?\s*\$?([\d,]+)/,
+    /List Price:?\s*\$?([\d,]+)/,
+  ];
+  for(const pat of regPatterns){
+    const m=bt.match(pat);
+    if(m){d.regular_price=m[1].replace(/,/g,'');break}
+  }
+
+  // Historical low/high with dates
+  const lm=bt.match(/Lowest Price:?\s*\$?([\d,]+)\s*on\s*([\d-]+)/);
   if(lm){d.lowest_price=lm[1].replace(/,/g,'');d.lowest_price_date=lm[2]}
-  const hm=bt.match(/Highest Price:\s*\*?\*?\$?([\d,]+)\*?\*?\s*on\s*([\d-]+)/);
+  const hm=bt.match(/Highest Price:?\s*\$?([\d,]+)\s*on\s*([\d-]+)/);
   if(hm){d.highest_price=hm[1].replace(/,/g,'');d.highest_price_date=hm[2]}
-  const sm=bt.match(/Save \$([\d,]+)/);if(sm)d.savings=sm[1].replace(/,/g,'');
-  d.energy_star=bt.includes('ENERGY STAR Certified');
-  const wm=bt.match(/Manufacturer.s Warranty:\s*(.+?)(?:\n|$)/);if(wm)d.warranty=wm[1].trim();
+
+  // Savings
+  const sm=bt.match(/Save\s*\$([\d,]+)/);
+  if(sm)d.savings=sm[1].replace(/,/g,'');
+
+  // Availability status — check in order
+  if(bt.includes('Not Available For Sale')||bt.includes('Out of stock')){
+    d.availability='sold_out';d.in_stock=false;
+  } else if(bt.includes('In Stock')){
+    d.availability='in_stock';d.in_stock=true;
+  } else if(bt.includes('Special Order')){
+    d.availability='special_order';d.in_stock=false;
+  } else {
+    d.availability='unknown';d.in_stock=false;
+  }
+
+  // Energy Star
+  if(!d.energy_star)d.energy_star=bt.includes('ENERGY STAR Certified');
+
+  // Warranty
+  const wm=bt.match(/Manufacturer.s Warranty:\s*(.+?)\s{2,}/);
+  if(wm)d.warranty=wm[1].trim();
+
+  // Category from breadcrumb text if not in meta
+  if(!d.category){
+    const cat=bt.match(/Appliances\s*>\s*[^>]+>\s*[^>]+>\s*([^>]+?)\s*>/);
+    if(cat)d.category=cat[1].trim();
+    else if(sp.length>=4)d.category=sp.slice(2,-2).join(' ').replace(/_/g,' ');
+  }
+
+  // Specs table — for active products with <table> structure
   const specs={};let sc=0;
   for(const table of doc.querySelectorAll('table')){
     for(const row of table.querySelectorAll('tr')){
       const cells=row.querySelectorAll('td,th');
-      if(cells.length>=2){const k=cells[0].textContent.trim(),v=cells[1].textContent.trim();
-        if(k&&v&&k.length<80&&v.length<500&&!k.match(/^\d+$/)&&k!=='Specification'){specs[k]=v;sc++}}
+      if(cells.length>=2){
+        const k=cells[0].textContent.trim(),v=cells[1].textContent.trim();
+        if(k&&v&&k.length<80&&v.length<500&&!k.match(/^\d+$/)&&k!=='Specification'&&k!=='Showroom'){
+          specs[k]=v;sc++;
+        }
+      }
     }
   }
-  if(sc>0){d.specs=specs;d.spec_count=sc}
-  if(specs['Width'])d.width=specs['Width'];
-  if(specs['Height to Top of Case']||specs['Height'])d.height=specs['Height to Top of Case']||specs['Height'];
-  if(specs['Depth with Handles']||specs['Depth without Handles'])d.depth=specs['Depth with Handles']||specs['Depth without Handles'];
-  if(specs['Capacity: Total']||specs['Capacity'])d.capacity=specs['Capacity: Total']||specs['Capacity'];
-  if(specs['Finish (Door)']||specs['Colour'])d.color=specs['Finish (Door)']||specs['Colour'];
-  if(specs['Installation Type'])d.installation_type=specs['Installation Type'];
-  if(specs['Standard/Counter Depth'])d.counter_depth=specs['Standard/Counter Depth']==='Counter Depth';
+  if(sc>0){d.specs=specs;d.spec_count=sc;
+    if(specs['Width'])d.width=specs['Width'];
+    if(specs['Height to Top of Case']||specs['Height'])d.height=specs['Height to Top of Case']||specs['Height'];
+    if(specs['Depth with Handles']||specs['Depth without Handles'])d.depth=specs['Depth with Handles']||specs['Depth without Handles'];
+    if(specs['Capacity: Total']||specs['Capacity'])d.capacity=specs['Capacity: Total']||specs['Capacity'];
+    if(specs['Finish (Door)']||specs['Colour']||specs['Color'])d.color=specs['Finish (Door)']||specs['Colour']||specs['Color'];
+    if(specs['Installation Type'])d.installation_type=specs['Installation Type'];
+    if(specs['Standard/Counter Depth'])d.counter_depth=specs['Standard/Counter Depth']==='Counter Depth';
+  } else if(d.meta_features){
+    // No spec table (sold-out page) — use meta features as spec proxy
+    d.spec_count=d.meta_features.length;
+  }
+
+  // Images
   const images=[];
   for(const el of doc.querySelectorAll('a[href*="/img/"],img[src*="/img/"]')){
     let src=el.getAttribute('href')||el.getAttribute('src')||'';
@@ -5168,17 +5260,31 @@ function casParseHTML(html,url){
     if(src.includes('/img/xxlarge/')&&!images.includes(src))images.push(src);
   }
   if(images.length)d.images=images;
-  d.in_stock=bt.includes('In Stock');
-  d.discontinued=bt.includes('Discontinued')&&!bt.includes("Today's Price");
-  const shm=bt.match(/(\d+)\s+Showrooms?\s/);if(shm)d.showroom_count=parseInt(shm[1]);
-  if(bt.includes('Out-of-box units available')){const op=bt.match(/\$[\d,]+\.\d{2}/g);d.open_box_count=op?Math.min(op.length,20):1}
-  const sim=bt.match(/Similar to\s+([\w,\s-]+)/);if(sim)d.similar_models=sim[1].split(',').map(s=>s.trim()).filter(Boolean);
-  const docs=[];for(const a of doc.querySelectorAll('a[href*=".pdf"]')){
-    let href=a.getAttribute('href')||'';if(href.startsWith('/'))href=CAS_BASE+href;
+
+  // Showroom count
+  const shm=bt.match(/(\d+)\s+Showrooms?\s+Info/);
+  if(shm)d.showroom_count=parseInt(shm[1]);
+
+  // Open box units
+  if(bt.includes('Out-of-box units available')||bt.includes('Open box units available')){
+    const obPrices=bt.match(/\$[\d,]+\.\d{2}/g);
+    d.open_box_count=obPrices?Math.min(obPrices.length,20):1;
+  }
+
+  // Similar models
+  const sim=bt.match(/Similar to\s+([A-Z0-9,\s-]+?)(?:\s*\.\s|$)/);
+  if(sim)d.similar_models=sim[1].split(',').map(s=>s.trim()).filter(x=>x.length>2&&x.length<30);
+
+  // Documents (PDFs)
+  const docs=[];
+  for(const a of doc.querySelectorAll('a[href*=".pdf"]')){
+    let href=a.getAttribute('href')||'';
+    if(href.startsWith('/'))href=CAS_BASE+href;
     const title=a.textContent.trim()||'Document';
     if(href&&!docs.find(x=>x.url===href))docs.push({title,url:href});
   }
   if(docs.length)d.documents=docs;
+
   return d;
 }
 
@@ -5195,8 +5301,10 @@ async function casScrapeOne(url){
     if(!result.ok||!result.html){r.status='blocked';casStats.blocked++;logEntry('CAS: CF blocked '+model,'err');renderTab();return r}
     const data=casParseHTML(result.html,url);
     r.data=data;r.brand=data.brand||brand;r.model=data.model||model;
-    if(data.discontinued){r.status='discontinued';casStats.scraped++;casStats.discontinued++;logEntry('CAS: '+brand+' '+model+' → discontinued','info');renderTab();return r}
-    r.status=(data.current_price||data.spec_count||data.upc||data.images)?'ok':'partial';casStats.scraped++;
+    // Status priority: has price → ok; has specs or upc → ok (product data captured); sold_out → sold_out; otherwise partial
+    if(data.current_price||data.spec_count>=3||data.upc){r.status='ok';casStats.scraped++}
+    else if(data.availability==='sold_out'){r.status='sold_out';casStats.scraped++;casStats.discontinued++}
+    else{r.status='partial';casStats.scraped++}
     if(autoSave&&(data.model||model)){await casSaveProduct(data,url);casStats.saved++}
     logEntry('CAS: '+brand+' '+model+' → '+(data.spec_count||0)+' specs, $'+(data.current_price||'?'),'ok');
   }catch(e){r.status='fail';casStats.failed++;logEntry('CAS: Error '+model+': '+e.message,'err')}
