@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="theme-color" content="#0f1f3d"/>
 <title>PIM Scraper v4 — ApplianceIQ</title>
-<meta name="aiq-version" content="pim-scraper-v4.0-2026-08-06"/>
+<meta name="aiq-version" content="pim-scraper-cas-v7-2026-08-10"/>
 <!-- VERSION: PIM Scraper v3.5 — Brand content capture + auto-skip useless URLs -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet"/>
@@ -5341,14 +5341,16 @@ async function casSaveProduct(data,sourceUrl){
     const inStock=data.availability==='in_stock';
     const soldOut=data.availability==='sold_out';
 
+    console.log('[CAS SAVE]',data.brand,data.model,'price=',currentPrice,'url=',sourceUrl);
+
     // ── 1. retailer_discovered_products (dedupe by product_url) ──
-    const{error:rdErr}=await sb.from('retailer_discovered_products').upsert({
+    const rdPayload={
       retailer_name:'Canadian Appliance Source',
       brand_name:data.brand,
       model:data.model,
       product_name:data.title||data.meta_description||null,
       product_url:sourceUrl,
-      category:normalizeCategory(data.category)||data.category||null,
+      category:(typeof normalizeCategory==='function'?normalizeCategory(data.category):null)||data.category||null,
       subcategory:null,
       price:currentPrice,
       regular_price:regularPrice,
@@ -5358,25 +5360,30 @@ async function casSaveProduct(data,sourceUrl){
       country:'CA',
       last_verified:now,
       status:soldOut?'sold_out':'active'
-    },{onConflict:'product_url',ignoreDuplicates:false});
-    if(rdErr){logEntry('CAS: retailer_discovered save error: '+rdErr.message,'err');return}
+    };
+    const rdRes=await sb.from('retailer_discovered_products').upsert(rdPayload,{onConflict:'product_url',ignoreDuplicates:false}).select();
+    if(rdRes.error){
+      console.error('[CAS SAVE] retailer_discovered_products FAILED:',rdRes.error,'payload:',rdPayload);
+      logEntry('CAS: rdp save FAILED — '+(rdRes.error.message||JSON.stringify(rdRes.error)),'err');
+      return;
+    }
+    console.log('[CAS SAVE] rdp OK:',rdRes.data?.[0]?.id);
 
     // ── 2. Match to aiq_products by brand+model ──
-    const{data:existing}=await sb.from('aiq_products')
+    const{data:existing,error:existErr}=await sb.from('aiq_products')
       .select('id,brand_name,model,upc,ean,specs_json,color,width_inches,height_inches,capacity_cu_ft,map_price,msrp,is_discontinued')
       .eq('brand_name',data.brand).eq('model',data.model).maybeSingle();
+    if(existErr)console.warn('[CAS SAVE] aiq_products lookup error:',existErr);
 
     let productId=null;
     if(existing){
       productId=existing.id;
-      // Fill blanks only — never overwrite manufacturer data
       const upd={};
       if(!existing.upc&&data.upc)upd.upc=data.upc;
       if(!existing.ean&&data.ean)upd.ean=data.ean;
       if(!existing.color&&data.color)upd.color=data.color;
       if(!existing.map_price&&data.map_price)upd.map_price=parseFloat(data.map_price);
       if(!existing.msrp&&data.msrp_price)upd.msrp=parseFloat(data.msrp_price);
-      // Parse width if it looks like "36 inches"
       if(!existing.width_inches&&data.width){
         const wn=parseFloat((data.width+'').match(/[\d.]+/)?.[0]);
         if(wn)upd.width_inches=wn;
@@ -5389,7 +5396,6 @@ async function casSaveProduct(data,sourceUrl){
         const cn=parseFloat((data.capacity+'').match(/[\d.]+/)?.[0]);
         if(cn)upd.capacity_cu_ft=cn;
       }
-      // Merge specs into specs_json — retailer specs fill blank keys only
       if(data.specs&&Object.keys(data.specs).length>0){
         const merged={...(existing.specs_json||{})};
         let added=0;
@@ -5401,13 +5407,13 @@ async function casSaveProduct(data,sourceUrl){
       if(Object.keys(upd).length>0){
         upd.updated_at=now;
         const{error:pErr}=await sb.from('aiq_products').update(upd).eq('id',existing.id);
-        if(pErr)logEntry('CAS: aiq_products update error: '+pErr.message,'err');
+        if(pErr){console.error('[CAS SAVE] aiq_products update FAILED:',pErr);logEntry('CAS: aiq_products FAILED — '+pErr.message,'err')}
         else logEntry('CAS: filled '+Object.keys(upd).length+' blanks on '+data.brand+' '+data.model,'ok');
       }
     }
 
-    // ── 3. pim_retailer_prices — new observation each time (with product_id link if matched) ──
-    const{error:priceErr}=await sb.from('pim_retailer_prices').upsert({
+    // ── 3. pim_retailer_prices ──
+    const pricePayload={
       product_id:productId,
       brand_name:data.brand,
       model:data.model,
@@ -5424,10 +5430,7 @@ async function casSaveProduct(data,sourceUrl){
       condition:soldOut?'sold_out':'new_sealed',
       condition_normalized:'new_sealed',
       condition_raw:soldOut?'Sold Out':'New',
-      is_open_box:false,
-      is_clearance:false,
-      is_refurbished:false,
-      is_floor_model:false,
+      is_open_box:false,is_clearance:false,is_refurbished:false,is_floor_model:false,
       free_delivery:true,
       price_currency:'CAD',
       country:'CA',
@@ -5435,9 +5438,19 @@ async function casSaveProduct(data,sourceUrl){
       savings_amount:data.savings?parseFloat(data.savings):null,
       checked_at:now,
       last_seen_at:now
-    },{onConflict:'product_url,condition_normalized',ignoreDuplicates:false});
-    if(priceErr)logEntry('CAS: pim_retailer_prices error: '+priceErr.message,'err');
-  }catch(e){logEntry('CAS: save exception: '+e.message,'err')}
+    };
+    const priceRes=await sb.from('pim_retailer_prices').upsert(pricePayload,{onConflict:'product_url,condition_normalized',ignoreDuplicates:false}).select();
+    if(priceRes.error){
+      console.error('[CAS SAVE] pim_retailer_prices FAILED:',priceRes.error,'payload:',pricePayload);
+      logEntry('CAS: prices save FAILED — '+(priceRes.error.message||JSON.stringify(priceRes.error)),'err');
+    } else {
+      console.log('[CAS SAVE] prices OK:',priceRes.data?.[0]?.id);
+      logEntry('CAS: saved '+data.brand+' '+data.model+' ✓','ok');
+    }
+  }catch(e){
+    console.error('[CAS SAVE] exception:',e);
+    logEntry('CAS: save exception: '+e.message,'err');
+  }
 }
 
 // Cached CAS retailer ID (already exists in scraper_retailer_sources)
