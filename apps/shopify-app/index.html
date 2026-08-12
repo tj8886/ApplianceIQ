@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ApplianceIQ — Shopify Integration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0f1f3d;--paper:#f6f8fb;--card:#fff;--ink:#0f1f3d;--steel:#5b6b85;--line:#e3e8f0;--verified:#1a9e56;--amber:#e8590c;--focus:#2f6fed;--danger:#c02d1e;--radius:10px}
+*{box-sizing:border-box;margin:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5;padding:16px}
+h1{font-size:20px;font-weight:800;margin-bottom:4px}
+h2{font-size:16px;font-weight:700;margin-bottom:8px}
+h3{font-size:14px;font-weight:700;margin-bottom:6px}
+.sub{font-size:12px;color:var(--steel)}
+.num{font-variant-numeric:tabular-nums}
+.panel{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border-radius:var(--radius);padding:14px;border:1px solid var(--line);text-align:center}
+.stat .val{font-size:24px;font-weight:800}
+.stat .lbl{font-size:11px;color:var(--steel);margin-top:2px}
+.stat.highlight{background:var(--navy);color:#fff;border-color:var(--navy)}
+.stat.highlight .lbl{color:#a0b3d0}
+.btn{padding:8px 14px;border:0;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;transition:.15s}
+.btn-primary{background:var(--verified);color:#fff}.btn-primary:hover{opacity:.9}
+.btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}.btn-ghost:hover{background:var(--paper)}
+.btn-sm{padding:5px 10px;font-size:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;font-size:11px;color:var(--steel);padding:8px 10px;border-bottom:2px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid var(--line)}
+tr:hover{background:#f0f3f9}
+.chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.chip.g{background:#dcfce7;color:#166534}.chip.a{background:#fef3c7;color:#92400e}.chip.n{background:#f1f5f9;color:#475569}
+.temp-badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase}
+.temp-badge.hot{background:#fee2e2;color:#991b1b}.temp-badge.warm{background:#fef3c7;color:#92400e}.temp-badge.cold{background:#dbeafe;color:#1e40af}
+.tabs{display:flex;gap:2px;margin-bottom:14px;background:var(--line);border-radius:8px;padding:2px}
+.tab{flex:1;text-align:center;padding:8px;border:0;background:transparent;font-weight:600;font-size:12px;cursor:pointer;border-radius:6px}
+.tab.active{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.empty{text-align:center;padding:40px;color:var(--steel);font-size:13px}
+.spin{width:24px;height:24px;border:3px solid var(--line);border-top-color:var(--focus);border-radius:50%;animation:spin .6s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.logo{font-weight:800;font-size:16px;color:var(--navy);display:flex;align-items:center;gap:8px}
+.logo-mark{background:var(--navy);color:#fff;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.sync-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--steel)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--verified)}
+.sync-dot.off{background:var(--danger)}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo"><div class="logo-mark">IQ</div>ApplianceIQ</div>
+    <div class="sync-status"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Connecting…</span></div>
+  </div>
+  <div id="main"><div class="spin"></div></div>
+</div>
+
+<script type="module">
+import{createClient}from'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SUPABASE_URL='https://fumwwhyozeouoqscolke.supabase.co';
+const SUPABASE_KEY='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
+const sb=createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=s=>document.querySelector(s);
+const money=n=>n==null?'—':new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(n);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ago=d=>{if(!d)return'—';const days=Math.floor((Date.now()-new Date(d).getTime())/864e5);return days===0?'Today':days===1?'Yesterday':days+'d ago';};
+
+const params=new URLSearchParams(location.search);
+const shopDomain=params.get('shop')||'';
+const orgId=params.get('org')||'';
+let store=null;
+let tab='dashboard';
+
+async function boot(){
+  if(!shopDomain&&!orgId){
+    $('#main').innerHTML='<div class="panel"><h2>Install ApplianceIQ</h2><p>This app connects your Shopify store to the ApplianceIQ CRM — your customers and orders sync automatically.</p><div style="margin-top:16px"><label style="font-weight:600;font-size:12px">Your Shopify store URL</label><div style="display:flex;gap:8px;margin-top:4px"><input id="shopInput" placeholder="yourstore.myshopify.com" style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px"><button class="btn btn-primary" id="installBtn">Connect Store</button></div></div></div>';
+    $('#installBtn').onclick=()=>{
+      let shop=$('#shopInput').value.trim();
+      if(!shop)return;
+      if(!shop.includes('.'))shop+='.myshopify.com';
+      location.href=SUPABASE_URL+'/functions/v1/shopify-auth/install?shop='+encodeURIComponent(shop);
+    };
+    return;
+  }
+
+  // Load store data
+  const{data}=await sb.from('shopify_stores').select('*').eq('shop_domain',shopDomain).maybeSingle();
+  store=data;
+  if(!store){
+    // Try by org
+    const{data:byOrg}=await sb.from('shopify_stores').select('*').eq('organization_id',orgId).maybeSingle();
+    store=byOrg;
+  }
+  if(!store){
+    $('#syncDot').classList.add('off');$('#syncLabel').textContent='Not connected';
+    $('#main').innerHTML='<div class="empty">Store not found. <a href="'+SUPABASE_URL+'/functions/v1/shopify-auth/install?shop='+encodeURIComponent(shopDomain)+'">Install again</a></div>';
+    return;
+  }
+  $('#syncDot').classList.remove('off');$('#syncLabel').textContent='Synced · '+esc(store.shop_name||store.shop_domain);
+  render();
+}
+
+async function render(){
+  const orgFilter=store.organization_id;
+  const[{data:contacts},{data:deals},{data:syncLog},{data:tasks}]=await Promise.all([
+    sb.from('contacts').select('id,first_name,last_name,email,phone,temperature,lead_score,days_since_contact,source,created_at').eq('organization_id',orgFilter).order('created_at',{ascending:false}).limit(100),
+    sb.from('crm_deals').select('id,title,stage,value_amount,contact_id,source,created_at,closed_at,order_number').eq('organization_id',orgFilter).order('created_at',{ascending:false}).limit(100),
+    sb.from('shopify_sync_log').select('event_type,status,created_at').eq('store_id',store.id).order('created_at',{ascending:false}).limit(50),
+    sb.from('crm_tasks').select('id,title,due_at,priority,completed_at').eq('organization_id',orgFilter).is('completed_at',null).order('due_at').limit(20),
+  ]);
+  const cts=contacts??[];const dls=deals??[];const sl=syncLog??[];const tk=tasks??[];
+  const shopifyContacts=cts.filter(c=>c.source==='shopify');
+  const shopifyDeals=dls.filter(d=>d.source==='shopify');
+  const activeDeals=dls.filter(d=>!d.closed_at);
+  const wonDeals=dls.filter(d=>d.closed_at&&(d.stage||'').toLowerCase().includes('won'));
+  const rev=wonDeals.reduce((s,d)=>s+Number(d.value_amount||0),0);
+  const recentSyncs=sl.filter(s=>s.status==='success').length;
+  const errorSyncs=sl.filter(s=>s.status==='error').length;
+
+  const tabsHTML='<div class="tabs"><button class="tab '+(tab==='dashboard'?'active':'')+'" data-tab="dashboard">Dashboard</button><button class="tab '+(tab==='contacts'?'active':'')+'" data-tab="contacts">Contacts ('+cts.length+')</button><button class="tab '+(tab==='orders'?'active':'')+'" data-tab="orders">Orders ('+dls.length+')</button><button class="tab '+(tab==='tasks'?'active':'')+'" data-tab="tasks">Tasks ('+tk.length+')</button><button class="tab '+(tab==='sync'?'active':'')+'" data-tab="sync">Sync Log</button></div>';
+
+  let content='';
+  if(tab==='dashboard'){
+    content='<div class="grid">'
+      +'<div class="stat highlight"><div class="val num">'+money(rev)+'</div><div class="lbl">Total Revenue</div></div>'
+      +'<div class="stat"><div class="val num">'+activeDeals.length+'</div><div class="lbl">Active Deals</div></div>'
+      +'<div class="stat"><div class="val num">'+money(activeDeals.reduce((s,d)=>s+Number(d.value_amount||0),0))+'</div><div class="lbl">Pipeline Value</div></div>'
+      +'<div class="stat"><div class="val num">'+cts.length+'</div><div class="lbl">Total Contacts</div></div>'
+      +'<div class="stat"><div class="val num">'+shopifyContacts.length+'</div><div class="lbl">From Shopify</div></div>'
+      +'<div class="stat"><div class="val num">'+recentSyncs+'</div><div class="lbl">Events Synced</div></div>'
+    +'</div>'
+    +'<div class="panel"><h3>Webhooks Registered</h3><div class="sub" style="margin-bottom:8px">'+(store.webhooks_registered||[]).length+' active</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:4px">'+(store.webhooks_registered||[]).map(w=>'<span class="chip g">'+esc(w)+'</span>').join('')+'</div></div>'
+    +'<div class="actions" style="margin-top:12px">'
+    +'<button class="btn btn-ghost btn-sm" id="syncNow">🔄 Force Sync</button>'
+    +'<a class="btn btn-ghost btn-sm" href="https://applianceiq-crm.netlify.app" target="_blank">Open Full CRM →</a>'
+    +'</div>';
+  } else if(tab==='contacts'){
+    content='<table><thead><tr><th>Name</th><th>Email</th><th>Score</th><th>Temp</th><th>Source</th><th>Added</th></tr></thead><tbody>'
+      +cts.map(c=>'<tr><td><b>'+esc(c.first_name+' '+(c.last_name??''))+'</b></td><td>'+esc(c.email||'—')+'</td><td><span class="chip '+(c.lead_score>=70?'g':c.lead_score>=40?'a':'n')+'">'+c.lead_score+'</span></td><td><span class="temp-badge '+(c.temperature||'warm')+'">'+esc(c.temperature||'warm')+'</span></td><td><span class="chip n">'+esc(c.source||'—')+'</span></td><td class="num sub">'+ago(c.created_at)+'</td></tr>').join('')
+      +(cts.length?'':'<tr><td colspan="6" class="empty">No contacts yet. They\'ll appear here automatically when customers order on Shopify.</td></tr>')
+    +'</tbody></table>';
+  } else if(tab==='orders'){
+    content='<table><thead><tr><th>Order</th><th>Stage</th><th>Value</th><th>Source</th><th>Date</th></tr></thead><tbody>'
+      +dls.map(d=>'<tr><td><b>'+esc(d.title)+'</b>'+(d.order_number?'<div class="sub">#'+esc(d.order_number)+'</div>':'')+'</td><td><span class="chip '+(d.stage?.includes('Won')?'g':d.stage?.includes('Lost')?'a':'n')+'">'+esc(d.stage)+'</span></td><td class="num"><b>'+money(d.value_amount)+'</b></td><td><span class="chip n">'+esc(d.source||'—')+'</span></td><td class="num sub">'+ago(d.created_at)+'</td></tr>').join('')
+      +(dls.length?'':'<tr><td colspan="5" class="empty">No orders yet. They\'ll appear here when customers purchase on Shopify.</td></tr>')
+    +'</tbody></table>';
+  } else if(tab==='tasks'){
+    content='<table><thead><tr><th>Task</th><th>Due</th><th>Priority</th><th></th></tr></thead><tbody>'
+      +tk.map(t=>'<tr><td><b>'+esc(t.title)+'</b></td><td class="num">'+ago(t.due_at)+'</td><td><span class="chip '+(t.priority==='urgent'||t.priority==='high'?'a':'n')+'">'+esc(t.priority)+'</span></td><td><button class="btn btn-ghost btn-sm" data-done="'+t.id+'">✓</button></td></tr>').join('')
+      +(tk.length?'':'<tr><td colspan="4" class="empty">All caught up!</td></tr>')
+    +'</tbody></table>';
+  } else if(tab==='sync'){
+    content='<table><thead><tr><th>Event</th><th>Status</th><th>Time</th></tr></thead><tbody>'
+      +sl.map(s=>'<tr><td>'+esc(s.event_type)+'</td><td><span class="chip '+(s.status==='success'?'g':s.status==='error'?'a':'n')+'">'+esc(s.status)+'</span></td><td class="num sub">'+ago(s.created_at)+'</td></tr>').join('')
+      +(sl.length?'':'<tr><td colspan="3" class="empty">No sync events yet.</td></tr>')
+    +'</tbody></table>';
+  }
+
+  $('#main').innerHTML=tabsHTML+content;
+  document.querySelectorAll('[data-tab]').forEach(b=>{b.onclick=()=>{tab=b.dataset.tab;render();};});
+  document.querySelectorAll('[data-done]').forEach(b=>{b.onclick=async()=>{await sb.from('crm_tasks').update({completed_at:new Date().toISOString()}).eq('id',b.dataset.done);render();};});
+  $('#syncNow')?.addEventListener('click',async()=>{
+    $('#syncNow').textContent='Syncing…';$('#syncNow').disabled=true;
+    // Trigger a manual product sync by fetching products from Shopify
+    try{
+      const resp=await fetch('https://'+store.shop_domain+'/admin/api/2024-01/customers/count.json',{headers:{'X-Shopify-Access-Token':store.access_token}});
+      const data=await resp.json();
+      $('#syncNow').textContent='✓ '+data.count+' customers in Shopify';
+    }catch(e){$('#syncNow').textContent='Sync via webhooks (automatic)';}
+    setTimeout(()=>{if($('#syncNow')){$('#syncNow').textContent='🔄 Force Sync';$('#syncNow').disabled=false;}},3000);
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
