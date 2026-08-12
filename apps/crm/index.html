@@ -728,6 +728,54 @@ async function syncToCalendar(deal){
   trackEvent('calendar_sync',{deal_id:deal.id,deal_title:deal.title});
   toast('Opening Google Calendar','ok');
 }
+// Two-way: pull Google Calendar events into CRM activities
+async function pullCalendarEvents(){
+  try{
+    // Use Google Calendar MCP if connected, otherwise prompt
+    const{data:{session}}=await sb.auth.getSession();if(!session)return;
+    const token=session.provider_token;
+    if(!token){toast('Connect Google Calendar in Settings to enable two-way sync','');return;}
+    const now=new Date();const weekAgo=new Date(now.getTime()-7*864e5);
+    const resp=await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin='+weekAgo.toISOString()+'&timeMax='+now.toISOString()+'&maxResults=50&orderBy=startTime&singleEvents=true',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!resp.ok){toast('Calendar sync requires Google sign-in with calendar scope','');return;}
+    const data=await resp.json();
+    const events=data.items??[];
+    let imported=0;
+    for(const ev of events){
+      if(!ev.summary)continue;
+      // Skip events already imported (check by metadata)
+      const{data:existing}=await sb.from('activities').select('id').eq('organization_id',currentOrg.id).eq('metadata->>gcal_id',ev.id).maybeSingle();
+      if(existing)continue;
+      // Try to match attendees to contacts
+      const attendeeEmails=(ev.attendees||[]).map(a=>a.email?.toLowerCase()).filter(Boolean);
+      let matchedContact=null;
+      if(attendeeEmails.length){
+        const{data:contacts}=await sb.from('contacts').select('id,email').eq('organization_id',currentOrg.id).in('email',attendeeEmails).limit(1);
+        matchedContact=contacts?.[0]||null;
+      }
+      const start=ev.start?.dateTime||ev.start?.date;
+      await sb.from('activities').insert({
+        organization_id:currentOrg.id,actor_user_id:currentUser.id,
+        entity_type:matchedContact?'contact':'unattached',entity_id:matchedContact?.id||null,
+        activity_type:'meeting',title:'📅 '+ev.summary,
+        summary:(ev.description||'').slice(0,500)+'\n'+(attendeeEmails.length?'Attendees: '+attendeeEmails.join(', '):''),
+        source:'crm',metadata:{gcal_id:ev.id,gcal_start:start,gcal_link:ev.htmlLink}
+      });
+      // Update contact last communication if matched
+      if(matchedContact){
+        await sb.from('contacts').update({
+          last_communication_at:start||new Date().toISOString(),
+          last_contact_method:'meeting',last_contacted_by:currentUser.id
+        }).eq('id',matchedContact.id);
+      }
+      imported++;
+    }
+    toast(imported?imported+' calendar events imported':'No new events to import','ok');
+    if(imported)render();
+  }catch(err){toast('Calendar sync error: '+(err.message||err),'err');}
+}
 const BUYING_ROLES=['Primary buyer','Co-buyer','Decision-maker','Influencer','Product user','Designer','Contractor','Builder','Installer','Property manager','Financial approver','Admin contact','Delivery contact','Other'];
 const RECORD_TYPES={individual:'👤 Individual',household:'👥 Household / Buying Group',business:'🏢 Business Account'};
 
@@ -862,6 +910,7 @@ function setupRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'contacts',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
     .on('postgres_changes',{event:'*',schema:'public',table:'crm_delivery_workflows',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
     .on('postgres_changes',{event:'*',schema:'public',table:'crm_emails',filter:'organization_id=eq.'+currentOrg.id},onRealtimeChange)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'crm_notifications',filter:'user_id=eq.'+currentUser.id},onNotificationReceived)
     .subscribe((status)=>{
       if(status==='SUBSCRIBED'){
         let dot=document.querySelector('.rt-dot');
@@ -871,13 +920,16 @@ function setupRealtime(){
     });
 }
 function onRealtimeChange(payload){
-  // Debounce to avoid rapid re-renders from batch operations
   clearTimeout(realtimeDebounce);
-  realtimeDebounce=setTimeout(()=>{
-    // Don't re-render if a modal is open (user is editing)
-    if(modalRoot.innerHTML)return;
-    render();
-  },800);
+  realtimeDebounce=setTimeout(()=>{if(modalRoot.innerHTML)return;render();},800);
+}
+function onNotificationReceived(payload){
+  // Real-time notification: update bell dot and show toast
+  loadNotifications();
+  const n=payload.new;
+  if(n?.title){
+    toast((n.severity==='critical'?'🔴 ':n.severity==='urgent'?'⚠️ ':'🔔 ')+n.title,'');
+  }
 }
 
 function searchBar(placeholder,onInput){
@@ -2685,6 +2737,14 @@ async function renderCommandCentre(){
       +(repAlerts.length>5?'<div class="sub" style="margin-top:4px">+' +(repAlerts.length-5)+' more</div>':'')
       +'</div>';
   }
+  // Anniversary outreach alerts
+  const{data:annivData}=await sb.rpc('get_anniversary_outreach',{p_org_id:currentOrg.id,p_days_ahead:30});
+  if(annivData?.length){
+    mainEl.innerHTML+='<div class="cc-section"><h3>🎂 Upcoming Anniversaries</h3><div class="sub" style="margin-bottom:8px">Purchase anniversaries — perfect for check-ins, referrals, and Step 11.</div>'
+      +annivData.slice(0,5).map(a=>'<div class="sla-item reminder"><div class="sla-days">'+a.days_until+'<span>days</span></div><div class="sla-body"><div class="sla-name">'+esc(a.contact_name)+'</div><div class="sla-detail">'+a.anniversary_number+'-year anniversary · '+esc(a.deal_title)+'</div></div></div>').join('')
+      +(annivData.length>5?'<div class="sub" style="margin-top:4px">+' +(annivData.length-5)+' more</div>':'')
+      +'</div>';
+  }
   trackEvent('page_view',{page:'dashboard'});
 }
 
@@ -2949,16 +3009,29 @@ async function loadNotifications(){
   const{data}=await sb.from('crm_notifications').select('*').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(30);
   const notifs=data??[];
   const unread=notifs.filter(n=>!n.is_read);
-  const dot=$('#notifDotTop');if(dot)dot.style.display=unread.length?'block':'none';
+  const dot=$('#notifDotTop');if(dot){dot.style.display=unread.length?'block':'none';dot.textContent=unread.length>9?'9+':unread.length||'';}
   const list=$('#notifList');if(!list)return;
-  list.innerHTML=notifs.length?notifs.map(n=>'<div class="notif-item '+(n.is_read?'':'unread')+'" data-nid="'+n.id+'">'
+  list.innerHTML=(unread.length?'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line)"><span style="font-size:11px;font-weight:700;color:var(--steel)">'+unread.length+' unread</span><button class="btn btn-ghost btn-sm" id="markAllRead" style="font-size:11px;padding:2px 8px">Mark all read</button></div>':'')
+    +(notifs.length?notifs.map(n=>'<div class="notif-item '+(n.is_read?'':'unread')+'" data-nid="'+n.id+'">'
     +'<div class="notif-icon '+(n.severity==='critical'||n.severity==='urgent'?'urgent':n.severity==='warning'?'warning':'info')+'">'+(n.severity==='critical'?'🔴':n.severity==='urgent'?'⚠️':n.severity==='warning'?'🟡':'ℹ️')+'</div>'
     +'<div class="notif-body"><div class="nb-title">'+esc(n.title)+'</div><div class="nb-text">'+esc(n.body||'')+'</div><div class="nb-time">'+ago(n.created_at)+'</div></div>'
-  +'</div>').join(''):'<div class="empty">No notifications</div>';
+  +'</div>').join(''):'<div class="empty">No notifications</div>')
+    +'<div style="padding:8px 12px;border-top:1px solid var(--line);display:flex;gap:6px">'
+    +'<button class="btn btn-ghost btn-sm" id="runScheduled" style="font-size:11px;flex:1">🔄 Check anniversaries & tasks</button>'
+    +'<button class="btn btn-ghost btn-sm" id="pullCal" style="font-size:11px;flex:1">📅 Sync Calendar</button></div>';
   $$('[data-nid]').forEach(el=>{el.onclick=async()=>{
     await sb.from('crm_notifications').update({is_read:true,read_at:new Date().toISOString()}).eq('id',el.dataset.nid);
     el.classList.remove('unread');loadNotifications();
   };});
+  $('#markAllRead')?.addEventListener('click',async()=>{
+    await sb.from('crm_notifications').update({is_read:true,read_at:new Date().toISOString()}).eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).is('is_read',false);
+    toast('All notifications marked read','ok');loadNotifications();
+  });
+  $('#runScheduled')?.addEventListener('click',async()=>{
+    toast('Running scheduled tasks…','');
+    try{const resp=await fetch(SUPABASE_URL+'/functions/v1/crm-scheduled-tasks',{method:'POST',headers:{'Content-Type':'application/json'}});const data=await resp.json();toast('Done — '+data.anniversaries_created+' anniversaries, '+data.overdue_notifications+' overdue alerts'+(data.holiday_tasks?' , '+data.holiday_tasks+' holiday tasks':''),'ok');loadNotifications();}catch(e){toast('Error: '+(e.message||e),'err');}
+  });
+  $('#pullCal')?.addEventListener('click',pullCalendarEvents);
 }
 
 // ===== MOBILE MENU =====
