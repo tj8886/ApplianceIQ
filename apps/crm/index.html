@@ -1096,13 +1096,13 @@ function renderPipeline(){
       const isIQ=contact?.is_iq_lead||d.source==='iq_lead';
       let tags='<span class="temp-badge '+temp+'">'+temp+'</span>';
       if(isIQ)tags+='<span class="iq-badge">IQ Lead</span>';
-      if(d.record_type==='household')tags+='<span class="dtag bg">👥 Group</span>';
+      if(d.record_type==='household')tags+='<span class="dtag bg">👥 '+(d.crm_buying_groups?.name||'Group')+'</span>';
       if(d.record_type==='business')tags+='<span class="dtag biz">🏢 Biz</span>';
       if(expiring)tags+='<span class="dtag exp">Quote exp</span>';
       if(daysSince&&daysSince>7)tags+='<span class="dtag warn">'+daysSince+'d idle</span>';
       return '<button class="deal" draggable="true" data-deal="'+d.id+'"><div class="t" style="display:flex;align-items:center;justify-content:space-between">'+esc(d.title)+'<span class="rec-ind '+(hasRec?'has':'')+'" data-rec="'+d.id+'" title="'+(hasRec?'Has recording — tap to record another':'Tap to record')+'" style="cursor:pointer">'+(hasRec?'🎙':'🎤')+'</span></div>'
         +'<div class="v num">'+money(d.value_amount)+(d.margin_pct?' <span style="font-size:11px;color:var(--steel)">'+d.margin_pct+'%</span>':'')+'</div>'
-        +'<div class="m">'+esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')+(parts.length>1?' +'+(parts.length-1):'')+(d.next_action?' · '+esc(d.next_action):'')+'</div>'
+        +'<div class="m">'+esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')+(parts.length>1?' <span style="color:var(--steel);font-size:11px">+'+parts.slice(1).map(p=>p.contacts?.first_name||'').filter(Boolean).join(', ')+'</span>':'')+(d.next_action?' · '+esc(d.next_action):'')+'</div>'
         +(tags?'<div class="dm">'+tags+'</div>':'')
         +'<select class="move-stage" data-move="'+d.id+'" onclick="event.stopPropagation()"><option value="">Move to…</option>'+cache.stages.filter(s2=>s2.name!==st.name).map(s2=>'<option value="'+esc(s2.name)+'">'+esc(s2.name)+'</option>').join('')+'</select>'
         +'</button>';
@@ -1432,9 +1432,9 @@ function renderBuyingGroups(){
   if(q)filtered=filtered.filter(bg=>(bg.name||'').toLowerCase().includes(q));
   mainEl.innerHTML='<div class="page-head"><div><h1>👥 Buying Groups</h1><div class="sub num">'+cache.buyingGroups.length+' groups</div></div><div class="head-actions"><button class="btn btn-primary" id="nbgBtn">+ New group</button></div></div>'
     +searchBar('Search buying groups…')
-    +'<table><thead><tr><th>Group</th><th>Type</th><th>Members</th><th>Primary</th><th>Deals</th></tr></thead><tbody>'
-    +(filtered.map(bg=>{const m=bg.crm_buying_group_members||[];const p=m.find(x=>x.is_primary);const dc=cache.deals.filter(d=>d.buying_group_id===bg.id).length;
-      return '<tr class="rowbtn" data-bg="'+bg.id+'"><td><b>'+esc(bg.name)+'</b></td><td><span class="chip n">'+esc(bg.group_type)+'</span></td><td class="num">'+m.length+'</td><td>'+(p?.contacts?esc(p.contacts.first_name+' '+(p.contacts.last_name??'')):'—')+'</td><td class="num">'+dc+'</td></tr>';}).join('')||'<tr><td colspan="5" class="empty">No buying groups yet. Create one to link contacts to deals as a team.</td></tr>')
+    +'<table><thead><tr><th>Group</th><th>Type</th><th>Company</th><th>Members</th><th>Primary</th><th>Deals</th></tr></thead><tbody>'
+    +(filtered.map(bg=>{const m=bg.crm_buying_group_members||[];const p=m.find(x=>x.is_primary);const dc=cache.deals.filter(d=>d.buying_group_id===bg.id).length;const co=bg.company_id?cache.companies.find(c=>c.id===bg.company_id):null;
+      return '<tr class="rowbtn" data-bg="'+bg.id+'"><td><b>'+esc(bg.name)+'</b></td><td><span class="chip n">'+esc(bg.group_type)+'</span></td><td>'+esc(co?.display_name||co?.name||'—')+'</td><td class="num">'+m.length+'</td><td>'+(p?.contacts?esc(p.contacts.first_name+' '+(p.contacts.last_name??'')):'—')+'</td><td class="num">'+dc+'</td></tr>';}).join('')||'<tr><td colspan="6" class="empty">No buying groups yet. Create one to link contacts to deals as a team.</td></tr>')
     +'</tbody></table>';
   $('#nbgBtn').onclick=()=>openBGModal(null);
   $$('[data-bg]').forEach(r=>{r.onclick=()=>openBGModal(cache.buyingGroups.find(bg=>bg.id===r.dataset.bg));});
@@ -1446,7 +1446,8 @@ function openBGModal(bg){
   openModal('<h2>'+(isNew?'New Buying Group':'Edit Buying Group')+'</h2>'
     +'<div class="field"><label>Name</label><input id="bg_n" value="'+esc(bg?.name??'')+'" placeholder="Chen & Mitchell Family"></div>'
     +'<div class="field"><label>Type</label><select id="bg_t"><option value="household" '+(bg?.group_type==='household'?'selected':'')+'>Household</option><option value="buying_group" '+(bg?.group_type==='buying_group'?'selected':'')+'>Buying Group</option><option value="committee" '+(bg?.group_type==='committee'?'selected':'')+'>Committee</option></select></div>'
-    +'<div class="field"><label>Communication</label><select id="bg_cm"><option value="primary_only" '+((bg?.communication_default??'primary_only')==='primary_only'?'selected':'')+'>Primary only</option><option value="all_buyers" '+(bg?.communication_default==='all_buyers'?'selected':'')+'>All buyers</option><option value="each_separately" '+(bg?.communication_default==='each_separately'?'selected':'')+'>Each separately</option></select></div>'
+    +'<div class="field-row"><div class="field"><label>Communication</label><select id="bg_cm"><option value="primary_only" '+((bg?.communication_default??'primary_only')==='primary_only'?'selected':'')+'>Primary only</option><option value="all_buyers" '+(bg?.communication_default==='all_buyers'?'selected':'')+'>All buyers</option><option value="each_separately" '+(bg?.communication_default==='each_separately'?'selected':'')+'>Each separately</option></select></div>'
+    +'<div class="field"><label>Company (B2B)</label><select id="bg_co"><option value="">— none —</option>'+cache.companies.map(co=>'<option value="'+co.id+'" '+(bg?.company_id===co.id?'selected':'')+'>'+esc(co.display_name||co.name)+'</option>').join('')+'</select></div></div>'
     +'<div class="field"><label>Notes</label><textarea id="bg_notes" rows="2">'+esc(bg?.notes??'')+'</textarea></div>'
     +(!isNew?'<fieldset class="field-group"><legend>Members ('+members.length+')</legend>'+members.map(m=>'<div class="participant"><span class="pn">'+esc(m.contacts?.first_name??'')+' '+esc(m.contacts?.last_name??'')+'</span><span class="pr">'+esc(m.buying_role)+'</span>'+(m.is_primary?'<span class="chip g" style="font-size:9px">Primary</span>':'')+'<button class="btn btn-ghost btn-sm" data-rmbg="'+m.id+'" style="padding:2px 6px;color:var(--danger)">✕</button></div>').join('')+(!members.length?'<div class="sub">No members</div>':'')
     +'<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><select id="bg_ac" style="flex:1;padding:6px;border:1px solid var(--line);border-radius:6px;font-size:12px"><option value="">Add contact…</option>'+cache.contacts.filter(c=>!members.find(m=>m.contact_id===c.id)).map(c=>'<option value="'+c.id+'">'+esc(c.first_name+' '+(c.last_name??''))+'</option>').join('')+'</select><select id="bg_ar" style="padding:6px;border:1px solid var(--line);border-radius:6px;font-size:12px">'+BUYING_ROLES.map(r=>'<option>'+r+'</option>').join('')+'</select><button class="btn btn-primary btn-sm" id="bg_am">Add</button></div></fieldset>':'')
@@ -1459,7 +1460,7 @@ function openBGModal(bg){
     $('#bg_am')?.addEventListener('click',async()=>{const cid=$('#bg_ac').value;if(!cid)return formErr('Select contact.');const{error}=await sb.from('crm_buying_group_members').insert({buying_group_id:bg.id,contact_id:cid,buying_role:$('#bg_ar').value,is_primary:!members.length});if(error)return formErr(error.message);closeModal();await loadCore();openBGModal(cache.buyingGroups.find(g=>g.id===bg.id));});
     $('#bg_del')?.addEventListener('click',async()=>{if(!confirm('Delete this buying group?'))return;await sb.from('crm_buying_groups').delete().eq('id',bg.id);closeModal();render();});
   }
-  $('#bg_save').onclick=async()=>{const name=$('#bg_n').value.trim();if(!name)return formErr('Name required.');const btn=$('#bg_save');btnLoad(btn,'Saving…');try{const row={organization_id:currentOrg.id,name,group_type:$('#bg_t').value,communication_default:$('#bg_cm').value,notes:$('#bg_notes').value.trim()||null};const{error}=isNew?await sb.from('crm_buying_groups').insert(row):await sb.from('crm_buying_groups').update(row).eq('id',bg.id);if(error){btnDone(btn,isNew?'Create':'Save');return formErr(error.message);}closeModal();toast(isNew?'Group created':'Group saved','ok');render();}catch(err){btnDone(btn,isNew?'Create':'Save');toast(err.message||'Save failed','err');}};
+  $('#bg_save').onclick=async()=>{const name=$('#bg_n').value.trim();if(!name)return formErr('Name required.');const btn=$('#bg_save');btnLoad(btn,'Saving…');try{const row={organization_id:currentOrg.id,name,group_type:$('#bg_t').value,communication_default:$('#bg_cm').value,company_id:$('#bg_co')?.value||null,notes:$('#bg_notes').value.trim()||null};const{error}=isNew?await sb.from('crm_buying_groups').insert(row):await sb.from('crm_buying_groups').update(row).eq('id',bg.id);if(error){btnDone(btn,isNew?'Create':'Save');return formErr(error.message);}closeModal();toast(isNew?'Group created':'Group saved','ok');render();}catch(err){btnDone(btn,isNew?'Create':'Save');toast(err.message||'Save failed','err');}};
 }
 
 // ===== BUSINESS ACCOUNTS =====
@@ -1590,7 +1591,7 @@ async function renderRecordings(){
   const{data:recs}=await sb.from('sales_recordings').select('*,crm_deals(id,title,value_amount,stage)').eq('organization_id',currentOrg.id).order('created_at',{ascending:false});
   const rids=(recs??[]).map(r=>r.coaching_review_id).filter(Boolean);let rvs={};
   if(rids.length){const{data:rv}=await sb.from('ai_coaching_reviews').select('id,overall_score').in('id',rids);(rv??[]).forEach(r=>rvs[r.id]=r);}
-  mainEl.innerHTML='<div class="page-head"><div><h1>🎙 Recordings</h1><div class="sub num">'+(recs??[]).length+' recordings</div></div><div class="head-actions"><button class="btn btn-primary" id="recNewBtn">🎙 New Recording</button></div></div>'
+  mainEl.innerHTML='<div class="page-head"><div><h1>🎙 Recordings</h1><div class="sub num">'+(recs??[]).length+' recordings</div></div><div class="head-actions"><button class="btn btn-ghost" id="logConvoBtn">📝 Log Conversation</button><button class="btn btn-primary" id="recNewBtn">🎙 New Recording</button></div></div>'
     +'<table><thead><tr><th>Recording</th><th>Deal</th><th>Duration</th><th>Status</th><th>Score</th><th></th></tr></thead><tbody>'
     +((recs??[]).map(r=>{
       const sc=r.coaching_review_id&&rvs[r.coaching_review_id]?.overall_score!=null?Number(rvs[r.coaching_review_id].overall_score).toFixed(1)+'/10':'—';
@@ -1604,6 +1605,7 @@ async function renderRecordings(){
     }).join('')||'<tr><td colspan="6" class="empty">No recordings yet. Record a pitch to get AI coaching feedback.</td></tr>')
     +'</tbody></table><div id="recP"></div>';
   $('#recNewBtn')?.addEventListener('click',()=>openRecorderModal());
+  $('#logConvoBtn')?.addEventListener('click',()=>openLogConversationModal());
   $$('[data-play]').forEach(b=>{b.onclick=async()=>{
     const rec=(recs??[]).find(r=>r.id===b.dataset.play);if(!rec?.file_path)return;
     b.textContent='Loading…';b.disabled=true;
@@ -2405,12 +2407,13 @@ async function acceptInvite(code){const{data,error}=await sb.rpc('accept_invite'
 
 // ===== CONTACT DETAIL WITH TIMELINE =====
 async function openContactDetail(ct){
-  const[{data:acts},{data:deals},{data:tasks},{data:emails},{data:quotes}]=await Promise.all([
+  const[{data:acts},{data:deals},{data:tasks},{data:emails},{data:quotes},{data:convos}]=await Promise.all([
     sb.from('activities').select('*').eq('organization_id',currentOrg.id).eq('entity_id',ct.id).order('created_at',{ascending:false}).limit(50),
     sb.from('crm_deals').select('id,title,stage,value_amount,created_at,closed_at').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}),
     sb.from('crm_tasks').select('id,title,due_at,completed_at,priority').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}).limit(20),
     sb.from('crm_emails').select('id,subject,sent_at,status').eq('organization_id',currentOrg.id).order('sent_at',{ascending:false}).limit(20),
-    sb.from('speciq_packages').select('id,package_name,status,total_final,quote_number,share_url,created_at,speciq_projects(project_name,room_name)').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false})
+    sb.from('speciq_packages').select('id,package_name,status,total_final,quote_number,share_url,created_at,speciq_projects(project_name,room_name)').eq('organization_id',currentOrg.id).eq('contact_id',ct.id).order('created_at',{ascending:false}),
+    sb.from('crm_conversation_records').select('activity_id,title,overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('crm_record_id',ct.id).order('created_at',{ascending:false}).limit(10)
   ]);
   const temp=ct.temperature||'warm';
   const dsc=ct.days_since_contact!=null?ct.days_since_contact:ct.last_communication_at?Math.floor((Date.now()-new Date(ct.last_communication_at).getTime())/864e5):null;
@@ -2420,6 +2423,7 @@ async function openContactDetail(ct){
   (deals??[]).forEach(d=>timeline.push({type:'deal',date:d.created_at,title:'Deal: '+d.title,body:d.stage+' · '+money(d.value_amount),icon:'💰',cls:'deal'}));
   (tasks??[]).forEach(t=>timeline.push({type:'task',date:t.due_at||t.created_at,title:t.title,body:t.completed_at?'Completed':'Due '+ago(t.due_at),icon:'✓',cls:'task'}));
   (emails??[]).forEach(e=>timeline.push({type:'email',date:e.sent_at,title:e.subject,body:e.status,icon:'📧',cls:'email'}));
+  (convos??[]).forEach(c=>timeline.push({type:'conversation',date:c.created_at,title:c.title||'Conversation',body:c.overall_score!=null?'Score: '+Number(c.overall_score).toFixed(1)+'/10':'Unscored',icon:'📝',cls:c.overall_score>=7?'note':c.overall_score>=5?'task':'phone'}));
   timeline.sort((a,b)=>new Date(b.date)-new Date(a.date));
   
   mainEl.innerHTML='<div class="page-head"><div><button class="btn btn-ghost btn-sm" id="backToContacts">← Contacts</button></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="cd_edit">Edit</button><button class="btn btn-ghost btn-sm" id="cd_log">+ Log activity</button><button class="btn btn-primary btn-sm" id="cd_deal">+ New deal</button></div></div>'
@@ -2445,6 +2449,7 @@ async function openContactDetail(ct){
         +'<button class="btn btn-primary btn-sm" id="cd_compose">✉ Send Email</button>'
         +'<button class="btn btn-ghost btn-sm" data-ql="sms" data-qlid="'+ct.id+'">💬 Text</button>'
         +'<button class="btn btn-ghost btn-sm" data-ql="meeting" data-qlid="'+ct.id+'">🤝 Meet</button>'
+        +'<button class="btn btn-ghost btn-sm" id="cd_logConvo">📝 Log + Score</button>'
       +'</div>'
       +'<div style="margin-top:14px"><h4 style="margin:0 0 6px;font-size:13px">Active Deals</h4>'
         +((deals??[]).filter(d=>!d.closed_at).map(d=>'<div style="padding:6px 0;border-bottom:1px solid var(--line);font-size:13px"><b>'+esc(d.title)+'</b><div class="sub">'+esc(d.stage)+' · '+money(d.value_amount)+'</div></div>').join('')||'<div class="sub">No active deals</div>')
@@ -2468,6 +2473,7 @@ async function openContactDetail(ct){
   $$('[data-ql]').forEach(b=>{b.onclick=()=>openQuickLogModal(b.dataset.ql,b.dataset.qlid);});
   $('#cd_compose')?.addEventListener('click',async()=>{const{data:tmpl}=await sb.from('communication_templates').select('*').eq('organization_id',currentOrg.id).eq('is_active',true);openComposeModal(ct,null,tmpl??[]);});
   loadTempSparkline('contact',ct.id,'#tempSparkWrap');
+  $('#cd_logConvo')?.addEventListener('click',()=>openLogConversationModal(ct.id));
 }
 
 function openQuickLogModal(type,contactId){
@@ -2755,11 +2761,12 @@ async function renderManager(){
 
 // ===== COACHING QUEUE =====
 async function renderCoaching(){
-  const[{data:queue},{data:members},{data:slaEvts},{data:postmortems}]=await Promise.all([
+  const[{data:queue},{data:members},{data:slaEvts},{data:postmortems},{data:convos}]=await Promise.all([
     sb.from('crm_coaching_queue').select('*,profiles!crm_coaching_queue_salesperson_id_fkey(full_name)').eq('organization_id',currentOrg.id).order('priority',{ascending:false}).limit(30),
     sb.from('organization_members').select('user_id,profiles(full_name)').eq('organization_id',currentOrg.id).eq('status','active'),
     sb.from('crm_sla_events').select('id,event_type,contact_id,deal_id,days_since_contact,assigned_to').eq('organization_id',currentOrg.id).is('resolved_at',null).in('event_type',['escalation','critical']),
-    sb.from('crm_postmortems').select('id,deal_id,salesperson_id,overall_score,review_type,created_at').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(10)
+    sb.from('crm_postmortems').select('id,deal_id,salesperson_id,overall_score,review_type,created_at').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(10),
+    sb.from('crm_conversation_records').select('activity_id,user_id,title,overall_score,created_at').eq('organization_id',currentOrg.id).not('overall_score','is',null).order('created_at',{ascending:false}).limit(20)
   ]);
   const autoItems=[];
   const deals=cache.deals;const contacts=cache.contacts;
@@ -2786,6 +2793,10 @@ async function renderCoaching(){
   // Low postmortem scores → skill gap coaching
   (postmortems??[]).filter(p=>p.overall_score!=null&&Number(p.overall_score)<5).forEach(p=>{
     autoItems.push({name:memberMap[p.salesperson_id]||'Unassigned',issue:'Low score ('+Number(p.overall_score).toFixed(1)+'/10) on recent '+esc(p.review_type||'review'),action:'Coach skill development',priority:1,type:'low_score'});
+  });
+  // Low conversation scores → coaching moments
+  (convos??[]).filter(c=>Number(c.overall_score)<5).forEach(c=>{
+    autoItems.push({name:memberMap[c.user_id]||'Unassigned',issue:'Conversation score '+Number(c.overall_score).toFixed(1)+'/10: '+esc(c.title||'Conversation'),action:'Review 11 Steps gaps',priority:2,type:'low_score'});
   });
   autoItems.sort((a,b)=>b.priority-a.priority);
 
@@ -3141,6 +3152,138 @@ async function renderSettings(){
   }
 }
 
+// ===== LOG CONVERSATION + AI SCORING =====
+function openLogConversationModal(preContactId,preDealId){
+  const dealOpts=cache.deals.filter(d=>!d.closed_at&&!d.is_archived);
+  openModal('<h2>📝 Log Conversation</h2><p class="sub" style="margin-bottom:12px">Record a conversation and get AI scoring against the 11 Steps of Selling.</p>'
+    +'<div class="field-row"><div class="field"><label>Type</label><select id="lc_type"><option value="phone_call">📞 Phone Call</option><option value="in_person">🤝 In-Person</option><option value="video_call">📹 Video Call</option></select></div>'
+    +'<div class="field"><label>Contact</label><select id="lc_contact"><option value="">— optional —</option>'+cache.contacts.map(c=>'<option value="'+c.id+'" '+(c.id===preContactId?'selected':'')+'>'+esc(c.first_name+' '+(c.last_name??''))+'</option>').join('')+'</select></div></div>'
+    +'<div class="field"><label>Deal</label><select id="lc_deal"><option value="">— optional —</option>'+dealOpts.map(d=>'<option value="'+d.id+'" '+(d.id===preDealId?'selected':'')+'>'+esc(d.title)+' ('+money(d.value_amount)+')</option>').join('')+'</select></div>'
+    +'<div class="field"><label>Summary / Notes</label><textarea id="lc_summary" rows="3" placeholder="Brief summary of the conversation…"></textarea></div>'
+    +'<div class="field"><label>Transcript (paste or type)</label><textarea id="lc_transcript" rows="8" placeholder="Paste the conversation transcript here for AI scoring…\n\nRep: Hi, welcome to [store]…\nCustomer: We\'re looking for a new range…" style="font-size:12px;font-family:monospace"></textarea></div>'
+    +'<div id="lc_upload" style="text-align:center;padding:8px;border:1px dashed var(--line);border-radius:8px;margin-bottom:12px;cursor:pointer;font-size:12px;color:var(--steel)">Or drag & drop a .txt transcript file<input type="file" id="lc_file" accept=".txt,.md,.text" style="display:none"></div>'
+    +'<div class="form-err" id="formErr"></div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" id="lc_cancel">Cancel</button><button class="btn btn-primary" id="lc_save">Save</button><button class="btn btn-primary" id="lc_score" style="background:var(--verified)">Save & AI Score</button></div>');
+  $('#lc_cancel').onclick=closeModal;
+  // File upload
+  const fileInput=$('#lc_file');
+  $('#lc_upload').onclick=()=>fileInput.click();
+  fileInput.onchange=()=>{
+    const f=fileInput.files[0];if(!f)return;
+    const reader=new FileReader();
+    reader.onload=()=>{$('#lc_transcript').value=reader.result;};
+    reader.readAsText(f);
+  };
+  // Drop zone
+  const uploadEl=$('#lc_upload');
+  uploadEl.ondragover=e=>{e.preventDefault();uploadEl.style.borderColor='var(--focus)';};
+  uploadEl.ondragleave=()=>{uploadEl.style.borderColor='var(--line)';};
+  uploadEl.ondrop=e=>{e.preventDefault();uploadEl.style.borderColor='var(--line)';const f=e.dataTransfer.files[0];if(f){const r=new FileReader();r.onload=()=>{$('#lc_transcript').value=r.result;};r.readAsText(f);}};
+
+  async function saveConversation(withAI){
+    const summary=$('#lc_summary').value.trim();
+    const transcript=$('#lc_transcript').value.trim();
+    if(!summary&&!transcript)return formErr('Add a summary or transcript.');
+    const contactId=$('#lc_contact').value||null;
+    const dealId=$('#lc_deal').value||null;
+    const actType=$('#lc_type').value;
+    const btn=$(withAI?'#lc_score':'#lc_save');
+    btnLoad(btn,withAI?'Scoring…':'Saving…');
+    try{
+      // Create activity
+      const deal=dealId?cache.deals.find(d=>d.id===dealId):null;
+      const contact=contactId?cache.contacts.find(c=>c.id===contactId):null;
+      const entityType=dealId?'deal':contactId?'contact':'unattached';
+      const entityId=dealId||contactId||null;
+      const actTitle=actType.replace(/_/g,' ')+': '+(deal?.title||contact?(contact?.first_name+' '+(contact?.last_name??'')):'Conversation').slice(0,60);
+      const{data:act,error:actErr}=await sb.from('activities').insert({
+        organization_id:currentOrg.id,actor_user_id:currentUser.id,
+        entity_type:entityType,entity_id:entityId,
+        activity_type:actType,title:actTitle,summary:summary||transcript.slice(0,200),
+        source:'manual',metadata:{has_transcript:!!transcript}
+      }).select('id').single();
+      if(actErr)throw actErr;
+
+      // Save to crm_conversation_records
+      const convoRow={activity_id:act.id,organization_id:currentOrg.id,user_id:currentUser.id,
+        crm_record_type:entityType,crm_record_id:entityId,activity_type:actType,
+        title:actTitle,summary:summary||null,source:'manual',transcript:transcript||null};
+      await sb.from('crm_conversation_records').insert(convoRow);
+
+      // Update contact last communication
+      if(contactId){
+        await sb.from('contacts').update({
+          last_communication_at:new Date().toISOString(),last_contact_method:actType,
+          last_contacted_by:currentUser.id,followup_status:'on_track'
+        }).eq('id',contactId);
+      }
+
+      if(!withAI||!transcript){
+        closeModal();toast('Conversation logged','ok');render();return;
+      }
+
+      // AI Scoring against 11 Steps
+      btnLoad(btn,'AI scoring…');
+      const dealContext=deal?'Deal: '+deal.title+', Stage: '+deal.stage+', Value: $'+deal.value_amount:'No deal linked';
+      const contactContext=contact?'Contact: '+contact.first_name+' '+(contact.last_name||''):'';
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/ai-proxy',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(await sb.auth.getSession()).data.session?.access_token},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
+          system:'You are an expert appliance retail sales coach scoring a conversation transcript against the 11 Steps of Selling methodology. The 11 Steps are:\n1. Greet & Connect\n2. Qualify & Discover Needs\n3. Build Rapport & Trust\n4. Present Solutions\n5. Demonstrate Value\n6. Handle Objections\n7. Close the Sale\n8. Upsell & Cross-sell\n9. Process the Order\n10. Set Expectations\n11. Post-Sale Relationship (48-hr check-in, 30-day follow-up, anniversary cards, replacement cycle alerts, referral asks)\n\nReturn ONLY valid JSON with no markdown fences:\n{\n"overall_score": 7.5,\n"steps_scored": {\n  "1_greet_connect": {"score":8,"notes":"Good warm greeting"},\n  "2_qualify_discover": {"score":7,"notes":"Asked about needs but missed budget"},\n  "3_build_rapport": {"score":6,"notes":"Some small talk"},\n  "4_present_solutions": {"score":8,"notes":"Showed relevant models"},\n  "5_demonstrate_value": {"score":7,"notes":"Highlighted key features"},\n  "6_handle_objections": {"score":5,"notes":"Price objection not addressed"},\n  "7_close": {"score":4,"notes":"No trial close attempted"},\n  "8_upsell_crosssell": {"score":3,"notes":"Missed accessories"},\n  "9_process_order": {"score":0,"notes":"N/A - no sale"},\n  "10_set_expectations": {"score":0,"notes":"N/A"},\n  "11_post_sale": {"score":0,"notes":"N/A"}\n},\n"strengths": ["strength 1","strength 2"],\n"improvements": ["improvement 1","improvement 2"],\n"crm_notes": "Key takeaway for CRM record",\n"products_discussed": ["product 1"],\n"customer_needs": ["need 1"],\n"action_items": [{"task":"Follow up on pricing","priority":"high","due_days":2}],\n"coaching_tips": "Specific advice for improvement"\n}',
+          messages:[{role:'user',content:'Score this conversation. '+dealContext+'. '+contactContext+'.\n\nTranscript:\n'+transcript}]
+        })
+      });
+      const data=await resp.json();
+      const text=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('');
+      const analysis=JSON.parse(text.replace(/```json\n?|```/g,'').trim());
+
+      // Save scores to conversation record
+      await sb.from('crm_conversation_records').update({
+        kpi_scores:analysis.steps_scored,overall_score:analysis.overall_score
+      }).eq('activity_id',act.id);
+
+      // Save coaching review
+      const{data:review}=await sb.from('ai_coaching_reviews').insert({
+        organization_id:currentOrg.id,user_id:currentUser.id,review_kind:'coaching',
+        overall_score:analysis.overall_score,
+        kpi_scores:{steps:analysis.steps_scored,strengths:analysis.strengths,improvements:analysis.improvements},
+        summary:analysis.crm_notes,recommendations:analysis.coaching_tips,
+        metadata:{products:analysis.products_discussed,customer_needs:analysis.customer_needs}
+      }).select('id').single();
+      if(review){await sb.from('crm_conversation_records').update({coaching_review_id:review.id}).eq('activity_id',act.id);}
+
+      // Create tasks from action items
+      for(const item of (analysis.action_items||[])){
+        const dueDate=new Date(Date.now()+(item.due_days||3)*864e5).toISOString();
+        const taskPri={'high':'high','urgent':'urgent','low':'low'}[item.priority]||'normal';
+        await sb.from('crm_tasks').insert({organization_id:currentOrg.id,title:item.task,assignee_user_id:currentUser.id,deal_id:dealId,contact_id:contactId,due_at:dueDate,priority:taskPri,task_type:'follow_up',source:'ai_analysis',metadata:{from_conversation:act.id}});
+      }
+
+      // Show results
+      closeModal();
+      const stepNames=['1. Greet','2. Qualify','3. Rapport','4. Present','5. Value','6. Objections','7. Close','8. Upsell','9. Process','10. Expect','11. Post-Sale'];
+      const stepKeys=Object.keys(analysis.steps_scored||{});
+      openModal('<h2>AI Coaching Score</h2>'
+        +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div style="width:60px;height:60px;border-radius:50%;background:'+(analysis.overall_score>=7?'var(--verified)':analysis.overall_score>=5?'var(--amber)':'var(--danger)')+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800">'+Number(analysis.overall_score).toFixed(1)+'</div><div><div style="font-weight:700;font-size:16px">Overall Score</div><div style="font-size:12px;color:var(--steel)">Scored against 11 Steps of Selling</div></div></div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:14px">'
+        +stepKeys.map((k,i)=>{const s=analysis.steps_scored[k];const sc=s?.score??0;return '<div style="background:'+(sc>=7?'#e8f6ee':sc>=5?'#fff8e6':sc>0?'#fdecea':'#f5f5f5')+';border-radius:6px;padding:6px 8px;font-size:11px"><div style="font-weight:700">'+(stepNames[i]||k)+'</div><div style="font-size:16px;font-weight:800;margin:2px 0">'+sc+'/10</div><div style="color:var(--steel)">'+esc(s?.notes||'')+'</div></div>';}).join('')
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+        +'<div style="background:#e8f6ee;border-radius:8px;padding:10px"><div style="font-weight:700;font-size:12px;color:#14663a;margin-bottom:4px">✅ Strengths</div>'+(analysis.strengths||[]).map(s=>'<div style="font-size:12px;margin:2px 0">• '+esc(s)+'</div>').join('')+'</div>'
+        +'<div style="background:#fdecea;border-radius:8px;padding:10px"><div style="font-weight:700;font-size:12px;color:#8c2f22;margin-bottom:4px">📈 Improve</div>'+(analysis.improvements||[]).map(s=>'<div style="font-size:12px;margin:2px 0">• '+esc(s)+'</div>').join('')+'</div></div>'
+        +(analysis.coaching_tips?'<div style="background:#f7f9fd;border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px"><div style="font-weight:700;font-size:12px;margin-bottom:4px">🎯 Coaching</div><div style="font-size:12px">'+esc(analysis.coaching_tips)+'</div></div>':'')
+        +((analysis.action_items||[]).length?'<div style="background:#fff8e6;border:1px solid #f0e6cc;border-radius:8px;padding:10px;margin-bottom:12px"><div style="font-weight:700;font-size:12px;color:#856404;margin-bottom:4px">⚡ Tasks Created</div>'+(analysis.action_items||[]).map(a=>'<div style="font-size:12px;margin:3px 0"><span class="chip '+(a.priority==='high'?'a':'n')+'">'+esc(a.priority)+'</span> '+esc(a.task)+'</div>').join('')+'</div>':'')
+        +'<div class="sheet-actions"><button class="btn btn-primary" id="lc_done">Done</button></div>');
+      $('#lc_done').onclick=()=>{closeModal();render();};
+    }catch(err){
+      btnDone(btn,withAI?'Save & AI Score':'Save');
+      formErr('Error: '+(err.message||String(err)));
+    }
+  }
+  $('#lc_save').onclick=()=>saveConversation(false);
+  $('#lc_score').onclick=()=>saveConversation(true);
+}
+
 // ===== DEAL WON → DELIVERY WORKFLOW =====
 async function createDeliveryWorkflow(dealId,contactId){
   await sb.from('crm_delivery_workflows').insert({organization_id:currentOrg.id,deal_id:dealId,contact_id:contactId||null,status:'pending',assigned_to:currentUser.id});
@@ -3161,6 +3304,9 @@ async function createDeliveryWorkflow(dealId,contactId){
 
 boot().then(()=>loadNotifications());
 setupMobile();
+// PWA Service Worker
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="crm"></script>
 </body>
