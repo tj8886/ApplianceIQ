@@ -323,6 +323,30 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 .cq-body .cq-action{font-size:12px;color:var(--focus);font-weight:600;margin-top:4px}
 .cq-actions{display:flex;gap:6px;flex-shrink:0}
 
+/* === STAGE HISTORY TIMELINE === */
+.sh-timeline{margin:12px 0;padding:0;list-style:none}
+.sh-step{display:flex;gap:10px;padding:6px 0;position:relative}
+.sh-step:not(:last-child)::before{content:'';position:absolute;left:9px;top:26px;bottom:-6px;width:2px;background:var(--line)}
+.sh-dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--focus);background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;z-index:1}
+.sh-dot.terminal{border-color:var(--verified);background:var(--verified);color:#fff}
+.sh-dot.lost{border-color:var(--danger);background:var(--danger);color:#fff}
+.sh-info{flex:1;min-width:0}.sh-stages{font-weight:600;font-size:13px}.sh-meta{font-size:11px;color:var(--steel);margin-top:1px}
+.sh-duration{font-size:11px;color:var(--focus);font-weight:600}
+/* === TEMPERATURE SPARKLINE === */
+.temp-spark{display:flex;gap:2px;align-items:flex-end;height:28px;margin:4px 0}
+.temp-bar{width:6px;border-radius:2px 2px 0 0;transition:height .2s}
+.temp-bar.hot{background:var(--danger)}.temp-bar.warm{background:#e8a317}.temp-bar.cold{background:var(--focus)}
+.temp-legend{display:flex;gap:8px;font-size:10px;color:var(--steel);margin-top:2px}
+.temp-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px;vertical-align:middle}
+.temp-legend .tl-hot::before{background:var(--danger)}.temp-legend .tl-warm::before{background:#e8a317}.temp-legend .tl-cold::before{background:var(--focus)}
+/* === SLA ALERTS === */
+.sla-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;gap:12px;align-items:center}
+.sla-item.reminder{border-left:3px solid #e8a317}.sla-item.overdue{border-left:3px solid var(--danger)}.sla-item.escalation{border-left:3px solid #9333ea}.sla-item.critical{border-left:3px solid #dc2626}
+.sla-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px}
+.sla-badge.reminder{background:#fef3c7;color:#92400e}.sla-badge.overdue{background:#fdecea;color:#991b1b}.sla-badge.escalation{background:#f3e8ff;color:#6b21a8}.sla-badge.critical{background:#fee2e2;color:#991b1b}
+.sla-body{flex:1;min-width:0}.sla-body .sla-name{font-weight:600;font-size:13px}.sla-body .sla-detail{font-size:12px;color:var(--steel);margin-top:2px}
+.sla-days{font-size:20px;font-weight:700;color:var(--danger);text-align:center;min-width:40px}
+.sla-days span{display:block;font-size:10px;font-weight:400;color:var(--steel)}
 /* === DELIVERY WORKFLOW === */
 .dw-steps{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .dw-step{font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;background:#f0f3f9;color:var(--steel)}
@@ -643,6 +667,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="recordings">🎙 Recordings</button>
 <button class="nav-btn" data-view="products">📦 Products</button>
 <div class="nav-sep"></div>
+<button class="nav-btn" data-view="sla_alerts">🚨 SLA Alerts</button>
 <button class="nav-btn" data-view="manager">👔 Manager</button>
 <button class="nav-btn" data-view="coaching">🏅 Coaching</button>
 <button class="nav-btn" data-view="reporting">📈 Reporting</button>
@@ -897,10 +922,10 @@ async function render(){
   showLoading();
   // RBAC: redirect if user can't see this view
   if(!canSee(currentView)){currentView='pipeline';$$('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view==='pipeline'));}
-  if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','command_centre','reporting'].includes(currentView))await loadCore();
+  if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','sla_alerts','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
   trackEvent('page_view',{page:currentView});
-  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,reporting:renderReporting,dashboard:renderCommandCentre,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,sla_alerts:renderSLAAlerts,reporting:renderReporting,dashboard:renderCommandCentre,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
   (views[currentView]||renderPipeline)();
 }
 
@@ -1213,6 +1238,7 @@ function openDealModal(deal){
     +'<div class="field"><label>Source</label><input id="f_src" value="'+esc(deal?.source??'')+'" placeholder="Walk-in, Website, Referral, IQ Lead"></div>'
     +(parts.length?'<fieldset class="field-group"><legend>Participants ('+parts.length+')</legend>'+parts.map(p=>'<div class="participant"><span class="pn">'+esc(p.contacts?.first_name??'')+' '+esc(p.contacts?.last_name??'')+'</span><span class="pr">'+esc(p.buying_role)+'</span>'+(p.is_primary?'<span class="chip g" style="font-size:9px">Primary</span>':'')+'</div>').join('')+'<button class="btn btn-ghost btn-sm" id="addPartBtn" type="button">+ Add participant</button></fieldset>':'')
     +(!isNew&&!parts.length?'<button class="btn btn-ghost btn-sm" id="addPartBtn" type="button" style="margin-bottom:12px">+ Add participant</button>':'')
+    +(!isNew?'<fieldset class="field-group"><legend>Stage History</legend><div id="stageTimeline"><div style="font-size:12px;color:var(--steel)">Loading…</div></div></fieldset>':'')
     +'<div class="form-err" id="formErr"></div>'
     +'<div class="sheet-actions">'+(isNew?'':'<button class="btn btn-danger" id="f_del">Delete</button>')+(!isNew&&!deal.is_archived?'<button class="btn btn-ghost" id="f_arch">Archive</button>':'')+(!isNew&&deal.is_archived?'<button class="btn btn-ghost" id="f_rest">Restore</button>':'')
     +'<button class="btn btn-ghost" id="f_cancel">Cancel</button><button class="btn btn-primary" id="f_save">'+(isNew?'Create':'Save')+'</button></div>');
@@ -1223,6 +1249,7 @@ function openDealModal(deal){
   $('#f_cancel').onclick=closeModal;
   if(!isNew){$('#addPartBtn')?.addEventListener('click',()=>openAddPart(deal.id));}
   if(!isNew){$('#f_cal')?.addEventListener('click',()=>syncToCalendar(deal));}
+  if(!isNew){loadStageTimeline(deal.id);}
   if(!isNew){
     $('#f_del')?.addEventListener('click',async()=>{if(!confirm('Delete this deal permanently?'))return;await sb.from('crm_deals').delete().eq('id',deal.id);closeModal();render();});
     $('#f_arch')?.addEventListener('click',async()=>{await sb.from('crm_deals').update({is_archived:true,archived_at:new Date().toISOString()}).eq('id',deal.id);closeModal();render();});
@@ -1241,11 +1268,12 @@ function openDealModal(deal){
     const newTemp=$('#f_temp').value;
     const row={organization_id:currentOrg.id,title,stage,record_type:rt,contact_id:contactId,company_id:companyId,buying_group_id:bgId,value_amount:$('#f_val').value===''?null:Number($('#f_val').value),margin_pct:$('#f_mar').value===''?null:Number($('#f_mar').value),margin_amount:$('#f_val').value&&$('#f_mar').value?Number($('#f_val').value)*Number($('#f_mar').value)/100:null,value_currency:'CAD',expected_close_date:$('#f_close').value||null,quote_expiry_date:$('#f_exp').value||null,product_categories:cats,next_action:$('#f_next').value.trim()||null,priority:$('#f_pri').value,source:$('#f_src').value.trim()||null,closed_at:terminal?(deal?.closed_at??new Date().toISOString()):null,temperature:newTemp};
     if(!isNew&&deal.temperature!==newTemp){row.temperature_changed_at=new Date().toISOString();row.temperature_changed_by=currentUser.id;row.temperature_reason='Manual update';
-      sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'deal',entity_id:deal.id,from_temperature:deal.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
+      // Temperature history auto-logged by trg_deal_temperature_history trigger
+    }
     if(isNew){row.stage_entered_at=new Date().toISOString();row.owner_user_id=currentUser.id;}
     const q2=isNew?sb.from('crm_deals').insert(row).select('id').single():sb.from('crm_deals').update(row).eq('id',deal.id);
     const{data:savedDeal,error}=await q2;if(error)return formErr(error.message);
-    if(!isNew&&deal.stage!==stage)await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:stage,changed_by:currentUser.id});
+    // Stage history auto-logged by trg_deal_stage_history trigger
     // Auto-enroll contact in default sequence on new deal
     if(isNew&&contactId){
       const{data:defaultCamp}=await sb.from('aicrm_outreach_campaigns').select('id').eq('organization_id',currentOrg.id).eq('status','active').limit(1).single();
@@ -1259,6 +1287,33 @@ function openDealModal(deal){
     closeModal();toast(isNew?'Deal created':'Deal saved','ok');trackEvent(isNew?'deal_created':'deal_saved',{deal_title:title,stage});render();
     }catch(err){btnDone($('#f_save'),isNew?'Create':'Save');formErr(err.message||'Save failed');toast(err.message||'Save failed','err');}
   };
+}
+
+async function loadStageTimeline(dealId){
+  const el=$('#stageTimeline');if(!el)return;
+  const{data:history}=await sb.from('crm_stage_history').select('*').eq('deal_id',dealId).order('changed_at',{ascending:false}).limit(20);
+  if(!history||!history.length){el.innerHTML='<div style="font-size:12px;color:var(--steel)">No stage changes recorded yet.</div>';return;}
+  const termStages=cache.stages.filter(s=>s.is_terminal).map(s=>s.name.toLowerCase());
+  el.innerHTML='<ul class="sh-timeline">'+history.map(h=>{
+    const isWon=(h.to_stage||'').toLowerCase().includes('won');
+    const isLost=(h.to_stage||'').toLowerCase().includes('lost')||termStages.includes((h.to_stage||'').toLowerCase());
+    const dotCls=isWon?'terminal':isLost?'lost':'';
+    const dur=h.duration_seconds;
+    let durStr='';if(dur!=null){if(dur<3600)durStr=Math.round(dur/60)+'m';else if(dur<86400)durStr=Math.round(dur/3600)+'h';else durStr=Math.round(dur/86400)+'d';}
+    const ts=new Date(h.changed_at);
+    return '<li class="sh-step"><div class="sh-dot '+dotCls+'">'+(isWon?'✓':isLost?'✕':'→')+'</div><div class="sh-info"><div class="sh-stages">'+(h.from_stage?esc(h.from_stage)+' → ':'')+esc(h.to_stage)+'</div><div class="sh-meta">'+ts.toLocaleDateString('en-CA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'</div>'+(durStr?'<div class="sh-duration">'+durStr+' in previous stage</div>':'')+'</div></li>';
+  }).join('')+'</ul>';
+}
+
+async function loadTempSparkline(entityType,entityId,container){
+  const el=$(container);if(!el)return;
+  const{data:history}=await sb.from('crm_temperature_history').select('to_temperature,created_at').eq('entity_type',entityType).eq('entity_id',entityId).order('created_at',{ascending:true}).limit(20);
+  if(!history||history.length<2){el.innerHTML='';return;}
+  const heights={hot:28,warm:16,cold:6};
+  el.innerHTML='<div class="temp-spark">'+history.map(h=>{
+    const temp=h.to_temperature||'warm';
+    return '<div class="temp-bar '+temp+'" style="height:'+heights[temp]+'px" title="'+temp+' — '+new Date(h.created_at).toLocaleDateString('en-CA')+'"></div>';
+  }).join('')+'</div><div class="temp-legend"><span class="tl-hot">Hot</span><span class="tl-warm">Warm</span><span class="tl-cold">Cold</span></div>';
 }
 
 function openAddPart(dealId){
@@ -2373,6 +2428,7 @@ async function openContactDetail(ct){
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span class="temp-badge '+temp+'">'+temp+'</span>'+(ct.is_iq_lead?'<span class="iq-badge">IQ Lead</span>':'')+'<span class="sla-badge '+fu+'">'+fu.replace(/_/g,' ')+'</span></div>'
       +'<h2>'+esc(ct.first_name)+' '+esc(ct.last_name??'')+'</h2>'
       +'<div class="cd-company">'+esc(ct.companies?.name||ct.title||'')+'</div>'
+      +'<div id="tempSparkWrap"></div>'
       +'<div class="cd-fields">'
         +'<div class="cd-field"><span class="cd-label">Email</span><span class="cd-value">'+esc(ct.email||'—')+'</span></div>'
         +'<div class="cd-field"><span class="cd-label">Phone</span><span class="cd-value">'+esc(ct.phone||ct.mobile_phone||'—')+'</span></div>'
@@ -2411,6 +2467,7 @@ async function openContactDetail(ct){
   // Quick log buttons (proper modal instead of prompt())
   $$('[data-ql]').forEach(b=>{b.onclick=()=>openQuickLogModal(b.dataset.ql,b.dataset.qlid);});
   $('#cd_compose')?.addEventListener('click',async()=>{const{data:tmpl}=await sb.from('communication_templates').select('*').eq('organization_id',currentOrg.id).eq('is_active',true);openComposeModal(ct,null,tmpl??[]);});
+  loadTempSparkline('contact',ct.id,'#tempSparkWrap');
 }
 
 function openQuickLogModal(type,contactId){
@@ -2545,14 +2602,16 @@ async function renderCommandCentre(){
   const staleDeals=active.filter(d=>d.stage_entered_at&&(Date.now()-new Date(d.stage_entered_at).getTime())>14*864e5);
   const overdueContacts=contacts.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical');
   const hotContacts=contacts.filter(c=>c.temperature==='hot');
-  const[{data:allTasks},{data:deliveries},{data:reviews}]=await Promise.all([
+  const[{data:allTasks},{data:deliveries},{data:reviews},{data:slaEvents}]=await Promise.all([
     sb.from('crm_tasks').select('id,completed_at,due_at').eq('organization_id',currentOrg.id).limit(200),
     sb.from('crm_delivery_workflows').select('id,status').eq('organization_id',currentOrg.id).limit(50),
-    sb.from('ai_coaching_reviews').select('overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('review_kind','coaching').order('created_at',{ascending:true}).limit(50)
+    sb.from('ai_coaching_reviews').select('overall_score,kpi_scores,created_at').eq('organization_id',currentOrg.id).eq('review_kind','coaching').order('created_at',{ascending:true}).limit(50),
+    sb.from('crm_sla_events').select('id,event_type').eq('organization_id',currentOrg.id).is('resolved_at',null)
   ]);
   const tasks=allTasks??[];
   const openTasks=tasks.filter(t=>!t.completed_at);
   const overdueTasks=tasks.filter(t=>!t.completed_at&&t.due_at&&new Date(t.due_at)<now);
+  const slaOpen=slaEvents??[];const slaCritical=slaOpen.filter(e=>e.event_type==='critical'||e.event_type==='escalation');
   const quotesOut=active.filter(d=>d.quote_attached);
   const quotesExpiring=active.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+7*864e5));
   const dels=deliveries??[];
@@ -2583,6 +2642,10 @@ async function renderCommandCentre(){
       +'<div class="cc-card"><div class="cc-lbl">Active Deliveries</div><div class="cc-val num">'+upcomingDels.length+'</div></div>'
       +'<div class="cc-card"><div class="cc-lbl">Completed</div><div class="cc-val num">'+dels.filter(d=>d.status==='completed').length+'</div></div>'
     +'</div></div>'
+    +(slaOpen.length?'<div class="cc-section"><h3>🚨 SLA Alerts</h3><div class="cc-grid">'
+      +'<div class="cc-card'+(slaCritical.length?' danger':'')+'"><div class="cc-lbl">Open Alerts</div><div class="cc-val num">'+slaOpen.length+'</div><div class="cc-sub"><a href="#" onclick="event.preventDefault();$$(\'.nav-btn\').forEach(x=>x.classList.remove(\'active\'));currentView=\'sla_alerts\';render();">View all →</a></div></div>'
+      +(slaCritical.length?'<div class="cc-card danger"><div class="cc-lbl">Critical/Escalated</div><div class="cc-val num">'+slaCritical.length+'</div></div>':'')
+    +'</div></div>':'')
     +'<div class="cc-section"><h3>🏅 Coaching Scores</h3><div class="cc-grid">'
       +'<div class="cc-card"><div class="cc-lbl">Latest Score</div><div class="cc-val num">'+(latest?Number(latest.overall_score).toFixed(1)+'/10':'—')+'</div></div>'
       +'<div class="cc-card"><div class="cc-lbl">30-Day Average</div><div class="cc-val num">'+(avg30!=null?avg30.toFixed(1)+'/10':'—')+'</div></div>'
@@ -2591,6 +2654,56 @@ async function renderCommandCentre(){
     +(last10.length?'<div style="margin-top:12px"><div class="trend-bars">'+last10.map(r=>{const s=Number(r.overall_score);return '<div class="tb" style="height:'+Math.max(4,s*10)+'%"><span class="num">'+s.toFixed(1)+'</span></div>';}).join('')+'</div></div>':'')
     +'</div>';
   trackEvent('page_view',{page:'dashboard'});
+}
+
+// ===== SLA ALERTS =====
+async function renderSLAAlerts(){
+  const[{data:events},{data:rules}]=await Promise.all([
+    sb.from('crm_sla_events').select('*').eq('organization_id',currentOrg.id).is('resolved_at',null).order('created_at',{ascending:false}).limit(100),
+    sb.from('crm_sla_rules').select('*').eq('organization_id',currentOrg.id).eq('is_active',true).order('sort_order')
+  ]);
+  const evts=events??[];const rls=rules??[];
+  // Resolve names for contacts/deals
+  const contactIds=[...new Set(evts.filter(e=>e.contact_id).map(e=>e.contact_id))];
+  const dealIds=[...new Set(evts.filter(e=>e.deal_id).map(e=>e.deal_id))];
+  let contactMap={},dealMap={};
+  if(contactIds.length){const{data:cts}=await sb.from('contacts').select('id,first_name,last_name').in('id',contactIds);(cts??[]).forEach(c=>{contactMap[c.id]=c.first_name+' '+(c.last_name||'');});}
+  if(dealIds.length){const{data:dls}=await sb.from('crm_deals').select('id,title').in('id',dealIds);(dls??[]).forEach(d=>{dealMap[d.id]=d.title;});}
+
+  const byType={reminder:[],overdue:[],escalation:[],critical:[]};
+  evts.forEach(e=>{(byType[e.event_type]||byType.reminder).push(e);});
+
+  mainEl.innerHTML='<div class="page-head"><div><h1>🚨 SLA Alerts</h1><div class="sub">'+evts.length+' open alerts · '+rls.length+' active rules</div></div><div class="head-actions">'
+    +(isManager()?'<button class="btn btn-primary" id="runSlaBtn">🔄 Run SLA Check</button>':'')
+    +'</div></div>'
+    +(['critical','escalation','overdue','reminder'].map(type=>{
+      const items=byType[type];if(!items.length)return '';
+      return '<div style="margin-bottom:16px"><h3 style="margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px"><span class="sla-badge '+type+'">'+type+'</span> '+items.length+' alert'+(items.length>1?'s':'')+'</h3>'
+        +items.map(e=>{
+          const name=e.contact_id?contactMap[e.contact_id]:e.deal_id?dealMap[e.deal_id]:'—';
+          const ruleName=(rls.find(r=>r.id===e.rule_id)||{}).name||'';
+          return '<div class="sla-item '+e.event_type+'">'
+            +'<div class="sla-days">'+e.days_since_contact+'<span>days</span></div>'
+            +'<div class="sla-body"><div class="sla-name">'+(e.contact_id?'👤 ':e.deal_id?'💰 ':'')+esc(name||'—')+'</div><div class="sla-detail">'+esc(ruleName)+(e.contact_id?' · Contact':' · Deal')+'</div></div>'
+            +'<button class="btn btn-ghost btn-sm" data-resolve="'+e.id+'">✓ Resolve</button>'
+          +'</div>';
+        }).join('')+'</div>';
+    }).join('')||'<div class="empty">No open SLA alerts. Your team is following up on time! 🎉</div>');
+
+  $('#runSlaBtn')?.addEventListener('click',async()=>{
+    const btn=$('#runSlaBtn');btnLoad(btn,'Running…');
+    try{const{data,error}=await sb.rpc('evaluate_sla_rules',{p_org_id:currentOrg.id});
+    if(error)throw error;
+    toast('SLA check complete — '+(data?.events_created||0)+' new alerts','ok');
+    renderSLAAlerts();
+    }catch(err){toast(err.message||'SLA check failed','err');btnDone(btn,'🔄 Run SLA Check');}
+  });
+
+  $$('[data-resolve]').forEach(b=>{b.onclick=async()=>{
+    const id=b.dataset.resolve;
+    await sb.from('crm_sla_events').update({resolved_at:new Date().toISOString(),resolution_note:'Manually resolved'}).eq('id',id);
+    toast('Alert resolved','ok');renderSLAAlerts();
+  };});
 }
 
 // ===== MANAGER DASHBOARD =====
@@ -2642,28 +2755,79 @@ async function renderManager(){
 
 // ===== COACHING QUEUE =====
 async function renderCoaching(){
-  const[{data:queue},{data:members}]=await Promise.all([
-    sb.from('crm_coaching_queue').select('*,profiles!crm_coaching_queue_salesperson_id_fkey(full_name)').eq('organization_id',currentOrg.id).eq('status','pending').order('priority',{ascending:false}).limit(20),
-    sb.from('organization_members').select('user_id,profiles(full_name)').eq('organization_id',currentOrg.id).eq('status','active')
+  const[{data:queue},{data:members},{data:slaEvts},{data:postmortems}]=await Promise.all([
+    sb.from('crm_coaching_queue').select('*,profiles!crm_coaching_queue_salesperson_id_fkey(full_name)').eq('organization_id',currentOrg.id).order('priority',{ascending:false}).limit(30),
+    sb.from('organization_members').select('user_id,profiles(full_name)').eq('organization_id',currentOrg.id).eq('status','active'),
+    sb.from('crm_sla_events').select('id,event_type,contact_id,deal_id,days_since_contact,assigned_to').eq('organization_id',currentOrg.id).is('resolved_at',null).in('event_type',['escalation','critical']),
+    sb.from('crm_postmortems').select('id,deal_id,salesperson_id,overall_score,review_type,created_at').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(10)
   ]);
   const autoItems=[];
   const deals=cache.deals;const contacts=cache.contacts;
+  const memberMap={};(members??[]).forEach(m=>{memberMap[m.user_id]=m.profiles?.full_name||'—';});
+  
+  // SLA-driven coaching: escalation/critical alerts → coaching moments
+  (slaEvts??[]).forEach(e=>{
+    const ownerName=e.assigned_to?memberMap[e.assigned_to]:'Unassigned';
+    const entityName=e.contact_id?(contacts.find(c=>c.id===e.contact_id)?.first_name||'Contact'):e.deal_id?(deals.find(d=>d.id===e.deal_id)?.title||'Deal'):'—';
+    autoItems.push({name:ownerName,issue:e.event_type.toUpperCase()+': '+entityName+' — '+e.days_since_contact+'d idle',action:'Coach immediate follow-up',priority:3,type:'sla'});
+  });
+  // Hot leads idle
   contacts.filter(c=>c.temperature==='hot'&&c.days_since_contact>5).forEach(c=>{
-    autoItems.push({name:c.first_name+' '+(c.last_name||''),issue:'Hot lead idle for '+c.days_since_contact+' days',action:'Coach follow-up strategy',priority:3});
+    autoItems.push({name:c.first_name+' '+(c.last_name||''),issue:'Hot lead idle for '+c.days_since_contact+' days',action:'Coach follow-up strategy',priority:3,type:'hot_idle'});
   });
+  // Expiring quotes
   deals.filter(d=>d.quote_expiry_date&&new Date(d.quote_expiry_date)<new Date(Date.now()+3*864e5)&&!d.closed_at).forEach(d=>{
-    const owner=(members??[]).find(m=>m.user_id===d.owner_user_id);
-    autoItems.push({name:owner?.profiles?.full_name||'Unassigned',issue:'Quote expiring on '+esc(d.title),action:'Coach close or extend',priority:2});
+    autoItems.push({name:memberMap[d.owner_user_id]||'Unassigned',issue:'Quote expiring on '+esc(d.title),action:'Coach close or extend',priority:2,type:'quote'});
   });
+  // High-value idle deals
   deals.filter(d=>!d.closed_at&&Number(d.value_amount)>5000&&d.last_contact_at&&(Date.now()-new Date(d.last_contact_at).getTime())>10*864e5).forEach(d=>{
-    const owner=(members??[]).find(m=>m.user_id===d.owner_user_id);
-    autoItems.push({name:owner?.profiles?.full_name||'Unassigned',issue:money(d.value_amount)+' deal idle: '+esc(d.title),action:'Coach re-engagement',priority:2});
+    autoItems.push({name:memberMap[d.owner_user_id]||'Unassigned',issue:money(d.value_amount)+' deal idle: '+esc(d.title),action:'Coach re-engagement',priority:2,type:'idle_deal'});
   });
+  // Low postmortem scores → skill gap coaching
+  (postmortems??[]).filter(p=>p.overall_score!=null&&Number(p.overall_score)<5).forEach(p=>{
+    autoItems.push({name:memberMap[p.salesperson_id]||'Unassigned',issue:'Low score ('+Number(p.overall_score).toFixed(1)+'/10) on recent '+esc(p.review_type||'review'),action:'Coach skill development',priority:1,type:'low_score'});
+  });
+  autoItems.sort((a,b)=>b.priority-a.priority);
 
-  const savedQ=queue??[];
-  mainEl.innerHTML='<div class="page-head"><div><h1>🏅 Coaching Queue</h1><div class="sub">AI-ranked associates needing coaching</div></div></div>'
-    +(autoItems.length?autoItems.map(i=>'<div class="cq-item"><div class="cq-priority p'+i.priority+'"></div><div class="cq-body"><div class="cq-name">'+esc(i.name)+'</div><div class="cq-issue">'+esc(i.issue)+'</div><div class="cq-action">'+esc(i.action)+'</div></div><div class="cq-actions"><button class="btn btn-ghost btn-sm">Coach</button></div></div>').join(''):'<div class="empty">No coaching items — your team is on track.</div>')
-    +(savedQ.length?'<h3 style="margin:20px 0 10px">Saved Queue</h3>'+savedQ.map(q2=>'<div class="cq-item"><div class="cq-priority p'+Math.min(3,q2.priority||1)+'"></div><div class="cq-body"><div class="cq-name">'+esc(q2.profiles?.full_name||'—')+'</div><div class="cq-issue">'+esc(q2.title)+'</div><div class="cq-action">'+esc(q2.coaching_type)+'</div></div></div>').join(''):'');
+  const savedPending=(queue??[]).filter(q2=>q2.status==='pending');
+  const savedDone=(queue??[]).filter(q2=>q2.status==='completed');
+
+  const typeIcon={sla:'🚨',hot_idle:'🔥',quote:'📋',idle_deal:'💤',low_score:'📉'};
+
+  mainEl.innerHTML='<div class="page-head"><div><h1>🏅 Coaching Queue</h1><div class="sub">'+autoItems.length+' AI-detected · '+savedPending.length+' saved</div></div>'
+    +(isManager()?'<div class="head-actions"><button class="btn btn-primary" id="addCoachBtn">+ Add Coaching Item</button></div>':'')
+    +'</div>'
+    +(autoItems.length?'<h3 style="margin:0 0 10px;font-size:14px">AI-Detected Coaching Moments</h3>'+autoItems.map((i,idx)=>'<div class="cq-item"><div class="cq-priority p'+i.priority+'"></div><div class="cq-body"><div class="cq-name">'+(typeIcon[i.type]||'')+' '+esc(i.name)+'</div><div class="cq-issue">'+esc(i.issue)+'</div><div class="cq-action">'+esc(i.action)+'</div></div><div class="cq-actions"><button class="btn btn-ghost btn-sm" data-coach-dismiss="'+idx+'">Dismiss</button></div></div>').join(''):'<div class="empty">No coaching items — your team is on track. 🎉</div>')
+    +(savedPending.length?'<h3 style="margin:20px 0 10px;font-size:14px">Saved Queue ('+savedPending.length+')</h3>'+savedPending.map(q2=>'<div class="cq-item"><div class="cq-priority p'+Math.min(3,q2.priority||1)+'"></div><div class="cq-body"><div class="cq-name">'+esc(q2.profiles?.full_name||'—')+'</div><div class="cq-issue">'+esc(q2.title)+'</div><div class="cq-action">'+esc(q2.coaching_type)+'</div>'+(q2.description?'<div style="font-size:11px;color:var(--steel);margin-top:2px">'+esc(q2.description)+'</div>':'')+'</div><div class="cq-actions"><button class="btn btn-ghost btn-sm" data-complete-q="'+q2.id+'">✓ Done</button></div></div>').join(''):'')
+    +(savedDone.length?'<details style="margin-top:16px"><summary style="cursor:pointer;font-size:13px;color:var(--steel)">Completed ('+savedDone.length+')</summary>'+savedDone.map(q2=>'<div class="cq-item" style="opacity:.5"><div class="cq-body"><div class="cq-name">'+esc(q2.profiles?.full_name||'—')+'</div><div class="cq-issue" style="text-decoration:line-through">'+esc(q2.title)+'</div>'+(q2.outcome_notes?'<div style="font-size:11px;color:var(--verified);margin-top:2px">'+esc(q2.outcome_notes)+'</div>':'')+'</div></div>').join('')+'</details>':'');
+
+  $$('[data-complete-q]').forEach(b=>{b.onclick=async()=>{
+    await sb.from('crm_coaching_queue').update({status:'completed',completed_at:new Date().toISOString()}).eq('id',b.dataset.completeQ);
+    toast('Marked complete','ok');renderCoaching();
+  };});
+
+  $('#addCoachBtn')?.addEventListener('click',()=>{
+    const memOpts=(members??[]).map(m=>'<option value="'+m.user_id+'">'+esc(m.profiles?.full_name||m.user_id.slice(0,8))+'</option>').join('');
+    openModal('<h2>Add Coaching Item</h2>'
+      +'<div class="field"><label>Salesperson</label><select id="cq_sp">'+memOpts+'</select></div>'
+      +'<div class="field"><label>Type</label><select id="cq_type"><option>follow_up</option><option>skill_gap</option><option>deal_strategy</option><option>objection_handling</option><option>product_knowledge</option></select></div>'
+      +'<div class="field"><label>Title</label><input id="cq_title" placeholder="e.g. Review close technique on Chen deal"></div>'
+      +'<div class="field"><label>Description (optional)</label><textarea id="cq_desc" rows="2"></textarea></div>'
+      +'<div class="field"><label>Priority</label><select id="cq_pri"><option value="1">Low</option><option value="2" selected>Medium</option><option value="3">High</option></select></div>'
+      +'<div class="form-err" id="formErr"></div>'
+      +'<div class="sheet-actions"><button class="btn btn-ghost" id="cq_cancel">Cancel</button><button class="btn btn-primary" id="cq_save">Add</button></div>');
+    $('#cq_cancel').onclick=closeModal;
+    $('#cq_save').onclick=async()=>{
+      const title=$('#cq_title').value.trim();if(!title)return formErr('Title required.');
+      const{error}=await sb.from('crm_coaching_queue').insert({
+        organization_id:currentOrg.id,salesperson_id:$('#cq_sp').value,
+        coaching_type:$('#cq_type').value,title,description:$('#cq_desc').value.trim()||null,
+        priority:Number($('#cq_pri').value),assigned_manager_id:currentUser.id
+      });
+      if(error)return formErr(error.message);
+      closeModal();toast('Coaching item added','ok');renderCoaching();
+    };
+  });
 }
 
 // ===== DELIVERIES =====
