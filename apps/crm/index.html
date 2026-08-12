@@ -671,6 +671,7 @@ tr.rowbtn{cursor:pointer}tr.rowbtn:hover td{background:#f7f9fd}
 <button class="nav-btn" data-view="manager">👔 Manager</button>
 <button class="nav-btn" data-view="coaching">🏅 Coaching</button>
 <button class="nav-btn" data-view="reporting">📈 Reporting</button>
+<button class="nav-btn" data-view="commissions">💰 Commissions</button>
 <div class="nav-sep"></div>
 <button class="nav-btn" data-view="team_coach">🏆 Ask the Team</button>
 <button class="nav-btn" data-view="team">👥 Team</button>
@@ -925,7 +926,7 @@ async function render(){
   if(['pipeline','contacts','buying_groups','companies','tasks','recordings','task_centre','deliveries','manager','coaching','sla_alerts','command_centre','reporting'].includes(currentView))await loadCore();
   renderBanner();
   trackEvent('page_view',{page:currentView});
-  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,sla_alerts:renderSLAAlerts,reporting:renderReporting,dashboard:renderCommandCentre,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings};
+  const views={pipeline:renderPipeline,task_centre:renderTaskCentre,contacts:renderContacts,buying_groups:renderBuyingGroups,companies:renderCompanies,products:renderProducts,communications:renderCommunications,tasks:renderTasks,recordings:renderRecordings,deliveries:renderDeliveries,command_centre:renderCommandCentre,manager:renderManager,coaching:renderCoaching,sla_alerts:renderSLAAlerts,reporting:renderReporting,dashboard:renderCommandCentre,team_coach:renderTeamCoach,team:renderTeam,settings:renderSettings,analytics:renderPipelineAnalytics,commissions:renderCommissions};
   (views[currentView]||renderPipeline)();
 }
 
@@ -1109,7 +1110,7 @@ function renderPipeline(){
     }).join('')||'<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>')+'</div>';
   }).join('');
   mainEl.innerHTML='<div class="page-head"><div><h1>Pipeline</h1><div class="sub">'+esc(currentOrg.name)+' · <b class="num">'+money(total)+'</b> open</div></div>'
-    +'<div class="head-actions"><button class="btn btn-ghost btn-sm" id="editStagesBtn">Edit stages</button><button class="btn btn-primary" id="newDealBtn">+ New opportunity</button></div></div>'
+    +'<div class="head-actions"><button class="btn btn-ghost btn-sm" id="pipeAnalytics">📊 Analytics</button><button class="btn btn-ghost btn-sm" id="editStagesBtn">Edit stages</button><button class="btn btn-primary" id="newDealBtn">+ New opportunity</button></div></div>'
     +aiCoachBar()
     +searchBar('Search deals by name, contact, or company…')
     +'<div class="view-toggle" id="vt"><button class="'+(pipeView==='active'?'active':'')+'" data-pv="active">Active</button><button class="'+(pipeView==='archived'?'active':'')+'" data-pv="archived">Archived</button><button class="'+(pipeView==='all'?'active':'')+'" data-pv="all">All</button></div>'
@@ -1118,6 +1119,7 @@ function renderPipeline(){
   bindSearch(renderPipeline);
   $$('#vt button').forEach(b=>{b.onclick=()=>{pipeView=b.dataset.pv;renderPipeline();};});
   $('#newDealBtn').onclick=()=>openDealModal(null);
+  $('#pipeAnalytics')?.addEventListener('click',()=>{currentView='analytics';render();});
   $('#editStagesBtn').onclick=openStagesEditor;
   $$('[data-deal]').forEach(b=>{b.onclick=e=>{if(e.target.closest('[data-rec]'))return;openDealModal(cache.deals.find(d=>d.id===b.dataset.deal));};});
   $$('[data-rec]').forEach(b=>{b.onclick=e=>{e.stopPropagation();openRecorderModal(b.dataset.rec);};});
@@ -1175,6 +1177,11 @@ function openCloseWonModal(deal,newStage){
     await sb.from('crm_deals').update({stage:newStage,closed_at:now,stage_entered_at:now,value_amount:Number(price),margin_pct:mpct,margin_amount:mpct?Number(price)*mpct/100:null,order_number:$('#cw_order').value.trim()||null,purchase_date:$('#cw_pdate').value||null,delivery_date:$('#cw_ddate').value||null,warranty_status:$('#cw_warranty').value||null,won_products:$('#cw_prod').value.trim()?[$('#cw_prod').value.trim()]:[]}).eq('id',deal.id);
     await sb.from('crm_stage_history').insert({deal_id:deal.id,organization_id:currentOrg.id,from_stage:deal.stage,to_stage:newStage,changed_by:currentUser.id});
     await createDeliveryWorkflow(deal.id,deal.contact_id);
+    // Auto-create commission record
+    const commRate=orgData?.settings?.commission_rate||5;
+    const finalPrice=Number($('#cw_price').value)||0;
+    const marginAmt=mpct?finalPrice*mpct/100:null;
+    await sb.from('crm_commissions').insert({organization_id:currentOrg.id,deal_id:deal.id,user_id:currentUser.id,deal_value:finalPrice,margin_amount:marginAmt,commission_rate:commRate,commission_amount:finalPrice*commRate/100,status:'pending'}).then(()=>{});
     closeModal();toast('Deal closed — delivery workflow created','ok');setTimeout(()=>openPostMortem(deal.id,'won'),300);render();
     }catch(err){btnDone(btn,'Close as Won');toast(err.message||'Close failed','err');}
   };
@@ -1355,7 +1362,7 @@ function renderContacts(){
   else if(contactFilter==='cold')filtered=filtered.filter(c=>c.temperature==='cold');
   else if(contactFilter==='overdue')filtered=filtered.filter(c=>c.followup_status==='overdue'||c.followup_status==='critical');
   if(q)filtered=filtered.filter(c=>(c.first_name+' '+(c.last_name??'')).toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.phone||'').toLowerCase().includes(q)||(c.companies?.name||'').toLowerCase().includes(q));
-  mainEl.innerHTML='<div class="page-head"><div><h1>Contacts</h1><div class="sub num">'+cache.contacts.length+' people</div></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="impCsvBtn">📁 Import</button><button class="btn btn-ghost btn-sm" id="expCtBtn">📤 Export</button><button class="btn btn-primary" id="ncBtn">+ Add contact</button></div></div>'
+  mainEl.innerHTML='<div class="page-head"><div><h1>Contacts</h1><div class="sub num">'+cache.contacts.length+' people</div></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="goalBtn">🎯 Goals</button><button class="btn btn-ghost btn-sm" id="scoreBtn">⚡ Score</button><button class="btn btn-ghost btn-sm" id="dupBtn">🔍 Duplicates</button><button class="btn btn-ghost btn-sm" id="impCsvBtn">📁 Import</button><button class="btn btn-ghost btn-sm" id="expCtBtn">📤 Export</button><button class="btn btn-primary" id="ncBtn">+ Add contact</button></div></div>'
     +searchBar('Search by name, email, phone, or company…')
     +'<div class="tc-tabs">'
     +'<button class="tc-tab '+(contactFilter==='all'?'active':'')+'" data-cf="all">All <span class="tc-count">'+cache.contacts.length+'</span></button>'
@@ -1364,27 +1371,36 @@ function renderContacts(){
     +'<button class="tc-tab '+(contactFilter==='cold'?'active':'')+'" data-cf="cold">🔵 Cold <span class="tc-count">'+tempCounts.cold+'</span></button>'
     +(overdue?'<button class="tc-tab '+(contactFilter==='overdue'?'active':'')+'" data-cf="overdue">⚠️ Overdue <span class="tc-count">'+overdue+'</span></button>':'')
     +'</div>'
-    +'<table><thead><tr><th>Name</th><th>Temp</th><th>Company</th><th>Role</th><th>Phone</th><th>Days Since</th><th>Follow-up</th></tr></thead><tbody>'
+    +renderBulkBar()
+    +'<table><thead><tr><th style="width:28px"><input type="checkbox" id="bulkAll"></th><th>Name</th><th>Score</th><th>Temp</th><th>Company</th><th>Role</th><th>Phone</th><th>Days Since</th><th>Follow-up</th></tr></thead><tbody>'
     +(filtered.map(c=>{
       const temp=c.temperature||'warm';
       const dsc=c.days_since_contact!=null?c.days_since_contact:c.last_communication_at?Math.floor((Date.now()-new Date(c.last_communication_at).getTime())/864e5):null;
       const dscClass=dsc!=null?(dsc>10?'danger':dsc>5?'warn':''):'';
       const fu=c.followup_status||'on_track';
-      return '<tr class="rowbtn" data-ct="'+c.id+'"><td><b>'+esc(c.first_name)+' '+esc(c.last_name??'')+'</b>'+(c.title?'<div class="sub">'+esc(c.title)+'</div>':'')+(c.is_iq_lead?' <span class="iq-badge">IQ</span>':'')+'</td>'
+      const sc=c.lead_score??0;const scCls=sc>=70?'g':sc>=40?'a':'n';
+      return '<tr class="rowbtn" data-ct="'+c.id+'"><td onclick="event.stopPropagation()"><input type="checkbox" data-bulk="'+c.id+'" '+(bulkSelected.has(c.id)?'checked':'')+'></td><td><b>'+esc(c.first_name)+' '+esc(c.last_name??'')+'</b>'+(c.title?'<div class="sub">'+esc(c.title)+'</div>':'')+(c.is_iq_lead?' <span class="iq-badge">IQ</span>':'')+(c.referred_by_contact_id?' <span class="chip n" style="font-size:9px">Referral</span>':'')+'</td>'
+      +'<td><span class="chip '+scCls+'" style="font-size:10px;font-weight:700">'+sc+'</span></td>'
       +'<td><span class="temp-badge '+temp+'">'+temp+'</span></td>'
       +'<td>'+esc(c.companies?.name??'—')+'</td>'
       +'<td>'+(c.decision_making_role?'<span class="chip n">'+esc(c.decision_making_role)+'</span>':'—')+'</td>'
       +'<td class="num" style="font-size:12px">'+esc(c.phone||c.mobile_phone||'—')+'</td>'
       +'<td><span class="days-badge '+dscClass+'">'+(dsc!=null?dsc+'d':'—')+'</span></td>'
       +'<td><span class="sla-badge '+fu+'">'+fu.replace(/_/g,' ')+'</span></td></tr>';
-    }).join('')||'<tr><td colspan="7" class="empty">No contacts yet. Add your first contact to get started.</td></tr>')
+    }).join('')||'<tr><td colspan="9" class="empty">No contacts yet. Add your first contact to get started.</td></tr>')
     +'</tbody></table>';
   $('#ncBtn').onclick=()=>openContactModal(null);
   $('#impCsvBtn')?.addEventListener('click',openCSVImport);
   $('#expCtBtn')?.addEventListener('click',exportContacts);
+  $('#scoreBtn')?.addEventListener('click',runLeadScoring);
+  $('#dupBtn')?.addEventListener('click',openDuplicateDetector);
+  $('#goalBtn')?.addEventListener('click',openActivityGoals);
+  $('#bulkAll')?.addEventListener('change',function(){const checked=this.checked;$$('[data-bulk]').forEach(cb=>{cb.checked=checked;if(checked)bulkSelected.add(cb.dataset.bulk);else bulkSelected.delete(cb.dataset.bulk);});renderContacts();});
+  $$('[data-bulk]').forEach(cb=>{cb.onchange=()=>{toggleBulk(cb.dataset.bulk);renderContacts();};});
   $$('[data-ct]').forEach(r=>{r.onclick=()=>{const ct=cache.contacts.find(c=>c.id===r.dataset.ct);openContactDetail(ct);};});
   $$('[data-cf]').forEach(b=>{b.onclick=()=>{contactFilter=b.dataset.cf;renderContacts();};});
   bindSearch(renderContacts);
+  bindBulkActions();
 }
 
 function openContactModal(ct){
@@ -1404,6 +1420,8 @@ function openContactModal(ct){
     +'<div class="field-row"><div class="field"><label>Temperature</label><select id="c_temp" class="temp-select"><option value="hot" '+(ct?.temperature==='hot'?'selected':'')+'>🔥 Hot</option><option value="warm" '+((ct?.temperature??'warm')==='warm'?'selected':'')+'>🟡 Warm</option><option value="cold" '+(ct?.temperature==='cold'?'selected':'')+'>🔵 Cold</option></select></div>'
     +'<div class="field"><label>Next follow-up</label><input type="date" id="c_nfu" value="'+(ct?.next_followup_date??'')+'"></div></div>'
     +'<div class="field"><label>Notes</label><textarea id="c_note" rows="2">'+esc(ct?.notes??'')+'</textarea></div>'
+    +'<div class="field-row"><div class="field"><label>Referred by</label><select id="c_ref"><option value="">— none —</option>'+cache.contacts.filter(c=>c.id!==ct?.id).map(c=>'<option value="'+c.id+'" '+(ct?.referred_by_contact_id===c.id?'selected':'')+'>'+esc(c.first_name+' '+(c.last_name??''))+'</option>').join('')+'</select></div>'
+    +'<div class="field"><label>Referral source</label><input id="c_refsrc" value="'+esc(ct?.referral_source??'')+'" placeholder="Customer, Partner, etc."></div></div>'
     +'<div class="field"><label><input type="checkbox" id="c_consent" '+(ct?.contact_consent!==false?'checked':'')+'> Contact consent</label></div>'
     +'<div class="form-err" id="formErr"></div>'
     +'<div class="sheet-actions"><button class="btn btn-ghost" id="c_cancel">Cancel</button><button class="btn btn-primary" id="c_save">'+(isNew?'Add':'Save')+'</button></div>');
@@ -1415,7 +1433,7 @@ function openContactModal(ct){
     try{
     let coId=$('#c_co').value||null;if(coId==='__new__'){const n=$('#c_nco').value.trim();if(!n){btnDone(btn,isNew?'Add':'Save');return formErr('Company name required.');}const{data,error}=await sb.from('companies').insert({organization_id:currentOrg.id,name:n,display_name:n,source:'crm'}).select('id').single();if(error){btnDone(btn,isNew?'Add':'Save');return formErr(error.message);}coId=data.id;}
     const newTemp=$('#c_temp').value;
-    const row={organization_id:currentOrg.id,first_name:first,last_name:$('#c_last').value.trim()||null,preferred_name:$('#c_pref').value.trim()||null,title:$('#c_title').value.trim()||null,company_id:coId,email:$('#c_email').value.trim()||null,phone:$('#c_mob').value.trim()||null,mobile_phone:$('#c_mob').value.trim()||null,alternate_phone:$('#c_alt').value.trim()||null,preferred_contact_method:$('#c_pm').value,preferred_language:$('#c_lang').value,decision_making_role:$('#c_role').value||null,purchasing_authority:$('#c_auth').value||null,contact_consent:$('#c_consent').checked,notes:$('#c_note').value.trim()||null,source:ct?.source??'crm',temperature:newTemp,next_followup_date:$('#c_nfu').value||null};
+    const row={organization_id:currentOrg.id,first_name:first,last_name:$('#c_last').value.trim()||null,preferred_name:$('#c_pref').value.trim()||null,title:$('#c_title').value.trim()||null,company_id:coId,email:$('#c_email').value.trim()||null,phone:$('#c_mob').value.trim()||null,mobile_phone:$('#c_mob').value.trim()||null,alternate_phone:$('#c_alt').value.trim()||null,preferred_contact_method:$('#c_pm').value,preferred_language:$('#c_lang').value,decision_making_role:$('#c_role').value||null,purchasing_authority:$('#c_auth').value||null,contact_consent:$('#c_consent').checked,notes:$('#c_note').value.trim()||null,source:ct?.source??'crm',temperature:newTemp,next_followup_date:$('#c_nfu').value||null,referred_by_contact_id:$('#c_ref')?.value||null,referral_source:$('#c_refsrc')?.value?.trim()||null};
     if(!isNew&&ct.temperature!==newTemp){row.temperature_changed_at=new Date().toISOString();row.temperature_changed_by=currentUser.id;row.temperature_reason='Manual update';
       sb.from('crm_temperature_history').insert({organization_id:currentOrg.id,entity_type:'contact',entity_id:ct.id,from_temperature:ct.temperature||'warm',to_temperature:newTemp,changed_by:currentUser.id,reason:'Manual update'});}
     const{error}=isNew?await sb.from('contacts').insert(row):await sb.from('contacts').update(row).eq('id',ct.id);
@@ -2659,6 +2677,14 @@ async function renderCommandCentre(){
     +'</div>'
     +(last10.length?'<div style="margin-top:12px"><div class="trend-bars">'+last10.map(r=>{const s=Number(r.overall_score);return '<div class="tb" style="height:'+Math.max(4,s*10)+'%"><span class="num">'+s.toFixed(1)+'</span></div>';}).join('')+'</div></div>':'')
     +'</div>';
+  // Replacement cycle alerts
+  const repAlerts=await getReplacementAlerts();
+  if(repAlerts.length){
+    mainEl.innerHTML+='<div class="cc-section"><h3>🔄 Replacement Cycle Alerts</h3><div class="sub" style="margin-bottom:8px">Customers approaching replacement age — great upsell opportunities.</div>'
+      +repAlerts.slice(0,5).map(a=>'<div class="sla-item reminder"><div class="sla-body"><div class="sla-name">'+esc(a.contact)+'</div><div class="sla-detail">'+esc(a.category)+' purchased '+esc(a.purchased)+' ('+a.lifespan+'yr lifespan) · Replace by '+esc(a.replaceBy)+'</div></div></div>').join('')
+      +(repAlerts.length>5?'<div class="sub" style="margin-top:4px">+' +(repAlerts.length-5)+' more</div>':'')
+      +'</div>';
+  }
   trackEvent('page_view',{page:'dashboard'});
 }
 
@@ -3097,12 +3123,14 @@ async function renderSettings(){
       +(isAdmin?'<button class="btn btn-ghost btn-sm" style="margin-top:12px" id="setEditStages">Edit Stages</button>':'')
     +'</div>'
     // Data management
-    +'<div class="setting-card"><h3>Data Management</h3><div class="sub">Import and export your CRM data</div>'
+    +'<div class="setting-card"><h3>Data Management</h3><div class="sub">Import, export, and manage your CRM data</div>'
       +'<div class="export-btns">'
         +'<button class="btn btn-ghost btn-sm" id="setImpCSV">📁 Import Contacts (CSV)</button>'
         +'<button class="btn btn-ghost btn-sm" id="setExpContacts">📤 Export Contacts</button>'
         +'<button class="btn btn-ghost btn-sm" id="setExpDeals">📤 Export Deals</button>'
         +'<button class="btn btn-ghost btn-sm" id="setExpTasks">📤 Export Tasks</button>'
+        +'<button class="btn btn-ghost btn-sm" id="setCustFields">🔧 Custom Fields</button>'
+        +'<button class="btn btn-ghost btn-sm" id="setRunSeq">⚡ Run Sequences</button>'
       +'</div>'
     +'</div>'
     // Notifications
@@ -3132,6 +3160,11 @@ async function renderSettings(){
   $('#setExpContacts')?.addEventListener('click',exportContacts);
   $('#setExpDeals')?.addEventListener('click',exportDeals);
   $('#setExpTasks')?.addEventListener('click',exportTasks);
+  $('#setCustFields')?.addEventListener('click',openCustomFieldsManager);
+  $('#setRunSeq')?.addEventListener('click',async()=>{
+    toast('Running sequences…','');
+    try{const resp=await fetch(SUPABASE_URL+'/functions/v1/sequence-executor',{method:'POST',headers:{'Content-Type':'application/json'}});const data=await resp.json();toast('Sent '+data.sent+' emails'+(data.errors?' ('+data.errors+' errors)':''),'ok');}catch(e){toast('Error: '+(e.message||e),'err');}
+  });
   // Team roles grid (admin only)
   if(isAdmin&&$('#roleGrid')){
     const{data:allMembers}=await sb.from('organization_members').select('id,user_id,role,status').eq('organization_id',currentOrg.id);
@@ -3150,6 +3183,275 @@ async function renderSettings(){
       try{await sb.from('organization_members').update({role:newRole}).eq('id',memId);toast('Role updated to '+newRole,'ok');}catch(err){toast(err.message||'Update failed','err');}
     };});
   }
+}
+
+// ===== PIPELINE ANALYTICS =====
+async function renderPipelineAnalytics(){
+  const deals=cache.deals;const now=new Date();
+  const months=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({label:d.toLocaleDateString('en-CA',{month:'short'}),start:d.toISOString(),end:new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59).toISOString()});}
+  const stageNames=cache.stages.filter(s=>!s.is_terminal).map(s=>s.name);
+  // Stage conversion: deals that moved FROM each stage
+  const{data:stageHist}=await sb.from('crm_stage_history').select('from_stage,to_stage,duration_seconds,changed_at').eq('organization_id',currentOrg.id).order('changed_at',{ascending:false}).limit(500);
+  const sh=stageHist??[];
+  const stageMetrics=stageNames.map(s=>{
+    const fromThis=sh.filter(h=>h.from_stage===s);
+    const advanced=fromThis.filter(h=>!h.to_stage?.toLowerCase().includes('lost'));
+    const lost=fromThis.filter(h=>h.to_stage?.toLowerCase().includes('lost'));
+    const avgDur=fromThis.length?Math.round(fromThis.reduce((sum,h)=>sum+(h.duration_seconds||0),0)/fromThis.length/86400):0;
+    return{name:s,total:fromThis.length,advanced:advanced.length,lost:lost.length,convRate:fromThis.length?Math.round(advanced.length/fromThis.length*100):0,avgDays:avgDur};
+  });
+  // Monthly win/loss trend
+  const monthlyData=months.map(m=>{
+    const won=deals.filter(d=>d.closed_at&&d.closed_at>=m.start&&d.closed_at<=m.end&&(d.stage||'').toLowerCase().includes('won'));
+    const lost=deals.filter(d=>d.closed_at&&d.closed_at>=m.start&&d.closed_at<=m.end&&(d.stage||'').toLowerCase().includes('lost'));
+    return{label:m.label,wonCount:won.length,wonRev:won.reduce((s,d)=>s+Number(d.value_amount||0),0),lostCount:lost.length,lostRev:lost.reduce((s,d)=>s+Number(d.value_amount||0),0)};
+  });
+  const maxBar=Math.max(1,...monthlyData.map(m=>Math.max(m.wonRev,m.lostRev)));
+  // Velocity: avg days from creation to close
+  const closedDeals=deals.filter(d=>d.closed_at);
+  const avgVelocity=closedDeals.length?Math.round(closedDeals.reduce((s,d)=>s+Math.floor((new Date(d.closed_at)-new Date(d.created_at))/864e5),0)/closedDeals.length):0;
+  const wonDeals=closedDeals.filter(d=>(d.stage||'').toLowerCase().includes('won'));
+  const lostDeals=closedDeals.filter(d=>(d.stage||'').toLowerCase().includes('lost'));
+  const overallCloseRate=wonDeals.length+lostDeals.length>0?Math.round(wonDeals.length/(wonDeals.length+lostDeals.length)*100):0;
+
+  mainEl.innerHTML='<div class="page-head"><div><h1>📊 Pipeline Analytics</h1><div class="sub">6-month view</div></div><div class="head-actions"><button class="btn btn-ghost btn-sm" id="backToPipe">← Pipeline</button></div></div>'
+    +'<div class="cc-grid">'
+    +'<div class="cc-card highlight"><div class="cc-lbl">Close Rate</div><div class="cc-val num">'+overallCloseRate+'%</div></div>'
+    +'<div class="cc-card"><div class="cc-lbl">Avg Velocity</div><div class="cc-val num">'+avgVelocity+'d</div></div>'
+    +'<div class="cc-card"><div class="cc-lbl">Won / Lost</div><div class="cc-val num">'+wonDeals.length+' / '+lostDeals.length+'</div></div>'
+    +'<div class="cc-card"><div class="cc-lbl">Active Pipeline</div><div class="cc-val num">'+money(deals.filter(d=>!d.closed_at).reduce((s,d)=>s+Number(d.value_amount||0),0))+'</div></div>'
+    +'</div>'
+    // Stage funnel
+    +'<div class="dash-panel"><h3>Stage Conversion Funnel</h3>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'+stageMetrics.map(s=>{
+      const w=Math.max(20,s.convRate);
+      return '<div style="display:flex;align-items:center;gap:10px"><div style="width:120px;font-size:12px;font-weight:600;text-align:right">'+esc(s.name)+'</div><div style="flex:1;height:28px;background:var(--line);border-radius:6px;overflow:hidden;position:relative"><div style="height:100%;width:'+w+'%;background:var(--verified);border-radius:6px;transition:width .3s"></div><span style="position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:var(--ink)">'+s.convRate+'% · '+s.avgDays+'d avg</span></div><div style="width:80px;font-size:11px;color:var(--steel)">'+s.advanced+' adv / '+s.lost+' lost</div></div>';
+    }).join('')+'</div></div>'
+    // Monthly trend bars
+    +'<div class="dash-panel"><h3>Win/Loss Trend</h3>'
+    +'<div style="display:flex;gap:8px;align-items:flex-end;height:160px;padding-top:20px">'+monthlyData.map(m=>
+      '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'
+      +'<div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:120px">'
+      +'<div style="flex:1;background:var(--verified);border-radius:4px 4px 0 0;height:'+Math.max(4,m.wonRev/maxBar*120)+'px" title="Won: '+money(m.wonRev)+'"></div>'
+      +'<div style="flex:1;background:var(--danger);border-radius:4px 4px 0 0;height:'+Math.max(4,m.lostRev/maxBar*120)+'px" title="Lost: '+money(m.lostRev)+'"></div></div>'
+      +'<div style="font-size:10px;color:var(--steel)">'+m.label+'</div>'
+      +'<div style="font-size:10px;font-weight:600">'+m.wonCount+'W/'+m.lostCount+'L</div></div>'
+    ).join('')+'</div>'
+    +'<div style="display:flex;gap:16px;margin-top:8px;font-size:11px"><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--verified);border-radius:2px"></span>Won</span><span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:var(--danger);border-radius:2px"></span>Lost</span></div></div>';
+  $('#backToPipe')?.addEventListener('click',()=>{currentView='pipeline';render();});
+}
+
+// ===== LEAD SCORING =====
+async function runLeadScoring(){
+  toast('Scoring leads…','');
+  const{data}=await sb.rpc('score_leads',{p_org_id:currentOrg.id});
+  toast('Scored '+(data?.scored??0)+' contacts','ok');
+  render();
+}
+
+// ===== BULK ACTIONS =====
+let bulkSelected=new Set();
+function toggleBulk(id){bulkSelected.has(id)?bulkSelected.delete(id):bulkSelected.add(id);}
+function renderBulkBar(){
+  if(!bulkSelected.size)return'';
+  return '<div class="bulk-bar" style="position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;padding:10px 16px;border-radius:8px;margin-bottom:10px;display:flex;align-items:center;gap:10px">'
+    +'<span style="font-weight:700">'+bulkSelected.size+' selected</span>'
+    +'<button class="btn btn-sm" style="background:#fff;color:var(--navy)" id="bulkEmail">📧 Email All</button>'
+    +'<button class="btn btn-sm" style="background:#fff;color:var(--navy)" id="bulkTemp">🔥 Set Temperature</button>'
+    +'<button class="btn btn-sm" style="background:#fff;color:var(--navy)" id="bulkAssign">👤 Reassign</button>'
+    +'<button class="btn btn-sm" style="background:#fff;color:var(--navy)" id="bulkArchive">📦 Archive</button>'
+    +'<button class="btn btn-ghost btn-sm" style="color:#fff" id="bulkClear">✕ Clear</button></div>';
+}
+function bindBulkActions(){
+  $('#bulkClear')?.addEventListener('click',()=>{bulkSelected.clear();render();});
+  $('#bulkArchive')?.addEventListener('click',async()=>{
+    if(!confirm('Archive '+bulkSelected.size+' items?'))return;
+    for(const id of bulkSelected){await sb.from('contacts').update({relationship_status:'inactive'}).eq('id',id);}
+    toast(bulkSelected.size+' archived','ok');bulkSelected.clear();render();
+  });
+  $('#bulkTemp')?.addEventListener('click',()=>{
+    openModal('<h2>Set Temperature</h2><div class="field"><select id="bt_t"><option value="hot">🔥 Hot</option><option value="warm" selected>🟡 Warm</option><option value="cold">🔵 Cold</option></select></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="bt_save">Apply to '+bulkSelected.size+'</button></div>');
+    $('#bt_save').onclick=async()=>{const t=$('#bt_t').value;for(const id of bulkSelected){await sb.from('contacts').update({temperature:t,temperature_changed_at:new Date().toISOString(),temperature_changed_by:currentUser.id}).eq('id',id);}closeModal();toast('Temperature set to '+t,'ok');bulkSelected.clear();render();};
+  });
+  $('#bulkAssign')?.addEventListener('click',async()=>{
+    const{data:members}=await sb.from('organization_members').select('user_id,profiles(full_name)').eq('organization_id',currentOrg.id).eq('status','active');
+    openModal('<h2>Reassign Contacts</h2><div class="field"><label>Assign to</label><select id="ba_u">'+((members??[]).map(m=>'<option value="'+m.user_id+'">'+esc(m.profiles?.full_name||m.user_id.slice(0,8))+'</option>').join(''))+'</select></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="ba_save">Assign '+bulkSelected.size+'</button></div>');
+    $('#ba_save').onclick=async()=>{const uid=$('#ba_u').value;for(const id of bulkSelected){await sb.from('contacts').update({assigned_salesperson_id:uid}).eq('id',id);}closeModal();toast('Reassigned '+bulkSelected.size+' contacts','ok');bulkSelected.clear();render();};
+  });
+  $('#bulkEmail')?.addEventListener('click',async()=>{
+    const emails=cache.contacts.filter(c=>bulkSelected.has(c.id)&&c.email).map(c=>c.email);
+    if(!emails.length)return toast('No emails for selected contacts','err');
+    const{data:tmpl}=await sb.from('communication_templates').select('*').eq('organization_id',currentOrg.id).eq('is_active',true);
+    openComposeModal({email:emails.join(', '),first_name:'Multiple',last_name:'Recipients ('+emails.length+')'},null,tmpl??[]);
+  });
+}
+
+// ===== DUPLICATE DETECTION =====
+async function openDuplicateDetector(){
+  openModal('<h2>🔍 Duplicate Detection</h2><p class="sub">Scanning contacts…</p><div id="dupResults"><div class="spin" style="margin:20px auto"></div></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>');
+  const{data:dupes,error}=await sb.rpc('find_duplicate_contacts',{p_org_id:currentOrg.id});
+  if(error){$('#dupResults').innerHTML='<div style="color:var(--danger)">'+esc(error.message)+'</div>';return;}
+  if(!dupes?.length){$('#dupResults').innerHTML='<div class="empty" style="padding:20px;text-align:center">No duplicates found. Your data is clean! 🎉</div>';return;}
+  // Group by pair
+  const pairs={};dupes.forEach(d=>{const key=d.contact_id_1+'_'+d.contact_id_2;if(!pairs[key])pairs[key]={id1:d.contact_id_1,id2:d.contact_id_2,matches:[]};pairs[key].matches.push({type:d.match_type,value:d.match_value});});
+  const pairList=Object.values(pairs);
+  $('#dupResults').innerHTML='<div style="font-size:13px;margin-bottom:10px"><b>'+pairList.length+'</b> potential duplicate pairs found:</div>'
+    +pairList.slice(0,20).map(p=>{
+      const c1=cache.contacts.find(c=>c.id===p.id1);const c2=cache.contacts.find(c=>c.id===p.id2);
+      if(!c1||!c2)return'';
+      return '<div style="padding:10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;display:flex;align-items:center;gap:10px">'
+        +'<div style="flex:1"><b>'+esc(c1.first_name+' '+(c1.last_name??''))+'</b><div class="sub">'+esc(c1.email||c1.phone||'—')+'</div></div>'
+        +'<div style="font-size:11px;color:var(--steel);text-align:center">'+p.matches.map(m=>'<span class="chip n">'+esc(m.type)+'</span>').join(' ')+'</div>'
+        +'<div style="flex:1;text-align:right"><b>'+esc(c2.first_name+' '+(c2.last_name??''))+'</b><div class="sub">'+esc(c2.email||c2.phone||'—')+'</div></div>'
+        +'<button class="btn btn-ghost btn-sm" data-merge1="'+p.id1+'" data-merge2="'+p.id2+'">Merge →</button></div>';
+    }).join('')
+    +(pairList.length>20?'<div class="sub" style="text-align:center;margin-top:8px">Showing first 20 of '+pairList.length+' pairs</div>':'');
+  $$('[data-merge1]').forEach(b=>{b.onclick=async()=>{
+    const keepId=b.dataset.merge1,removeId=b.dataset.merge2;
+    if(!confirm('Keep the first contact and merge the second into it? Deals, activities, and tasks will be transferred.'))return;
+    // Transfer deals
+    await sb.from('crm_deals').update({contact_id:keepId}).eq('contact_id',removeId).eq('organization_id',currentOrg.id);
+    // Transfer activities
+    await sb.from('activities').update({entity_id:keepId}).eq('entity_id',removeId).eq('organization_id',currentOrg.id);
+    // Transfer tasks
+    await sb.from('crm_tasks').update({contact_id:keepId}).eq('contact_id',removeId).eq('organization_id',currentOrg.id);
+    // Delete duplicate
+    await sb.from('contacts').delete().eq('id',removeId);
+    b.closest('div[style]').style.opacity='.3';b.textContent='Merged ✓';b.disabled=true;
+    toast('Contacts merged','ok');
+  };});
+}
+
+// ===== ACTIVITY GOALS =====
+async function openActivityGoals(){
+  const{data:goal}=await sb.from('crm_activity_goals').select('*').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).eq('period','weekly').maybeSingle();
+  const g=goal||{};
+  // Count this week's actuals
+  const weekStart=new Date();weekStart.setDate(weekStart.getDate()-weekStart.getDay());weekStart.setHours(0,0,0,0);
+  const{data:acts}=await sb.from('activities').select('activity_type').eq('organization_id',currentOrg.id).eq('actor_user_id',currentUser.id).gte('created_at',weekStart.toISOString());
+  const actuals={calls:(acts??[]).filter(a=>a.activity_type==='phone_call').length,emails:(acts??[]).filter(a=>a.activity_type==='email').length,meetings:(acts??[]).filter(a=>a.activity_type==='meeting').length};
+  const{data:wonThisWeek}=await sb.from('crm_deals').select('id').eq('organization_id',currentOrg.id).eq('owner_user_id',currentUser.id).gte('closed_at',weekStart.toISOString()).ilike('stage','%won%');
+  actuals.deals=(wonThisWeek??[]).length;
+
+  function pctBar(actual,target){if(!target)return'<div class="sub">No target set</div>';const pct=Math.min(100,Math.round(actual/target*100));return '<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+(pct>=100?'var(--verified)':pct>=50?'var(--amber)':'var(--danger)')+';border-radius:4px"></div></div><span style="font-size:12px;font-weight:700">'+actual+'/'+target+'</span></div>';}
+
+  openModal('<h2>🎯 Activity Goals (Weekly)</h2>'
+    +'<div style="display:grid;gap:12px;margin-bottom:16px">'
+    +'<div><label style="font-weight:600;font-size:12px">📞 Calls</label>'+pctBar(actuals.calls,g.calls_target||0)+'</div>'
+    +'<div><label style="font-weight:600;font-size:12px">📧 Emails</label>'+pctBar(actuals.emails,g.emails_target||0)+'</div>'
+    +'<div><label style="font-weight:600;font-size:12px">🤝 Meetings</label>'+pctBar(actuals.meetings,g.meetings_target||0)+'</div>'
+    +'<div><label style="font-weight:600;font-size:12px">💰 Deals Won</label>'+pctBar(actuals.deals,g.deals_target||0)+'</div></div>'
+    +'<h3 style="font-size:13px;margin:0 0 8px">Set Targets</h3>'
+    +'<div class="field-row"><div class="field"><label>Calls/week</label><input id="ag_c" type="number" value="'+(g.calls_target||'')+'"></div><div class="field"><label>Emails/week</label><input id="ag_e" type="number" value="'+(g.emails_target||'')+'"></div></div>'
+    +'<div class="field-row"><div class="field"><label>Meetings/week</label><input id="ag_m" type="number" value="'+(g.meetings_target||'')+'"></div><div class="field"><label>Deals/week</label><input id="ag_d" type="number" value="'+(g.deals_target||'')+'"></div></div>'
+    +'<div class="form-err" id="formErr"></div>'
+    +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" id="ag_save">Save Targets</button></div>');
+  $('#ag_save').onclick=async()=>{
+    const row={organization_id:currentOrg.id,user_id:currentUser.id,period:'weekly',calls_target:Number($('#ag_c').value)||0,emails_target:Number($('#ag_e').value)||0,meetings_target:Number($('#ag_m').value)||0,deals_target:Number($('#ag_d').value)||0};
+    const{error}=await sb.from('crm_activity_goals').upsert(row,{onConflict:'organization_id,user_id,period'});
+    if(error)return formErr(error.message);closeModal();toast('Goals saved','ok');
+  };
+}
+
+// ===== COMMISSION TRACKING =====
+async function renderCommissions(){
+  const{data:comms}=await sb.from('crm_commissions').select('*,crm_deals(title,value_amount,stage,closed_at)').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(100);
+  const rows=comms??[];
+  const pending=rows.filter(c=>c.status==='pending');
+  const approved=rows.filter(c=>c.status==='approved');
+  const paid=rows.filter(c=>c.status==='paid');
+  mainEl.innerHTML='<div class="page-head"><div><h1>💰 Commissions</h1><div class="sub num">'+rows.length+' entries</div></div></div>'
+    +'<div class="cc-grid">'
+    +'<div class="cc-card highlight"><div class="cc-lbl">Pending</div><div class="cc-val num">'+money(pending.reduce((s,c)=>s+Number(c.commission_amount),0))+'</div></div>'
+    +'<div class="cc-card"><div class="cc-lbl">Approved</div><div class="cc-val num">'+money(approved.reduce((s,c)=>s+Number(c.commission_amount),0))+'</div></div>'
+    +'<div class="cc-card"><div class="cc-lbl">Paid</div><div class="cc-val num">'+money(paid.reduce((s,c)=>s+Number(c.commission_amount),0))+'</div></div></div>'
+    +'<table><thead><tr><th>Deal</th><th>Value</th><th>Rate</th><th>Commission</th><th>Status</th></tr></thead><tbody>'
+    +(rows.map(c=>'<tr><td><b>'+esc(c.crm_deals?.title??'—')+'</b></td><td class="num">'+money(c.deal_value)+'</td><td class="num">'+c.commission_rate+'%</td><td class="num"><b>'+money(c.commission_amount)+'</b></td><td><span class="chip '+(c.status==='paid'?'g':c.status==='approved'?'a':'n')+'">'+esc(c.status)+'</span></td></tr>').join('')||'<tr><td colspan="5" class="empty">No commissions yet. Commissions are auto-generated when deals close.</td></tr>')
+    +'</tbody></table>';
+}
+
+// ===== REPLACEMENT CYCLE ALERTS =====
+async function getReplacementAlerts(){
+  const{data:cycles}=await sb.from('crm_replacement_cycles').select('*');
+  if(!cycles?.length)return[];
+  const wonDeals=cache.deals.filter(d=>(d.stage||'').toLowerCase().includes('won')&&d.purchase_date);
+  const alerts=[];
+  wonDeals.forEach(d=>{
+    const cats=d.product_categories||[];
+    cats.forEach(cat=>{
+      const cycle=cycles.find(c=>cat.toLowerCase().includes(c.category.toLowerCase()));
+      if(!cycle)return;
+      const purchaseDate=new Date(d.purchase_date);
+      const replaceDate=new Date(purchaseDate);replaceDate.setFullYear(replaceDate.getFullYear()+cycle.avg_lifespan_years);
+      const alertDate=new Date(replaceDate);alertDate.setMonth(alertDate.getMonth()-cycle.alert_months_before);
+      if(alertDate<=new Date()){
+        const contact=d.contacts?d.contacts.first_name+' '+(d.contacts.last_name??''):'Unknown';
+        alerts.push({contact,deal:d.title,category:cat,purchased:d.purchase_date,lifespan:cycle.avg_lifespan_years,replaceBy:replaceDate.toISOString().slice(0,10),contactId:d.contact_id,dealId:d.id});
+      }
+    });
+  });
+  return alerts;
+}
+
+// ===== CUSTOM FIELDS =====
+async function loadCustomFields(entityType){
+  const{data}=await sb.from('crm_custom_fields').select('*').eq('organization_id',currentOrg.id).eq('entity_type',entityType).order('sort_order');
+  return data??[];
+}
+function renderCustomFieldInputs(fields,values){
+  if(!fields.length)return'';
+  return '<fieldset class="field-group"><legend>Custom Fields</legend>'+fields.map(f=>{
+    const val=values?.[f.field_name]??'';
+    let input='';
+    if(f.field_type==='boolean')input='<label><input type="checkbox" data-cf="'+esc(f.field_name)+'" '+(val?'checked':'')+'>'+esc(f.field_label)+'</label>';
+    else if(f.field_type==='select')input='<select data-cf="'+esc(f.field_name)+'"><option value="">—</option>'+(f.options||[]).map(o=>'<option '+(o===val?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select>';
+    else if(f.field_type==='date')input='<input type="date" data-cf="'+esc(f.field_name)+'" value="'+esc(val)+'">';
+    else if(f.field_type==='number')input='<input type="number" data-cf="'+esc(f.field_name)+'" value="'+esc(val)+'">';
+    else input='<input type="text" data-cf="'+esc(f.field_name)+'" value="'+esc(val)+'">';
+    return '<div class="field"><label>'+esc(f.field_label)+(f.is_required?' *':'')+'</label>'+input+'</div>';
+  }).join('')+'</fieldset>';
+}
+function collectCustomFields(){
+  const vals={};$$('[data-cf]').forEach(el=>{
+    const key=el.dataset.cf;
+    if(el.type==='checkbox')vals[key]=el.checked;
+    else if(el.value)vals[key]=el.value;
+  });
+  return vals;
+}
+
+// ===== MANAGE CUSTOM FIELDS (Settings) =====
+function openCustomFieldsManager(){
+  openModal('<h2>Custom Fields</h2><div id="cfList"><div class="spin" style="margin:20px auto"></div></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button class="btn btn-primary" id="cf_add">+ Add Field</button></div>');
+  async function loadList(){
+    const{data}=await sb.from('crm_custom_fields').select('*').eq('organization_id',currentOrg.id).order('entity_type,sort_order');
+    const fields=data??[];
+    if(!fields.length){$('#cfList').innerHTML='<div class="empty" style="padding:20px;text-align:center">No custom fields defined yet.</div>';return;}
+    const grouped={contact:[],deal:[],company:[]};fields.forEach(f=>{(grouped[f.entity_type]||[]).push(f);});
+    $('#cfList').innerHTML=Object.entries(grouped).filter(([,arr])=>arr.length).map(([type,arr])=>
+      '<h3 style="margin:12px 0 4px;font-size:13px;text-transform:capitalize">'+type+'s</h3>'
+      +arr.map(f=>'<div class="setting-row"><span><b>'+esc(f.field_label)+'</b> <span class="chip n" style="font-size:9px">'+esc(f.field_type)+'</span></span><button class="btn btn-ghost btn-sm" data-delcf="'+f.id+'" style="color:var(--danger)">✕</button></div>').join('')
+    ).join('');
+    $$('[data-delcf]').forEach(b=>{b.onclick=async()=>{await sb.from('crm_custom_fields').delete().eq('id',b.dataset.delcf);loadList();};});
+  }
+  loadList();
+  $('#cf_add').onclick=()=>{
+    openModal('<h2>Add Custom Field</h2>'
+      +'<div class="field"><label>Entity</label><select id="cfa_e"><option value="contact">Contact</option><option value="deal">Deal</option><option value="company">Company</option></select></div>'
+      +'<div class="field"><label>Label</label><input id="cfa_l" placeholder="e.g. Appliance Preference"></div>'
+      +'<div class="field"><label>Type</label><select id="cfa_t"><option value="text">Text</option><option value="number">Number</option><option value="date">Date</option><option value="select">Dropdown</option><option value="boolean">Yes/No</option><option value="url">URL</option><option value="email">Email</option><option value="phone">Phone</option></select></div>'
+      +'<div class="field" id="cfa_opts_w" style="display:none"><label>Options (comma-separated)</label><input id="cfa_opts" placeholder="Option 1, Option 2, Option 3"></div>'
+      +'<div class="form-err" id="formErr"></div>'
+      +'<div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal();openCustomFieldsManager()">Back</button><button class="btn btn-primary" id="cfa_save">Add</button></div>');
+    $('#cfa_t').onchange=()=>{$('#cfa_opts_w').style.display=$('#cfa_t').value==='select'?'block':'none';};
+    $('#cfa_save').onclick=async()=>{
+      const label=$('#cfa_l').value.trim();if(!label)return formErr('Label required.');
+      const name=label.toLowerCase().replace(/[^a-z0-9]+/g,'_');
+      const opts=$('#cfa_t').value==='select'?$('#cfa_opts').value.split(',').map(s=>s.trim()).filter(Boolean):[];
+      const{error}=await sb.from('crm_custom_fields').insert({organization_id:currentOrg.id,entity_type:$('#cfa_e').value,field_name:name,field_label:label,field_type:$('#cfa_t').value,options:opts});
+      if(error)return formErr(error.message);closeModal();openCustomFieldsManager();
+    };
+  };
 }
 
 // ===== LOG CONVERSATION + AI SCORING =====
