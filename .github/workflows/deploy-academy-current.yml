@@ -1,0 +1,33 @@
+name: Deploy Current IQ Academy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/iq-training/**'
+      - '.github/workflows/deploy-academy-current.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy apps/iq-training to canonical Academy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Academy entrypoint
+        run: |
+          test -f apps/iq-training/index.html
+          test -f apps/iq-training/performance.html
+          if grep -q '<di<' apps/iq-training/index.html; then
+            echo 'Corrupted tag found in Academy HTML'; exit 1
+          fi
+          echo 'IQ Academy files present'
+      - name: Deploy canonical Academy
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
+            exit 0
+          fi
+          npx -y netlify-cli deploy --prod --dir apps/iq-training --site 4179d04b-ca18-4551-9b18-fe434b83ebc6
