@@ -1,0 +1,5 @@
+-- Consolidation checkpoint.
+-- The production migration introduced the Performance Brain -> existing coaching execution bridge.
+-- Its final corrected definition is intentionally captured in the immediately following migration:
+-- 20260812151151_fix_consolidated_daily_five_merge.sql
+-- Keeping this version marker preserves parity with production migration history.
