@@ -181,16 +181,8 @@ tbody tr:last-child td{border-bottom:none}
 .cat-sub-tag:hover b{color:#fff}
 .prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 @media(max-width:600px){.prod-grid{grid-template-columns:1fr}}
-.prod-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.prod-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px;cursor:pointer;transition:.15s}
 .prod-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(26,158,86,.08)}
-.prod-card.prod-discontinued{border-color:#e53e3e;background:#fff5f5;opacity:.85}
-.prod-card.prod-discontinued:hover{border-color:#c53030;box-shadow:0 4px 16px rgba(229,62,62,.12)}
-.prod-card.prod-clearance{border-color:#dd6b20;background:#fffaf0}
-.prod-card.prod-clearance:hover{border-color:#c05621;box-shadow:0 4px 16px rgba(221,107,32,.12)}
-.prod-status-banner{font-size:10px;font-weight:800;letter-spacing:1px;padding:3px 10px;border-radius:4px;margin-bottom:8px;text-align:center}
-.prod-status-banner.disc{background:#fed7d7;color:#c53030}
-.prod-status-banner.clr{background:#feebc8;color:#c05621}
-.prod-status-banner.ob{background:#e9d8fd;color:#6b46c1}
 .prod-card .pc-brand{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .prod-card .pc-model{font-family:'Sora',sans-serif;font-weight:700;font-size:15px;color:var(--navy);margin-bottom:4px}
 .prod-card .pc-desc{font-size:12px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
@@ -346,11 +338,11 @@ tbody tr:last-child td{border-bottom:none}
   <div id="pageDashboard">
     <div class="stats-row" id="kpiRow">
       <div class="stat-card accent"><div class="label">Products</div><div class="value" id="kpiProducts">—</div><div class="sub" id="kpiProductsSub"></div></div>
-      <div class="stat-card red"><div class="label">Discontinued</div><div class="value" id="kpiDiscontinued">—</div><div class="sub">flagged from retailer data</div></div>
-      <div class="stat-card yellow"><div class="label">Clearance</div><div class="value" id="kpiClearance">—</div><div class="sub">all listings clearance</div></div>
+      <div class="stat-card red"><div class="label">Parts / Accessories</div><div class="value" id="kpiParts">—</div><div class="sub" id="kpiPartsSub">excluded from scraper</div></div>
       <div class="stat-card green"><div class="label">Avg Completeness</div><div class="value" id="kpiComplete">—</div><div class="sub" id="kpiCompleteSub"></div></div>
-      <div class="stat-card purple"><div class="label">Retailer Prices</div><div class="value" id="kpiRetailerPrices">—</div><div class="sub">across all retailers</div></div>
-      <div class="stat-card pink"><div class="label">Brands</div><div class="value" id="kpiBrands">—</div><div class="sub" id="kpiBrandsSub"></div></div>
+      <div class="stat-card purple"><div class="label">Images</div><div class="value" id="kpiImages">—</div><div class="sub" id="kpiImagesSub"></div></div>
+      <div class="stat-card pink"><div class="label">Documents</div><div class="value" id="kpiDocs">—</div><div class="sub" id="kpiDocsSub"></div></div>
+      <div class="stat-card yellow"><div class="label">Brands</div><div class="value" id="kpiBrands">—</div><div class="sub" id="kpiBrandsSub"></div></div>
     </div>
     <div class="panel" style="margin-bottom:24px">
       <div class="panel-head"><h3>Product Categories</h3><span class="badge" id="catCount"></span></div>
@@ -824,21 +816,15 @@ function renderKPIs() {
   const view = filtered();
   const avg = view.length > 0 ? Math.round(view.reduce((s,p) => s + calcRichComp(p), 0) / view.length) : 0;
   const brands = new Set(view.map(p => p.brand_name).filter(Boolean));
-  const discCount = prods.filter(p => p.status === 'discontinued' || p.status === 'end_of_life').length;
-  const clrCount = prods.filter(p => p.status === 'clearance').length;
   document.getElementById('kpiProducts').textContent = fmt(prods.length);
   document.getElementById('kpiProductsSub').textContent = new Set(prods.map(p=>p.category).filter(Boolean)).size + ' categories';
-  const kpiDisc = document.getElementById('kpiDiscontinued');
-  if (kpiDisc) kpiDisc.textContent = fmt(discCount);
-  const kpiClr = document.getElementById('kpiClearance');
-  if (kpiClr) kpiClr.textContent = fmt(clrCount);
+  document.getElementById('kpiParts').textContent = fmt(parts.length);
   document.getElementById('kpiComplete').textContent = avg + '%';
   document.getElementById('kpiCompleteSub').textContent = TOTAL_F + ' fields · ' + currentView + ' view';
-  // Fetch retailer price count async
-  sb.from('pim_retailer_prices').select('id', {count:'exact',head:true}).then(({count}) => {
-    const rpEl = document.getElementById('kpiRetailerPrices');
-    if (rpEl) rpEl.textContent = fmt(count || 0);
-  });
+  document.getElementById('kpiImages').textContent = fmt(imgTotals);
+  document.getElementById('kpiImagesSub').textContent = fmt(prodsWithImgs) + ' products w/ images';
+  document.getElementById('kpiDocs').textContent = fmt(docTotals);
+  document.getElementById('kpiDocsSub').textContent = fmt(prodsWithDocs) + ' products w/ docs';
   document.getElementById('kpiBrands').textContent = brands.size;
   document.getElementById('kpiBrandsSub').textContent = 'in current view';
   document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -1301,7 +1287,7 @@ async function loadCatalog() {
     const { data: cats } = await sb.from('aiq_products').select('category').not('category','is',null);
     const ucats = [...new Set((cats||[]).map(c=>c.category))].sort();
     ucats.forEach(c => document.getElementById('prodCat').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
-    ['active','draft','discontinued','clearance','end_of_life','open_box','refurbished','archived'].forEach(s => document.getElementById('prodStatus').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
+    ['active','draft','discontinued'].forEach(s => document.getElementById('prodStatus').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
     const { data: colors } = await sb.from('aiq_products').select('color_family').not('color_family','is',null);
     const ucolors = [...new Set((colors||[]).map(c=>c.color_family))].sort();
     ucolors.forEach(c => document.getElementById('prodColor').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
@@ -1339,10 +1325,8 @@ function renderCatalog() {
   document.getElementById('prodKpis').innerHTML =
     '<div class="stat-card accent"><div class="label">Showing</div><div class="value">'+prods.length+'</div><div class="sub">of '+fmt(catalogTotal)+' products</div></div>'
     +'<div class="stat-card green"><div class="label">With MSRP</div><div class="value">'+prods.filter(p=>p.msrp).length+'</div></div>'
-    +'<div class="stat-card red"><div class="label">Discontinued</div><div class="value">'+prods.filter(p=>p.status==='discontinued').length+'</div></div>'
-    +'<div class="stat-card yellow"><div class="label">Clearance</div><div class="value">'+prods.filter(p=>p.status==='clearance').length+'</div></div>'
     +'<div class="stat-card purple"><div class="label">Energy Star</div><div class="value">'+prods.filter(p=>p.energy_star).length+'</div></div>'
-    +'<div class="stat-card"><div class="label">Page</div><div class="value">'+(catalogPage+1)+' / '+Math.max(1,totalPages)+'</div></div>';
+    +'<div class="stat-card yellow"><div class="label">Page</div><div class="value">'+(catalogPage+1)+' / '+Math.max(1,totalPages)+'</div></div>';
   if (!prods.length) {
     document.getElementById('prodContent').innerHTML = '<div class="feed-empty">No products match your filters.</div>';
     document.getElementById('prodPager').style.display = 'none';
@@ -1370,11 +1354,7 @@ function renderCatalog() {
     if (p.energy_star) badges.push('⭐ E-Star');
     if (p.defrost_type) badges.push(p.defrost_type === 'Frost-Free' ? '❄️ Frost-Free' : '🔧 Manual Defrost');
     if (p.noise_dba) badges.push(p.noise_dba + ' dBA');
-    return '<div class="prod-card' + (p.status==='discontinued'?' prod-discontinued':'') + (p.status==='clearance'?' prod-clearance':'') + '" data-prod-id="'+p.id+'">'
-      +(p.status==='discontinued'?'<div class="prod-status-banner disc">⛔ DISCONTINUED</div>':'')
-      +(p.status==='clearance'?'<div class="prod-status-banner clr">🏷️ CLEARANCE</div>':'')
-      +(p.status==='end_of_life'?'<div class="prod-status-banner disc">🔚 END OF LIFE</div>':'')
-      +(p.status==='open_box'?'<div class="prod-status-banner ob">📦 OPEN BOX</div>':'')
+    return '<div class="prod-card" data-prod-id="'+p.id+'">'
       +'<div class="pc-brand">'+esc(p.brand_name||'—')+' · '+esc(p.category||'—')+(p.color_family?' · <span style="color:var(--navy);font-weight:700">'+esc(p.color_family)+'</span>':'')+'</div>'
       +'<div class="pc-model">'+esc(p.model||'—')+'</div>'
       +(desc?'<div class="pc-desc">'+esc(desc)+'</div>':'')
@@ -1480,20 +1460,15 @@ async function openProductDetail(productId) {
   html += '<span class="current">' + esc(p.model) + '</span></div>';
 
   // Product header
-  const isDisc = p.status === 'discontinued' || p.status === 'end_of_life';
-  const isClr = p.status === 'clearance';
-  html += (isDisc ? '<div style="background:#fed7d7;color:#c53030;padding:12px 20px;border-radius:var(--radius);margin-bottom:12px;font-weight:700;font-size:14px;text-align:center;letter-spacing:.5px">⛔ THIS PRODUCT IS ' + (p.status === 'end_of_life' ? 'END OF LIFE' : 'DISCONTINUED') + '</div>' : '')
-    + (isClr ? '<div style="background:#feebc8;color:#c05621;padding:12px 20px;border-radius:var(--radius);margin-bottom:12px;font-weight:700;font-size:14px;text-align:center;letter-spacing:.5px">🏷️ CLEARANCE ITEM</div>' : '')
-    + '<div class="panel" style="margin-bottom:20px;padding:24px' + (isDisc ? ';border-color:#e53e3e' : '') + (isClr ? ';border-color:#dd6b20' : '') + '">'
+  html += '<div class="panel" style="margin-bottom:20px;padding:24px">'
     + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">'
     + '<div style="flex:1;min-width:200px">'
     + '<div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">' + esc(p.brand_name) + (p.manufacturer_name && p.manufacturer_name !== p.brand_name ? ' · ' + esc(p.manufacturer_name) : '') + '</div>'
-    + '<h2 style="font-family:Sora;font-size:22px;color:var(--navy)' + (isDisc ? ';text-decoration:line-through' : '') + '">' + esc(p.model) + '</h2>'
+    + '<h2 style="font-family:Sora;font-size:22px;color:var(--navy)">' + esc(p.model) + '</h2>'
     + (p.short_description ? '<div style="color:var(--text2);margin-top:6px;line-height:1.6">' + esc(p.short_description) + '</div>' : '')
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'
-    + '<span class="tier-pill ' + ({'active':'mid','discontinued':'entry','end_of_life':'entry','clearance':'premium','open_box':'luxury','draft':'entry'}[p.status]||'entry') + '" style="' + (isDisc?'background:#fed7d7;color:#c53030':'') + (isClr?'background:#feebc8;color:#c05621':'') + '">' + esc(p.status) + '</span>'
+    + '<span class="tier-pill ' + (p.status === 'active' ? 'mid' : 'entry') + '">' + esc(p.status) + '</span>'
     + (p.energy_star ? '<span class="tier-pill ultra_luxury">⭐ Energy Star</span>' : '')
-    + (retailerPrices.length ? '<span class="tier-pill mid" style="background:#ebf4ff;color:#2f6fed">🏪 ' + retailerPrices.length + ' retailer' + (retailerPrices.length!==1?'s':'') + '</span>' : '')
     + (p.category ? '<span class="tier-pill entry">' + esc(p.category) + '</span>' : '')
     + (jsonKeyCount > 0 ? '<span class="tier-pill mid">📊 ' + jsonKeyCount + ' specs in JSON</span>' : '')
     + '</div>'
