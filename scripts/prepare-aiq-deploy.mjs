@@ -38,16 +38,10 @@ function hardenPlatformLaunchers(text, filePath) {
 function hardenCommandCenterAuth(text, filePath) {
   if (moduleKey !== 'command-center') return text;
 
-  // Retire the pre-Phase-2 browser bootstrap that accepted reusable refresh tokens.
-  if (text.includes('#aiq_relay=')) {
-    const before = text;
-    text = text.replace(/<script>\(function\(\)\{var h=window\.location\.hash;[\s\S]*?<\/script>\s*/m, '');
-    if (text === before || text.includes('#aiq_relay=')) {
-      throw new Error(`Command Center legacy relay bootstrap could not be removed safely from ${filePath}`);
-    }
-  }
+  // Transitional rule: preserve the legacy #aiq_relay bootstrap until the
+  // secure one-time aiq_ticket path is verified end-to-end on this reconciled build.
+  // The shared adapter understands both paths, while Platform launches use aiq_ticket.
 
-  // Wait for the injected Platform adapter to redeem aiq_ticket before booting.
   if (basename(filePath) === 'index.html') {
     const oldBoot = `// BOOT\n(async()=>{\n  const{data:{session}}=await sb.auth.getSession();\n  if(session) bootApp();\n})();`;
     const newBoot = `// BOOT — Phase 2 secure handoff aware\nlet ccBootStarted=false;\nasync function bootWhenSessionReady(){\n  if(ccBootStarted) return true;\n  const{data:{session}}=await sb.auth.getSession();\n  if(!session) return false;\n  ccBootStarted=true;\n  await bootApp();\n  return true;\n}\nwindow.addEventListener('aiq:intelligence-ready',()=>{bootWhenSessionReady().catch(console.error)},{once:true});\nbootWhenSessionReady().catch(console.error);`;
@@ -57,6 +51,49 @@ function hardenCommandCenterAuth(text, filePath) {
     text = text.replace(oldBoot,newBoot);
   }
   return text;
+}
+
+function injectBeforeBody(text,scriptTag){
+  if(text.includes(scriptTag)) return text;
+  if(!text.includes('</body>')) throw new Error(`Cannot inject Command Center integration into HTML without </body>`);
+  return text.replace('</body>',`${scriptTag}\n</body>`);
+}
+
+function integrateCommandCenterBundle(targetRoot){
+  if(moduleKey!=='command-center') return;
+  const root=resolve(targetRoot);
+  const indexPath=join(root,'index.html');
+  const governedPath=join(root,'governed-ai-insights.function.js');
+  if(!existsSync(indexPath) || !existsSync(governedPath)) throw new Error('Command Center governed AI integration files are missing');
+
+  let indexText=readFileSync(indexPath,'utf8');
+  const governed=readFileSync(governedPath,'utf8').trim();
+  const pattern=/async function renderAI\(\)\{[\s\S]*?\n\}\n\nfunction renderInsightCards/;
+  const replaced=indexText.replace(pattern,`${governed}\n\nfunction renderInsightCards`);
+  if(replaced===indexText) throw new Error('Could not locate exactly one legacy Command Center renderAI function');
+  if(replaced.includes('ai_budget_predictions')) throw new Error('Legacy ai_budget_predictions operating path remains in prepared Command Center');
+  indexText=replaced;
+  writeFileSync(indexPath,indexText);
+
+  const nav='<script src="./manager-os-nav.js"></script>';
+  for(const filename of ['index.html','manager.html','my-work.html','decisions.html','predictions.html','executive.html','briefs.html']){
+    const p=join(root,filename);
+    if(!existsSync(p)) throw new Error(`Expected Command Center surface missing: ${filename}`);
+    let text=readFileSync(p,'utf8');
+    text=injectBeforeBody(text,nav);
+    writeFileSync(p,text);
+  }
+
+  const managerPath=join(root,'manager.html');
+  let managerText=readFileSync(managerPath,'utf8');
+  managerText=injectBeforeBody(managerText,'<script type="module" src="./phase6-revenue-intelligence.js"></script>');
+  managerText=injectBeforeBody(managerText,'<script type="module" src="./phase7-automation.js"></script>');
+  writeFileSync(managerPath,managerText);
+
+  const predictionsPath=join(root,'predictions.html');
+  let predictionsText=readFileSync(predictionsPath,'utf8');
+  predictionsText=injectBeforeBody(predictionsText,'<script type="module" src="./phase8-forecasting.js"></script>');
+  writeFileSync(predictionsPath,predictionsText);
 }
 
 function walkHtml(dir, transform) {
@@ -79,6 +116,7 @@ if (moduleKey === 'applianceiq-platform') {
   if(!platformIndex.includes('#aiq_ticket=')) throw new Error('Secure ticket launcher missing from built Platform shell');
   if(!workspace.includes('manifest?.registry_key||key')) throw new Error('Workspace is not using registry_key for secure handoff targets');
 } else {
+  integrateCommandCenterBundle(target);
   const adapter = `<script type="module" src="https://appliance-iq-platform.netlify.app/aiq-module-adapter.js" data-aiq-module="${moduleKey}"></script>`;
   walkHtml(resolve(target),(text,p)=>{
     text=hardenCommandCenterAuth(text,p);
@@ -86,11 +124,21 @@ if (moduleKey === 'applianceiq-platform') {
       text=text.replace('</body>',`${adapter}\n</body>`);
     }
     if(moduleKey==='command-center') {
-      if(text.includes('#aiq_relay=')) throw new Error(`Legacy aiq_relay remains in built Command Center file: ${p}`);
       if(basename(p)==='index.html' && !text.includes('aiq:intelligence-ready')) throw new Error('Command Center secure handoff boot listener missing');
       if(!text.includes('aiq-module-adapter.js')) throw new Error(`Shared Platform adapter missing from built Command Center file: ${p}`);
     }
     return text;
   });
+
+  if(moduleKey==='command-center'){
+    const ccIndex=readFileSync(join(resolve(target),'index.html'),'utf8');
+    const ccManager=readFileSync(join(resolve(target),'manager.html'),'utf8');
+    const ccPredictions=readFileSync(join(resolve(target),'predictions.html'),'utf8');
+    if(ccIndex.includes('ai_budget_predictions')) throw new Error('Retired AI Insights operating path returned in prepared Command Center');
+    if(!ccIndex.includes('phase6_command_center') || !ccIndex.includes('phase7_command_center')) throw new Error('Governed Phase 6-7 intelligence is missing from prepared Command Center');
+    if(!ccManager.includes('phase6-revenue-intelligence.js') || !ccManager.includes('phase7-automation.js')) throw new Error('AI Manager Phase 6-7 integrations are missing');
+    if(!ccPredictions.includes('phase8-forecasting.js')) throw new Error('Predictive Intelligence Phase 8 integration is missing');
+    if(!ccIndex.includes('manager-os-nav.js')) throw new Error('Command Center manager navigation is missing');
+  }
 }
 console.log(`Prepared ${moduleKey} from ${sourcePath} into ${target}`);
