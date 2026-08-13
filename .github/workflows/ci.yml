@@ -8,10 +8,13 @@ on:
 
 jobs:
   validate:
-    name: Validate apps
+    name: Validate platform
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate canonical app registry
+        run: node scripts/validate-app-registry.mjs
 
       - name: Check CRM inline JS syntax
         run: |
@@ -25,11 +28,11 @@ jobs:
           console.log('CRM JS syntax OK');
           "
 
-      - name: Check academy HTML is well-formed
+      - name: Check Academy HTML regression guards
         run: |
-          # Guard against the corrupted-tag regression (<di<div) that shipped once
-          if grep -q '<di<' apps/academy/index.html; then
-            echo 'Corrupted tag found in academy HTML'; exit 1
+          test -f apps/iq-training/index.html
+          if grep -q '<di<' apps/iq-training/index.html; then
+            echo 'Corrupted tag found in Academy HTML'; exit 1
           fi
           echo 'Academy HTML OK'
 
@@ -46,8 +49,7 @@ jobs:
           "
 
       - name: Check migrations are timestamp-ordered
-        run: |
-          ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
+        run: ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
 
       - name: Check for duplicate migration versions
         run: |
@@ -89,7 +91,6 @@ jobs:
         run: |
           MISSING=0
           for fn in $(ls -d supabase/functions/*/ | grep -v _shared | grep -v _non_deployable); do
-            NAME=$(basename "$fn")
             if [ ! -f "$fn/index.ts" ]; then
               echo "Missing entrypoint: $fn/index.ts"
               MISSING=$((MISSING + 1))
@@ -102,109 +103,64 @@ jobs:
         run: |
           UNSAFE=0
           for fn in $(ls -d supabase/functions/*/ | grep -v _shared | grep -v _non_deployable); do
-            NAME=$(basename "$fn")
             FILE="$fn/index.ts"
             if [ ! -f "$FILE" ]; then continue; fi
             if grep -qiE 'placeholder|simplified|TODO.full.source|structural.reconstruction|source.pending|not.implemented|not.yet.restored|framework.only' "$FILE" 2>/dev/null; then
-              echo "BLOCKED: $NAME contains incomplete/placeholder markers"
+              echo "BLOCKED: $fn contains incomplete/placeholder markers"
               UNSAFE=$((UNSAFE + 1))
             fi
             LINES=$(wc -l < "$FILE")
             if [ "$LINES" -lt 8 ]; then
-              echo "BLOCKED: $NAME has only $LINES lines (below minimum threshold)"
+              echo "BLOCKED: $fn has only $LINES lines"
               UNSAFE=$((UNSAFE + 1))
             fi
           done
-          if [ "$UNSAFE" -gt 0 ]; then
-            echo "ERROR: $UNSAFE deployable function(s) contain incomplete or placeholder code"
-            echo "Move incomplete functions to supabase/functions/_non_deployable/"
-            exit 1
-          fi
+          if [ "$UNSAFE" -gt 0 ]; then exit 1; fi
           echo 'All deployable edge functions are complete'
 
-  deploy-crm:
-    name: Deploy CRM to Netlify
+  prepare-deploy:
+    name: Build deployment matrix
     needs: validate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.registry.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy apps/crm -> crmaiiq.netlify.app
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      - id: registry
+        name: Read deployment registry
         run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
-            exit 0
-          fi
-          npx -y netlify-cli deploy --prod --dir apps/crm --site 38f8f64f-c674-4e14-8639-37ebb40ac939
+          MATRIX=$(node -e "const r=require('./config/app-registry.json'); const a=[r.platform,...r.apps].filter(x=>x&&x.deploy_on_main).map(x=>({key:x.key,name:x.name,source_path:x.source_path,site_id:x.netlify_site_id,production_url:x.production_url,smoke_path:x.smoke_path||'/'})); process.stdout.write(JSON.stringify({include:a}))")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
-  deploy-academy:
-    name: Deploy Academy to Netlify
-    needs: validate
+  deploy-apps:
+    name: Deploy ${{ matrix.name }}
+    needs: [validate, prepare-deploy]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-deploy.outputs.matrix) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Canonical Academy target. Do not change this to the abandoned
-      # trainingiq-academy site.
-      - name: Deploy apps/academy -> applianceiq-aiacademy.netlify.app
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
-            exit 0
-          fi
-          npx -y netlify-cli deploy --prod --dir apps/academy --site 4179d04b-ca18-4551-9b18-fe434b83ebc6
 
-  deploy-speciq:
-    name: Deploy Spec IQ to Netlify
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy apps/spec-iq -> spec-iq.netlify.app
+      - name: Require Netlify deployment credential
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
-            exit 0
+            echo '::error::NETLIFY_AUTH_TOKEN is required for production deployment.'
+            exit 1
           fi
-          npx -y netlify-cli deploy --prod --dir apps/spec-iq --site 7dd39e7d-8c68-4109-a803-f4d6e0aab6ff
 
-  deploy-intelligence-group:
-    name: Deploy Intelligence Group to Netlify
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy apps/intelligence-group -> applianceiq-intelligence-group.netlify.app
+      - name: Deploy ${{ matrix.key }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
-            exit 0
-          fi
-          npx -y netlify-cli deploy --prod --dir apps/intelligence-group --site 9aba62a7-90db-4001-86f9-438f72adeea7
+        run: npx -y netlify-cli deploy --prod --dir "${{ matrix.source_path }}" --site "${{ matrix.site_id }}"
 
-  deploy-product-iq:
-    name: Deploy Product IQ to Netlify
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy apps/product-iq -> applianceiq-product-iq-pim.netlify.app
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      - name: Smoke test production
         run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
-            exit 0
-          fi
-          npx -y netlify-cli deploy --prod --dir apps/product-iq --site fc1492d8-8eb6-40f2-94f4-617d3055fed9
+          URL="${{ matrix.production_url }}${{ matrix.smoke_path }}"
+          echo "Smoke testing $URL"
+          curl --fail --silent --show-error --location --retry 5 --retry-delay 3 --max-time 30 "$URL" >/dev/null
+          echo "${{ matrix.name }} production smoke test passed"
