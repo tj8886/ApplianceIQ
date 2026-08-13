@@ -47,8 +47,16 @@ const intelligence={
   async employees({since=null}={}){const org=await requireOrg();const {data,error}=await sb.rpc('platform_intelligence_employee_rollup',{p_organization_id:org,p_since:since});if(error)throw error;return data||[]},
   async resolveIdentity({entityType,sourceSystem=null,externalId=null,sourceRecordId=null}){const org=await requireOrg();const {data,error}=await sb.rpc('platform_resolve_identity',{p_organization_id:org,p_entity_type:entityType,p_source_system:sourceSystem,p_external_id:externalId,p_source_record_id:sourceRecordId});if(error)throw error;return data||[]}
 };
+const coaching={
+  async dashboard(){const org=await requireOrg();const {data,error}=await sb.rpc('phase4_coaching_dashboard',{p_organization_id:org});if(error)throw error;return data||{}},
+  async generate({userId,date=null}){const org=await requireOrg();const {data,error}=await sb.rpc('phase4_generate_coaching',{p_organization_id:org,p_user_id:userId,p_focus_date:date});if(error)throw error;return data},
+  async generateOrganization({date=null,limit=25}={}){const org=await requireOrg();const {data,error}=await sb.rpc('phase4_generate_org_coaching',{p_organization_id:org,p_focus_date:date,p_limit:limit});if(error)throw error;return data||[]},
+  async completeStep({interventionId,stepOrder,completionRef=null,score=null,metadata={}}){const {data,error}=await sb.rpc('phase4_complete_step',{p_intervention_id:interventionId,p_step_order:stepOrder,p_completion_ref:completionRef,p_score:score,p_metadata:metadata});if(error)throw error;return data||{}},
+  async evaluate({interventionId,force=false}){const {data,error}=await sb.rpc('phase4_evaluate_intervention',{p_intervention_id:interventionId,p_force:force});if(error)throw error;return data||{}},
+  async evaluateDue({limit=100}={}){const org=await requireOrg();const {data,error}=await sb.rpc('phase4_evaluate_due_org',{p_organization_id:org,p_limit:limit});if(error)throw error;return data||[]}
+};
 
-window.ApplianceIQ={supabase:sb,moduleKey,getContext,setContext,focus:(type,id,label,context={})=>setContext({entity_type:type,entity_id:id,entity_label:label,context}),clearFocus:()=>setContext({entity_type:null,entity_id:null,entity_label:null,context:{}}),intelligence};
+window.ApplianceIQ={supabase:sb,moduleKey,getContext,setContext,focus:(type,id,label,context={})=>setContext({entity_type:type,entity_id:id,entity_label:label,context}),clearFocus:()=>setContext({entity_type:null,entity_id:null,entity_label:null,context:{}}),intelligence,coaching};
 
 (async()=>{
   const auth=await ensureSession();
@@ -59,5 +67,5 @@ window.ApplianceIQ={supabase:sb,moduleKey,getContext,setContext,focus:(type,id,l
   if(!ctx)ctx=await getContext();
   if(ctx){dispatch(ctx);installFocusObserver(ctx)}
   installEntityCapture();cleanHash();
-  window.dispatchEvent(new CustomEvent('aiq:intelligence-ready',{detail:{moduleKey,organization_id:ctx?.organization_id||null}}));
+  window.dispatchEvent(new CustomEvent('aiq:intelligence-ready',{detail:{moduleKey,organization_id:ctx?.organization_id||null,phase4:true}}));
 })();
