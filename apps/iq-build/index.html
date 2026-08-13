@@ -1,0 +1,2472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IQ Build — Commercial Project Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f6f8fb;--card:#fff;--border:#e3e8ee;--navy:#0f1f3d;--green:#1a9e56;--blue:#2f6fed;
+  --red:#e53e3e;--orange:#dd6b20;--yellow:#ecc94b;--purple:#805ad5;--cyan:#0ea5e9;
+  --text:#334155;--text-light:#64748b;--text-muted:#94a3b8;
+  --radius:10px;--shadow:0 1px 3px rgba(15,31,61,0.08);
+}
+html{font-size:15px}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+h1,h2,h3,h4{font-family:'Sora',sans-serif;color:var(--navy);font-weight:600}
+a{color:var(--blue);text-decoration:none}
+button{font-family:'Inter',sans-serif;cursor:pointer;border:none;border-radius:var(--radius);font-size:.875rem;font-weight:500;padding:.5rem 1rem;transition:all .15s}
+input,select,textarea{font-family:'Inter',sans-serif;font-size:.875rem;border:1px solid var(--border);border-radius:var(--radius);padding:.5rem .75rem;background:#fff;color:var(--text);width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(47,111,237,0.12)}
+textarea{resize:vertical;min-height:80px}
+.btn-primary{background:var(--green);color:#fff}.btn-primary:hover{background:#158a4a}
+.btn-secondary{background:var(--blue);color:#fff}.btn-secondary:hover{background:#2558c4}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{background:var(--bg)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#c53030}
+.btn-sm{padding:.35rem .7rem;font-size:.8rem}
+.btn-icon{padding:.4rem;background:none;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px}
+.btn-icon:hover{background:var(--bg)}
+
+/* Layout */
+.app-shell{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--navy);color:#fff;padding:1.25rem 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100}
+.sidebar-logo{padding:0 1.25rem .75rem;font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:.5rem;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:.5rem;padding-bottom:1rem}
+.sidebar-logo span{color:var(--green)}
+.sidebar nav{flex:1;padding:.5rem 0}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.6rem 1.25rem;color:rgba(255,255,255,0.65);font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,0.05)}
+.nav-item.active{color:#fff;background:rgba(26,158,86,0.15);border-left-color:var(--green)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.sidebar-user{padding:.75rem 1.25rem;border-top:1px solid rgba(255,255,255,0.1);font-size:.8rem;color:rgba(255,255,255,0.5)}
+.sidebar-user strong{color:#fff;display:block;font-size:.85rem}
+.main{margin-left:240px;flex:1;padding:1.5rem 2rem;max-width:1200px}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem}
+.page-header h1{font-size:1.5rem}
+.breadcrumb{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--text-light);margin-bottom:.75rem}
+.breadcrumb span{cursor:pointer}.breadcrumb span:hover{color:var(--blue)}
+.breadcrumb .sep{color:var(--text-muted)}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;box-shadow:var(--shadow)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.card-header h3{font-size:1rem}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;box-shadow:var(--shadow)}
+.stat-card .label{font-size:.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.stat-card .value{font-family:'Sora',sans-serif;font-size:1.75rem;font-weight:700;color:var(--navy);margin:.25rem 0}
+.stat-card .sub{font-size:.8rem;color:var(--text-muted)}
+
+/* Tables */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);font-weight:600;padding:.6rem .75rem;border-bottom:2px solid var(--border)}
+td{padding:.65rem .75rem;border-bottom:1px solid var(--border);font-size:.85rem;vertical-align:middle}
+tr:hover td{background:rgba(47,111,237,0.02)}
+tr{cursor:pointer}
+
+/* Badges */
+.badge{display:inline-block;padding:.2rem .55rem;border-radius:20px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-yellow{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-purple{background:#ede9fe;color:#5b21b6}
+.badge-gray{background:#f1f5f9;color:#475569}
+.badge-cyan{background:#cffafe;color:#155e75}
+.badge-orange{background:#ffedd5;color:#9a3412}
+
+/* Status pipeline */
+.pipeline{display:flex;gap:2px;margin:.5rem 0}
+.pipeline-step{flex:1;height:6px;border-radius:3px;background:var(--border)}
+.pipeline-step.done{background:var(--green)}
+.pipeline-step.active{background:var(--blue)}
+.pipeline-step.blocked{background:var(--red)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,31,61,0.4);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(15,31,61,0.2)}
+.modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{font-size:1.1rem}
+.modal-body{padding:1.5rem}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.5rem}
+.form-group{margin-bottom:1rem}
+.form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--text-light);margin-bottom:.35rem}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+
+/* Grid layouts */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+
+/* Floor/Unit visual */
+.floor-strip{display:flex;align-items:center;gap:.5rem;padding:.65rem 1rem;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:.5rem;background:#fff;transition:all .15s;cursor:pointer}
+.floor-strip:hover{border-color:var(--blue);background:rgba(47,111,237,0.02)}
+.floor-label{font-family:'Sora',sans-serif;font-weight:600;font-size:.85rem;color:var(--navy);min-width:80px}
+.floor-units{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.unit-dot{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:600;color:#fff;cursor:pointer;transition:transform .1s}
+.unit-dot:hover{transform:scale(1.15)}
+.unit-dot.not_started{background:var(--text-muted)}
+.unit-dot.rough_in{background:var(--orange)}
+.unit-dot.ordered{background:var(--purple)}
+.unit-dot.delivered{background:var(--cyan)}
+.unit-dot.installed{background:var(--blue)}
+.unit-dot.inspected{background:var(--yellow);color:var(--navy)}
+.unit-dot.complete{background:var(--green)}
+.unit-dot.on_hold{background:var(--red)}
+
+/* Milestone checklist */
+.milestone-item{display:flex;align-items:center;gap:.6rem;padding:.55rem .75rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem;background:#fff;font-size:.85rem}
+.milestone-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0}
+.milestone-icon.passed{background:#dcfce7;color:#166534}
+.milestone-icon.failed{background:#fee2e2;color:#991b1b}
+.milestone-icon.pending{background:#f1f5f9;color:#94a3b8}
+.milestone-icon.in_progress{background:#dbeafe;color:#1e40af}
+.milestone-name{flex:1;font-weight:500}
+.milestone-meta{font-size:.75rem;color:var(--text-muted)}
+
+/* Tabs */
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:1.25rem}
+.tab{padding:.6rem 1.1rem;font-size:.85rem;font-weight:500;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab:hover{color:var(--navy)}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* Login */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.login-card{background:#fff;border-radius:12px;padding:2.5rem;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(15,31,61,0.1);text-align:center}
+.login-card h1{font-size:1.5rem;margin-bottom:.25rem}
+.login-card p{color:var(--text-light);font-size:.85rem;margin-bottom:1.5rem}
+.login-card .form-group{text-align:left}
+.login-card button{width:100%;padding:.7rem;font-size:.9rem;margin-top:.5rem}
+.login-error{color:var(--red);font-size:.8rem;margin-top:.5rem}
+
+/* Empty states */
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted)}
+.empty-state svg{width:48px;height:48px;margin-bottom:1rem;opacity:.4}
+.empty-state p{font-size:.9rem;margin-bottom:1rem}
+
+/* Responsive */
+@media(max-width:768px){
+  .sidebar{width:60px;overflow:hidden}
+  .sidebar-logo span,.nav-item span,.sidebar-user{display:none}
+  .nav-item{justify-content:center;padding:.6rem}
+  .main{margin-left:60px;padding:1rem}
+  .form-row{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+}
+
+/* Toast */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--navy);color:#fff;padding:.75rem 1.25rem;border-radius:var(--radius);font-size:.85rem;z-index:300;box-shadow:0 8px 20px rgba(0,0,0,0.2);animation:slideUp .3s}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NjU0ODAsImV4cCI6MjA1MjU0MTQ4MH0.VsMKCCBEaEiZPOoG5FvFIxVYaA96WKBjIExq7SxIFDQ';
+const supabase = createClient(SB_URL, SB_KEY);
+
+// ========== STATE ==========
+let currentUser = null;
+let currentView = 'dashboard';
+let projects = [];
+let currentProject = null;
+let currentBuilding = null;
+let currentUnit = null;
+let milestoneTemplates = [];
+let modalOpen = false;
+
+// ========== ICONS ==========
+const icons = {
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  projects: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20M5 20V10l7-5 7 5v10"/><rect x="9" y="14" width="6" height="6"/></svg>',
+  packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>',
+  deliveries: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+  team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
+  milestones: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  check: '✓',
+  x: '✗',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>',
+  import: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M2 17l.621 2.485A2 2 0 004.561 21h14.878a2 2 0 001.94-1.515L22 17"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+};
+
+// ========== HELPERS ==========
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+function statusBadge(status) {
+  const map = {
+    planning: 'badge-gray', pre_construction: 'badge-yellow', active: 'badge-green',
+    on_hold: 'badge-red', completing: 'badge-blue', completed: 'badge-green', cancelled: 'badge-gray',
+    not_started: 'badge-gray', rough_in: 'badge-orange', ordered: 'badge-purple',
+    delivered: 'badge-cyan', installed: 'badge-blue', inspected: 'badge-yellow', complete: 'badge-green',
+    pending: 'badge-gray', in_progress: 'badge-blue', passed: 'badge-green', failed: 'badge-red', waived: 'badge-yellow',
+    scheduled: 'badge-blue', in_transit: 'badge-yellow', partial: 'badge-orange', damaged: 'badge-red',
+  };
+  return `<span class="badge ${map[status] || 'badge-gray'}">${(status || '').replace(/_/g, ' ')}</span>`;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatCurrency(n) {
+  if (!n && n !== 0) return '—';
+  return '$' + Number(n).toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+const unitStatuses = ['not_started', 'rough_in', 'ordered', 'delivered', 'installed', 'inspected', 'complete', 'on_hold'];
+const projectTypes = ['condo', 'apartment', 'townhome', 'hotel', 'mixed_use', 'commercial', 'student_housing', 'senior_living'];
+const projectStatuses = ['planning', 'pre_construction', 'active', 'on_hold', 'completing', 'completed', 'cancelled'];
+const unitTypes = ['studio', '1br', '2br', '3br', 'penthouse', 'townhouse', 'suite'];
+const teamRoles = ['project_manager', 'site_manager', 'sales_rep', 'installer', 'inspector', 'coordinator', 'client_contact'];
+
+// ========== AUTH ==========
+async function checkAuth() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    await loadMilestoneTemplates();
+    render();
+  } else {
+    renderLogin();
+  }
+}
+
+async function handleLogin(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return error.message;
+  currentUser = data.user;
+  await loadMilestoneTemplates();
+  render();
+  return null;
+}
+
+async function handleLogout() {
+  await supabase.auth.signOut();
+  currentUser = null;
+  renderLogin();
+}
+
+function renderLogin() {
+  document.getElementById('app').innerHTML = `
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1 style="display:flex;align-items:center;justify-content:center;gap:.5rem">
+          ${icons.projects} <span>IQ</span> <span style="color:var(--green)">Build</span>
+        </h1>
+        <p>Commercial Project Management</p>
+        <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@company.com"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"></div>
+        <button class="btn-primary" id="login-btn">Sign In</button>
+        <div class="login-error" id="login-err"></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('login-btn').onclick = async () => {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    const err = await handleLogin(email, pass);
+    if (err) document.getElementById('login-err').textContent = err;
+  };
+  document.getElementById('login-pass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-btn').click();
+  });
+}
+
+// ========== DATA LOADING ==========
+async function loadProjects() {
+  const { data } = await supabase.from('iqbuild_projects').select('*').order('created_at', { ascending: false });
+  projects = data || [];
+}
+
+async function loadMilestoneTemplates() {
+  const { data } = await supabase.from('iqbuild_milestone_templates').select('*').order('sort_order');
+  milestoneTemplates = data || [];
+}
+
+async function loadProjectDetail(projectId) {
+  const { data: proj } = await supabase.from('iqbuild_projects').select('*').eq('id', projectId).single();
+  if (!proj) return null;
+
+  const { data: buildings } = await supabase.from('iqbuild_buildings').select('*').eq('project_id', projectId).order('sort_order');
+  proj.buildings = buildings || [];
+
+  for (const bld of proj.buildings) {
+    const { data: floors } = await supabase.from('iqbuild_floors').select('*').eq('building_id', bld.id).order('floor_number');
+    bld.floors = floors || [];
+    for (const fl of bld.floors) {
+      const { data: units } = await supabase.from('iqbuild_units').select('*').eq('floor_id', fl.id).order('unit_number');
+      fl.units = units || [];
+    }
+  }
+
+  const { data: deliveries } = await supabase.from('iqbuild_deliveries').select('*').eq('project_id', projectId).order('delivery_date');
+  proj.deliveries = deliveries || [];
+
+  const { data: teamMembers } = await supabase.from('iqbuild_team_members').select('*').eq('project_id', projectId).order('created_at');
+  proj.team = teamMembers || [];
+
+  const { data: packages } = await supabase.from('iqbuild_packages').select('*, iqbuild_package_items(*)').eq('project_id', projectId).order('created_at');
+  proj.packages = packages || [];
+
+  const { data: contacts } = await supabase.from('iqbuild_project_contacts').select('*').eq('project_id', projectId).eq('active', true).order('role, name');
+  proj.contacts = contacts || [];
+
+  const { data: signoffs } = await supabase.from('iqbuild_signoffs').select('*').eq('project_id', projectId).order('signed_at', { ascending: false }).limit(50);
+  proj.signoffs = signoffs || [];
+
+  const { data: installations } = await supabase.from('iqbuild_installations').select('labour_cost, parts_cost, total_cost, status').eq('project_id', projectId);
+  proj.installations_summary = {
+    count: (installations || []).length,
+    total: (installations || []).reduce((a, i) => a + Number(i.total_cost || 0), 0),
+    labour: (installations || []).reduce((a, i) => a + Number(i.labour_cost || 0), 0),
+    parts: (installations || []).reduce((a, i) => a + Number(i.parts_cost || 0), 0),
+    pending: (installations || []).filter(i => i.status !== 'complete' && i.status !== 'cancelled').length,
+  };
+
+  return proj;
+}
+
+async function loadUnitDetail(unitId) {
+  const { data: unit } = await supabase.from('iqbuild_units').select('*').eq('id', unitId).single();
+  if (!unit) return null;
+
+  const { data: appliances } = await supabase.from('iqbuild_unit_appliances').select('*').eq('unit_id', unitId).order('appliance_type');
+  unit.appliances = appliances || [];
+
+  const { data: milestones } = await supabase.from('iqbuild_unit_milestones').select('*, iqbuild_milestone_templates(*)').eq('unit_id', unitId).order('created_at');
+  unit.milestones = milestones || [];
+
+  const { data: installations } = await supabase.from('iqbuild_installations').select('*, iqbuild_installation_parts(*)').eq('unit_id', unitId).order('scheduled_date');
+  unit.installations = installations || [];
+
+  return unit;
+}
+
+// ========== RENDER ==========
+function render() {
+  if (!currentUser) return renderLogin();
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="app-shell">
+      ${renderSidebar()}
+      <div class="main" id="main-content"></div>
+    </div>
+  `;
+  bindNav();
+  renderView();
+}
+
+function renderSidebar() {
+  const navItems = [
+    { id: 'dashboard', icon: icons.dashboard, label: 'Dashboard' },
+    { id: 'crm-import', icon: icons.import, label: 'CRM Import' },
+    { id: 'projects', icon: icons.projects, label: 'Projects' },
+    { id: 'packages', icon: icons.packages, label: 'Packages' },
+    { id: 'deliveries', icon: icons.deliveries, label: 'Deliveries' },
+    { id: 'milestones', icon: icons.milestones, label: 'Milestones' },
+  ];
+  return `
+    <div class="sidebar">
+      <div class="sidebar-logo">${icons.projects} IQ <span>Build</span></div>
+      <nav>
+        ${navItems.map(n => `
+          <div class="nav-item ${currentView === n.id ? 'active' : ''}" data-view="${n.id}">
+            ${n.icon}<span>${n.label}</span>
+          </div>
+        `).join('')}
+      </nav>
+      <div class="sidebar-user">
+        <strong>${currentUser?.email?.split('@')[0] || 'User'}</strong>
+        ${currentUser?.email || ''}
+        <div style="margin-top:.5rem"><a href="#" id="logout-link" style="color:rgba(255,255,255,0.5);font-size:.75rem">Sign Out</a></div>
+      </div>
+    </div>
+  `;
+}
+
+function bindNav() {
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.onclick = () => {
+      currentView = el.dataset.view;
+      currentProject = null;
+      currentBuilding = null;
+      currentUnit = null;
+      render();
+    };
+  });
+  document.getElementById('logout-link').onclick = (e) => { e.preventDefault(); handleLogout(); };
+}
+
+async function renderView() {
+  const main = document.getElementById('main-content');
+  switch (currentView) {
+    case 'dashboard': await renderDashboard(main); break;
+    case 'crm-import': await renderCRMImport(main); break;
+    case 'projects': await renderProjects(main); break;
+    case 'project-detail': await renderProjectDetail(main); break;
+    case 'unit-detail': await renderUnitDetail(main); break;
+    case 'packages': await renderPackages(main); break;
+    case 'deliveries': await renderDeliveries(main); break;
+    case 'milestones': await renderMilestoneTemplatesView(main); break;
+    default: await renderDashboard(main);
+  }
+}
+
+// ========== DASHBOARD ==========
+async function renderDashboard(el) {
+  await loadProjects();
+  const totalUnits = projects.reduce((a, p) => a + (p.total_units || 0), 0);
+  const activeProjects = projects.filter(p => p.status === 'active').length;
+  const completedProjects = projects.filter(p => p.status === 'completed').length;
+  const totalBudget = projects.reduce((a, p) => a + Number(p.budget_total || 0), 0);
+  const signedOffProjects = projects.filter(p => p.signed_off).length;
+
+  // Load installation totals
+  const { data: instData } = await supabase.from('iqbuild_installations').select('labour_cost, parts_cost, total_cost, status');
+  const allInst = instData || [];
+  const totalInstCost = allInst.reduce((a, i) => a + Number(i.total_cost || 0), 0);
+  const totalLabour = allInst.reduce((a, i) => a + Number(i.labour_cost || 0), 0);
+  const totalParts = allInst.reduce((a, i) => a + Number(i.parts_cost || 0), 0);
+  const pendingInst = allInst.filter(i => i.status === 'pending' || i.status === 'scheduled').length;
+
+  // Load recent signoffs
+  const { data: recentSignoffs } = await supabase.from('iqbuild_signoffs').select('*').order('signed_at', { ascending: false }).limit(5);
+
+  // Load pending deliveries
+  const { data: pendingDeliveries } = await supabase.from('iqbuild_deliveries').select('*, iqbuild_projects(name)').in('status', ['scheduled', 'in_transit']).order('delivery_date').limit(5);
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Dashboard</h1></div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Projects</div><div class="value">${projects.length}</div><div class="sub">${activeProjects} active · ${completedProjects} complete</div></div>
+      <div class="stat-card"><div class="label">Total Units</div><div class="value">${totalUnits.toLocaleString()}</div><div class="sub">${signedOffProjects} projects signed off</div></div>
+      <div class="stat-card"><div class="label">Project Budget</div><div class="value">${formatCurrency(totalBudget)}</div><div class="sub">across all projects</div></div>
+      <div class="stat-card"><div class="label">Installation Costs</div><div class="value">${formatCurrency(totalInstCost)}</div><div class="sub">labour: ${formatCurrency(totalLabour)} · parts: ${formatCurrency(totalParts)}</div></div>
+      <div class="stat-card"><div class="label">Pending</div><div class="value">${pendingInst}</div><div class="sub">installations to schedule</div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.25rem">
+      <!-- Upcoming Deliveries -->
+      <div class="card">
+        <div class="card-header"><h3>Upcoming Deliveries</h3></div>
+        ${(pendingDeliveries || []).length ? `
+          ${(pendingDeliveries || []).map(d => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.85rem">
+              <div><strong>${formatDate(d.delivery_date)}</strong> — ${d.iqbuild_projects?.name || '—'}<br><span style="font-size:.75rem;color:var(--text-muted)">${d.carrier || ''} · ${d.total_items} items · ${d.target_floors || ''}</span></div>
+              <div>${statusBadge(d.status)}</div>
+            </div>
+          `).join('')}
+        ` : '<p style="font-size:.85rem;color:var(--text-muted);padding:.5rem 0">No upcoming deliveries.</p>'}
+      </div>
+
+      <!-- Recent Sign-Offs -->
+      <div class="card">
+        <div class="card-header"><h3>Recent Sign-Offs</h3></div>
+        ${(recentSignoffs || []).length ? `
+          ${(recentSignoffs || []).map(s => `
+            <div style="padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.85rem">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <strong>${s.signed_by}</strong> <span class="badge ${s.signoff_type === 'completion' ? 'badge-green' : s.signoff_type === 'damage_report' ? 'badge-red' : 'badge-blue'}">${s.signoff_type.replace(/_/g,' ')}</span>
+              </div>
+              <span style="font-size:.75rem;color:var(--text-muted)">${s.entity_type} · ${s.signed_role || ''} · ${formatDate(s.signed_at)}</span>
+            </div>
+          `).join('')}
+        ` : '<p style="font-size:.85rem;color:var(--text-muted);padding:.5rem 0">No sign-offs yet.</p>'}
+      </div>
+    </div>
+
+    <!-- Projects Table -->
+    <div class="card">
+      <div class="card-header"><h3>All Projects</h3><button class="btn-primary btn-sm" id="dash-new-proj">${icons.plus} New Project</button></div>
+      ${projects.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Project</th><th>Type</th><th>Status</th><th>Units</th><th>Budget</th><th>Signed Off</th><th>Completion</th></tr></thead>
+          <tbody>
+            ${projects.map(p => `
+              <tr data-id="${p.id}" class="proj-row">
+                <td><strong>${p.name}</strong>${p.imported_from_crm ? ' <span class="badge badge-green" style="font-size:.55rem">CRM</span>' : ''}<br><span style="font-size:.75rem;color:var(--text-muted)">${p.address_city || ''} ${p.address_province || ''}</span></td>
+                <td>${statusBadge(p.project_type)}</td>
+                <td>${statusBadge(p.status)}</td>
+                <td>${p.total_units || 0}</td>
+                <td>${formatCurrency(p.budget_total)}</td>
+                <td>${p.signed_off ? '<span class="badge badge-green">✅</span>' : '<span class="badge badge-gray">—</span>'}</td>
+                <td>${formatDate(p.estimated_completion)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table></div>
+      ` : `<div class="empty-state"><p>No projects yet. Import from CRM or create your first project.</p></div>`}
+    </div>
+  `;
+  el.querySelectorAll('.proj-row').forEach(r => {
+    r.onclick = () => openProject(r.dataset.id);
+  });
+  document.getElementById('dash-new-proj').onclick = () => showProjectModal();
+}
+
+// ========== CRM IMPORT ==========
+async function renderCRMImport(el) {
+  // Load won deals that haven't been imported yet
+  const { data: wonDeals } = await supabase.from('crm_deals')
+    .select('*, contacts:contact_id(id, first_name, last_name, email, phone), companies:company_id(id, name, display_name, city, region, main_phone, general_email)')
+    .in('stage', ['Closed Won', 'Delivery Scheduled'])
+    .order('closed_at', { ascending: false });
+
+  // Check which deals already have IQ Build projects
+  const { data: existingProjects } = await supabase.from('iqbuild_projects')
+    .select('crm_deal_id')
+    .not('crm_deal_id', 'is', null);
+  const importedDealIds = new Set((existingProjects || []).map(p => p.crm_deal_id));
+
+  const deals = (wonDeals || []).map(d => ({ ...d, already_imported: importedDealIds.has(d.id) }));
+  const available = deals.filter(d => !d.already_imported);
+  const imported = deals.filter(d => d.already_imported);
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Import from CRM</h1></div>
+    <p style="color:var(--text-light);margin-bottom:1.25rem;font-size:.9rem">Won deals from CRM appear here. Import them to create IQ Build projects with all Spec IQ packages and product selections carried over.</p>
+
+    <!-- Available to import -->
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-header"><h3>Ready to Import (${available.length})</h3></div>
+      ${available.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Deal</th><th>Contact</th><th>Company</th><th>Value</th><th>Stage</th><th>Won Date</th><th>Delivery</th><th></th></tr></thead>
+          <tbody>${available.map(d => {
+            const contact = d.contacts;
+            const company = d.companies;
+            const contactName = contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '—';
+            return `
+              <tr>
+                <td><strong>${d.title}</strong><br><span style="font-size:.75rem;color:var(--text-muted)">${d.record_type || 'individual'}</span></td>
+                <td>${contactName}<br><span style="font-size:.75rem;color:var(--text-muted)">${contact?.email || ''}</span></td>
+                <td>${company?.name || company?.display_name || '—'}<br><span style="font-size:.75rem;color:var(--text-muted)">${company?.city || ''} ${company?.region || ''}</span></td>
+                <td>${formatCurrency(d.value_amount)}</td>
+                <td>${statusBadge(d.stage?.toLowerCase().replace(/\s/g, '_'))}</td>
+                <td>${formatDate(d.closed_at)}</td>
+                <td>${formatDate(d.delivery_date)}</td>
+                <td><button class="btn-primary btn-sm import-deal-btn" data-deal="${d.id}">Import →</button></td>
+              </tr>
+            `;
+          }).join('')}</tbody>
+        </table></div>
+      ` : '<div class="empty-state" style="padding:1.5rem"><p>No won deals available to import. Win deals in the CRM first!</p></div>'}
+    </div>
+
+    <!-- Already imported -->
+    ${imported.length ? `
+      <div class="card">
+        <div class="card-header"><h3>Already Imported (${imported.length})</h3></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Deal</th><th>Contact</th><th>Value</th><th>Won Date</th><th>Status</th></tr></thead>
+          <tbody>${imported.map(d => {
+            const contact = d.contacts;
+            const contactName = contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '—';
+            return `
+              <tr style="opacity:.6;cursor:default">
+                <td>${d.title}</td>
+                <td>${contactName}</td>
+                <td>${formatCurrency(d.value_amount)}</td>
+                <td>${formatDate(d.closed_at)}</td>
+                <td><span class="badge badge-green">Imported</span></td>
+              </tr>
+            `;
+          }).join('')}</tbody>
+        </table></div>
+      </div>
+    ` : ''}
+  `;
+
+  // Bind import buttons
+  el.querySelectorAll('.import-deal-btn').forEach(btn => {
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const dealId = btn.dataset.deal;
+      const deal = deals.find(d => d.id === dealId);
+      if (!deal) return;
+      await showImportPreview(deal);
+    };
+  });
+}
+
+async function showImportPreview(deal) {
+  const contact = deal.contacts;
+  const company = deal.companies;
+  const contactName = contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : '';
+
+  // Load Spec IQ data for this deal
+  const { data: speciqPackages } = await supabase.from('speciq_packages')
+    .select('*, speciq_package_products:speciq_package_products(*)')
+    .eq('deal_id', deal.id)
+    .is('deleted_at', null);
+
+  const { data: speciqProject } = await supabase.from('speciq_projects')
+    .select('*')
+    .eq('deal_id', deal.id)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  const pkgs = speciqPackages || [];
+  const totalProducts = pkgs.reduce((a, p) => a + (p.speciq_package_products?.length || 0), 0);
+
+  // Build the preview modal
+  showModal('Import Deal → IQ Build Project', `
+    <div style="background:var(--bg);border-radius:8px;padding:1rem;margin-bottom:1rem">
+      <h4 style="margin-bottom:.5rem">${deal.title}</h4>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.85rem;color:var(--text-light)">
+        <div><strong>Value:</strong> ${formatCurrency(deal.value_amount)}</div>
+        <div><strong>Won:</strong> ${formatDate(deal.closed_at)}</div>
+        <div><strong>Contact:</strong> ${contactName || '—'}</div>
+        <div><strong>Company:</strong> ${company?.name || '—'}</div>
+        ${speciqProject ? `<div><strong>Address:</strong> ${speciqProject.property_address || '—'}</div>` : ''}
+        ${speciqProject ? `<div><strong>Builder:</strong> ${speciqProject.builder_name || '—'}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- Spec IQ Packages found -->
+    <div style="margin-bottom:1rem">
+      <h4 style="margin-bottom:.5rem;font-size:.9rem">${icons.packages} Spec IQ Packages (${pkgs.length})</h4>
+      ${pkgs.length ? pkgs.map(pk => `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.5rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+            <strong>${pk.package_name || 'Unnamed Package'}</strong>
+            <span style="font-size:.8rem;color:var(--text-muted)">${pk.speciq_package_products?.length || 0} products • ${formatCurrency(pk.total_final || pk.total_negotiated || pk.total_msrp)}</span>
+          </div>
+          ${pk.speciq_package_products?.length ? `
+            <div style="font-size:.8rem;color:var(--text-light)">
+              ${pk.speciq_package_products.map(pr => `<span style="display:inline-block;background:var(--bg);padding:2px 8px;border-radius:4px;margin:2px">${pr.brand || ''} ${pr.model_number || ''} <span style="color:var(--text-muted)">(${pr.category || pr.subcategory || ''})</span></span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `).join('') : '<p style="font-size:.85rem;color:var(--text-muted)">No Spec IQ packages found for this deal. A blank project will be created.</p>'}
+    </div>
+
+    <!-- Project settings -->
+    <h4 style="margin-bottom:.5rem;font-size:.9rem">Project Settings</h4>
+    <div class="form-group"><label>Project Name</label><input id="m-imp-name" value="${deal.title}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Project Type</label><select id="m-imp-type">${projectTypes.map(t => `<option value="${t}" ${(speciqProject?.project_name || '').toLowerCase().includes(t) || (deal.record_type === 'builder' && t === 'condo') ? 'selected' : ''}>${t.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Status</label><select id="m-imp-status"><option value="planning">Planning</option><option value="pre_construction">Pre-Construction</option><option value="active" selected>Active</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Developer Name</label><input id="m-imp-dev" value="${speciqProject?.builder_name || company?.name || ''}"></div>
+      <div class="form-group"><label>Developer Email</label><input id="m-imp-devemail" value="${company?.general_email || contact?.email || ''}"></div>
+    </div>
+    <div class="form-group"><label>Address</label><input id="m-imp-address" value="${speciqProject?.property_address || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>City</label><input id="m-imp-city" value="${company?.city || ''}"></div>
+      <div class="form-group"><label>Province</label><input id="m-imp-prov" value="${company?.region || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Delivery Date</label><input type="date" id="m-imp-delivery" value="${deal.delivery_date || ''}"></div>
+      <div class="form-group"><label>Budget</label><input type="number" id="m-imp-budget" value="${deal.value_amount || ''}"></div>
+    </div>
+
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem;margin-top:1rem;font-size:.85rem;color:#166534">
+      <strong>Will create:</strong> 1 project${pkgs.length ? ` + ${pkgs.length} appliance package${pkgs.length > 1 ? 's' : ''} with ${totalProducts} product${totalProducts !== 1 ? 's' : ''}` : ''} — all linked back to CRM deal &amp; Spec IQ.
+    </div>
+  `, async () => {
+    return await executeImport(deal, pkgs, speciqProject);
+  });
+}
+
+async function executeImport(deal, speciqPackages, speciqProject) {
+  const contact = deal.contacts;
+  const company = deal.companies;
+
+  // 1. Create the IQ Build project
+  const projectRecord = {
+    name: document.getElementById('m-imp-name').value.trim() || deal.title,
+    project_type: document.getElementById('m-imp-type').value,
+    status: document.getElementById('m-imp-status').value,
+    developer_name: document.getElementById('m-imp-dev').value.trim() || null,
+    developer_contact_email: document.getElementById('m-imp-devemail').value.trim() || null,
+    developer_contact_phone: company?.main_phone || contact?.phone || null,
+    address_street: document.getElementById('m-imp-address').value.trim() || null,
+    address_city: document.getElementById('m-imp-city').value.trim() || null,
+    address_province: document.getElementById('m-imp-prov').value.trim() || null,
+    estimated_completion: document.getElementById('m-imp-delivery').value || null,
+    budget_total: parseFloat(document.getElementById('m-imp-budget').value) || null,
+    crm_deal_id: deal.id,
+    crm_contact_id: deal.contact_id || null,
+    crm_company_id: deal.company_id || null,
+    speciq_project_id: speciqProject?.id || null,
+    imported_from_crm: true,
+    import_summary: {
+      deal_title: deal.title,
+      deal_value: deal.value_amount,
+      contact_name: contact ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim() : null,
+      contact_email: contact?.email,
+      company_name: company?.name,
+      speciq_packages_count: speciqPackages.length,
+      speciq_products_count: speciqPackages.reduce((a, p) => a + (p.speciq_package_products?.length || 0), 0),
+      imported_at: new Date().toISOString(),
+    },
+    total_buildings: 1,
+    created_by: currentUser.id,
+  };
+
+  const { data: newProject, error: projError } = await supabase.from('iqbuild_projects').insert(projectRecord).select().single();
+  if (projError) { toast('Error creating project: ' + projError.message); return false; }
+
+  // 2. Import Spec IQ packages → iqbuild_packages + iqbuild_package_items
+  let totalPackages = 0;
+  let totalItems = 0;
+
+  for (const pkg of speciqPackages) {
+    const pkgRecord = {
+      organization_id: newProject.organization_id,
+      project_id: newProject.id,
+      name: pkg.package_name || `Package from Spec IQ`,
+      description: `Imported from Spec IQ — ${pkg.unit_type || ''} ${pkg.project_type || ''} — Quote #${pkg.quote_number || 'N/A'}`.trim(),
+      is_builder_grade: true,
+      unit_type: pkg.unit_type || null,
+      base_cost: Number(pkg.total_final || pkg.total_negotiated || pkg.total_msrp || 0),
+      upgrade_cost: 0,
+      speciq_package_id: pkg.id,
+    };
+
+    const { data: newPkg, error: pkgError } = await supabase.from('iqbuild_packages').insert(pkgRecord).select().single();
+    if (pkgError) { console.error('Package import error:', pkgError); continue; }
+    totalPackages++;
+
+    // Import products as package items
+    const products = pkg.speciq_package_products || [];
+    if (products.length) {
+      const items = products.map((pr, idx) => ({
+        package_id: newPkg.id,
+        appliance_type: mapCategory(pr.category || pr.subcategory || 'other'),
+        brand: pr.brand || null,
+        model: pr.model_number || null,
+        product_id: pr.aiq_product_id || null,
+        unit_cost: Number(pr.negotiated_price || pr.promo_price || pr.msrp || 0),
+        sort_order: pr.sort_order || idx,
+        notes: [pr.short_description, pr.key_benefits].filter(Boolean).join(' — ') || null,
+        speciq_product_id: pr.id,
+        aiq_product_id: pr.aiq_product_id || null,
+        category: pr.category || null,
+        finish: pr.finish || null,
+        electrical_requirements: pr.electrical_requirements || null,
+        gas_requirements: pr.gas_requirements || null,
+        water_requirements: pr.water_requirements || null,
+        ventilation_requirements: pr.ventilation_requirements || null,
+        installation_type: pr.installation_type || null,
+        msrp: pr.msrp ? Number(pr.msrp) : null,
+        negotiated_price: pr.negotiated_price ? Number(pr.negotiated_price) : null,
+        image_url: pr.image_url || null,
+        width_inches: pr.width_inches ? Number(pr.width_inches) : null,
+        height_inches: pr.height_inches ? Number(pr.height_inches) : null,
+        depth_inches: pr.depth_inches ? Number(pr.depth_inches) : null,
+      }));
+
+      const { error: itemsError } = await supabase.from('iqbuild_package_items').insert(items);
+      if (itemsError) console.error('Items import error:', itemsError);
+      else totalItems += items.length;
+    }
+  }
+
+  // 3. Log the import activity
+  await logActivity(newProject.id, 'project', newProject.id, 'imported_from_crm', null, deal.id,
+    `Project imported from CRM deal "${deal.title}" — ${totalPackages} packages, ${totalItems} products from Spec IQ`
+  );
+
+  toast(`Imported! ${totalPackages} packages, ${totalItems} products`);
+  
+  // Navigate to the new project
+  currentProject = await loadProjectDetail(newProject.id);
+  currentView = 'project-detail';
+  render();
+  return true;
+}
+
+function mapCategory(category) {
+  if (!category) return 'other';
+  const cat = category.toLowerCase();
+  if (cat.includes('refrig') || cat.includes('fridge')) return 'refrigerator';
+  if (cat.includes('range') || cat.includes('stove')) return 'range';
+  if (cat.includes('cooktop')) return 'cooktop';
+  if (cat.includes('wall oven') || cat.includes('walloven')) return 'wall_oven';
+  if (cat.includes('dishwash')) return 'dishwasher';
+  if (cat.includes('hood') || cat.includes('vent')) return 'hood';
+  if (cat.includes('micro')) return 'microwave';
+  if (cat.includes('wash') && !cat.includes('dish')) return 'washer';
+  if (cat.includes('dryer')) return 'dryer';
+  if (cat.includes('freez')) return 'freezer';
+  if (cat.includes('wine')) return 'wine_cooler';
+  if (cat.includes('ice')) return 'ice_maker';
+  if (cat.includes('dispos')) return 'garbage_disposal';
+  if (cat.includes('compact')) return 'compactor';
+  return category;
+}
+
+// ========== PROJECTS LIST ==========
+async function renderProjects(el) {
+  await loadProjects();
+  el.innerHTML = `
+    <div class="page-header"><h1>Projects</h1><button class="btn-primary" id="new-proj-btn">${icons.plus} New Project</button></div>
+    <div class="card">
+      ${projects.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Project</th><th>Developer</th><th>Type</th><th>Status</th><th>Buildings</th><th>Units</th><th>Budget</th><th>Est. Completion</th></tr></thead>
+          <tbody>
+            ${projects.map(p => `
+              <tr data-id="${p.id}" class="proj-row">
+                <td><strong>${p.name}</strong>${p.imported_from_crm ? ' <span class="badge badge-green" style="font-size:.6rem">CRM</span>' : ''}</td>
+                <td>${p.developer_name || '—'}</td>
+                <td>${statusBadge(p.project_type)}</td>
+                <td>${statusBadge(p.status)}</td>
+                <td>${p.total_buildings || 0}</td>
+                <td>${p.total_units || 0}</td>
+                <td>${formatCurrency(p.budget_total)}</td>
+                <td>${formatDate(p.estimated_completion)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table></div>
+      ` : `<div class="empty-state"><p>No projects yet.</p><button class="btn-primary" id="empty-new-proj">${icons.plus} Create First Project</button></div>`}
+    </div>
+  `;
+  const newBtn = document.getElementById('new-proj-btn') || document.getElementById('empty-new-proj');
+  if (newBtn) newBtn.onclick = () => showProjectModal();
+  el.querySelectorAll('.proj-row').forEach(r => {
+    r.onclick = () => openProject(r.dataset.id);
+  });
+}
+
+async function openProject(id) {
+  currentProject = await loadProjectDetail(id);
+  if (!currentProject) return toast('Project not found');
+  currentView = 'project-detail';
+  render();
+}
+
+// ========== PROJECT DETAIL ==========
+async function renderProjectDetail(el) {
+  if (!currentProject) { currentView = 'projects'; render(); return; }
+  const p = currentProject;
+  const allUnits = [];
+  p.buildings.forEach(b => b.floors.forEach(f => f.units.forEach(u => allUnits.push(u))));
+  const statusCounts = {};
+  allUnits.forEach(u => { statusCounts[u.status] = (statusCounts[u.status] || 0) + 1; });
+  const completeCount = statusCounts['complete'] || 0;
+  const pct = allUnits.length ? Math.round((completeCount / allUnits.length) * 100) : 0;
+  const activeTab = currentBuilding ? 'building' : 'overview';
+
+  el.innerHTML = `
+    <div class="breadcrumb"><span onclick="window._nav('projects')">Projects</span><span class="sep">›</span><span>${p.name}</span></div>
+    <div class="page-header">
+      <h1>${p.name}</h1>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-outline btn-sm" id="edit-proj-btn">${icons.edit} Edit</button>
+        <button class="btn-primary btn-sm" id="add-building-btn">${icons.plus} Add Building</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Status</div><div class="value" style="font-size:1rem;margin-top:.5rem">${statusBadge(p.status)}</div></div>
+      <div class="stat-card"><div class="label">Buildings</div><div class="value">${p.buildings.length}</div></div>
+      <div class="stat-card"><div class="label">Units</div><div class="value">${allUnits.length}</div><div class="sub">${completeCount} complete</div></div>
+      <div class="stat-card"><div class="label">Progress</div><div class="value">${pct}%</div>
+        <div class="pipeline">${unitStatuses.filter(s => s !== 'on_hold').map(s => `<div class="pipeline-step ${statusCounts[s] ? 'done' : ''}" title="${s}: ${statusCounts[s] || 0}"></div>`).join('')}</div>
+      </div>
+      <div class="stat-card"><div class="label">Budget</div><div class="value">${formatCurrency(p.budget_total)}</div><div class="sub">spent: ${formatCurrency(p.budget_spent)}</div></div>
+      <div class="stat-card"><div class="label">Installation</div><div class="value">${formatCurrency(p.installations_summary.total)}</div><div class="sub">labour: ${formatCurrency(p.installations_summary.labour)} · parts: ${formatCurrency(p.installations_summary.parts)}${p.installations_summary.pending ? ' · ' + p.installations_summary.pending + ' pending' : ''}</div></div>
+    </div>
+
+    ${p.imported_from_crm ? `
+    <!-- CRM Source Banner -->
+    <div class="card" style="margin-bottom:1rem;padding:.75rem 1rem;border-left:3px solid var(--green);background:#f0fdf4">
+      <div style="display:flex;align-items:center;gap:.6rem;font-size:.85rem;flex-wrap:wrap">
+        ${icons.link} <strong style="color:var(--green)">Imported from CRM</strong>
+        <span style="color:var(--text-light)">Deal: ${p.import_summary?.deal_title || '—'}</span>
+        <span style="color:var(--text-muted)">•</span>
+        <span style="color:var(--text-light)">Value: ${formatCurrency(p.import_summary?.deal_value)}</span>
+        ${p.import_summary?.speciq_packages_count ? `<span style="color:var(--text-muted)">•</span><span style="color:var(--text-light)">${p.import_summary.speciq_packages_count} Spec IQ packages (${p.import_summary.speciq_products_count} products)</span>` : ''}
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Unit Status Legend -->
+    <div class="card" style="margin-bottom:1rem;padding:.75rem 1rem">
+      <div style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;font-size:.75rem">
+        <strong style="margin-right:.25rem">Unit Status:</strong>
+        ${unitStatuses.map(s => `<span style="display:flex;align-items:center;gap:4px"><span class="unit-dot ${s}" style="width:14px;height:14px;font-size:0"></span>${s.replace(/_/g,' ')}</span>`).join('')}
+      </div>
+    </div>
+
+    <!-- Buildings -->
+    ${p.buildings.length ? p.buildings.map(bld => `
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-header">
+          <h3>${bld.name} <span style="font-weight:400;color:var(--text-muted);font-size:.85rem">(${bld.floors.reduce((a,f) => a + f.units.length, 0)} units)</span></h3>
+          <div style="display:flex;gap:.4rem">
+            <button class="btn-outline btn-sm add-floor-btn" data-bld="${bld.id}">${icons.plus} Floor</button>
+            <button class="btn-outline btn-sm edit-bld-btn" data-bld="${bld.id}">${icons.edit}</button>
+          </div>
+        </div>
+        ${bld.floors.length ? bld.floors.map(fl => `
+          <div class="floor-strip" data-floor="${fl.id}">
+            <div class="floor-label">${fl.floor_label || 'Floor ' + fl.floor_number}</div>
+            <div class="floor-units">
+              ${fl.units.length ? fl.units.map(u => `
+                <div class="unit-dot ${u.status}" data-unit="${u.id}" title="${u.unit_number} — ${u.status.replace(/_/g,' ')}">${u.unit_number.length <= 3 ? u.unit_number : ''}</div>
+              `).join('') : '<span style="font-size:.75rem;color:var(--text-muted)">No units</span>'}
+            </div>
+            <button class="btn-outline btn-sm add-unit-btn" data-floor="${fl.id}" onclick="event.stopPropagation()">${icons.plus}</button>
+          </div>
+        `).join('') : '<div class="empty-state" style="padding:1.5rem"><p>No floors yet. Add floors to this building.</p></div>'}
+      </div>
+    `).join('') : `<div class="card"><div class="empty-state"><p>No buildings yet. Add your first building to start tracking units.</p></div></div>`}
+
+    <!-- Deliveries summary -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Deliveries (${p.deliveries.length})</h3><button class="btn-outline btn-sm" id="add-delivery-btn">${icons.plus} Schedule</button></div>
+      ${p.deliveries.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>PO#</th><th>Carrier</th><th>Target</th><th>Items</th><th>Status</th></tr></thead>
+          <tbody>${p.deliveries.map(d => `
+            <tr><td>${formatDate(d.delivery_date)}</td><td>${d.po_number || '—'}</td><td>${d.carrier || '—'}</td>
+            <td>${d.target_floors || '—'}</td><td>${d.received_items}/${d.total_items}</td><td>${statusBadge(d.status)}</td></tr>
+          `).join('')}</tbody>
+        </table></div>
+      ` : '<p style="font-size:.85rem;color:var(--text-muted);padding:.5rem 0">No deliveries scheduled yet.</p>'}
+    </div>
+
+    <!-- Site Contacts (non-CRM) -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>${icons.team} Site Contacts (${p.contacts.length})</h3><button class="btn-outline btn-sm" id="add-contact-btn">${icons.plus} Contact</button></div>
+      <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.75rem">Site-specific contacts — superintendents, inspectors, contractors, building access. Not in your CRM.</p>
+      ${p.contacts.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Name</th><th>Role</th><th>Company</th><th>Phone</th><th>Email</th><th>Availability</th><th></th></tr></thead>
+          <tbody>${p.contacts.map(c => `
+            <tr>
+              <td><strong>${c.name}</strong>${c.is_primary ? ' <span class="badge badge-green" style="font-size:.55rem">PRIMARY</span>' : ''}${c.title ? '<br><span style="font-size:.75rem;color:var(--text-muted)">' + c.title + '</span>' : ''}</td>
+              <td>${statusBadge(c.role)}</td>
+              <td>${c.company || '—'}</td>
+              <td>${c.phone || c.mobile || '—'}${c.mobile && c.phone ? '<br><span style="font-size:.75rem;color:var(--text-muted)">M: ' + c.mobile + '</span>' : ''}</td>
+              <td>${c.email || '—'}</td>
+              <td style="font-size:.8rem">${c.availability || '—'}${c.access_instructions ? '<br><span style="font-size:.75rem;color:var(--text-muted)">' + c.access_instructions + '</span>' : ''}</td>
+              <td><button class="btn-icon btn-sm edit-contact-btn" data-id="${c.id}">${icons.edit}</button></td>
+            </tr>
+            ${c.notes ? `<tr><td colspan="7" style="padding:.2rem .75rem .4rem;font-size:.8rem;color:var(--text-light);border-bottom:1px solid var(--border)"><em>${c.notes}</em></td></tr>` : ''}
+          `).join('')}</tbody>
+        </table></div>
+      ` : '<div class="empty-state" style="padding:1.5rem"><p>No site contacts added yet. Add superintendents, inspectors, contractors, and building access contacts before deployment.</p></div>'}
+    </div>
+
+    <!-- Your Team (internal CRM users) -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Your Team (${p.team.length})</h3><button class="btn-outline btn-sm" id="add-team-btn">${icons.plus} Member</button></div>
+      ${p.team.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th></tr></thead>
+          <tbody>${p.team.map(t => `
+            <tr><td><strong>${t.name}</strong></td><td>${statusBadge(t.role)}</td><td>${t.email || '—'}</td><td>${t.phone || '—'}</td></tr>
+          `).join('')}</tbody>
+        </table></div>
+      ` : '<p style="font-size:.85rem;color:var(--text-muted);padding:.5rem 0">No team members assigned.</p>'}
+    </div>
+
+    <!-- Unit Sign-Off Summary -->
+    ${allUnits.length ? `
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Unit Completion Tracking</h3></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Unit</th><th>Floor</th><th>Status</th><th>Signed Off</th><th>Signed By</th><th>Date</th></tr></thead>
+        <tbody>${allUnits.map(u => `
+          <tr class="unit-signoff-row" data-unit="${u.id}" style="cursor:pointer">
+            <td><strong>${u.unit_number}</strong></td>
+            <td>${u.unit_type || '—'}</td>
+            <td>${statusBadge(u.status)}</td>
+            <td>${u.signed_off ? '<span class="badge badge-green">✅ Yes</span>' : '<span class="badge badge-gray">Pending</span>'}</td>
+            <td>${u.signoff_name || '—'}</td>
+            <td>${u.signed_off ? formatDate(u.signoff_date) : '—'}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table></div>
+    </div>
+    ` : ''}
+
+    <!-- Project Sign-Off -->
+    <div class="card" style="${p.signed_off ? 'border-color:var(--green);border-width:2px' : ''}">
+      <div class="card-header"><h3>${p.signed_off ? '✅ Project Signed Off' : 'Project Sign-Off'}</h3>
+        ${!p.signed_off ? `<button class="btn-primary btn-sm" id="signoff-proj-btn">Sign Off Project</button>` : ''}
+      </div>
+      ${p.signed_off ? `
+        <div style="font-size:.85rem;padding:.25rem 0">
+          <p><strong>Signed by:</strong> ${p.signoff_name}</p>
+          <p><strong>Date:</strong> ${formatDate(p.signoff_date)}</p>
+          ${p.signoff_notes ? `<p><strong>Notes:</strong> ${p.signoff_notes}</p>` : ''}
+        </div>
+      ` : `
+        <p style="font-size:.85rem;color:var(--text-muted)">
+          ${allUnits.length ? `${allUnits.filter(u => u.signed_off).length} of ${allUnits.length} units signed off.` : 'Add units and complete them before signing off the project.'}
+          ${allUnits.length && allUnits.every(u => u.signed_off) ? '<br><strong style="color:var(--green)">All units complete — ready for project sign-off.</strong>' : ''}
+        </p>
+      `}
+    </div>
+
+    <!-- Digital Sign-Off Audit Trail -->
+    ${p.signoffs.length ? `
+    <div class="card" style="margin-top:1rem">
+      <div class="card-header"><h3>Digital Sign-Off Log (${p.signoffs.length})</h3></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date/Time</th><th>Type</th><th>Entity</th><th>Signed By</th><th>Role</th><th>Company</th><th>Acknowledgment</th></tr></thead>
+        <tbody>${p.signoffs.map(s => `
+          <tr>
+            <td style="font-size:.8rem;white-space:nowrap">${s.signed_at ? new Date(s.signed_at).toLocaleString('en-CA') : '—'}</td>
+            <td>${statusBadge(s.signoff_type)}</td>
+            <td><span class="badge badge-gray">${s.entity_type}</span></td>
+            <td><strong>${s.signed_by}</strong>${s.signer_email ? '<br><span style="font-size:.75rem;color:var(--text-muted)">' + s.signer_email + '</span>' : ''}</td>
+            <td>${s.signed_role || '—'}</td>
+            <td>${s.signer_company || '—'}</td>
+            <td style="font-size:.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis">${s.notes || s.acknowledgment || '—'}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table></div>
+    </div>
+    ` : ''}
+  `;
+
+  // Bind events
+  document.getElementById('edit-proj-btn').onclick = () => showProjectModal(p);
+  document.getElementById('add-building-btn').onclick = () => showBuildingModal(p.id);
+  document.getElementById('add-delivery-btn').onclick = () => showDeliveryModal(p.id);
+  document.getElementById('add-team-btn').onclick = () => showTeamModal(p.id);
+  document.getElementById('add-contact-btn').onclick = () => showSiteContactModal(p.id);
+
+  el.querySelectorAll('.edit-contact-btn').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); const c = p.contacts.find(x => x.id === b.dataset.id); if(c) showSiteContactModal(p.id, c); };
+  });
+
+  const signoffProjBtn = document.getElementById('signoff-proj-btn');
+  if (signoffProjBtn) signoffProjBtn.onclick = () => showProjectSignoffModal(p, allUnits);
+
+  el.querySelectorAll('.unit-signoff-row').forEach(r => {
+    r.onclick = () => openUnit(r.dataset.unit);
+  });
+  el.querySelectorAll('.add-floor-btn').forEach(b => { b.onclick = (e) => { e.stopPropagation(); showFloorModal(b.dataset.bld); }; });
+  el.querySelectorAll('.edit-bld-btn').forEach(b => { b.onclick = (e) => { e.stopPropagation(); const bld = p.buildings.find(x => x.id === b.dataset.bld); if(bld) showBuildingModal(p.id, bld); }; });
+  el.querySelectorAll('.add-unit-btn').forEach(b => { b.onclick = (e) => { e.stopPropagation(); showUnitModal(b.dataset.floor); }; });
+  el.querySelectorAll('.unit-dot').forEach(d => {
+    d.onclick = (e) => { e.stopPropagation(); openUnit(d.dataset.unit); };
+  });
+}
+
+// ========== UNIT DETAIL ==========
+async function openUnit(unitId) {
+  currentUnit = await loadUnitDetail(unitId);
+  if (!currentUnit) return toast('Unit not found');
+  currentView = 'unit-detail';
+  render();
+}
+
+async function renderUnitDetail(el) {
+  if (!currentUnit || !currentProject) { currentView = 'projects'; render(); return; }
+  const u = currentUnit;
+  const stepIdx = unitStatuses.indexOf(u.status);
+
+  let unitFloor = null, unitBuilding = null;
+  for (const b of currentProject.buildings) {
+    for (const f of b.floors) {
+      if (f.units.some(x => x.id === u.id)) { unitFloor = f; unitBuilding = b; break; }
+    }
+    if (unitBuilding) break;
+  }
+
+  // Compute appliance tracking stats
+  const appl = u.appliances || [];
+  const totalAppl = appl.filter(a => !a.is_replacement || a.replacement_status === 'installed').length;
+  const orderedCount = appl.filter(a => a.confirmed_ordered).length;
+  const deliveredCount = appl.filter(a => a.confirmed_delivered).length;
+  const installedCount = appl.filter(a => a.confirmed_installed).length;
+  const inspectedCount = appl.filter(a => a.confirmed_inspected).length;
+  const damagedCount = appl.filter(a => a.delivery_condition === 'damaged' || a.delivery_condition === 'wrong_item').length;
+  const replacementsNeeded = appl.filter(a => a.replacement_status === 'needed' || a.replacement_status === 'ordered' || a.replacement_status === 'shipped').length;
+
+  // Load signoffs for this unit
+  const { data: signoffs } = await supabase.from('iqbuild_signoffs').select('*').eq('entity_type', 'unit').eq('entity_id', u.id).order('signed_at', { ascending: false });
+  const unitSignoffs = signoffs || [];
+
+  el.innerHTML = `
+    <div class="breadcrumb">
+      <span onclick="window._nav('projects')">Projects</span><span class="sep">›</span>
+      <span onclick="window._openProj('${currentProject.id}')">${currentProject.name}</span><span class="sep">›</span>
+      <span>${unitBuilding?.name || ''}</span><span class="sep">›</span>
+      <span>Unit ${u.unit_number}</span>
+    </div>
+    <div class="page-header">
+      <h1>Unit ${u.unit_number} ${u.signed_off ? '<span class="badge badge-green" style="font-size:.7rem;vertical-align:middle">SIGNED OFF</span>' : ''}</h1>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-outline btn-sm" id="edit-unit-btn">${icons.edit} Edit</button>
+        <button class="btn-secondary btn-sm" id="assign-pkg-btn">${icons.packages} Assign Package</button>
+        <button class="btn-primary btn-sm" id="add-appliance-btn">${icons.plus} Add Appliance</button>
+      </div>
+    </div>
+
+    <!-- Status & Info -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Status</div><div class="value" style="font-size:1rem;margin-top:.5rem">${statusBadge(u.status)}</div>
+        <div class="pipeline" style="margin-top:.5rem">${unitStatuses.filter(s => s !== 'on_hold').map((s,i) => `<div class="pipeline-step ${i <= stepIdx && u.status !== 'on_hold' ? 'done' : ''}" title="${s.replace(/_/g,' ')}"></div>`).join('')}</div>
+      </div>
+      <div class="stat-card"><div class="label">Type</div><div class="value" style="font-size:1rem;margin-top:.5rem">${u.unit_type || '—'}</div></div>
+      <div class="stat-card"><div class="label">Buyer</div><div class="value" style="font-size:.9rem;margin-top:.5rem">${u.buyer_name || 'Not assigned'}</div><div class="sub">${u.buyer_email || ''}</div></div>
+      <div class="stat-card"><div class="label">Upgrades</div><div class="value">${u.has_upgrades ? formatCurrency(u.upgrade_total) : 'None'}</div></div>
+    </div>
+
+    <!-- Product Tracking Summary -->
+    <div class="card" style="margin-bottom:1rem;padding:.75rem 1rem">
+      <div style="display:flex;flex-wrap:wrap;gap:1.25rem;align-items:center;font-size:.8rem">
+        <strong>Product Tracking:</strong>
+        <span>📦 Ordered: <strong>${orderedCount}/${totalAppl}</strong></span>
+        <span>🚚 Delivered: <strong>${deliveredCount}/${totalAppl}</strong></span>
+        <span>🔧 Installed: <strong>${installedCount}/${totalAppl}</strong></span>
+        <span>✅ Inspected: <strong>${inspectedCount}/${totalAppl}</strong></span>
+        ${damagedCount ? `<span style="color:var(--red)">⚠️ Damaged: <strong>${damagedCount}</strong></span>` : ''}
+        ${replacementsNeeded ? `<span style="color:var(--orange)">🔄 Replacements pending: <strong>${replacementsNeeded}</strong></span>` : ''}
+      </div>
+    </div>
+
+    <!-- Quick Status Update -->
+    <div class="card" style="margin-bottom:1rem;padding:.75rem 1rem">
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <strong style="font-size:.8rem;color:var(--text-light)">Update Status:</strong>
+        ${unitStatuses.map(s => `<button class="btn-sm ${s === u.status ? 'btn-primary' : 'btn-outline'} status-btn" data-status="${s}">${s.replace(/_/g,' ')}</button>`).join('')}
+      </div>
+    </div>
+
+    <!-- Appliances — Full Tracking Table -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Appliances (${appl.length})</h3></div>
+      ${appl.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Type</th><th>Brand / Model</th><th>Serial#</th><th>Grade</th><th>Ordered</th><th>Delivered</th><th>Installed</th><th>Inspected</th><th>Condition</th><th>Actions</th></tr></thead>
+          <tbody>${appl.map(a => {
+            const condBadge = a.delivery_condition === 'good' ? 'badge-green' : a.delivery_condition === 'damaged' ? 'badge-red' : a.delivery_condition === 'missing' ? 'badge-red' : a.delivery_condition === 'wrong_item' ? 'badge-orange' : 'badge-gray';
+            const isReplacement = a.is_replacement;
+            return `
+            <tr class="${isReplacement ? 'style="background:#fffbeb"' : ''}" style="${isReplacement ? 'background:#fffbeb' : ''}">
+              <td><strong>${a.appliance_type}</strong>${isReplacement ? '<br><span class="badge badge-yellow" style="font-size:.6rem">REPLACEMENT</span>' : ''}${a.replacement_status && a.replacement_status !== 'none' ? '<br><span class="badge badge-orange" style="font-size:.6rem">REPL: ' + a.replacement_status + '</span>' : ''}</td>
+              <td>${a.brand || '—'}<br><span style="font-size:.75rem;color:var(--text-muted)">${a.model || ''}</span></td>
+              <td style="font-size:.8rem">${a.serial_number || '—'}</td>
+              <td>${statusBadge(a.upgrade_status)}</td>
+              <td style="text-align:center"><input type="checkbox" class="confirm-chk" data-appliance="${a.id}" data-stage="ordered" ${a.confirmed_ordered ? 'checked' : ''} title="${a.confirmed_ordered_by ? 'by ' + a.confirmed_ordered_by : ''}"></td>
+              <td style="text-align:center"><input type="checkbox" class="confirm-chk" data-appliance="${a.id}" data-stage="delivered" ${a.confirmed_delivered ? 'checked' : ''} title="${a.confirmed_delivered_by ? 'by ' + a.confirmed_delivered_by : ''}"></td>
+              <td style="text-align:center"><input type="checkbox" class="confirm-chk" data-appliance="${a.id}" data-stage="installed" ${a.confirmed_installed ? 'checked' : ''} title="${a.confirmed_installed_by ? 'by ' + a.confirmed_installed_by : ''}"></td>
+              <td style="text-align:center"><input type="checkbox" class="confirm-chk" data-appliance="${a.id}" data-stage="inspected" ${a.confirmed_inspected ? 'checked' : ''} title="${a.confirmed_inspected_by ? 'by ' + a.confirmed_inspected_by : ''}"></td>
+              <td><span class="badge ${condBadge}">${(a.delivery_condition || 'pending').replace(/_/g,' ')}</span></td>
+              <td style="white-space:nowrap">
+                <button class="btn-icon btn-sm edit-appl-btn" data-id="${a.id}" title="Edit">${icons.edit}</button>
+                <button class="btn-icon btn-sm damage-btn" data-id="${a.id}" title="Report Damage" style="color:var(--red)">⚠</button>
+                ${a.delivery_condition === 'damaged' || a.delivery_condition === 'wrong_item' || a.delivery_condition === 'missing' ? `<button class="btn-icon btn-sm repl-btn" data-id="${a.id}" title="Order Replacement" style="color:var(--orange)">🔄</button>` : ''}
+              </td>
+            </tr>
+            ${a.damage_notes ? `<tr><td colspan="10" style="padding:.3rem .75rem;font-size:.8rem;color:var(--red);background:#fef2f2"><strong>Damage:</strong> ${a.damage_notes} ${a.damage_reported_at ? '<span style="color:var(--text-muted)">(' + formatDate(a.damage_reported_at) + ')</span>' : ''}</td></tr>` : ''}
+            ${a.replacement_notes ? `<tr><td colspan="10" style="padding:.3rem .75rem;font-size:.8rem;color:var(--orange);background:#fffbeb"><strong>Replacement:</strong> ${a.replacement_brand || ''} ${a.replacement_model || ''} — ${a.replacement_notes} ${a.replacement_eta ? '| ETA: ' + formatDate(a.replacement_eta) : ''}</td></tr>` : ''}
+          `}).join('')}</tbody>
+        </table></div>
+      ` : '<div class="empty-state" style="padding:1.5rem"><p>No appliances yet. Assign a package or add appliances individually.</p></div>'}
+    </div>
+
+    <!-- Installation Work Orders -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Installation (${u.installations.length})</h3><button class="btn-primary btn-sm" id="add-install-btn">${icons.plus} Work Order</button></div>
+      <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem">Installation is tracked separately from delivery — includes labour, parts (hoses, vents, connectors), and billing.</p>
+      ${u.installations.length ? u.installations.map(inst => {
+        const parts = inst.iqbuild_installation_parts || [];
+        const partsCost = parts.reduce((a, p) => a + Number(p.total_cost || 0), 0);
+        return `
+        <div style="border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.5rem;background:${inst.status === 'complete' ? '#f0fdf4' : '#fff'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+            <div>
+              <strong>${inst.installer_company || inst.installer_name || 'Unassigned'}</strong>
+              ${inst.installer_name && inst.installer_company ? ' <span style="font-size:.8rem;color:var(--text-muted)">(' + inst.installer_name + ')</span>' : ''}
+              ${statusBadge(inst.status)}
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <span style="font-size:.85rem;font-weight:600;color:var(--navy)">${formatCurrency(Number(inst.labour_cost || 0) + partsCost)}</span>
+              <button class="btn-icon btn-sm edit-install-btn" data-id="${inst.id}">${icons.edit}</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:1rem;font-size:.8rem;color:var(--text-light);margin-bottom:.4rem">
+            ${inst.scheduled_date ? '<span>📅 ' + formatDate(inst.scheduled_date) + '</span>' : ''}
+            <span>💰 Labour: ${formatCurrency(inst.labour_cost)}</span>
+            <span>🔧 Parts: ${formatCurrency(partsCost)} (${parts.length} items)</span>
+            <span>📋 Billed to: ${inst.billed_to || '—'}</span>
+            ${inst.invoice_number ? '<span>🧾 INV: ' + inst.invoice_number + ' (' + (inst.invoice_status || 'pending') + ')</span>' : ''}
+            ${inst.po_number ? '<span>PO: ' + inst.po_number + '</span>' : ''}
+          </div>
+          ${inst.scope_notes ? '<div style="font-size:.8rem;color:var(--text);margin-bottom:.3rem"><strong>Scope:</strong> ' + inst.scope_notes + '</div>' : ''}
+          ${inst.issues_found ? '<div style="font-size:.8rem;color:var(--red);margin-bottom:.3rem"><strong>Issues:</strong> ' + inst.issues_found + '</div>' : ''}
+          ${parts.length ? `
+            <div style="margin-top:.4rem;border-top:1px solid var(--border);padding-top:.4rem">
+              <table style="width:100%;font-size:.8rem">
+                <thead><tr><th style="font-size:.7rem">Part</th><th style="font-size:.7rem">For</th><th style="font-size:.7rem">Qty</th><th style="font-size:.7rem">Cost</th><th style="font-size:.7rem">Supplied By</th><th style="font-size:.7rem">Included</th></tr></thead>
+                <tbody>${parts.map(pt => `
+                  <tr style="cursor:default">
+                    <td><strong>${pt.part_name}</strong><br><span style="color:var(--text-muted)">${pt.part_type.replace(/_/g,' ')}</span></td>
+                    <td>${pt.unit_appliance_id ? (appl.find(a => a.id === pt.unit_appliance_id)?.appliance_type || '—') : 'General'}</td>
+                    <td>${pt.quantity}</td>
+                    <td>${formatCurrency(pt.total_cost)}</td>
+                    <td>${pt.supplied_by || '—'}</td>
+                    <td>${pt.included_in_price ? '<span class="badge badge-green">Incl</span>' : '<span class="badge badge-yellow">Extra</span>'}</td>
+                  </tr>
+                `).join('')}</tbody>
+              </table>
+            </div>
+          ` : ''}
+          <div style="margin-top:.4rem"><button class="btn-outline btn-sm add-part-btn" data-inst="${inst.id}">${icons.plus} Add Part</button></div>
+        </div>`;
+      }).join('') : '<p style="font-size:.85rem;color:var(--text-muted);padding:.25rem 0">No installation work orders yet.</p>'}
+    </div>
+
+    <!-- Notes -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Unit Notes</h3><button class="btn-outline btn-sm" id="save-notes-btn">Save</button></div>
+      <textarea id="unit-notes-field" style="width:100%;min-height:80px;border:1px solid var(--border);border-radius:8px;padding:.6rem;font-size:.85rem">${u.notes || ''}</textarea>
+    </div>
+
+    <!-- Milestones -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header"><h3>Milestones & Inspections</h3>
+        ${u.milestones.length === 0 ? `<button class="btn-outline btn-sm" id="init-milestones-btn">Initialize</button>` : ''}
+      </div>
+      ${u.milestones.length ? u.milestones.map(m => {
+        const tpl = m.iqbuild_milestone_templates || {};
+        const iconClass = m.status === 'passed' ? 'passed' : m.status === 'failed' ? 'failed' : m.status === 'in_progress' ? 'in_progress' : 'pending';
+        const iconSymbol = m.status === 'passed' ? '✓' : m.status === 'failed' ? '✗' : m.status === 'in_progress' ? '⏳' : '○';
+        return `
+          <div class="milestone-item milestone-click" data-mid="${m.id}" data-status="${m.status}">
+            <div class="milestone-icon ${iconClass}">${iconSymbol}</div>
+            <div class="milestone-name">${tpl.name || 'Milestone'}</div>
+            <div class="milestone-meta">${tpl.category || ''}</div>
+            <div>${statusBadge(m.status)}</div>
+          </div>
+        `;
+      }).join('') : '<p style="font-size:.85rem;color:var(--text-muted);padding:.5rem 0">Click "Initialize" to set up the inspection checklist.</p>'}
+    </div>
+
+    <!-- Sign-Off Section -->
+    <div class="card" style="margin-bottom:1rem;${u.signed_off ? 'border-color:var(--green);border-width:2px' : ''}">
+      <div class="card-header"><h3>${u.signed_off ? '✅ Unit Signed Off' : 'Unit Sign-Off'}</h3>
+        ${!u.signed_off ? `<button class="btn-primary btn-sm" id="signoff-unit-btn">Sign Off Unit</button>` : ''}
+      </div>
+      ${u.signed_off ? `
+        <div style="font-size:.85rem;padding:.25rem 0">
+          <p><strong>Signed by:</strong> ${u.signoff_name} ${u.signoff_role ? '(' + u.signoff_role + ')' : ''}</p>
+          <p><strong>Date:</strong> ${formatDate(u.signoff_date)}</p>
+          ${u.signoff_notes ? `<p><strong>Notes:</strong> ${u.signoff_notes}</p>` : ''}
+        </div>
+      ` : `<p style="font-size:.85rem;color:var(--text-muted)">All appliances must be confirmed installed and inspected before sign-off.</p>`}
+    </div>
+
+    <!-- Sign-off History -->
+    ${unitSignoffs.length ? `
+    <div class="card">
+      <div class="card-header"><h3>Sign-Off History (${unitSignoffs.length})</h3></div>
+      ${unitSignoffs.map(s => `
+        <div style="border-bottom:1px solid var(--border);padding:.5rem 0;font-size:.85rem">
+          <strong>${s.signoff_type.replace(/_/g,' ')}</strong> by ${s.signed_by} ${s.signed_role ? '(' + s.signed_role + ')' : ''} — ${formatDate(s.signed_at)}
+          ${s.notes ? `<br><span style="color:var(--text-light)">${s.notes}</span>` : ''}
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
+  `;
+
+  // ===== BIND ALL EVENTS =====
+  document.getElementById('edit-unit-btn').onclick = () => showUnitModal(null, u);
+  document.getElementById('add-appliance-btn').onclick = () => showApplianceModal(u.id);
+  document.getElementById('assign-pkg-btn').onclick = () => showAssignPackageModal(u);
+  document.getElementById('add-install-btn').onclick = () => showInstallationModal(u);
+
+  el.querySelectorAll('.edit-install-btn').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); const inst = u.installations.find(x => x.id === b.dataset.id); if(inst) showInstallationModal(u, inst); };
+  });
+  el.querySelectorAll('.add-part-btn').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); showPartModal(u, b.dataset.inst); };
+  });
+
+  const initBtn = document.getElementById('init-milestones-btn');
+  if (initBtn) initBtn.onclick = () => initMilestones(u.id);
+
+  const signoffBtn = document.getElementById('signoff-unit-btn');
+  if (signoffBtn) signoffBtn.onclick = () => showUnitSignoffModal(u);
+
+  // Save notes
+  document.getElementById('save-notes-btn').onclick = async () => {
+    await supabase.from('iqbuild_units').update({ notes: document.getElementById('unit-notes-field').value, updated_at: new Date().toISOString() }).eq('id', u.id);
+    toast('Notes saved');
+  };
+
+  // Status buttons
+  el.querySelectorAll('.status-btn').forEach(b => {
+    b.onclick = async () => {
+      await supabase.from('iqbuild_units').update({ status: b.dataset.status, updated_at: new Date().toISOString() }).eq('id', u.id);
+      await logActivity(currentProject.id, 'unit', u.id, 'status_changed', u.status, b.dataset.status, `Unit ${u.unit_number} → ${b.dataset.status}`);
+      toast(`Unit ${u.unit_number} → ${b.dataset.status.replace(/_/g,' ')}`);
+      currentUnit = await loadUnitDetail(u.id);
+      currentProject = await loadProjectDetail(currentProject.id);
+      renderView();
+    };
+  });
+
+  // Confirmation checkboxes
+  el.querySelectorAll('.confirm-chk').forEach(chk => {
+    chk.onclick = async (e) => {
+      const applianceId = chk.dataset.appliance;
+      const stage = chk.dataset.stage;
+      const checked = chk.checked;
+      const now = new Date().toISOString();
+      const update = {};
+      update[`confirmed_${stage}`] = checked;
+      update[`confirmed_${stage}_at`] = checked ? now : null;
+      update[`confirmed_${stage}_by`] = checked ? currentUser.email : null;
+      // Auto-update appliance status
+      if (stage === 'ordered' && checked) update.status = 'ordered';
+      if (stage === 'delivered' && checked) { update.status = 'delivered'; if (!update.delivery_condition || update.delivery_condition === 'pending') update.delivery_condition = 'good'; }
+      if (stage === 'installed' && checked) update.status = 'installed';
+      if (stage === 'inspected' && checked) update.status = 'inspected';
+      update.updated_at = now;
+      await supabase.from('iqbuild_unit_appliances').update(update).eq('id', applianceId);
+      await logActivity(currentProject.id, 'appliance', applianceId, `confirmed_${stage}`, null, checked ? 'true' : 'false', `${stage} ${checked ? 'confirmed' : 'unconfirmed'} for unit ${u.unit_number}`);
+      toast(`${stage} ${checked ? '✓' : '✗'}`);
+      currentUnit = await loadUnitDetail(u.id);
+      renderView();
+    };
+  });
+
+  // Milestone clicks
+  el.querySelectorAll('.milestone-click').forEach(m => {
+    m.onclick = () => showMilestoneUpdateModal(m.dataset.mid, m.dataset.status);
+  });
+
+  // Edit appliance
+  el.querySelectorAll('.edit-appl-btn').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); const a = appl.find(x => x.id === b.dataset.id); if (a) showApplianceModal(u.id, a); };
+  });
+
+  // Damage report
+  el.querySelectorAll('.damage-btn').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); showDamageModal(u, b.dataset.id); };
+  });
+
+  // Replacement order
+  el.querySelectorAll('.repl-btn').forEach(b => {
+    b.onclick = (e) => { e.stopPropagation(); showReplacementModal(u, b.dataset.id); };
+  });
+}
+
+// ===== ASSIGN PACKAGE TO UNIT =====
+async function showAssignPackageModal(unit) {
+  const { data: pkgs } = await supabase.from('iqbuild_packages').select('*, iqbuild_package_items(*)').eq('project_id', currentProject.id);
+  const packages = pkgs || [];
+  if (!packages.length) { toast('No packages defined for this project. Create packages first.'); return; }
+
+  showModal('Assign Package → Unit ' + unit.unit_number, `
+    <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem">This will create individual appliance records in this unit from the selected package. Each item becomes a trackable appliance with its own confirmation chain.</p>
+    <div class="form-group"><label>Select Package</label><select id="m-pkg-select">
+      ${packages.map(p => `<option value="${p.id}">${p.name} (${p.iqbuild_package_items?.length || 0} items — ${formatCurrency(p.base_cost)})</option>`).join('')}
+    </select></div>
+    <div id="m-pkg-preview"></div>
+  `, async () => {
+    const pkgId = document.getElementById('m-pkg-select').value;
+    const pkg = packages.find(p => p.id === pkgId);
+    if (!pkg) return false;
+    const items = pkg.iqbuild_package_items || [];
+    if (!items.length) { toast('Package has no items'); return false; }
+
+    const appliances = items.map(it => ({
+      unit_id: unit.id,
+      appliance_type: it.appliance_type || it.category || 'other',
+      brand: it.brand || null,
+      model: it.model || null,
+      product_id: it.product_id || it.aiq_product_id || null,
+      original_cost: Number(it.negotiated_price || it.unit_cost || 0),
+      upgrade_status: pkg.is_builder_grade ? 'builder_grade' : 'upgrade_requested',
+      status: 'pending',
+      delivery_condition: 'pending',
+      notes: it.notes || null,
+    }));
+
+    const { error } = await supabase.from('iqbuild_unit_appliances').insert(appliances);
+    if (error) { toast('Error: ' + error.message); return false; }
+
+    // Update unit package reference and counts
+    await supabase.from('iqbuild_units').update({ package_id: pkgId, updated_at: new Date().toISOString() }).eq('id', unit.id);
+    await logActivity(currentProject.id, 'unit', unit.id, 'package_assigned', null, pkg.name, `Package "${pkg.name}" assigned to unit ${unit.unit_number} — ${items.length} appliances created`);
+    toast(`${items.length} appliances created from "${pkg.name}"`);
+    currentUnit = await loadUnitDetail(unit.id);
+    renderView();
+  });
+
+  // Preview on change
+  const previewPkg = () => {
+    const pkgId = document.getElementById('m-pkg-select').value;
+    const pkg = packages.find(p => p.id === pkgId);
+    const items = pkg?.iqbuild_package_items || [];
+    document.getElementById('m-pkg-preview').innerHTML = items.length ? `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:.5rem;margin-top:.5rem;font-size:.8rem">
+        ${items.map(it => `<div style="padding:3px 0;border-bottom:1px solid var(--border)"><strong>${it.appliance_type || it.category}</strong> — ${it.brand || ''} ${it.model || ''} <span style="color:var(--text-muted)">${formatCurrency(it.negotiated_price || it.unit_cost)}</span></div>`).join('')}
+      </div>
+    ` : '';
+  };
+  setTimeout(() => {
+    const sel = document.getElementById('m-pkg-select');
+    if (sel) { sel.onchange = previewPkg; previewPkg(); }
+  }, 50);
+}
+
+// ===== DAMAGE REPORT =====
+function showDamageModal(unit, applianceId) {
+  const a = unit.appliances.find(x => x.id === applianceId);
+  if (!a) return;
+  const conditions = ['good','damaged','missing','wrong_item'];
+  showModal(`Report Damage — ${a.appliance_type}`, `
+    <div style="background:var(--bg);border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem">
+      <strong>${a.brand || ''} ${a.model || ''}</strong> | Serial: ${a.serial_number || 'N/A'} | Unit ${unit.unit_number}
+    </div>
+    <div class="form-group"><label>Condition</label><select id="m-dcond">${conditions.map(c => `<option value="${c}" ${a.delivery_condition === c ? 'selected' : ''}>${c.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Damage Description *</label><textarea id="m-ddesc" placeholder="Describe the damage — dent, scratch, broken part, wrong color, etc.">${a.damage_notes || ''}</textarea></div>
+    <div class="form-group"><label>Reported By</label><input id="m-dby" value="${currentUser.email}"></div>
+  `, async () => {
+    const condition = document.getElementById('m-dcond').value;
+    const notes = document.getElementById('m-ddesc').value.trim();
+    if (!notes) { toast('Please describe the damage'); return false; }
+    const update = {
+      delivery_condition: condition,
+      damage_notes: notes,
+      damage_reported_at: new Date().toISOString(),
+      replacement_status: (condition === 'damaged' || condition === 'missing' || condition === 'wrong_item') ? 'needed' : 'none',
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from('iqbuild_unit_appliances').update(update).eq('id', applianceId);
+    // Create signoff record for damage report
+    await supabase.from('iqbuild_signoffs').insert({
+      project_id: currentProject.id,
+      entity_type: 'unit',
+      entity_id: unit.id,
+      signoff_type: 'damage_report',
+      signed_by: document.getElementById('m-dby').value,
+      notes: `${a.appliance_type} (${a.brand || ''} ${a.model || ''}): ${notes}`,
+    });
+    await logActivity(currentProject.id, 'appliance', applianceId, 'damage_reported', null, condition, `Damage reported: ${a.appliance_type} in unit ${unit.unit_number} — ${notes}`);
+    toast('Damage reported');
+    currentUnit = await loadUnitDetail(unit.id);
+    renderView();
+  });
+}
+
+// ===== REPLACEMENT ORDER =====
+function showReplacementModal(unit, applianceId) {
+  const a = unit.appliances.find(x => x.id === applianceId);
+  if (!a) return;
+  const replStatuses = ['needed','ordered','shipped','delivered','installed'];
+  const reasons = ['damaged','wrong_item','defective','upgrade_change','warranty'];
+  showModal(`Order Replacement — ${a.appliance_type}`, `
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem">
+      <strong>Original:</strong> ${a.brand || ''} ${a.model || ''} | Condition: ${a.delivery_condition || '—'}
+      ${a.damage_notes ? `<br><strong>Damage:</strong> ${a.damage_notes}` : ''}
+    </div>
+    <div class="form-group"><label>Replacement Status</label><select id="m-rstatus">${replStatuses.map(s => `<option value="${s}" ${a.replacement_status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Reason</label><select id="m-rreason">${reasons.map(r => `<option value="${r}" ${a.replacement_reason === r ? 'selected' : ''}>${r.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Replacement Brand</label><input id="m-rbrand" value="${a.replacement_brand || a.brand || ''}"></div>
+      <div class="form-group"><label>Replacement Model</label><input id="m-rmodel" value="${a.replacement_model || a.model || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Replacement Serial#</label><input id="m-rserial" value="${a.replacement_serial || ''}"></div>
+      <div class="form-group"><label>PO Number</label><input id="m-rpo" value="${a.replacement_po || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>ETA</label><input type="date" id="m-reta" value="${a.replacement_eta || ''}"></div>
+      <div class="form-group"><label>Cost ($)</label><input type="number" id="m-rcost" value="${a.replacement_cost || ''}"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-rnotes">${a.replacement_notes || ''}</textarea></div>
+  `, async () => {
+    const update = {
+      replacement_status: document.getElementById('m-rstatus').value,
+      replacement_reason: document.getElementById('m-rreason').value,
+      replacement_brand: document.getElementById('m-rbrand').value.trim() || null,
+      replacement_model: document.getElementById('m-rmodel').value.trim() || null,
+      replacement_serial: document.getElementById('m-rserial').value.trim() || null,
+      replacement_po: document.getElementById('m-rpo').value.trim() || null,
+      replacement_eta: document.getElementById('m-reta').value || null,
+      replacement_cost: parseFloat(document.getElementById('m-rcost').value) || null,
+      replacement_notes: document.getElementById('m-rnotes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from('iqbuild_unit_appliances').update(update).eq('id', applianceId);
+    await logActivity(currentProject.id, 'appliance', applianceId, 'replacement_updated', a.replacement_status, update.replacement_status, `Replacement ${update.replacement_status} for ${a.appliance_type} in unit ${unit.unit_number}`);
+    toast('Replacement updated');
+    currentUnit = await loadUnitDetail(unit.id);
+    renderView();
+  });
+}
+
+// ===== UNIT SIGN-OFF (DIGITAL) =====
+function showUnitSignoffModal(unit) {
+  const appl = unit.appliances || [];
+  const allInspected = appl.length > 0 && appl.every(a => a.confirmed_inspected || a.is_replacement);
+  const pendingReplacements = appl.filter(a => a.replacement_status && a.replacement_status !== 'none' && a.replacement_status !== 'installed');
+  const ackText = `I, the undersigned, hereby confirm and acknowledge the following for Unit ${unit.unit_number}:\n\n1. All appliances have been delivered, installed, connected, and fully tested in working condition.\n2. A complete inspection has been performed and all appliances are confirmed to be free of damage, defects, and cosmetic imperfections.\n3. No damage has been caused to the unit, surrounding property, flooring, cabinetry, countertops, walls, or any part of the building or complex during delivery or installation.\n4. There are no outstanding issues, incomplete work, missing items, or unresolved service matters related to the appliance scope for this unit.\n5. All deliveries for this unit have been received and accepted in full.\n6. Once signed, this unit is considered complete and accepted. No returns, exchanges, or take-backs will be permitted on installed appliances unless covered under manufacturer warranty.\n7. Any exceptions to the above are documented in the notes below. Undocumented issues raised after sign-off are not the responsibility of the appliance retailer.\n\nBy signing below, I accept full responsibility for confirming the above and release the appliance retailer from further liability related to the delivery, installation, and condition of appliances in this unit.`;
+
+  showModal('Digital Sign-Off — Unit ' + unit.unit_number, `
+    ${!allInspected ? `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem;color:#92400e"><strong>Warning:</strong> Not all appliances confirmed inspected.</div>` : ''}
+    ${pendingReplacements.length ? `<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem;color:#991b1b"><strong>Warning:</strong> ${pendingReplacements.length} replacement(s) still pending.</div>` : ''}
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem;color:#166534">
+      <strong>Tracking Summary:</strong><br>
+      ${appl.length ? `✓ ${appl.filter(a=>a.confirmed_ordered).length}/${appl.length} ordered | ✓ ${appl.filter(a=>a.confirmed_delivered).length}/${appl.length} delivered | ✓ ${appl.filter(a=>a.confirmed_installed).length}/${appl.length} installed | ✓ ${appl.filter(a=>a.confirmed_inspected).length}/${appl.length} inspected` : 'No appliances'}
+    </div>
+    <h4 style="font-size:.9rem;margin-bottom:.75rem;border-bottom:1px solid var(--border);padding-bottom:.5rem">Signer Information</h4>
+    <div class="form-group"><label>Full Name *</label><input id="m-soname" placeholder="First and last name"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Email *</label><input id="m-soemail" type="email" value="${currentUser.email}"></div>
+      <div class="form-group"><label>Phone</label><input id="m-sophone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Role *</label><select id="m-sorole"><option value="site_manager">Site Manager</option><option value="inspector">Inspector</option><option value="project_manager">Project Manager</option><option value="client">Client / Developer</option><option value="general_contractor">General Contractor</option></select></div>
+      <div class="form-group"><label>Company</label><input id="m-socompany"></div>
+    </div>
+    <div class="form-group"><label>Title</label><input id="m-sotitle" placeholder="e.g. Site Superintendent"></div>
+    <h4 style="font-size:.9rem;margin:.75rem 0;border-bottom:1px solid var(--border);padding-bottom:.5rem">Digital Acknowledgment</h4>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.82rem;color:var(--text);white-space:pre-line;max-height:250px;overflow-y:auto;line-height:1.5">${ackText}</div>
+    <div class="form-group"><label><input type="checkbox" id="m-soack"> I agree to the above acknowledgment and confirm this digital sign-off is binding *</label></div>
+    <div class="form-group"><label>Exceptions / Notes</label><textarea id="m-sonotes" placeholder="Any exceptions, conditions, punch list items..."></textarea></div>
+    <p style="font-size:.75rem;color:var(--text-muted)">This sign-off is digitally recorded with timestamp, signer identity, and a tamper-evident hash. It serves as a binding completion record.</p>
+  `, async () => {
+    const name = document.getElementById('m-soname').value.trim();
+    const email = document.getElementById('m-soemail').value.trim();
+    const ackChecked = document.getElementById('m-soack').checked;
+    if (!name) { toast('Full name is required'); return false; }
+    if (!email) { toast('Email is required'); return false; }
+    if (!ackChecked) { toast('You must agree to the acknowledgment'); return false; }
+    const now = new Date().toISOString();
+    const role = document.getElementById('m-sorole').value;
+    const company = document.getElementById('m-socompany').value.trim() || null;
+    const phone = document.getElementById('m-sophone').value.trim() || null;
+    const title = document.getElementById('m-sotitle').value.trim() || null;
+    const notes = document.getElementById('m-sonotes').value.trim() || null;
+    // Generate tamper-evident hash
+    const hashInput = `${name}|${email}|${now}|${ackText}|unit:${unit.id}`;
+    const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(hashInput));
+    const sigHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Update unit
+    await supabase.from('iqbuild_units').update({
+      signed_off: true, signoff_name: name, signoff_date: now,
+      signoff_role: role, signoff_notes: notes,
+      signoff_email: email, signoff_phone: phone, signoff_company: company,
+      status: 'complete', updated_at: now,
+    }).eq('id', unit.id);
+    // Create digital signoff record
+    await supabase.from('iqbuild_signoffs').insert({
+      project_id: currentProject.id, entity_type: 'unit', entity_id: unit.id,
+      signoff_type: 'completion', signed_by: name, signed_role: role,
+      signer_email: email, signer_phone: phone, signer_company: company, signer_title: title,
+      acknowledgment: ackText, signature_hash: sigHash, is_binding: true,
+      notes: notes,
+      user_agent: navigator.userAgent,
+      checklist: { appliances: appl.length, ordered: appl.filter(a=>a.confirmed_ordered).length, delivered: appl.filter(a=>a.confirmed_delivered).length, installed: appl.filter(a=>a.confirmed_installed).length, inspected: appl.filter(a=>a.confirmed_inspected).length, damaged: appl.filter(a=>a.delivery_condition==='damaged').length },
+    });
+    await logActivity(currentProject.id, 'unit', unit.id, 'signed_off', null, `${name} (${role})`, `Unit ${unit.unit_number} digitally signed off by ${name}, ${role}${company ? ', ' + company : ''}`);
+    toast(`Unit ${unit.unit_number} signed off ✅`);
+    currentUnit = await loadUnitDetail(unit.id);
+    currentProject = await loadProjectDetail(currentProject.id);
+    renderView();
+  });
+}
+
+// ===== PROJECT SIGN-OFF (DIGITAL) =====
+function showProjectSignoffModal(project, allUnits) {
+  const signedOffCount = allUnits.filter(u => u.signed_off).length;
+  const unsignedUnits = allUnits.filter(u => !u.signed_off);
+  const ackText = `I, the undersigned, hereby confirm and acknowledge the following for project "${project.name}":\n\n1. All appliances across all units in this project have been delivered, installed, connected, and fully tested in working condition.\n2. A complete inspection has been performed on every unit and all appliances are confirmed to be free of damage, defects, and cosmetic imperfections.\n3. No damage has been caused to any unit, common area, building structure, flooring, cabinetry, countertops, walls, elevators, hallways, or any part of the complex during delivery or installation.\n4. There are no outstanding issues, incomplete work, missing items, pending replacements, or unresolved service matters related to the appliance scope for this project.\n5. All deliveries have been received, verified, and accepted in full. All damaged or defective items have been replaced and confirmed.\n6. Once signed, this project is considered complete and accepted. No returns, exchanges, or take-backs will be permitted on installed appliances unless covered under manufacturer warranty.\n7. The appliance retailer is released from all further liability related to the delivery, installation, condition, and performance of appliances in this project, except as required under applicable manufacturer warranty terms.\n8. Any exceptions to the above are documented in the notes below. Undocumented issues raised after sign-off are not the responsibility of the appliance retailer.\n\nBy signing below, I accept full responsibility for confirming the above on behalf of the project and release the appliance retailer from further liability.`;
+
+  showModal('Digital Sign-Off — ' + project.name, `
+    ${unsignedUnits.length ? `
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem;color:#92400e">
+        <strong>Warning:</strong> ${unsignedUnits.length} unit(s) not yet signed off: ${unsignedUnits.slice(0, 8).map(u => u.unit_number).join(', ')}${unsignedUnits.length > 8 ? '...' : ''}
+      </div>
+    ` : `
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem;color:#166534">
+        <strong>All ${allUnits.length} units signed off.</strong> Project ready for completion.
+      </div>
+    `}
+    <div style="background:var(--bg);border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.85rem">
+      <strong>Summary:</strong> ${allUnits.length} total units | ${signedOffCount} signed off | ${project.buildings.length} buildings | ${project.deliveries?.length || 0} deliveries
+    </div>
+    <h4 style="font-size:.9rem;margin-bottom:.75rem;border-bottom:1px solid var(--border);padding-bottom:.5rem">Signer Information</h4>
+    <div class="form-group"><label>Full Name *</label><input id="m-psoname" placeholder="First and last name"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Email *</label><input id="m-psoemail" type="email" value="${currentUser.email}"></div>
+      <div class="form-group"><label>Company</label><input id="m-psocompany"></div>
+    </div>
+    <div class="form-group"><label>Role</label><select id="m-psorole"><option value="project_manager">Project Manager</option><option value="site_manager">Site Manager</option><option value="client">Client / Developer</option><option value="inspector">Inspector</option></select></div>
+    <h4 style="font-size:.9rem;margin:.75rem 0;border-bottom:1px solid var(--border);padding-bottom:.5rem">Digital Acknowledgment</h4>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.82rem;white-space:pre-line;max-height:250px;overflow-y:auto;line-height:1.5">${ackText}</div>
+    <div class="form-group"><label><input type="checkbox" id="m-psoack"> I agree to the above acknowledgment and confirm this digital sign-off is binding *</label></div>
+    <div class="form-group"><label>Notes / Conditions / Punch List</label><textarea id="m-psonotes" placeholder="Final project notes, exceptions, handover conditions..."></textarea></div>
+    <p style="font-size:.75rem;color:var(--text-muted)">This sign-off is digitally recorded with timestamp, signer identity, and a tamper-evident hash.</p>
+  `, async () => {
+    const name = document.getElementById('m-psoname').value.trim();
+    const email = document.getElementById('m-psoemail').value.trim();
+    const ackChecked = document.getElementById('m-psoack').checked;
+    if (!name) { toast('Full name is required'); return false; }
+    if (!email) { toast('Email is required'); return false; }
+    if (!ackChecked) { toast('You must agree to the acknowledgment'); return false; }
+    const now = new Date().toISOString();
+    const role = document.getElementById('m-psorole').value;
+    const company = document.getElementById('m-psocompany').value.trim() || null;
+    const notes = document.getElementById('m-psonotes').value.trim() || null;
+    const hashInput = `${name}|${email}|${now}|${ackText}|project:${project.id}`;
+    const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(hashInput));
+    const sigHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+    await supabase.from('iqbuild_projects').update({
+      signed_off: true, signoff_name: name, signoff_date: now, signoff_role: role,
+      signoff_email: email, signoff_company: company,
+      signoff_notes: notes, status: 'completed', actual_completion: now.split('T')[0], updated_at: now,
+    }).eq('id', project.id);
+    await supabase.from('iqbuild_signoffs').insert({
+      project_id: project.id, entity_type: 'project', entity_id: project.id,
+      signoff_type: 'completion', signed_by: name, signed_role: role,
+      signer_email: email, signer_company: company,
+      acknowledgment: ackText, signature_hash: sigHash, is_binding: true,
+      notes: notes, user_agent: navigator.userAgent,
+      checklist: { total_units: allUnits.length, signed_off_units: signedOffCount, buildings: project.buildings.length },
+    });
+    await logActivity(project.id, 'project', project.id, 'signed_off', null, `${name} (${role})`, `Project "${project.name}" digitally signed off by ${name}, ${role}${company ? ', ' + company : ''}`);
+    toast(`Project signed off ✅`);
+    currentProject = await loadProjectDetail(project.id);
+    renderView();
+  });
+}
+
+// ===== SITE CONTACT MODAL =====
+function showSiteContactModal(projectId, existing) {
+  const c = existing || {};
+  const contactRoles = [
+    'site_superintendent', 'foreman', 'inspector_city', 'inspector_electrical',
+    'inspector_plumbing', 'inspector_gas', 'delivery_receiving', 'electrical_contractor',
+    'plumbing_contractor', 'hvac_contractor', 'general_contractor', 'developer_pm',
+    'security_access', 'condo_board', 'building_manager', 'architect', 'designer', 'other'
+  ];
+  showModal(existing ? 'Edit Site Contact' : 'Add Site Contact', `
+    <div class="form-group"><label>Name *</label><input id="m-cname" value="${c.name || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Role *</label><select id="m-crole">${contactRoles.map(r => `<option value="${r}" ${c.role === r ? 'selected' : ''}>${r.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Title</label><input id="m-ctitle" value="${c.title || ''}" placeholder="e.g. Lead Electrician"></div>
+    </div>
+    <div class="form-group"><label>Company</label><input id="m-ccompany" value="${c.company || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Phone</label><input id="m-cphone" value="${c.phone || ''}"></div>
+      <div class="form-group"><label>Mobile</label><input id="m-cmobile" value="${c.mobile || ''}"></div>
+    </div>
+    <div class="form-group"><label>Email</label><input id="m-cemail" value="${c.email || ''}"></div>
+    <div class="form-group"><label>Availability</label><input id="m-cavail" value="${c.availability || ''}" placeholder="Mon-Fri 7am-4pm, on-site Tues/Thurs, etc."></div>
+    <div class="form-group"><label>Access Instructions</label><textarea id="m-caccess" placeholder="Gate codes, parking, check-in procedures, loading dock details...">${c.access_instructions || ''}</textarea></div>
+    <div class="form-group"><label>Notes</label><textarea id="m-cnotes">${c.notes || ''}</textarea></div>
+    <div class="form-group"><label><input type="checkbox" id="m-cprimary" ${c.is_primary ? 'checked' : ''}> Primary contact for this role</label></div>
+    ${existing ? `<div style="margin-top:.75rem"><button class="btn-danger btn-sm" id="del-contact-btn">${icons.trash} Remove Contact</button></div>` : ''}
+  `, async () => {
+    const name = document.getElementById('m-cname').value.trim();
+    if (!name) { toast('Name is required'); return false; }
+    const record = {
+      name,
+      role: document.getElementById('m-crole').value,
+      title: document.getElementById('m-ctitle').value.trim() || null,
+      company: document.getElementById('m-ccompany').value.trim() || null,
+      phone: document.getElementById('m-cphone').value.trim() || null,
+      mobile: document.getElementById('m-cmobile').value.trim() || null,
+      email: document.getElementById('m-cemail').value.trim() || null,
+      availability: document.getElementById('m-cavail').value.trim() || null,
+      access_instructions: document.getElementById('m-caccess').value.trim() || null,
+      notes: document.getElementById('m-cnotes').value.trim() || null,
+      is_primary: document.getElementById('m-cprimary').checked,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      const { error } = await supabase.from('iqbuild_project_contacts').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+    } else {
+      record.project_id = projectId;
+      const { error } = await supabase.from('iqbuild_project_contacts').insert(record);
+      if (error) { toast('Error: ' + error.message); return false; }
+    }
+    toast(existing ? 'Contact updated' : 'Contact added');
+    currentProject = await loadProjectDetail(currentProject.id);
+    renderView();
+  });
+
+  if (existing) {
+    setTimeout(() => {
+      const delBtn = document.getElementById('del-contact-btn');
+      if (delBtn) delBtn.onclick = async () => {
+        if (!confirm('Remove this contact?')) return;
+        await supabase.from('iqbuild_project_contacts').update({ active: false }).eq('id', existing.id);
+        toast('Contact removed');
+        currentProject = await loadProjectDetail(currentProject.id);
+        document.querySelector('.modal-overlay')?.remove();
+        modalOpen = false;
+        renderView();
+      };
+    }, 100);
+  }
+}
+
+// ===== INSTALLATION WORK ORDER MODAL =====
+function showInstallationModal(unit, existing) {
+  const inst = existing || {};
+  const instStatuses = ['pending','scheduled','in_progress','complete','on_hold','cancelled'];
+  const billedTo = ['developer','buyer','retailer','warranty'];
+  const invoiceStatuses = ['pending','sent','paid'];
+  showModal(existing ? 'Edit Installation Work Order' : 'New Installation Work Order', `
+    <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:1rem">Installation is separate from delivery — track labour, parts (hoses, vents, connectors), and billing here.</p>
+    <div class="form-row">
+      <div class="form-group"><label>Status</label><select id="m-inst-status">${instStatuses.map(s => `<option value="${s}" ${inst.status === s ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Scheduled Date</label><input type="date" id="m-inst-date" value="${inst.scheduled_date || ''}"></div>
+    </div>
+    <h4 style="font-size:.85rem;margin:.75rem 0 .5rem;color:var(--text-light)">Installer / Contractor</h4>
+    <div class="form-row">
+      <div class="form-group"><label>Installer Name</label><input id="m-inst-name" value="${inst.installer_name || ''}"></div>
+      <div class="form-group"><label>Company</label><input id="m-inst-company" value="${inst.installer_company || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Phone</label><input id="m-inst-phone" value="${inst.installer_phone || ''}"></div>
+      <div class="form-group"><label>Email</label><input id="m-inst-email" value="${inst.installer_email || ''}"></div>
+    </div>
+    <h4 style="font-size:.85rem;margin:.75rem 0 .5rem;color:var(--text-light)">Costs & Billing</h4>
+    <div class="form-row">
+      <div class="form-group"><label>Labour Cost ($)</label><input type="number" id="m-inst-labour" value="${inst.labour_cost || ''}"></div>
+      <div class="form-group"><label>Billed To</label><select id="m-inst-billed">${billedTo.map(b => `<option value="${b}" ${inst.billed_to === b ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>PO Number</label><input id="m-inst-po" value="${inst.po_number || ''}"></div>
+      <div class="form-group"><label>Invoice #</label><input id="m-inst-inv" value="${inst.invoice_number || ''}"></div>
+    </div>
+    <div class="form-group"><label>Invoice Status</label><select id="m-inst-invstatus">${invoiceStatuses.map(s => `<option value="${s}" ${inst.invoice_status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <h4 style="font-size:.85rem;margin:.75rem 0 .5rem;color:var(--text-light)">Details</h4>
+    <div class="form-group"><label>Scope of Work</label><textarea id="m-inst-scope" placeholder="What installation work is being done...">${inst.scope_notes || ''}</textarea></div>
+    <div class="form-group"><label>Access Notes</label><input id="m-inst-access" value="${inst.access_notes || ''}" placeholder="Loading dock, elevator booking, parking..."></div>
+    ${existing ? `
+      <div class="form-group"><label>Completion Notes</label><textarea id="m-inst-complete">${inst.completion_notes || ''}</textarea></div>
+      <div class="form-group"><label>Issues Found</label><textarea id="m-inst-issues" placeholder="Any issues discovered during installation...">${inst.issues_found || ''}</textarea></div>
+      <div class="form-group"><label>Completed Date</label><input type="date" id="m-inst-completed" value="${inst.completed_date || ''}"></div>
+    ` : ''}
+  `, async () => {
+    const labour = parseFloat(document.getElementById('m-inst-labour').value) || 0;
+    const record = {
+      status: document.getElementById('m-inst-status').value,
+      scheduled_date: document.getElementById('m-inst-date').value || null,
+      installer_name: document.getElementById('m-inst-name').value.trim() || null,
+      installer_company: document.getElementById('m-inst-company').value.trim() || null,
+      installer_phone: document.getElementById('m-inst-phone').value.trim() || null,
+      installer_email: document.getElementById('m-inst-email').value.trim() || null,
+      labour_cost: labour,
+      billed_to: document.getElementById('m-inst-billed').value,
+      po_number: document.getElementById('m-inst-po').value.trim() || null,
+      invoice_number: document.getElementById('m-inst-inv').value.trim() || null,
+      invoice_status: document.getElementById('m-inst-invstatus').value,
+      scope_notes: document.getElementById('m-inst-scope').value.trim() || null,
+      access_notes: document.getElementById('m-inst-access').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      record.completion_notes = document.getElementById('m-inst-complete').value.trim() || null;
+      record.issues_found = document.getElementById('m-inst-issues').value.trim() || null;
+      record.completed_date = document.getElementById('m-inst-completed').value || null;
+      // Recalculate total
+      const parts = existing.iqbuild_installation_parts || [];
+      record.total_cost = labour + parts.reduce((a, p) => a + Number(p.total_cost || 0), 0);
+      const { error } = await supabase.from('iqbuild_installations').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+    } else {
+      record.project_id = currentProject.id;
+      record.unit_id = unit.id;
+      record.total_cost = labour;
+      const { error } = await supabase.from('iqbuild_installations').insert(record);
+      if (error) { toast('Error: ' + error.message); return false; }
+    }
+    toast(existing ? 'Work order updated' : 'Work order created');
+    await logActivity(currentProject.id, 'unit', unit.id, existing ? 'installation_updated' : 'installation_created', null, record.status, `Installation work order ${existing ? 'updated' : 'created'} for unit ${unit.unit_number}`);
+    currentUnit = await loadUnitDetail(unit.id);
+    renderView();
+  });
+}
+
+// ===== INSTALLATION PARTS MODAL =====
+function showPartModal(unit, installationId, existing) {
+  const pt = existing || {};
+  const partTypes = ['hose','dryer_vent','water_line','power_cord','gas_connector','vent_hood_duct','mounting_bracket','trim_kit','drain_hose','stacking_kit','anti_tip_bracket','plug_adapter','elbow_fitting','clamp','transition_duct','other'];
+  const suppliedBy = ['retailer','installer','builder','buyer'];
+  const applOptions = (unit.appliances || []).map(a => `<option value="${a.id}" ${pt.unit_appliance_id === a.id ? 'selected' : ''}>${a.appliance_type} — ${a.brand || ''} ${a.model || ''}</option>`).join('');
+  showModal(existing ? 'Edit Part' : 'Add Installation Part', `
+    <div class="form-row">
+      <div class="form-group"><label>Part Type *</label><select id="m-pt-type">${partTypes.map(t => `<option value="${t}" ${pt.part_type === t ? 'selected' : ''}>${t.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>For Appliance</label><select id="m-pt-appl"><option value="">General / All</option>${applOptions}</select></div>
+    </div>
+    <div class="form-group"><label>Part Name / Description *</label><input id="m-pt-name" value="${pt.part_name || ''}" placeholder="6ft braided stainless dishwasher hose, 4in semi-rigid dryer vent..."></div>
+    <div class="form-row">
+      <div class="form-group"><label>Brand</label><input id="m-pt-brand" value="${pt.brand || ''}"></div>
+      <div class="form-group"><label>Model / SKU</label><input id="m-pt-model" value="${pt.model || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantity</label><input type="number" id="m-pt-qty" value="${pt.quantity || 1}" min="1"></div>
+      <div class="form-group"><label>Unit Cost ($)</label><input type="number" id="m-pt-cost" value="${pt.unit_cost || ''}" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Supplied By</label><select id="m-pt-supplied">${suppliedBy.map(s => `<option value="${s}" ${pt.supplied_by === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label><br><input type="checkbox" id="m-pt-included" ${pt.included_in_price ? 'checked' : ''}> Included in price (no extra charge)</label></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-pt-notes">${pt.notes || ''}</textarea></div>
+    ${existing ? `<div style="margin-top:.5rem"><button class="btn-danger btn-sm" id="del-part-btn">${icons.trash} Remove Part</button></div>` : ''}
+  `, async () => {
+    const name = document.getElementById('m-pt-name').value.trim();
+    if (!name) { toast('Part name is required'); return false; }
+    const qty = parseInt(document.getElementById('m-pt-qty').value) || 1;
+    const unitCost = parseFloat(document.getElementById('m-pt-cost').value) || 0;
+    const record = {
+      part_type: document.getElementById('m-pt-type').value,
+      part_name: name,
+      unit_appliance_id: document.getElementById('m-pt-appl').value || null,
+      brand: document.getElementById('m-pt-brand').value.trim() || null,
+      model: document.getElementById('m-pt-model').value.trim() || null,
+      quantity: qty,
+      unit_cost: unitCost,
+      total_cost: qty * unitCost,
+      supplied_by: document.getElementById('m-pt-supplied').value,
+      included_in_price: document.getElementById('m-pt-included').checked,
+      notes: document.getElementById('m-pt-notes').value.trim() || null,
+    };
+    if (existing) {
+      const { error } = await supabase.from('iqbuild_installation_parts').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+    } else {
+      record.installation_id = installationId;
+      const { error } = await supabase.from('iqbuild_installation_parts').insert(record);
+      if (error) { toast('Error: ' + error.message); return false; }
+    }
+    // Recalculate installation total
+    const { data: allParts } = await supabase.from('iqbuild_installation_parts').select('total_cost').eq('installation_id', installationId);
+    const partsCost = (allParts || []).reduce((a, p) => a + Number(p.total_cost || 0), 0);
+    const { data: inst } = await supabase.from('iqbuild_installations').select('labour_cost').eq('id', installationId).single();
+    const totalCost = Number(inst?.labour_cost || 0) + partsCost;
+    await supabase.from('iqbuild_installations').update({ parts_cost: partsCost, total_cost: totalCost }).eq('id', installationId);
+    toast(existing ? 'Part updated' : 'Part added');
+    currentUnit = await loadUnitDetail(unit.id);
+    renderView();
+  });
+
+  if (existing) {
+    setTimeout(() => {
+      const delBtn = document.getElementById('del-part-btn');
+      if (delBtn) delBtn.onclick = async () => {
+        if (!confirm('Remove this part?')) return;
+        await supabase.from('iqbuild_installation_parts').delete().eq('id', existing.id);
+        toast('Part removed');
+        currentUnit = await loadUnitDetail(unit.id);
+        document.querySelector('.modal-overlay')?.remove();
+        modalOpen = false;
+        renderView();
+      };
+    }, 100);
+  }
+}
+
+async function initMilestones(unitId) {
+  const inserts = milestoneTemplates.map(t => ({
+    unit_id: unitId,
+    milestone_template_id: t.id,
+    status: 'pending'
+  }));
+  const { error } = await supabase.from('iqbuild_unit_milestones').insert(inserts);
+  if (error) return toast('Error: ' + error.message);
+  toast('Milestones initialized');
+  currentUnit = await loadUnitDetail(unitId);
+  renderView();
+}
+
+async function logActivity(projectId, entityType, entityId, action, oldVal, newVal, description) {
+  await supabase.from('iqbuild_activity_log').insert({
+    project_id: projectId,
+    entity_type: entityType,
+    entity_id: entityId,
+    action: action,
+    old_value: oldVal,
+    new_value: newVal,
+    description: description,
+    performed_by: currentUser?.email
+  });
+}
+
+// ========== PACKAGES VIEW ==========
+async function renderPackages(el) {
+  const { data: pkgs } = await supabase.from('iqbuild_packages').select('*, iqbuild_package_items(*), iqbuild_projects(name)').order('created_at', { ascending: false });
+  const allPkgs = pkgs || [];
+
+  el.innerHTML = `
+    <div class="page-header"><h1>Appliance Packages</h1><button class="btn-primary" id="new-pkg-btn">${icons.plus} New Package</button></div>
+    <div class="card">
+      ${allPkgs.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Package</th><th>Project</th><th>Unit Type</th><th>Grade</th><th>Items</th><th>Base Cost</th><th>Upgrade Cost</th></tr></thead>
+          <tbody>${allPkgs.map(pk => {
+            const items = pk.iqbuild_package_items || [];
+            const hasSpecs = items.some(i => i.electrical_requirements || i.gas_requirements || i.water_requirements || i.ventilation_requirements);
+            return `
+            <tr class="pkg-toggle-row" style="cursor:pointer" data-pkg="${pk.id}">
+              <td><strong>${pk.name}</strong>${pk.speciq_package_id ? ' <span class="badge badge-blue" style="font-size:.6rem">Spec IQ</span>' : ''}<br><span style="font-size:.75rem;color:var(--text-muted)">${pk.description || ''}</span></td>
+              <td>${pk.iqbuild_projects?.name || '—'}</td>
+              <td>${pk.unit_type || '—'}</td>
+              <td>${pk.is_builder_grade ? '<span class="badge badge-gray">Builder Grade</span>' : '<span class="badge badge-purple">Upgrade</span>'}</td>
+              <td>${items.length} appliances</td>
+              <td>${formatCurrency(pk.base_cost)}</td>
+              <td>${pk.upgrade_cost > 0 ? '+' + formatCurrency(pk.upgrade_cost) : '—'}</td>
+            </tr>
+            ${items.length ? `
+            <tr class="pkg-detail-row" data-pkg-detail="${pk.id}" style="display:none">
+              <td colspan="7" style="padding:0 .75rem .75rem">
+                <table style="width:100%;background:var(--bg);border-radius:8px">
+                  <thead><tr><th>Type</th><th>Brand</th><th>Model</th><th>Cost</th>${hasSpecs ? '<th>Requirements</th>' : ''}</tr></thead>
+                  <tbody>${items.map(it => `
+                    <tr style="cursor:default">
+                      <td>${it.appliance_type}</td>
+                      <td>${it.brand || '—'}</td>
+                      <td>${it.model || '—'}</td>
+                      <td>${formatCurrency(it.negotiated_price || it.unit_cost)}</td>
+                      ${hasSpecs ? `<td style="font-size:.75rem;color:var(--text-light)">${[
+                        it.electrical_requirements ? '⚡ ' + it.electrical_requirements : '',
+                        it.gas_requirements ? '🔥 ' + it.gas_requirements : '',
+                        it.water_requirements ? '💧 ' + it.water_requirements : '',
+                        it.ventilation_requirements ? '🌬️ ' + it.ventilation_requirements : '',
+                      ].filter(Boolean).join('<br>') || '—'}</td>` : ''}
+                    </tr>
+                  `).join('')}</tbody>
+                </table>
+              </td>
+            </tr>
+            ` : ''}`;
+          }).join('')}</tbody>
+        </table></div>
+      ` : '<div class="empty-state"><p>No packages defined yet. Create appliance packages to assign to units.</p></div>'}
+    </div>
+  `;
+  document.getElementById('new-pkg-btn').onclick = () => showPackageModal();
+  el.querySelectorAll('.pkg-toggle-row').forEach(r => {
+    r.onclick = () => {
+      const detail = el.querySelector(`[data-pkg-detail="${r.dataset.pkg}"]`);
+      if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
+    };
+  });
+}
+
+// ========== DELIVERIES VIEW ==========
+async function renderDeliveries(el) {
+  const { data: dels } = await supabase.from('iqbuild_deliveries').select('*, iqbuild_projects(name)').order('delivery_date', { ascending: false });
+  const allDels = dels || [];
+
+  el.innerHTML = `
+    <div class="page-header"><h1>All Deliveries</h1></div>
+    <div class="card">
+      ${allDels.length ? `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Project</th><th>PO#</th><th>Carrier</th><th>Target</th><th>Items</th><th>Status</th></tr></thead>
+          <tbody>${allDels.map(d => `
+            <tr>
+              <td>${formatDate(d.delivery_date)}</td>
+              <td>${d.iqbuild_projects?.name || '—'}</td>
+              <td>${d.po_number || '—'}</td>
+              <td>${d.carrier || '—'}</td>
+              <td>${d.target_floors || '—'}</td>
+              <td>${d.received_items}/${d.total_items}</td>
+              <td>${statusBadge(d.status)}</td>
+            </tr>
+          `).join('')}</tbody>
+        </table></div>
+      ` : '<div class="empty-state"><p>No deliveries yet. Schedule deliveries from within a project.</p></div>'}
+    </div>
+  `;
+}
+
+// ========== MILESTONE TEMPLATES VIEW ==========
+async function renderMilestoneTemplatesView(el) {
+  await loadMilestoneTemplates();
+  el.innerHTML = `
+    <div class="page-header"><h1>Milestone Templates</h1><button class="btn-primary" id="new-ms-btn">${icons.plus} New Milestone</button></div>
+    <div class="card">
+      ${milestoneTemplates.map(m => `
+        <div class="milestone-item">
+          <div class="milestone-icon ${m.is_prerequisite_for_install ? 'in_progress' : 'pending'}">${m.is_prerequisite_for_install ? '⚡' : '○'}</div>
+          <div class="milestone-name">${m.name}<br><span style="font-size:.75rem;color:var(--text-muted)">${m.description || ''}</span></div>
+          <div class="milestone-meta">${m.category || ''}</div>
+          <div>${m.requires_inspection ? '<span class="badge badge-blue">Inspection</span>' : ''} ${m.is_prerequisite_for_install ? '<span class="badge badge-orange">Pre-Install</span>' : ''}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  document.getElementById('new-ms-btn').onclick = () => showMilestoneTemplateModal();
+}
+
+// ========== MODALS ==========
+function showModal(title, bodyHtml, onSave) {
+  modalOpen = true;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h2>${title}</h2><button class="btn-icon modal-close-btn">${icons.close}</button></div>
+      <div class="modal-body">${bodyHtml}</div>
+      <div class="modal-footer">
+        <button class="btn-outline modal-cancel-btn">Cancel</button>
+        <button class="btn-primary modal-save-btn">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-close-btn').onclick = () => closeModal(overlay);
+  overlay.querySelector('.modal-cancel-btn').onclick = () => closeModal(overlay);
+  overlay.querySelector('.modal-save-btn').onclick = async () => {
+    const result = await onSave();
+    if (result !== false) closeModal(overlay);
+  };
+  overlay.onclick = (e) => { if (e.target === overlay) closeModal(overlay); };
+}
+
+function closeModal(overlay) {
+  modalOpen = false;
+  overlay.remove();
+}
+
+// -- Project Modal
+function showProjectModal(existing) {
+  const p = existing || {};
+  showModal(existing ? 'Edit Project' : 'New Project', `
+    <div class="form-group"><label>Project Name *</label><input id="m-name" value="${p.name || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Type</label><select id="m-type">${projectTypes.map(t => `<option value="${t}" ${p.project_type === t ? 'selected' : ''}>${t.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Status</label><select id="m-status">${projectStatuses.map(s => `<option value="${s}" ${p.status === s ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label>Developer Name</label><input id="m-dev" value="${p.developer_name || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Developer Email</label><input id="m-dev-email" value="${p.developer_contact_email || ''}"></div>
+      <div class="form-group"><label>Developer Phone</label><input id="m-dev-phone" value="${p.developer_contact_phone || ''}"></div>
+    </div>
+    <div class="form-group"><label>Street Address</label><input id="m-street" value="${p.address_street || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>City</label><input id="m-city" value="${p.address_city || ''}"></div>
+      <div class="form-group"><label>Province</label><input id="m-prov" value="${p.address_province || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Est. Start</label><input type="date" id="m-start" value="${p.estimated_start || ''}"></div>
+      <div class="form-group"><label>Est. Completion</label><input type="date" id="m-end" value="${p.estimated_completion || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Total Buildings</label><input type="number" id="m-bldgs" value="${p.total_buildings || 1}"></div>
+      <div class="form-group"><label>Budget ($)</label><input type="number" id="m-budget" value="${p.budget_total || ''}"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-notes">${p.notes || ''}</textarea></div>
+  `, async () => {
+    const name = document.getElementById('m-name').value.trim();
+    if (!name) { toast('Name is required'); return false; }
+    const record = {
+      name,
+      project_type: document.getElementById('m-type').value,
+      status: document.getElementById('m-status').value,
+      developer_name: document.getElementById('m-dev').value.trim() || null,
+      developer_contact_email: document.getElementById('m-dev-email').value.trim() || null,
+      developer_contact_phone: document.getElementById('m-dev-phone').value.trim() || null,
+      address_street: document.getElementById('m-street').value.trim() || null,
+      address_city: document.getElementById('m-city').value.trim() || null,
+      address_province: document.getElementById('m-prov').value.trim() || null,
+      estimated_start: document.getElementById('m-start').value || null,
+      estimated_completion: document.getElementById('m-end').value || null,
+      total_buildings: parseInt(document.getElementById('m-bldgs').value) || 1,
+      budget_total: parseFloat(document.getElementById('m-budget').value) || null,
+      notes: document.getElementById('m-notes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      const { error } = await supabase.from('iqbuild_projects').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+      toast('Project updated');
+    } else {
+      record.created_by = currentUser.id;
+      const { error } = await supabase.from('iqbuild_projects').insert(record);
+      if (error) { toast('Error: ' + error.message); return false; }
+      toast('Project created');
+    }
+    if (currentProject) currentProject = await loadProjectDetail(currentProject.id);
+    renderView();
+  });
+}
+
+// -- Building Modal
+function showBuildingModal(projectId, existing) {
+  const b = existing || {};
+  showModal(existing ? 'Edit Building' : 'Add Building', `
+    <div class="form-group"><label>Building Name *</label><input id="m-bname" value="${b.name || ''}" placeholder="Tower A, Building 1, etc."></div>
+    <div class="form-row">
+      <div class="form-group"><label>Total Floors</label><input type="number" id="m-bfloors" value="${b.total_floors || 1}"></div>
+      <div class="form-group"><label>Sort Order</label><input type="number" id="m-bsort" value="${b.sort_order || 0}"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-bnotes">${b.notes || ''}</textarea></div>
+  `, async () => {
+    const name = document.getElementById('m-bname').value.trim();
+    if (!name) { toast('Name is required'); return false; }
+    const record = {
+      name,
+      total_floors: parseInt(document.getElementById('m-bfloors').value) || 1,
+      sort_order: parseInt(document.getElementById('m-bsort').value) || 0,
+      notes: document.getElementById('m-bnotes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      const { error } = await supabase.from('iqbuild_buildings').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+    } else {
+      record.project_id = projectId;
+      const { error } = await supabase.from('iqbuild_buildings').insert(record);
+      if (error) { toast('Error: ' + error.message); return false; }
+    }
+    toast(existing ? 'Building updated' : 'Building added');
+    currentProject = await loadProjectDetail(currentProject.id);
+    renderView();
+  });
+}
+
+// -- Floor Modal
+function showFloorModal(buildingId) {
+  showModal('Add Floor', `
+    <div class="form-row">
+      <div class="form-group"><label>Floor Number *</label><input type="number" id="m-fnum" value="1"></div>
+      <div class="form-group"><label>Floor Label</label><input id="m-flabel" placeholder="Ground, Penthouse, P1..."></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-fnotes"></textarea></div>
+  `, async () => {
+    const num = parseInt(document.getElementById('m-fnum').value);
+    if (isNaN(num)) { toast('Floor number required'); return false; }
+    const { error } = await supabase.from('iqbuild_floors').insert({
+      building_id: buildingId,
+      floor_number: num,
+      floor_label: document.getElementById('m-flabel').value.trim() || null,
+      notes: document.getElementById('m-fnotes').value.trim() || null,
+    });
+    if (error) { toast('Error: ' + error.message); return false; }
+    toast('Floor added');
+    currentProject = await loadProjectDetail(currentProject.id);
+    renderView();
+  });
+}
+
+// -- Unit Modal
+function showUnitModal(floorId, existing) {
+  const u = existing || {};
+  showModal(existing ? 'Edit Unit' : 'Add Unit', `
+    <div class="form-row">
+      <div class="form-group"><label>Unit Number *</label><input id="m-unum" value="${u.unit_number || ''}"></div>
+      <div class="form-group"><label>Unit Type</label><select id="m-utype"><option value="">—</option>${unitTypes.map(t => `<option value="${t}" ${u.unit_type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-group"><label>Status</label><select id="m-ustatus">${unitStatuses.map(s => `<option value="${s}" ${u.status === s ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Buyer Name</label><input id="m-ubuyer" value="${u.buyer_name || ''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Buyer Email</label><input id="m-uemail" value="${u.buyer_email || ''}"></div>
+      <div class="form-group"><label>Buyer Phone</label><input id="m-uphone" value="${u.buyer_phone || ''}"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-unotes">${u.notes || ''}</textarea></div>
+  `, async () => {
+    const unitNum = document.getElementById('m-unum').value.trim();
+    if (!unitNum) { toast('Unit number required'); return false; }
+    const record = {
+      unit_number: unitNum,
+      unit_type: document.getElementById('m-utype').value || null,
+      status: document.getElementById('m-ustatus').value,
+      buyer_name: document.getElementById('m-ubuyer').value.trim() || null,
+      buyer_email: document.getElementById('m-uemail').value.trim() || null,
+      buyer_phone: document.getElementById('m-uphone').value.trim() || null,
+      notes: document.getElementById('m-unotes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      const { error } = await supabase.from('iqbuild_units').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+      toast('Unit updated');
+      currentUnit = await loadUnitDetail(existing.id);
+    } else {
+      record.floor_id = floorId;
+      const { data, error } = await supabase.from('iqbuild_units').insert(record).select().single();
+      if (error) { toast('Error: ' + error.message); return false; }
+      toast('Unit added');
+      // Update project total_units
+      const projUnits = (currentProject.total_units || 0) + 1;
+      await supabase.from('iqbuild_projects').update({ total_units: projUnits }).eq('id', currentProject.id);
+    }
+    currentProject = await loadProjectDetail(currentProject.id);
+    renderView();
+  });
+}
+
+// -- Appliance Modal
+function showApplianceModal(unitId, existing) {
+  const a = existing || {};
+  const appTypes = ['refrigerator','range','cooktop','wall_oven','dishwasher','hood','microwave','washer','dryer','freezer','wine_cooler','ice_maker','garbage_disposal','compactor'];
+  const upgradeStatuses = ['builder_grade','upgrade_requested','upgrade_approved','upgrade_ordered','upgrade_installed'];
+  const appStatuses = ['pending','ordered','delivered','installed','inspected'];
+  showModal(existing ? 'Edit Appliance' : 'Add Appliance', `
+    <div class="form-row">
+      <div class="form-group"><label>Appliance Type *</label><select id="m-atype">${appTypes.map(t => `<option value="${t}" ${a.appliance_type === t ? 'selected' : ''}>${t.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Status</label><select id="m-astatus">${appStatuses.map(s => `<option value="${s}" ${a.status === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Brand</label><input id="m-abrand" value="${a.brand || ''}"></div>
+      <div class="form-group"><label>Model</label><input id="m-amodel" value="${a.model || ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Serial Number</label><input id="m-aserial" value="${a.serial_number || ''}"></div>
+      <div class="form-group"><label>Grade</label><select id="m-agrade">${upgradeStatuses.map(s => `<option value="${s}" ${a.upgrade_status === s ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Original Cost ($)</label><input type="number" id="m-acost" value="${a.original_cost || ''}"></div>
+      <div class="form-group"><label>Upgrade Cost Diff ($)</label><input type="number" id="m-adiff" value="${a.upgrade_cost_diff || ''}"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-anotes">${a.notes || ''}</textarea></div>
+    ${existing ? `<div style="margin-top:.5rem"><button class="btn-danger btn-sm" id="del-appliance-btn">${icons.trash} Remove Appliance</button></div>` : ''}
+  `, async () => {
+    const record = {
+      appliance_type: document.getElementById('m-atype').value,
+      status: document.getElementById('m-astatus').value,
+      brand: document.getElementById('m-abrand').value.trim() || null,
+      model: document.getElementById('m-amodel').value.trim() || null,
+      serial_number: document.getElementById('m-aserial').value.trim() || null,
+      upgrade_status: document.getElementById('m-agrade').value,
+      original_cost: parseFloat(document.getElementById('m-acost').value) || 0,
+      upgrade_cost_diff: parseFloat(document.getElementById('m-adiff').value) || 0,
+      notes: document.getElementById('m-anotes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing) {
+      const { error } = await supabase.from('iqbuild_unit_appliances').update(record).eq('id', existing.id);
+      if (error) { toast('Error: ' + error.message); return false; }
+    } else {
+      record.unit_id = unitId;
+      const { error } = await supabase.from('iqbuild_unit_appliances').insert(record);
+      if (error) { toast('Error: ' + error.message); return false; }
+    }
+    toast(existing ? 'Appliance updated' : 'Appliance added');
+    // Update has_upgrades
+    const { data: allAppl } = await supabase.from('iqbuild_unit_appliances').select('upgrade_status,upgrade_cost_diff').eq('unit_id', unitId);
+    const hasUpgrades = (allAppl || []).some(x => x.upgrade_status !== 'builder_grade');
+    const upgradeTotal = (allAppl || []).reduce((a, x) => a + Number(x.upgrade_cost_diff || 0), 0);
+    await supabase.from('iqbuild_units').update({ has_upgrades: hasUpgrades, upgrade_total: upgradeTotal }).eq('id', unitId);
+
+    currentUnit = await loadUnitDetail(unitId);
+    renderView();
+  });
+
+  if (existing) {
+    setTimeout(() => {
+      const delBtn = document.getElementById('del-appliance-btn');
+      if (delBtn) delBtn.onclick = async () => {
+        if (!confirm('Remove this appliance?')) return;
+        await supabase.from('iqbuild_unit_appliances').delete().eq('id', existing.id);
+        toast('Appliance removed');
+        currentUnit = await loadUnitDetail(unitId);
+        document.querySelector('.modal-overlay')?.remove();
+        modalOpen = false;
+        renderView();
+      };
+    }, 100);
+  }
+}
+
+// -- Milestone Update Modal
+function showMilestoneUpdateModal(milestoneId, currentStatus) {
+  const msStatuses = ['pending','in_progress','passed','failed','waived','not_applicable'];
+  showModal('Update Milestone', `
+    <div class="form-group"><label>Status</label><select id="m-mstatus">${msStatuses.map(s => `<option value="${s}" ${s === currentStatus ? 'selected' : ''}>${s.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    <div class="form-group"><label>Inspector Name</label><input id="m-minsp"></div>
+    <div class="form-group"><label>Completed Date</label><input type="date" id="m-mdate"></div>
+    <div class="form-group"><label>Notes</label><textarea id="m-mnotes"></textarea></div>
+  `, async () => {
+    const newStatus = document.getElementById('m-mstatus').value;
+    const record = {
+      status: newStatus,
+      inspector_name: document.getElementById('m-minsp').value.trim() || null,
+      completed_date: document.getElementById('m-mdate').value || null,
+      inspection_notes: document.getElementById('m-mnotes').value.trim() || null,
+      updated_at: new Date().toISOString(),
+    };
+    if (newStatus === 'failed') record.failed_reason = document.getElementById('m-mnotes').value.trim() || null;
+    const { error } = await supabase.from('iqbuild_unit_milestones').update(record).eq('id', milestoneId);
+    if (error) { toast('Error: ' + error.message); return false; }
+    toast('Milestone updated');
+    if (currentUnit) {
+      await logActivity(currentProject.id, 'milestone', milestoneId, 'status_changed', currentStatus, newStatus, `Milestone → ${newStatus}`);
+      currentUnit = await loadUnitDetail(currentUnit.id);
+    }
+    renderView();
+  });
+}
+
+// -- Delivery Modal
+function showDeliveryModal(projectId) {
+  const bldOptions = currentProject?.buildings?.map(b => `<option value="${b.id}">${b.name}</option>`).join('') || '';
+  showModal('Schedule Delivery', `
+    <div class="form-row">
+      <div class="form-group"><label>Delivery Date *</label><input type="date" id="m-ddate"></div>
+      <div class="form-group"><label>PO Number</label><input id="m-dpo"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Carrier</label><input id="m-dcarrier"></div>
+      <div class="form-group"><label>Tracking Number</label><input id="m-dtrack"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Target Building</label><select id="m-dbld"><option value="">All</option>${bldOptions}</select></div>
+      <div class="form-group"><label>Target Floors</label><input id="m-dfloors" placeholder="Floors 1-5"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Total Items</label><input type="number" id="m-ditems" value="0"></div>
+      <div class="form-group"><label>Receiving Contact</label><input id="m-dcontact"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="m-dnotes"></textarea></div>
+  `, async () => {
+    const ddate = document.getElementById('m-ddate').value;
+    if (!ddate) { toast('Delivery date required'); return false; }
+    const { error } = await supabase.from('iqbuild_deliveries').insert({
+      project_id: projectId,
+      delivery_date: ddate,
+      po_number: document.getElementById('m-dpo').value.trim() || null,
+      carrier: document.getElementById('m-dcarrier').value.trim() || null,
+      tracking_number: document.getElementById('m-dtrack').value.trim() || null,
+      target_building_id: document.getElementById('m-dbld').value || null,
+      target_floors: document.getElementById('m-dfloors').value.trim() || null,
+      total_items: parseInt(document.getElementById('m-ditems').value) || 0,
+      receiving_contact: document.getElementById('m-dcontact').value.trim() || null,
+      notes: document.getElementById('m-dnotes').value.trim() || null,
+    });
+    if (error) { toast('Error: ' + error.message); return false; }
+    toast('Delivery scheduled');
+    currentProject = await loadProjectDetail(projectId);
+    renderView();
+  });
+}
+
+// -- Team Modal
+function showTeamModal(projectId) {
+  showModal('Add Team Member', `
+    <div class="form-group"><label>Name *</label><input id="m-tname"></div>
+    <div class="form-group"><label>Role</label><select id="m-trole">${teamRoles.map(r => `<option value="${r}">${r.replace(/_/g,' ')}</option>`).join('')}</select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Email</label><input id="m-temail"></div>
+      <div class="form-group"><label>Phone</label><input id="m-tphone"></div>
+    </div>
+  `, async () => {
+    const name = document.getElementById('m-tname').value.trim();
+    if (!name) { toast('Name required'); return false; }
+    const { error } = await supabase.from('iqbuild_team_members').insert({
+      project_id: projectId,
+      name,
+      role: document.getElementById('m-trole').value,
+      email: document.getElementById('m-temail').value.trim() || null,
+      phone: document.getElementById('m-tphone').value.trim() || null,
+    });
+    if (error) { toast('Error: ' + error.message); return false; }
+    toast('Team member added');
+    currentProject = await loadProjectDetail(projectId);
+    renderView();
+  });
+}
+
+// -- Package Modal
+function showPackageModal() {
+  showModal('New Package', `
+    <div class="form-group"><label>Package Name *</label><input id="m-pkname" placeholder="Builder Grade - 1BR"></div>
+    <div class="form-group"><label>Description</label><input id="m-pkdesc"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Unit Type</label><select id="m-pktype"><option value="">—</option>${unitTypes.map(t => `<option value="${t}">${t}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Grade</label><select id="m-pkgrade"><option value="true">Builder Grade</option><option value="false">Upgrade</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Base Cost ($)</label><input type="number" id="m-pkcost" value="0"></div>
+      <div class="form-group"><label>Upgrade Cost ($)</label><input type="number" id="m-pkupgrade" value="0"></div>
+    </div>
+  `, async () => {
+    const name = document.getElementById('m-pkname').value.trim();
+    if (!name) { toast('Name required'); return false; }
+    const { error } = await supabase.from('iqbuild_packages').insert({
+      project_id: currentProject?.id || null,
+      name,
+      description: document.getElementById('m-pkdesc').value.trim() || null,
+      unit_type: document.getElementById('m-pktype').value || null,
+      is_builder_grade: document.getElementById('m-pkgrade').value === 'true',
+      base_cost: parseFloat(document.getElementById('m-pkcost').value) || 0,
+      upgrade_cost: parseFloat(document.getElementById('m-pkupgrade').value) || 0,
+    });
+    if (error) { toast('Error: ' + error.message); return false; }
+    toast('Package created');
+    renderView();
+  });
+}
+
+// -- Milestone Template Modal
+function showMilestoneTemplateModal() {
+  showModal('New Milestone Template', `
+    <div class="form-group"><label>Name *</label><input id="m-msname"></div>
+    <div class="form-group"><label>Description</label><textarea id="m-msdesc"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Category</label><select id="m-mscat"><option value="general">General</option><option value="electrical">Electrical</option><option value="plumbing">Plumbing</option><option value="hvac">HVAC</option><option value="gas">Gas</option></select></div>
+      <div class="form-group"><label>Sort Order</label><input type="number" id="m-mssort" value="0"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label><input type="checkbox" id="m-msinsp" checked> Requires Inspection</label></div>
+      <div class="form-group"><label><input type="checkbox" id="m-mspre"> Pre-Install Requirement</label></div>
+    </div>
+  `, async () => {
+    const name = document.getElementById('m-msname').value.trim();
+    if (!name) { toast('Name required'); return false; }
+    const { error } = await supabase.from('iqbuild_milestone_templates').insert({
+      name,
+      description: document.getElementById('m-msdesc').value.trim() || null,
+      category: document.getElementById('m-mscat').value,
+      sort_order: parseInt(document.getElementById('m-mssort').value) || 0,
+      requires_inspection: document.getElementById('m-msinsp').checked,
+      is_prerequisite_for_install: document.getElementById('m-mspre').checked,
+    });
+    if (error) { toast('Error: ' + error.message); return false; }
+    toast('Milestone template created');
+    await loadMilestoneTemplates();
+    renderView();
+  });
+}
+
+// ========== GLOBAL NAV HELPERS ==========
+window._nav = (view) => { currentView = view; currentProject = null; currentUnit = null; render(); };
+window._openProj = async (id) => { await openProject(id); };
+
+// ========== INIT ==========
+checkAuth();
+</script>
+</body>
+</html>
