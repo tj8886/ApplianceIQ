@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" data-aiq-module="platform">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ApplianceIQ · Closed-Loop Coaching</title>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#e8edf7;background:#0b1020}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#17223f 0,#0b1020 45%);min-height:100vh}
+    main{max-width:1280px;margin:auto;padding:32px 20px 64px}.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.65}h1{font-size:34px;margin:6px 0 8px}.sub{max-width:850px;color:#aeb9cf;margin-bottom:26px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 28px}button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;background:#edf2ff;color:#11182b}button.secondary{background:#202b48;color:#e8edf7}.status{font-size:13px;color:#95a5c7;align-self:center}
+    .cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.card,.panel{background:rgba(19,27,49,.9);border:1px solid #293553;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.2)}.card{padding:18px}.label{font-size:12px;color:#96a4bf;text-transform:uppercase;letter-spacing:.08em}.value{font-size:30px;font-weight:800;margin-top:7px}
+    .panel{margin-top:18px;overflow:hidden}.panel h2{font-size:18px;margin:0;padding:17px 18px;border-bottom:1px solid #293553}.empty{padding:25px;color:#96a4bf}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid #222e49;font-size:13px;vertical-align:top}th{color:#8fa1c4;font-size:11px;text-transform:uppercase;letter-spacing:.06em}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#253250;font-size:11px}.good{background:#173c35}.bad{background:#49262b}.muted{color:#8fa1c4}.diagnosis{max-width:420px;white-space:normal}.error{padding:13px 15px;border:1px solid #6a3037;background:#351b21;border-radius:10px;color:#ffc4c9;margin-bottom:16px;display:none}
+    @media(max-width:900px){.cards{grid-template-columns:repeat(2,1fr)}.panel{overflow:auto}table{min-width:900px}}@media(max-width:520px){.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Phase 4 · Performance Brain</div>
+  <h1>Closed-Loop Coaching</h1>
+  <div class="sub">Performance evidence → diagnosis → intervention → training and Beat the Bot → live-floor application → measured outcome → learning signal.</div>
+  <div id="error" class="error"></div>
+  <div class="actions">
+    <button id="refresh">Refresh intelligence</button>
+    <button id="generate" class="secondary">Generate coaching for gaps</button>
+    <button id="evaluate" class="secondary">Evaluate due interventions</button>
+    <span id="status" class="status">Waiting for ApplianceIQ context…</span>
+  </div>
+  <section class="cards">
+    <div class="card"><div class="label">Active</div><div class="value" id="active">—</div></div>
+    <div class="card"><div class="label">Completed</div><div class="value" id="completed">—</div></div>
+    <div class="card"><div class="label">Evaluations Due</div><div class="value" id="due">—</div></div>
+    <div class="card"><div class="label">Measured</div><div class="value" id="measured">—</div></div>
+    <div class="card"><div class="label">Effectiveness</div><div class="value" id="effectiveness">—</div></div>
+  </section>
+  <section class="panel">
+    <h2>Latest interventions</h2>
+    <div id="empty" class="empty">No interventions yet. Once performance gaps are prescribed, they will appear here.</div>
+    <table id="table" hidden>
+      <thead><tr><th>Employee</th><th>Status</th><th>Metric</th><th>Diagnosis</th><th>Baseline</th><th>Target</th><th>Outcome</th><th>Evaluation</th><th>Due</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+</main>
+<script type="module" src="./aiq-module-adapter.js" data-aiq-module="platform"></script>
+<script type="module">
+  const $=id=>document.getElementById(id); let busy=false;
+  const fmt=v=>v==null?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:2});
+  const date=v=>v?new Date(v).toLocaleString():'—';
+  function fail(err){$('error').style.display='block';$('error').textContent=err?.message||String(err);$('status').textContent='Action failed';}
+  function clearError(){$('error').style.display='none';$('error').textContent='';}
+  async function load(){if(!window.ApplianceIQ?.coaching)return;clearError();$('status').textContent='Loading…';try{const d=await ApplianceIQ.coaching.dashboard();$('active').textContent=d.active_interventions??0;$('completed').textContent=d.completed_interventions??0;$('due').textContent=d.evaluations_due??0;$('measured').textContent=d.measured_outcomes??0;$('effectiveness').textContent=d.effectiveness_pct==null?'—':`${fmt(d.effectiveness_pct)}%`;const rows=d.latest||[];$('empty').hidden=rows.length>0;$('table').hidden=rows.length===0;$('rows').innerHTML=rows.map(r=>`<tr><td>${r.user_id||'—'}</td><td><span class="pill">${r.status||'—'}</span></td><td>${r.metric_key||'—'}</td><td class="diagnosis">${r.diagnosis||'—'}</td><td>${fmt(r.baseline_value)}</td><td>${fmt(r.target_value)}</td><td>${fmt(r.outcome_value)}${r.outcome_delta==null?'':` <span class="muted">(${r.outcome_delta>=0?'+':''}${fmt(r.outcome_delta)})</span>`}</td><td><span class="pill ${r.success===true?'good':r.success===false?'bad':''}">${r.evaluation_status||'—'}</span></td><td>${date(r.evaluation_due_at)}</td></tr>`).join('');$('status').textContent=`Updated ${new Date().toLocaleTimeString()}`;}catch(e){fail(e)}}
+  async function act(fn,label){if(busy)return;busy=true;clearError();$('status').textContent=label;try{const result=await fn();$('status').textContent=Array.isArray(result)?`${result.length} records processed`:label+' complete';await load()}catch(e){fail(e)}finally{busy=false}}
+  $('refresh').onclick=load;$('generate').onclick=()=>act(()=>ApplianceIQ.coaching.generateOrganization({limit:25}),'Generating evidence-based coaching…');$('evaluate').onclick=()=>act(()=>ApplianceIQ.coaching.evaluateDue({limit:100}),'Measuring due outcomes…');
+  window.addEventListener('aiq:intelligence-ready',load,{once:true});setTimeout(load,1800);
+</script>
+</body>
+</html>
