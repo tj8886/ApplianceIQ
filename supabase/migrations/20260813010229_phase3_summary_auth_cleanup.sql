@@ -1,0 +1,9 @@
+-- Remove deprecated auth.role()-style compatibility logic from the Phase 3 summary RPC.
+create or replace function public.platform_intelligence_summary(p_organization_id uuid,p_since timestamptz default now()-interval '30 days')
+returns jsonb language sql security definer set search_path=public stable as $$
+ select case when exists(select 1 from public.organization_members m where m.organization_id=p_organization_id and m.user_id=auth.uid() and m.status='active') then jsonb_build_object(
+ 'since',p_since,'events',count(*),'sales',count(*) filter(where event_type='transaction.completed'),'refunds',count(*) filter(where event_type='transaction.refunded'),'traffic_groups',coalesce(sum((payload->>'customer_groups')::numeric) filter(where event_type='traffic.observed'),0),'interactions',count(*) filter(where event_type like 'interaction.%'),'no_sales',count(*) filter(where event_type='interaction.no_sale'),'learning_events',count(*) filter(where event_type like 'learning.%'),'field_scores',count(*) filter(where event_type='field.score_recorded'),'revenue',coalesce(sum((payload->>'amount')::numeric) filter(where event_type='transaction.completed'),0),'refund_amount',coalesce(sum(abs((payload->>'amount')::numeric)) filter(where event_type='transaction.refunded'),0),'avg_field_score',round(avg((payload->>'overall_score')::numeric) filter(where event_type='field.score_recorded'),2)) else '{}'::jsonb end
+ from public.intelligence_events where organization_id=p_organization_id and occurred_at>=coalesce(p_since,now()-interval '30 days');
+$$;
+revoke all on function public.platform_intelligence_summary(uuid,timestamptz) from public,anon;
+grant execute on function public.platform_intelligence_summary(uuid,timestamptz) to authenticated;
