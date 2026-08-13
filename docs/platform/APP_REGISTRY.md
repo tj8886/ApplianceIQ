@@ -12,6 +12,7 @@
 6. Internal tools remain registered, but use an internal category/status.
 7. Legacy deployments are never silently reused. They stay in `legacy` until verified and retired/redirected.
 8. Sites whose source is not mapped into this repository use `external-source-unmapped` and are excluded from automated deployment until ownership is resolved.
+9. Repo-linked Netlify auto-builds are not a substitute for registry ownership. Duplicate or legacy repo-linked projects should be retired/disconnected after dependency verification.
 
 ## Current platform model
 
@@ -26,6 +27,8 @@
 ### Legacy Product PIM
 
 Netlify project `applianceiq-product-pim` is marked `retire-pending-verification`. Its canonical replacement is Product IQ (`applianceiq-product-iq-pim`). Do not add it to CI or use it as a new production target.
+
+The legacy Netlify project remains repo-linked and currently emits a failing deploy preview because its Netlify publish directory is configured as `~/ApplianceIQ`. This is a Netlify project-configuration issue, not a Product IQ application failure.
 
 ### Field Report Analytics
 
