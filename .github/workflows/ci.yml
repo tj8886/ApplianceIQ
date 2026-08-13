@@ -48,6 +48,14 @@ jobs:
           console.log('Spec IQ JS syntax OK');
           "
 
+      - name: Check Phase 2 shared adapter
+        run: |
+          test -s apps/platform/aiq-module-adapter.js
+          test -s scripts/prepare-aiq-deploy.mjs
+          grep -q 'window.ApplianceIQ' apps/platform/aiq-module-adapter.js
+          grep -q 'set_platform_context' apps/platform/aiq-module-adapter.js
+          echo 'Phase 2 shared adapter OK'
+
       - name: Check migrations are timestamp-ordered
         run: ls supabase/migrations/*.sql | sort -c && echo 'Migration order OK'
 
@@ -153,10 +161,13 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare unified ApplianceIQ deploy bundle
+        run: node scripts/prepare-aiq-deploy.mjs "${{ matrix.source_path }}" "${{ matrix.key }}"
+
       - name: Deploy ${{ matrix.key }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        run: npx -y netlify-cli deploy --prod --dir "${{ matrix.source_path }}" --site "${{ matrix.site_id }}"
+        run: npx -y netlify-cli deploy --prod --dir .aiq-deploy --site "${{ matrix.site_id }}"
 
       - name: Smoke test production
         run: |
