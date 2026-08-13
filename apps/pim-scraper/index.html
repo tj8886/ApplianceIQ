@@ -261,7 +261,118 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
-const sb = createClient(SB_URL, SB_KEY);
+const _rawSb = createClient(SB_URL, SB_KEY);
+
+/* ═══ WRITE PROXY — routes all writes through scraper-write edge function ═══ */
+const WRITE_PROXY_URL = SB_URL + '/functions/v1/scraper-write';
+const PROXY_KEY = localStorage.getItem('aiq_scraper_proxy_key') || '';
+
+// Tables that the scraper-write edge function handles
+const PROXY_TABLES = new Set([
+  'retailer_discovered_products','pim_retailer_prices','aiq_products',
+  'pim_product_images','pim_product_features','pim_product_documents',
+  'pim_product_videos','retailer_crawl_runs','retailer_brand_pages',
+  'brand_category_pages','pim_price_history','pim_price_observations',
+  'pim_price_changes','pim_scrape_runs','pim_brand_content',
+  'product_relationships','pim_product_certifications','pim_product_dimensions',
+  'brand_catalog','scraper_retailer_sources','intel_news','aiq_recalls'
+]);
+
+async function _proxyWrite(table, operation, data, opts = {}) {
+  const body = { table, operation, data };
+  if (opts.onConflict) body.conflict_columns = opts.onConflict;
+  if (opts.match) body.match = opts.match;
+
+  const headers = { 'Content-Type': 'application/json', 'apikey': SB_KEY };
+  // Primary auth: JWT from user session
+  if (currentSession?.access_token) {
+    headers['Authorization'] = 'Bearer ' + currentSession.access_token;
+  }
+  // Fallback: proxy key
+  if (PROXY_KEY) headers['x-proxy-key'] = PROXY_KEY;
+
+  try {
+    const res = await fetch(WRITE_PROXY_URL, { method: 'POST', headers, body: JSON.stringify(body) });
+    const json = await res.json();
+    if (!res.ok || json.error) {
+      return { data: null, error: { message: json.error || json.details || 'Proxy write failed', code: json.code || res.status, details: json.details, hint: json.hint } };
+    }
+    return { data: json.data || [], error: null, count: json.count };
+  } catch (e) {
+    return { data: null, error: { message: 'Write proxy network error: ' + e.message } };
+  }
+}
+
+// Create a chainable proxy that mimics Supabase's query builder API
+function _createWriteChain(table) {
+  let _op = null, _data = null, _opts = {}, _match = {}, _selectCols = null;
+  let _wantSingle = false, _wantMaybeSingle = false;
+
+  function _execute() {
+    if (!_op) return Promise.resolve({ data: null, error: { message: 'No operation specified' } });
+    const o = { ..._opts };
+    if (Object.keys(_match).length > 0) o.match = _match;
+    return _proxyWrite(table, _op, _data, o).then(r => {
+      // Filter columns if select was specified
+      let d = r.data;
+      if (_selectCols && d && Array.isArray(d)) {
+        const cols = _selectCols.split(',').map(c => c.trim());
+        d = d.map(row => {
+          const filtered = {};
+          cols.forEach(c => { if (c in row) filtered[c] = row[c]; });
+          return filtered;
+        });
+      }
+      // Handle .single() / .maybeSingle()
+      if (_wantSingle || _wantMaybeSingle) {
+        d = Array.isArray(d) ? d[0] || null : d;
+      }
+      return { data: d, error: r.error, count: r.count };
+    });
+  }
+
+  const chain = {
+    insert(data) { _op = 'insert'; _data = data; return chain; },
+    upsert(data, opts) { _op = 'upsert'; _data = data; if (opts?.onConflict) _opts.onConflict = opts.onConflict; return chain; },
+    update(data) { _op = 'update'; _data = data; return chain; },
+    delete() { _op = 'delete'; return chain; },
+    eq(col, val) { _match[col] = val; return chain; },
+    in(col, vals) { _match[col] = vals; return chain; },
+    is(col, val) { _match[col] = val; return chain; },
+    neq() { return chain; },
+    select(cols) { _selectCols = cols || '*'; return chain; },
+    single() { _wantSingle = true; return chain; },
+    maybeSingle() { _wantMaybeSingle = true; return chain; },
+    then(resolve, reject) { return _execute().then(resolve, reject); },
+    catch(fn) { return _execute().catch(fn); }
+  };
+  return chain;
+}
+
+// Proxy the sb object: intercept .from() for write-proxied tables
+const sb = new Proxy(_rawSb, {
+  get(target, prop) {
+    if (prop === 'from') {
+      return function(table) {
+        const realBuilder = target.from(table);
+        if (!PROXY_TABLES.has(table)) return realBuilder;
+        // For proxied tables: intercept writes, pass reads through
+        return new Proxy(realBuilder, {
+          get(rTarget, rProp) {
+            // Write operations → route through edge function
+            if (rProp === 'insert' || rProp === 'upsert' || rProp === 'update' || rProp === 'delete') {
+              const writeChain = _createWriteChain(table);
+              return writeChain[rProp].bind(writeChain);
+            }
+            // Read operations → pass through to real Supabase client
+            return typeof rTarget[rProp] === 'function' ? rTarget[rProp].bind(rTarget) : rTarget[rProp];
+          }
+        });
+      };
+    }
+    return typeof target[prop] === 'function' ? target[prop].bind(target) : target[prop];
+  }
+});
 
 /* ═══ AUTH GATE ═══ */
 let currentSession = null;
