@@ -1,61 +1,93 @@
 # ApplianceIQ
 
 ![CI & Deploy](https://github.com/tj8886/ApplianceIQ/actions/workflows/ci.yml/badge.svg)
-![CRM](https://img.shields.io/website?url=https%3A%2F%2Fcrmaiiq.netlify.app&label=CRM)
-![Academy](https://img.shields.io/website?url=https%3A%2F%2Fapplianceiq-aiacademy.netlify.app&label=Academy)
-| Spec IQ | https://appliance-spec-iq.netlify.app | `spec-iq` | `apps/spec-iq/` |
-| IQ UP System | https://applianceiq-iq-up-system.netlify.app | `iq-up-system` | `apps/up-system/` |
 
-The Appliance Sales Operating System — CRM, AI Academy, and governed AI layer for appliance and specialty retail.
+ApplianceIQ is an operating system for appliance and specialty retail. The product is organized as one platform shell with modular applications for CRM, sales operations, product intelligence, training/coaching, field operations, integrations and executive intelligence.
 
-## Live deployments
+Backend: Supabase project **ApplianceIQ** (`fumwwhyozeouoqscolke`, `ca-central-1`).
 
-| App | URL | Netlify project | Source in this repo |
-|---|---|---|---|
-| CRMAI IQ (CRM) | https://crmaiiq.netlify.app | `crmaiiq` | `apps/crm/` |
-| ApplianceIQ Academy | https://applianceiq-aiacademy.netlify.app | `applianceiq-aiacademy` | `apps/academy/` |
-| Academy rogue site (abandoned) | https://trainingiq-academy.netlify.app | `trainingiq-academy` — do not deploy or restore | Historical only |
-| Spec IQ | https://appliance-spec-iq.netlify.app | `spec-iq` | `apps/spec-iq/` |
-| IQ UP System | https://applianceiq-iq-up-system.netlify.app | `iq-up-system` | `apps/up-system/` |
+## Canonical application registry
 
-Backend: Supabase project **ApplianceIQ** (`fumwwhyozeouoqscolke`, ca-central-1).
+The source of truth for application ownership, source paths, Netlify project IDs, production URLs, lifecycle status and deployment eligibility is:
 
-## Repo layout
+- [`config/app-registry.json`](config/app-registry.json)
+- [`docs/platform/APP_REGISTRY.md`](docs/platform/APP_REGISTRY.md)
 
+Do not add production site IDs directly to CI. Register the app once and let the deployment workflow consume the registry.
+
+## Product architecture
+
+### Platform
+
+- **ApplianceIQ Platform** — shell/control plane for authentication, organizations, users, roles, entitlements, apps, integrations, notifications, settings and platform health.
+
+### Experience
+
+- **CRM** — customer, pipeline, activity and post-sale lifecycle.
+- **Spec IQ** — product search, specifications, comparison and customer-facing product workflows.
+- **IQ Academy** — training and curriculum.
+- **AI IQ Coach** — performance coaching and roleplay.
+- **IQ Up System** — retail traffic and salesperson opportunity assignment.
+- **IQ Field** — field execution and data collection.
+
+### Intelligence
+
+- **Command Center** — operational action layer.
+- **IQ Intelligence Group** — executive/business intelligence.
+- **Field Report Analytics** — field analytics; live Netlify site exists, source ownership is still being mapped into this repository.
+
+### Core data and acquisition
+
+- **Product IQ** — canonical product/PIM application.
+- **PIM Scraper** — internal product-data acquisition service/UI.
+
+### Integration platform
+
+The Supabase connector layer supports Shopify, Microsoft Dynamics 365 / Business Central, STORIS, ePASS, Oracle Xstore, RETAILvantage and Windward System Five, with shared ingestion, identity mapping, reconciliation, retry, quarantine, health, alerts, reliability and certification infrastructure.
+
+## Repository layout
+
+```text
+apps/                       Application modules
+config/app-registry.json    Canonical production application registry
+scripts/                    Validation and operational tooling
+supabase/migrations/        Versioned database changes
+supabase/functions/         Edge Functions and connector workers
+docs/platform/              Platform architecture and operational docs
+tests/                      Automated tests
 ```
-apps/
-  crm/                      Single-file CRM app (index.html) + netlify.toml
-  academy/                  Academy site (single source; deployed to both academy URLs)
-supabase/
-  migrations/               54 files aligned with production migration history
-                            (23 contain DDL; 31 are historical markers — see docs/reconciliation/)
-  functions/
-    ai-request-processor/   Governed AI assistant endpoint (Anthropic)
-    activity-analyzer/      Recording pipeline: process | transcribe | coach | summarize
-    ai-roleplay/            AI roleplay sessions
-    email-dispatcher/       Outbound email via Resend
-    embedding-worker/       Knowledge/product embeddings (Voyage or OpenAI)
-    stripe-webhooks/        Stripe payment webhook handler
-    deploy-host/            RETIRED deploy helper
-    _shared/                Shared modules (http, communications, file-governance, etc.)
-    _non_deployable/        7 functions with missing schema deps (see README there)
+
+## CI and deployment
+
+`.github/workflows/ci.yml` validates the application registry, application regressions, migration hygiene and deployable Edge Functions.
+
+On `main`, CI builds a deployment matrix from `config/app-registry.json`. Every entry with `deploy_on_main: true` is deployed to its registered Netlify site and then smoke-tested at its registered production URL.
+
+A missing `NETLIFY_AUTH_TOKEN` is a production deployment failure rather than a silent skip.
+
+Run registry validation locally with:
+
+```bash
+node scripts/validate-app-registry.mjs
 ```
 
-## Architecture notes
+## Legacy deployments
 
-- **CRM** is a single-file vanilla-JS SPA talking directly to Supabase (auth + RLS) with the publishable key. All org data is tenant-scoped through `organization_members` + `is_org_member()` / `is_org_admin()` RLS helpers.
-- **Sales pitch recording**: browser MediaRecorder → private `crm-media` bucket (`{org_id}/recordings/{id}.webm`) → `sales_recordings` row (consent fields required) → `activities` row → `activity-analyzer` `process` mode runs Whisper transcription + Claude coaching. Status lifecycle: `uploaded → transcribing → transcribed → analyzing → complete | failed`. `recording_source` supports future `wearable`, `phone_system`, `uploaded_file`, `meeting_platform`.
-- **AI governance**: every assistant call goes through `ai_submit_request` (SQL, as the user) before any model call; requests, audit events, and token usage land in `ai_requests`, `ai_audit_events`, `ai_usage_meter`.
-- **Secrets** live only in Supabase Edge Function secrets: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (transcription), optional `VOYAGE_API_KEY`, `AI_MODEL`, `EMBEDDING_MODEL`. Nothing sensitive ships to the frontend; the Supabase publishable key in the apps is public by design.
+Legacy and duplicate sites are listed under the `legacy` section of the registry instead of being silently reused. The old `applianceiq-product-pim` deployment is currently marked `retire-pending-verification`; its canonical replacement is Product IQ.
 
-## Docs
+## Security and connector operations
 
-- [DEPLOYMENT.md](DEPLOYMENT.md) — how each piece ships, CI setup, rollback
-- [CONTRIBUTING.md](CONTRIBUTING.md) — ground rules and conventions
-- [.env.example](.env.example) — reference for server-side secrets
+The connector platform includes service-only credential storage, canonical ingestion, idempotency, quarantine, record and whole-job retry, reconciliation, event ordering protection, schema drift detection, health monitoring, incident alerting, SLA/reliability metrics and connector certification.
 
-## Deploying
+Platform connector certification is blocked when the internal platform security gate fails.
 
-- **CRM to Netlify**: from `apps/crm/`, deploy to site id `38f8f64f-c674-4e14-8639-37ebb40ac939` (`crmaiiq`). The site is currently deployed manually (no CI); linking this repo to the Netlify project enables auto-deploys from `main`.
-- **Edge functions**: `supabase functions deploy <name> --project-ref fumwwhyozeouoqscolke` (or via MCP/dashboard).
-- **Migrations**: 54 files match 54 production migration records. 23 contain DDL; 31 are historical markers (no executable SQL). See `docs/reconciliation/` for details. New migrations should be added with a fresh timestamp and applied via `supabase db push` or the dashboard/MCP.
+## Development rules
+
+- Treat ApplianceIQ Platform as the shell. Other sites are modules.
+- Prefer shared Supabase identity and event models over app-specific copies.
+- Add new production apps to the registry before adding deployment logic.
+- Do not expose service-role secrets to browser code.
+- Keep schema changes in migrations and Edge Function source in GitHub.
+- Use legacy status/redirects rather than allowing duplicate production products to drift indefinitely.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md), [CONTRIBUTING.md](CONTRIBUTING.md) and the [App Registry contract](docs/platform/APP_REGISTRY.md) for operational details.
