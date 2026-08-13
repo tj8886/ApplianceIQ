@@ -59,6 +59,13 @@ function injectBeforeBody(text,scriptTag){
   return text.replace('</body>',`${scriptTag}\n</body>`);
 }
 
+function injectAfterBodyOpen(text,scriptTag){
+  if(text.includes(scriptTag)) return text;
+  const bodyOpen=text.match(/<body\b[^>]*>/i);
+  if(!bodyOpen) throw new Error('Cannot inject shared adapter into HTML without <body>');
+  return text.replace(bodyOpen[0],`${bodyOpen[0]}\n${scriptTag}`);
+}
+
 function integrateCommandCenterBundle(targetRoot){
   if(moduleKey!=='command-center') return;
   const root=resolve(targetRoot);
@@ -120,9 +127,7 @@ if (moduleKey === 'applianceiq-platform') {
   const adapter = `<script type="module" src="https://appliance-iq-platform.netlify.app/aiq-module-adapter.js" data-aiq-module="${moduleKey}"></script>`;
   walkHtml(resolve(target),(text,p)=>{
     text=hardenCommandCenterAuth(text,p);
-    if(!text.includes('aiq-module-adapter.js') && text.includes('</body>')) {
-      text=text.replace('</body>',`${adapter}\n</body>`);
-    }
+    if(!text.includes('aiq-module-adapter.js')) text=injectAfterBodyOpen(text,adapter);
     if(moduleKey==='command-center') {
       if(basename(p)==='index.html' && !text.includes('aiq:intelligence-ready')) throw new Error('Command Center secure handoff boot listener missing');
       if(!text.includes('aiq-module-adapter.js')) throw new Error(`Shared Platform adapter missing from built Command Center file: ${p}`);
