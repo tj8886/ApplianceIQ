@@ -11,6 +11,9 @@ replacement = governed + "\n\nfunction renderInsightCards"
 updated, count = re.subn(pattern, replacement, index_text, count=1, flags=re.S)
 if count != 1:
     raise SystemExit('Could not locate exactly one legacy renderAI function for governed replacement')
+# Guardrail: operating AI Insights must not write through the retired budget-prediction cache.
+if 'ai_budget_predictions' in updated:
+    raise SystemExit('Legacy ai_budget_predictions operating-intelligence path still present after governed replacement')
 index.write_text(updated, encoding='utf-8')
 
 # Shared management navigation is injected into every first-party Command Center view.
