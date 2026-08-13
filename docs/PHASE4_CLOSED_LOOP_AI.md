@@ -48,18 +48,26 @@ Phase 4 deliberately extends these rather than creating duplicate coaching and l
 - linked Intelligence outcome
 - evidence payload
 
-The table is service/RPC-only. RLS is enabled and no direct authenticated or anonymous table access is granted.
+The table is service/RPC-only. RLS is enabled and no direct authenticated or anonymous table access is granted. Foreign-key lookup indexes cover intervention recommendation/evaluation links and evaluation recommendation/outcome links.
 
 ## Phase 4 RPCs
 
 - `phase4_generate_coaching(organization,user,date)` — generate or retrieve the daily evidence-based intervention and establish recommendation/evaluation linkage.
 - `phase4_complete_step(intervention,step,completion_ref,score,metadata)` — complete an intervention step and progress the intervention state machine.
 - `phase4_evaluate_intervention(intervention,force)` — measure post-intervention evidence and record an Intelligence outcome.
-- `phase4_generate_org_coaching(organization,date,limit)` — organization-admin batch generation for employees with measurable performance gaps.
+- `phase4_generate_org_coaching(organization,date,limit)` — organization-admin batch generation for employees with measurable performance gaps, ordered by positive gap severity so the largest shortfall is prioritized first.
 - `phase4_evaluate_due_org(organization,limit)` — organization-admin evaluation of completed interventions whose measurement window is due.
 - `phase4_coaching_dashboard(organization)` — organization-member management summary and latest interventions.
 
-All exposed Phase 4 RPCs validate organization membership, intervention ownership, or organization-admin authority as appropriate and are registered in the Platform Security Gate allowlist.
+Internal service helpers include `phase4_attach_evaluation(intervention)`, which guarantees an existing or legacy intervention receives an evaluation linked to that exact intervention, and `phase4_evaluate_all_due(limit)`, which performs due measurement across organizations without generating new coaching.
+
+All exposed Phase 4 RPCs validate organization membership, intervention ownership, or organization-admin authority as appropriate and are registered in the Platform Security Gate allowlist. Internal helpers are service-only.
+
+## Automatic measurement
+
+`pg_cron` is enabled. The job `phase4-evaluate-due-interventions` runs hourly at minute 17 and calls `phase4_evaluate_all_due(100)`.
+
+The job only evaluates interventions that are already completed and whose evaluation date is due. It does **not** generate or assign coaching. This keeps prescription as an explicit user/admin action while removing the need for humans to remember every 7-day measurement window.
 
 ## Governed coaching events
 
@@ -102,8 +110,11 @@ Verified contracts:
 - four completed steps → intervention completed
 - forced evaluation → measured evaluation + `intelligence_outcomes` record
 - governed event bridge → 1 `coaching.intervention_created`, 4 `coaching.step_completed`, 1 `coaching.intervention_completed`, 1 `coaching.outcome_measured`
+- legacy evaluation attachment resolves the exact intervention rather than generating a replacement
+- organization prioritization orders gaps by positive shortfall severity
+- hourly due-evaluation cron is registered and active
 
-The Platform Security Gate was refreshed after Phase 4 registration and passed with enforcement active, 0 critical findings, and 0 warning findings.
+The Platform Security Gate was refreshed after production hardening and passed with enforcement active, 0 critical findings, and 0 warning findings.
 
 ## Design rule
 
