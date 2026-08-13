@@ -172,7 +172,7 @@ tr{cursor:pointer}
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NjU0ODAsImV4cCI6MjA1MjU0MTQ4MH0.VsMKCCBEaEiZPOoG5FvFIxVYaA96WKBjIExq7SxIFDQ';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk';
 const supabase = createClient(SB_URL, SB_KEY);
 
 // ========== STATE ==========
@@ -270,19 +270,174 @@ async function handleLogout() {
 
 function renderLogin() {
   document.getElementById('app').innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card">
-        <h1 style="display:flex;align-items:center;justify-content:center;gap:.5rem">
-          ${icons.projects} <span>IQ</span> <span style="color:var(--green)">Build</span>
-        </h1>
-        <p>Commercial Project Management</p>
-        <div class="form-group"><label>Email</label><input type="email" id="login-email" placeholder="you@company.com"></div>
-        <div class="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"></div>
-        <button class="btn-primary" id="login-btn">Sign In</button>
-        <div class="login-error" id="login-err"></div>
+    <!-- MARKETING LANDING PAGE -->
+    <div id="landing-page">
+      <!-- Nav -->
+      <nav style="display:flex;justify-content:space-between;align-items:center;padding:1rem 2.5rem;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50">
+        <div style="display:flex;align-items:center;gap:.5rem;font-family:'Sora',sans-serif;font-size:1.15rem;font-weight:700;color:var(--navy)">${icons.projects} IQ <span style="color:var(--green)">Build</span></div>
+        <div style="display:flex;gap:1.5rem;align-items:center;font-size:.85rem">
+          <a href="#features" style="color:var(--text-light);font-weight:500">Features</a>
+          <a href="#pricing" style="color:var(--text-light);font-weight:500">Pricing</a>
+          <a href="#apps" style="color:var(--text-light);font-weight:500">Platform</a>
+          <button class="btn-primary" id="nav-signin-btn" style="padding:.45rem 1.25rem">Sign In</button>
+        </div>
+      </nav>
+
+      <!-- Hero -->
+      <section style="background:linear-gradient(135deg,#0f1f3d 0%,#1a3a6b 100%);color:#fff;padding:5rem 2.5rem;text-align:center">
+        <h1 style="font-family:'Sora',sans-serif;font-size:2.75rem;font-weight:700;color:#fff;margin-bottom:1rem;line-height:1.15">Commercial Appliance<br>Project Management</h1>
+        <p style="font-size:1.15rem;color:rgba(255,255,255,0.75);max-width:650px;margin:0 auto 2rem;line-height:1.6">Track every appliance across every unit, floor by floor, building by building. From CRM deal to final sign-off — nothing falls through the cracks.</p>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+          <button class="btn-primary hero-signin-btn" style="padding:.75rem 2rem;font-size:1rem;background:var(--green)">Get Started</button>
+          <a href="#features" style="padding:.75rem 2rem;font-size:1rem;border:1px solid rgba(255,255,255,0.3);border-radius:var(--radius);color:#fff;display:inline-block">See Features</a>
+        </div>
+        <div style="display:flex;gap:2.5rem;justify-content:center;margin-top:3rem;font-size:.9rem;color:rgba(255,255,255,0.6)">
+          <span>📦 Unit-by-Unit Tracking</span><span>🔧 Installation & Parts</span><span>✅ Digital Sign-Offs</span><span>🔗 CRM Integration</span>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features" style="padding:4rem 2.5rem;max-width:1100px;margin:0 auto">
+        <h2 style="text-align:center;font-size:1.75rem;margin-bottom:.5rem">Built for Commercial Appliance Projects</h2>
+        <p style="text-align:center;color:var(--text-light);margin-bottom:3rem;font-size:.95rem">The only platform purpose-built to manage multi-unit appliance installations from sale to sign-off.</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem">
+          ${[
+            ['📋','CRM → Project Pipeline','Won deals import directly with all Spec IQ packages, products, and pricing. Zero re-entry.'],
+            ['🏗️','Building / Floor / Unit','Full hierarchy — multiple buildings, floors, and units. Visual dot-map shows every unit status at a glance.'],
+            ['📦','Package Assignment','Assign appliance packages per unit. Builder grade vs upgrades tracked with cost differentials per buyer.'],
+            ['🔧','Installation & Parts','Installation work orders separate from delivery. Track labour, hoses, vents, connectors — all with billing.'],
+            ['✅','4-Stage Confirmation','Every appliance tracked: Ordered → Delivered → Installed → Inspected. Per-item checkboxes with audit trail.'],
+            ['⚠️','Damage & Replacements','Report damage, track replacements with PO, ETA, cost. Replacement status pipeline until resolved.'],
+            ['📝','Digital Sign-Offs','Binding digital acknowledgments with SHA-256 hash, liability clauses, no-take-back terms. Stored permanently.'],
+            ['👷','Site Contacts','Track superintendents, inspectors, contractors, building access — people not in your CRM but critical to the project.'],
+            ['📊','Dashboard & Reporting','Installation costs, delivery schedule, sign-off status, project completion — all in one view.'],
+          ].map(([icon, title, desc]) => `
+            <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem">
+              <div style="font-size:1.75rem;margin-bottom:.5rem">${icon}</div>
+              <h3 style="font-size:.95rem;margin-bottom:.4rem">${title}</h3>
+              <p style="font-size:.85rem;color:var(--text-light);line-height:1.5">${desc}</p>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+
+      <!-- Pricing -->
+      <section id="pricing" style="padding:4rem 2.5rem;background:#fff">
+        <div style="max-width:1100px;margin:0 auto">
+          <h2 style="text-align:center;font-size:1.75rem;margin-bottom:.5rem">Pricing</h2>
+          <p style="text-align:center;color:var(--text-light);margin-bottom:3rem">Per active project, per month. Cancel anytime.</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem">
+            <!-- Starter -->
+            <div style="border:1px solid var(--border);border-radius:12px;padding:2rem;text-align:center">
+              <h3 style="font-size:1rem;color:var(--text-light);font-weight:600;margin-bottom:.25rem">Starter</h3>
+              <div style="font-family:'Sora',sans-serif;font-size:2.5rem;font-weight:700;color:var(--navy)">$299<span style="font-size:1rem;font-weight:400;color:var(--text-muted)">/mo</span></div>
+              <p style="font-size:.8rem;color:var(--text-muted);margin:.5rem 0 1.5rem">per project</p>
+              <div style="text-align:left;font-size:.85rem;color:var(--text);line-height:2">
+                ✓ 1 active project<br>
+                ✓ 1 building, up to 50 units<br>
+                ✓ Unit-by-unit tracking<br>
+                ✓ Package assignment<br>
+                ✓ Delivery scheduling<br>
+                ✓ Basic milestone tracking<br>
+                ✓ Team management<br>
+                ✗ <span style="color:var(--text-muted)">Installation/parts tracking</span><br>
+                ✗ <span style="color:var(--text-muted)">Digital sign-offs</span>
+              </div>
+              <button class="btn-outline hero-signin-btn" style="width:100%;margin-top:1.5rem;padding:.6rem">Get Started</button>
+            </div>
+            <!-- Professional -->
+            <div style="border:2px solid var(--green);border-radius:12px;padding:2rem;text-align:center;position:relative">
+              <div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:.2rem 1rem;border-radius:20px;font-size:.7rem;font-weight:600;text-transform:uppercase">Most Popular</div>
+              <h3 style="font-size:1rem;color:var(--green);font-weight:600;margin-bottom:.25rem">Professional</h3>
+              <div style="font-family:'Sora',sans-serif;font-size:2.5rem;font-weight:700;color:var(--navy)">$699<span style="font-size:1rem;font-weight:400;color:var(--text-muted)">/mo</span></div>
+              <p style="font-size:.8rem;color:var(--text-muted);margin:.5rem 0 1.5rem">per project</p>
+              <div style="text-align:left;font-size:.85rem;color:var(--text);line-height:2">
+                ✓ 5 active projects<br>
+                ✓ Unlimited buildings & units<br>
+                ✓ Full 4-stage confirmation chain<br>
+                ✓ Installation & parts tracking<br>
+                ✓ Damage & replacement workflow<br>
+                ✓ Digital sign-offs (binding)<br>
+                ✓ Site contacts management<br>
+                ✓ CRM & Spec IQ import<br>
+                ✓ Audit trail & sign-off log
+              </div>
+              <button class="btn-primary hero-signin-btn" style="width:100%;margin-top:1.5rem;padding:.6rem">Get Started</button>
+            </div>
+            <!-- Enterprise -->
+            <div style="border:1px solid var(--border);border-radius:12px;padding:2rem;text-align:center">
+              <h3 style="font-size:1rem;color:var(--text-light);font-weight:600;margin-bottom:.25rem">Enterprise</h3>
+              <div style="font-family:'Sora',sans-serif;font-size:2.5rem;font-weight:700;color:var(--navy)">$1,499<span style="font-size:1rem;font-weight:400;color:var(--text-muted)">/mo</span></div>
+              <p style="font-size:.8rem;color:var(--text-muted);margin:.5rem 0 1.5rem">per project</p>
+              <div style="text-align:left;font-size:.85rem;color:var(--text);line-height:2">
+                ✓ Unlimited active projects<br>
+                ✓ Everything in Professional<br>
+                ✓ API access<br>
+                ✓ Custom inspection checklists<br>
+                ✓ Multi-org support<br>
+                ✓ Priority support<br>
+                ✓ Dedicated account manager<br>
+                ✓ Custom integrations<br>
+                ✓ White-label sign-off PDFs
+              </div>
+              <button class="btn-outline hero-signin-btn" style="width:100%;margin-top:1.5rem;padding:.6rem">Contact Sales</button>
+            </div>
+          </div>
+          <p style="text-align:center;font-size:.8rem;color:var(--text-muted);margin-top:1.5rem">All plans include CRM integration. 20% discount on annual billing. CAD pricing: 1.40× USD rounded to nearest $9.</p>
+        </div>
+      </section>
+
+      <!-- Platform Apps -->
+      <section id="apps" style="padding:4rem 2.5rem;max-width:1100px;margin:0 auto">
+        <h2 style="text-align:center;font-size:1.75rem;margin-bottom:.5rem">Part of the ApplianceIQ Platform</h2>
+        <p style="text-align:center;color:var(--text-light);margin-bottom:2.5rem;font-size:.95rem">IQ Build connects seamlessly with the entire ApplianceIQ ecosystem.</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem">
+          ${[
+            ['IQ CRM','applianceiq-crm.netlify.app','Sales pipeline feeds won deals into Build projects'],
+            ['Spec IQ','appliance-spec-iq.netlify.app','Package specs and product selections import directly'],
+            ['IQ Academy','iqacademy-appliance-training.netlify.app','Train installers and site managers'],
+            ['Product IQ','applianceiq-product-iq-pim.netlify.app','Master product data for specs and packages'],
+            ['AI Coach','ai-iq-coach.netlify.app','AI assistance for installation and product questions'],
+            ['IQ Up','applianceiq-iq-up-system.netlify.app','Customer rotation and assignment system'],
+            ['IQ Field','applianceiq-ai-field.netlify.app','Field service and delivery management'],
+            ['Command Center','applianceiq-intelligence-group.netlify.app/command-center','Analytics and intelligence dashboard'],
+          ].map(([name, url, desc]) => `
+            <a href="https://${url}" target="_blank" style="border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center;display:block;transition:all .15s;text-decoration:none">
+              <h4 style="font-size:.85rem;color:var(--navy);margin-bottom:.3rem">${name}</h4>
+              <p style="font-size:.75rem;color:var(--text-muted);line-height:1.4">${desc}</p>
+            </a>
+          `).join('')}
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer style="background:var(--navy);color:rgba(255,255,255,0.5);padding:2rem 2.5rem;text-align:center;font-size:.8rem">
+        <div style="font-family:'Sora',sans-serif;font-size:1rem;color:#fff;margin-bottom:.5rem">IQ <span style="color:var(--green)">Build</span></div>
+        <p>Part of the ApplianceIQ Intelligence Platform · © ${new Date().getFullYear()} IQ Intelligence Group</p>
+      </footer>
+
+      <!-- Login Modal Overlay (hidden by default) -->
+      <div id="login-modal" style="display:none;position:fixed;inset:0;background:rgba(15,31,61,0.5);z-index:200;align-items:center;justify-content:center;padding:1rem">
+        <div style="background:#fff;border-radius:12px;padding:2.5rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.2);text-align:center;position:relative">
+          <button id="close-login" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text-muted)">✕</button>
+          <h2 style="font-family:'Sora',sans-serif;font-size:1.35rem;margin-bottom:.25rem;display:flex;align-items:center;justify-content:center;gap:.5rem">${icons.projects} IQ <span style="color:var(--green)">Build</span></h2>
+          <p style="color:var(--text-light);font-size:.85rem;margin-bottom:1.5rem">Sign in to your account</p>
+          <div class="form-group" style="text-align:left"><label>Email</label><input type="email" id="login-email" placeholder="you@company.com"></div>
+          <div class="form-group" style="text-align:left"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"></div>
+          <button class="btn-primary" id="login-btn" style="width:100%;padding:.7rem;font-size:.9rem;margin-top:.5rem">Sign In</button>
+          <div class="login-error" id="login-err"></div>
+        </div>
       </div>
     </div>
   `;
+
+  // Bind login modal
+  const openLogin = () => { document.getElementById('login-modal').style.display = 'flex'; };
+  document.getElementById('nav-signin-btn').onclick = openLogin;
+  document.querySelectorAll('.hero-signin-btn').forEach(b => b.onclick = openLogin);
+  document.getElementById('close-login').onclick = () => { document.getElementById('login-modal').style.display = 'none'; };
+  document.getElementById('login-modal').onclick = (e) => { if (e.target.id === 'login-modal') document.getElementById('login-modal').style.display = 'none'; };
+
   document.getElementById('login-btn').onclick = async () => {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
@@ -291,6 +446,11 @@ function renderLogin() {
   };
   document.getElementById('login-pass').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('login-btn').click();
+  });
+
+  // Smooth scroll for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.onclick = (e) => { e.preventDefault(); const t = document.querySelector(a.getAttribute('href')); if (t) t.scrollIntoView({ behavior: 'smooth' }); };
   });
 }
 
