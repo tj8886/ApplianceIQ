@@ -376,34 +376,15 @@ tbody tr:last-child td{border-bottom:none}
         <div class="panel-body" style="padding:0 16px 8px"><div class="feed" id="feedList"><div class="feed-empty">Waiting for changes…</div></div></div>
       </div>
     </div>
-    <!-- Product Enrichment Panel -->
+    <!-- Auto-Enrich Panel -->
     <div class="panel" style="margin-top:24px;margin-bottom:24px">
       <div class="panel-head">
-        <h3>🔄 Product Detail Enrichment</h3>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="enrichBatchSize" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px">
-            <option value="5">5 products</option>
-            <option value="10" selected>10 products</option>
-            <option value="25">25 products</option>
-            <option value="50">50 products</option>
-          </select>
-          <button class="btn btn-accent" style="font-size:12px" id="btnStartEnrich">▶ Start Batch</button>
-          <button class="btn" style="font-size:12px;display:none" id="btnStopEnrich">⏹ Stop</button>
-        </div>
+        <h3>🤖 Auto-Enrich from Spec Sheets</h3>
+        <button class="btn btn-accent" style="font-size:12px" onclick="runBatchEnrich()">▶ Start Batch Enrichment</button>
       </div>
-      <div class="panel-body" id="enrichPanel">
-        <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:12px">
-          Scrapes retailer product pages to extract specs, images, manuals, videos, and features — then writes them directly into the PIM. Targets products that have retailer URLs but are missing assets.
-        </div>
-        <div id="enrichStats" style="display:none">
-          <div class="stats-row" style="margin-bottom:12px">
-            <div class="stat-card accent" style="padding:12px"><div class="label">Enriched</div><div class="value" id="esEnriched">0</div></div>
-            <div class="stat-card green" style="padding:12px"><div class="label">Images Added</div><div class="value" id="esImages">0</div></div>
-            <div class="stat-card purple" style="padding:12px"><div class="label">Docs Added</div><div class="value" id="esDocs">0</div></div>
-            <div class="stat-card" style="padding:12px"><div class="label">Specs Filled</div><div class="value" id="esSpecs">0</div></div>
-          </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:2px;margin-bottom:8px"><div id="enrichBar" style="height:6px;border-radius:6px;background:var(--accent);width:0%;transition:width .3s"></div></div>
-          <div id="enrichLog" style="max-height:200px;overflow-y:auto;font-size:11px;color:var(--text3);font-family:monospace"></div>
+      <div class="panel-body" id="batchEnrichPanel">
+        <div style="font-size:13px;color:var(--text2);line-height:1.7">
+          Automatically extract specifications from PDF spec sheets using AI. Finds products that have spec sheet documents but missing specs data, fetches each PDF, extracts dimensions, electrical, features, and all specifications, then populates the product record. Requires an Anthropic API key (stored in browser).
         </div>
       </div>
     </div>
@@ -1522,7 +1503,6 @@ async function openProductDetail(productId) {
     + (p.map_price ? '<div style="font-size:12px;color:var(--text3)">MAP: $' + Number(p.map_price).toLocaleString() + '</div>' : '')
     + '<div style="margin-top:8px"><div class="completeness-bar"><div class="mini-bar" style="width:80px"><div class="mini-fill" style="width:' + comp + '%;background:' + col + '"></div></div><span style="color:' + col + ';font-weight:700">' + comp + '% complete</span></div></div>'
     + (docArr.length ? '<button class="btn" style="margin-top:10px;font-size:11px;background:var(--accent);color:#fff;border-color:var(--accent)" id="enrichBtn" data-pid="' + p.id + '">🤖 Extract Specs from Documents</button>' : '')
-    + ' <button class="btn" style="margin-top:10px;font-size:11px;background:var(--blue);color:#fff;border-color:var(--blue)" id="detailEnrichBtn" data-pid="' + p.id + '">🔄 Enrich from Retailer Pages</button>'
     + '<div id="enrichStatus" style="font-size:11px;color:var(--text2);margin-top:6px"></div>'
     + '</div></div></div>';
 
@@ -1862,34 +1842,6 @@ async function openProductDetail(productId) {
         localStorage.setItem('aiq_anthropic_key', key);
       }
       await enrichProduct(pid);
-    });
-  }
-
-  // Bind detail enrich button (from retailer pages)
-  const detailEnrichBtn = document.getElementById('detailEnrichBtn');
-  if (detailEnrichBtn) {
-    detailEnrichBtn.addEventListener('click', async () => {
-      const pid = detailEnrichBtn.dataset.pid;
-      const statusEl = document.getElementById('enrichStatus');
-      detailEnrichBtn.disabled = true;
-      detailEnrichBtn.textContent = '⏳ Enriching…';
-      statusEl.textContent = 'Fetching retailer page and extracting specs, images, docs…';
-      try {
-        const resp = await fetch(SB_URL + '/functions/v1/product-detail-enrich', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ product_id: pid })
-        });
-        const r = await resp.json();
-        if (r.success) {
-          statusEl.innerHTML = '✅ <strong>Enriched!</strong> ' + r.images_added + ' images, ' + r.docs_added + ' docs, ' + r.videos_added + ' videos, ' + (r.specs_updated ? r.spec_count + ' specs' : 'no new specs') + ' — <a href="#" onclick="openProductDetail(\'' + pid + '\');return false">Refresh</a>';
-        } else {
-          statusEl.textContent = '⚠️ ' + (r.error || 'No data extracted from retailer page');
-        }
-      } catch (e) {
-        statusEl.textContent = '❌ Error: ' + e.message;
-      }
-      detailEnrichBtn.disabled = false;
-      detailEnrichBtn.textContent = '🔄 Enrich from Retailer Pages';
     });
   }
 }
@@ -2451,86 +2403,6 @@ function applyRetailerFilter(products) {
     if (p.brand_id && !retailerBrands.includes(p.brand_id)) return false;
     return true;
   });
-}
-
-// ── BATCH PRODUCT ENRICHMENT ──
-let enrichRunning = false;
-let enrichTotals = { enriched: 0, images: 0, docs: 0, specs: 0, processed: 0 };
-
-document.getElementById('btnStartEnrich')?.addEventListener('click', startBatchEnrich);
-document.getElementById('btnStopEnrich')?.addEventListener('click', () => { enrichRunning = false; });
-
-async function startBatchEnrich() {
-  if (enrichRunning) return;
-  enrichRunning = true;
-  enrichTotals = { enriched: 0, images: 0, docs: 0, specs: 0, processed: 0 };
-
-  const batchSize = parseInt(document.getElementById('enrichBatchSize').value) || 10;
-  const startBtn = document.getElementById('btnStartEnrich');
-  const stopBtn = document.getElementById('btnStopEnrich');
-  const statsDiv = document.getElementById('enrichStats');
-  const logDiv = document.getElementById('enrichLog');
-
-  startBtn.style.display = 'none';
-  stopBtn.style.display = '';
-  statsDiv.style.display = '';
-  logDiv.innerHTML = '';
-  updateEnrichStats();
-
-  const maxRounds = 20; // safety cap
-  for (let round = 0; round < maxRounds && enrichRunning; round++) {
-    addEnrichLog('🔄 Batch ' + (round + 1) + ' — enriching ' + batchSize + ' products…');
-    try {
-      const resp = await fetch(SB_URL + '/functions/v1/product-detail-enrich', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batch_size: batchSize })
-      });
-      const data = await resp.json();
-      if (!data.results || data.results.length === 0) {
-        addEnrichLog('✅ No more products to enrich — all done!');
-        break;
-      }
-      for (const r of data.results) {
-        enrichTotals.processed++;
-        if (r.success) {
-          enrichTotals.enriched++;
-          enrichTotals.images += r.images_added || 0;
-          enrichTotals.docs += r.docs_added || 0;
-          if (r.specs_updated) enrichTotals.specs++;
-          addEnrichLog('✅ ' + (r.url ? r.url.split('/').pop().substring(0, 50) : r.product_id.substring(0, 8)) + ' → ' + r.images_added + ' img, ' + r.docs_added + ' docs' + (r.specs_updated ? ', ' + r.spec_count + ' specs' : ''));
-        } else {
-          addEnrichLog('⚠️ ' + r.product_id.substring(0, 8) + ' — ' + (r.error || 'no data'));
-        }
-      }
-      updateEnrichStats();
-      document.getElementById('enrichBar').style.width = Math.min(100, (enrichTotals.processed / (batchSize * maxRounds)) * 100) + '%';
-    } catch (e) {
-      addEnrichLog('❌ Error: ' + e.message);
-      break;
-    }
-  }
-
-  enrichRunning = false;
-  startBtn.style.display = '';
-  stopBtn.style.display = 'none';
-  addEnrichLog('🏁 Done. Enriched ' + enrichTotals.enriched + ' products total.');
-}
-
-function updateEnrichStats() {
-  const e = enrichTotals;
-  document.getElementById('esEnriched').textContent = e.enriched;
-  document.getElementById('esImages').textContent = e.images;
-  document.getElementById('esDocs').textContent = e.docs;
-  document.getElementById('esSpecs').textContent = e.specs;
-}
-
-function addEnrichLog(msg) {
-  const log = document.getElementById('enrichLog');
-  const line = document.createElement('div');
-  line.style.padding = '2px 0';
-  line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
-  log.appendChild(line);
-  log.scrollTop = log.scrollHeight;
 }
 
 // ── RETAILER DATA PAGE ──
