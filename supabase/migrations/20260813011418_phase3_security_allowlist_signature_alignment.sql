@@ -1,0 +1,13 @@
+delete from public.platform_security_rpc_allowlist where function_signature in ('platform_intelligence_feed(uuid,timestamptz,integer,text[])','platform_intelligence_summary(uuid,timestamptz)','platform_intelligence_store_rollup(uuid,timestamptz)','platform_intelligence_employee_rollup(uuid,timestamptz)');
+insert into public.platform_security_rpc_allowlist(function_signature,allow_anon,allow_authenticated,rationale,reviewed_at,metadata) values
+('my_platform_context()',false,true,'Phase 2 caller-bound context read; derives the user through auth.uid() and only returns their active context.',now(),'{"phase":2}'),
+('set_platform_context(uuid,uuid,text,text,text,text,jsonb)',false,true,'Phase 2 caller-bound context mutation; validates auth.uid(), active organization membership, and location ownership.',now(),'{"phase":2}'),
+('my_platform_organizations()',false,true,'Phase 2 caller-bound organization list; returns only active memberships for auth.uid().',now(),'{"phase":2}'),
+('my_platform_locations(uuid)',false,true,'Phase 2 location list; verifies auth.uid() is an active member of the requested organization.',now(),'{"phase":2}'),
+('platform_global_search(text,integer)',false,true,'Phase 2 organization-scoped global search; derives active organization from caller context and validates membership.',now(),'{"phase":2}'),
+('platform_mark_notification_read(uuid)',false,true,'Phase 2 notification mutation; updates only notifications owned by auth.uid().',now(),'{"phase":2}'),
+('platform_intelligence_feed(uuid,timestamp with time zone,integer,text[])',false,true,'Phase 3 read RPC; validates active organization membership via auth.uid() before returning governed events.',now(),'{"phase":3,"contract":"intelligence_v1"}'),
+('platform_intelligence_summary(uuid,timestamp with time zone)',false,true,'Phase 3 read RPC; validates active organization membership via auth.uid() before returning organization intelligence.',now(),'{"phase":3,"contract":"intelligence_v1"}'),
+('platform_intelligence_store_rollup(uuid,timestamp with time zone)',false,true,'Phase 3 read RPC; validates active organization membership via auth.uid() before returning store rollups.',now(),'{"phase":3,"contract":"intelligence_v1"}'),
+('platform_intelligence_employee_rollup(uuid,timestamp with time zone)',false,true,'Phase 3 read RPC; validates active organization membership via auth.uid() before returning employee rollups.',now(),'{"phase":3,"contract":"intelligence_v1"}')
+on conflict(function_signature) do update set allow_anon=excluded.allow_anon,allow_authenticated=excluded.allow_authenticated,rationale=excluded.rationale,reviewed_at=excluded.reviewed_at,metadata=coalesce(platform_security_rpc_allowlist.metadata,'{}'::jsonb)||excluded.metadata;

@@ -1,0 +1,2 @@
+alter table public.platform_connector_reconciliation_runs drop constraint if exists platform_connector_reconciliation_runs_status_check;
+alter table public.platform_connector_reconciliation_runs add constraint platform_connector_reconciliation_runs_status_check check (status = any (array['running'::text,'success'::text,'warning'::text,'failed'::text,'matched'::text,'attention'::text,'variance'::text]));
