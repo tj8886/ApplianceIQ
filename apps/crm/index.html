@@ -2840,6 +2840,50 @@ async function renderCommandCentre(){
       +(annivData.length>5?'<div class="sub" style="margin-top:4px">+' +(annivData.length-5)+' more</div>':'')
       +'</div>';
   }
+  
+  // ===== FLOOR PRESENCE ANALYTICS =====
+  try {
+    const {data: floorData} = await sb.rpc('get_floor_vs_sales', {p_org_id: currentOrg.id});
+    if (floorData && floorData.total_displays > 0) {
+      const bf = floorData.brand_floor || [];
+      const bs = floorData.brand_sales || [];
+      // Merge brand floor + sales into comparison rows
+      const brandMap = {};
+      bf.forEach(b => { brandMap[b.brand] = { floor_pct: b.floor_pct, floor_units: b.floor_units }; });
+      bs.forEach(b => {
+        if (!brandMap[b.brand]) brandMap[b.brand] = { floor_pct: 0, floor_units: 0 };
+        brandMap[b.brand].sales_pct = b.sales_pct;
+        brandMap[b.brand].sales_amount = b.sales_amount;
+      });
+      const brandRows = Object.entries(brandMap)
+        .map(([name, d]) => ({ name, floor_pct: d.floor_pct||0, sales_pct: d.sales_pct||0, sales_amount: d.sales_amount||0, delta: (d.sales_pct||0) - (d.floor_pct||0) }))
+        .sort((a,b) => b.floor_pct - a.floor_pct);
+
+      let floorHtml = '<div class="cc-section"><h3>🏬 Floor Presence vs Sales</h3>'
+        + '<div class="cc-grid">'
+        + '<div class="cc-card"><div class="cc-lbl">Displays</div><div class="cc-val num">' + floorData.total_displays + '</div><div class="cc-sub">' + floorData.store_count + ' store' + (floorData.store_count !== 1 ? 's' : '') + '</div></div>'
+        + '<div class="cc-card"><div class="cc-lbl">Floored SKUs</div><div class="cc-val num">' + floorData.total_skus + '</div></div>'
+        + '<div class="cc-card"><div class="cc-lbl">Floor Units</div><div class="cc-val num">' + floorData.total_floor_units + '</div></div>'
+        + '<div class="cc-card"><div class="cc-lbl">Won Revenue</div><div class="cc-val num">' + money(floorData.total_sales) + '</div></div>'
+        + '</div>';
+      if (brandRows.length) {
+        floorHtml += '<div style="margin-top:12px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
+          + '<tr style="border-bottom:2px solid var(--line)"><th style="text-align:left;padding:6px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--steel)">Brand</th><th style="padding:6px 10px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--steel)">Floor %</th><th style="padding:6px 10px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--steel)">Sales %</th><th style="padding:6px 10px;text-align:right;font-size:11px;text-transform:uppercase;color:var(--steel)">Delta</th></tr>';
+        brandRows.forEach(r => {
+          const deltaColor = r.delta > 1 ? 'var(--success)' : r.delta < -1 ? 'var(--danger,#dc2626)' : 'var(--steel)';
+          const deltaSign = r.delta > 0 ? '+' : '';
+          floorHtml += '<tr style="border-bottom:1px solid var(--line)"><td style="padding:6px 10px;font-weight:500">' + esc(r.name) + '</td>'
+            + '<td style="padding:6px 10px;text-align:right">' + r.floor_pct.toFixed(1) + '%</td>'
+            + '<td style="padding:6px 10px;text-align:right">' + r.sales_pct.toFixed(1) + '%</td>'
+            + '<td style="padding:6px 10px;text-align:right;font-weight:600;color:' + deltaColor + '">' + deltaSign + r.delta.toFixed(1) + '%</td></tr>';
+        });
+        floorHtml += '</table></div>';
+      }
+      floorHtml += '</div>';
+      mainEl.innerHTML += floorHtml;
+    }
+  } catch(e) { console.warn('Floor analytics:', e); }
+
   trackEvent('page_view',{page:'dashboard'});
 }
 
