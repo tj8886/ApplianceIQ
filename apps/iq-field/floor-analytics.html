@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floor Analytics | IQ Field</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f6f8fb; --white:#fff; --navy:#0f1f3d; --green:#1a9e56; --blue:#2f6fed;
+  --border:#e2e8f0; --muted:#64748b; --light-green:#ecfdf5; --light-blue:#eff6ff;
+  --light-red:#fef2f2; --red:#dc2626; --amber:#f59e0b; --light-amber:#fffbeb;
+  --shadow:0 1px 3px rgba(15,31,61,.08); --radius:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh}
+h1,h2,h3,h4{font-family:'Sora',sans-serif}
+.app-shell{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--navy);padding:20px 0;flex-shrink:0}
+.sidebar .logo{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:8px}
+.sidebar .logo h2{color:#fff;font-size:15px;font-weight:600}
+.sidebar .logo span{color:var(--green);font-size:11px;font-weight:500;letter-spacing:.5px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;color:rgba(255,255,255,.6);font-size:13.5px;cursor:pointer;transition:all .15s;border-left:3px solid transparent}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.05)}
+.nav-item.active{color:#fff;background:rgba(26,158,86,.15);border-left-color:var(--green)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-section{padding:16px 20px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.3);font-weight:600}
+.main-content{flex:1;padding:28px 32px;overflow-y:auto;max-height:100vh}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.page-header h1{font-size:22px;font-weight:700}
+.page-header .subtitle{color:var(--muted);font-size:13px;margin-top:2px}
+.btn{padding:9px 18px;border:none;border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.btn-primary{background:var(--green);color:#fff}
+.btn-primary:hover{background:#158c4a}
+.btn-secondary{background:var(--white);color:var(--navy);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.card{background:var(--white);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600}
+.card-note{font-size:11px;color:var(--muted)}
+.summary-row{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px}
+.summary-stat{background:var(--white);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow)}
+.summary-stat .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:4px}
+.summary-stat .stat-value{font-size:24px;font-weight:700;font-family:'Sora',sans-serif}
+.summary-stat .stat-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.bar-chart{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:flex;align-items:center;gap:12px}
+.bar-label{font-size:12px;font-weight:500;width:110px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.bar-track{flex:1;height:26px;background:var(--bg);border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:600;color:#fff;transition:width .5s ease;min-width:fit-content}
+.bar-value{font-size:12px;font-weight:600;width:46px;text-align:right;flex-shrink:0}
+/* Dual bar comparison */
+.dual-row{margin-bottom:14px}
+.dual-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.dual-name{font-size:13px;font-weight:600}
+.dual-delta{font-size:12px;font-weight:600}
+.dual-bars{display:flex;flex-direction:column;gap:3px}
+.dual-line{display:flex;align-items:center;gap:8px}
+.dual-tag{font-size:10px;color:var(--muted);width:38px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.dual-track{flex:1;height:14px;background:var(--bg);border-radius:4px;overflow:hidden}
+.dual-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.dual-pct{font-size:11px;font-weight:600;width:42px;text-align:right}
+table{width:100%;border-collapse:separate;border-spacing:0}
+th{padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;border-bottom:2px solid var(--border)}
+td{padding:9px 12px;font-size:13px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.positive{color:var(--green);font-weight:600}
+.negative{color:var(--red);font-weight:600}
+.neutral{color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge-yes{background:var(--light-green);color:var(--green)}
+.badge-no{background:var(--light-red);color:var(--red)}
+.alert-box{border-radius:8px;padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start}
+.alert-warn{background:var(--light-amber);border-left:3px solid var(--amber)}
+.alert-danger{background:var(--light-red);border-left:3px solid var(--red)}
+.alert-info{background:var(--light-blue);border-left:3px solid var(--blue)}
+.alert-icon{font-size:18px;flex-shrink:0}
+.alert-body h4{font-size:13px;font-weight:600;margin-bottom:3px}
+.alert-body p{font-size:12px;color:var(--muted);line-height:1.5}
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--white);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:500}
+.store-card{border:1px solid var(--border);border-radius:8px;padding:14px 16px;transition:box-shadow .15s}
+.store-card:hover{box-shadow:0 4px 12px rgba(15,31,61,.08)}
+.store-card h4{font-size:14px;margin-bottom:3px}
+.store-card .loc{font-size:11px;color:var(--muted);margin-bottom:10px}
+.store-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.store-metric{text-align:center}
+.store-metric .m-val{font-size:17px;font-weight:700;font-family:'Sora',sans-serif}
+.store-metric .m-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.loading-spinner{display:flex;align-items:center;justify-content:center;padding:50px}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-state h3{font-size:16px;color:var(--navy);margin-bottom:6px}
+.empty-state p{font-size:13px;max-width:380px;margin:0 auto}
+.filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.filter-bar select{padding:8px 13px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:'Inter',sans-serif;background:var(--white);min-width:210px}
+.filter-bar label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+@media(max-width:1024px){
+  .sidebar{width:56px;overflow:hidden}
+  .sidebar .logo h2,.sidebar .logo span,.nav-item span,.nav-section{display:none}
+  .nav-item{justify-content:center;padding:12px}
+  .main-content{padding:20px}
+  .summary-row{grid-template-columns:repeat(2,1fr)}
+  .grid-2{grid-template-columns:1fr}
+  .store-metrics{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar">
+    <div class="logo"><h2>IQ Field</h2><span>ApplianceIQ</span></div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="window.location.href='index.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-item" onclick="window.location.href='floor-plan.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Floor Plan</span>
+    </div>
+    <div class="nav-section">Intelligence</div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Floor Analytics</span>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="page-header">
+      <div>
+        <h1>Floor Analytics</h1>
+        <div class="subtitle">Floor presence vs sales performance across all stores</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+    <div id="content"><div class="loading-spinner"><div class="spinner"></div></div></div>
+  </main>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+const SB_URL='https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2MTMwNjAsImV4cCI6MjA2NDE4OTA2MH0.zt6MktpRsFEsCX70eDfjANMPOG0ezjSXTcOLSM0g0Cg';
+const sb=createClient(SB_URL,SB_KEY);
+
+let currentUser=null, currentOrg=null;
+
+const COLORS=['#2f6fed','#1a9e56','#f59e0b','#dc2626','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1','#14b8a6','#a855f7'];
+
+function esc(s){if(s==null)return '';const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function money(n){return '$'+Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0});}
+function num(n){return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:1});}
+function titleCase(s){if(!s)return '';return s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());}
+
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){window.location.href='index.html';return;}
+  currentUser=session.user;
+  const {data:mem}=await sb.from('organization_members').select('organization_id').eq('user_id',currentUser.id).limit(1).maybeSingle();
+  if(!mem){document.getElementById('content').innerHTML='<div class="empty-state"><h3>No Organization</h3><p>Your account is not linked to an organization.</p></div>';return;}
+  currentOrg=mem.organization_id;
+  loadAll();
+}
+
+window.loadAll=async function(){
+  document.getElementById('content').innerHTML='<div class="loading-spinner"><div class="spinner"></div></div>';
+  const [{data:vs},{data:byStore},{data:gaps}]=await Promise.all([
+    sb.rpc('get_floor_vs_sales',{p_org_id:currentOrg}),
+    sb.rpc('get_floor_by_store',{p_org_id:currentOrg}),
+    sb.rpc('get_floor_gaps',{p_org_id:currentOrg})
+  ]);
+  render(vs||{},byStore||[],gaps||{});
+};
+
+function render(vs,byStore,gaps){
+  const el=document.getElementById('content');
+  if(!vs.total_displays){
+    el.innerHTML='<div class="empty-state"><h3>No Floor Data</h3><p>Add displays in the Floor Plan tab to start tracking floor presence against sales.</p></div>';
+    return;
+  }
+
+  // Merge brand floor + sales
+  const bMap={};
+  (vs.brand_floor||[]).forEach(b=>{bMap[b.brand]={floor_pct:Number(b.floor_pct||0),floor_units:Number(b.floor_units||0),sales_pct:0,sales_amount:0};});
+  (vs.brand_sales||[]).forEach(b=>{
+    if(!bMap[b.brand])bMap[b.brand]={floor_pct:0,floor_units:0,sales_pct:0,sales_amount:0};
+    bMap[b.brand].sales_pct=Number(b.sales_pct||0);
+    bMap[b.brand].sales_amount=Number(b.sales_amount||0);
+  });
+  const brands=Object.entries(bMap).map(([name,d])=>({name,...d,delta:d.sales_pct-d.floor_pct}))
+    .sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+
+  // Merge category floor + sales
+  const cMap={};
+  (vs.category_floor||[]).forEach(c=>{cMap[c.category]={floor_pct:Number(c.floor_pct||0),sales_pct:0,sales_amount:0};});
+  (vs.category_sales||[]).forEach(c=>{
+    const k=c.category.toLowerCase();
+    const match=Object.keys(cMap).find(x=>x.toLowerCase()===k);
+    const key=match||c.category;
+    if(!cMap[key])cMap[key]={floor_pct:0,sales_pct:0,sales_amount:0};
+    cMap[key].sales_pct=Number(c.sales_pct||0);
+    cMap[key].sales_amount=Number(c.sales_amount||0);
+  });
+  const cats=Object.entries(cMap).map(([name,d])=>({name,...d,delta:d.sales_pct-d.floor_pct}))
+    .sort((a,b)=>b.floor_pct-a.floor_pct);
+
+  const overperformers=brands.filter(b=>b.delta>3).sort((a,b)=>b.delta-a.delta);
+  const underperformers=brands.filter(b=>b.delta<-3).sort((a,b)=>a.delta-b.delta);
+  const soldNotFloored=gaps.sold_not_floored||[];
+  const flooredNotSold=gaps.floored_not_sold||[];
+  const skus=gaps.sku_detail||[];
+  const flooredSkus=skus.filter(s=>s.is_floored);
+  const nonFlooredSkus=skus.filter(s=>!s.is_floored);
+  const nonFlooredRev=nonFlooredSkus.reduce((s,x)=>s+Number(x.revenue||0),0);
+
+  let h='';
+
+  // ── Summary ──
+  h+=`<div class="summary-row">
+    <div class="summary-stat"><div class="stat-label">Stores</div><div class="stat-value">${vs.store_count}</div><div class="stat-sub">With floor data</div></div>
+    <div class="summary-stat"><div class="stat-label">Displays</div><div class="stat-value">${vs.total_displays}</div><div class="stat-sub">${num(vs.total_floor_units)} floor units</div></div>
+    <div class="summary-stat"><div class="stat-label">Floored SKUs</div><div class="stat-value">${vs.total_skus}</div><div class="stat-sub">On showroom</div></div>
+    <div class="summary-stat"><div class="stat-label">Won Revenue</div><div class="stat-value">${money(vs.total_sales)}</div><div class="stat-sub">Closed deals</div></div>
+    <div class="summary-stat"><div class="stat-label">Brands</div><div class="stat-value">${(vs.brand_floor||[]).length}</div><div class="stat-sub">Represented</div></div>
+  </div>`;
+
+  // ── Insights ──
+  const insights=[];
+  if(underperformers.length){
+    const w=underperformers[0];
+    insights.push({type:'danger',icon:'⚠️',title:`${w.name} is taking ${w.floor_pct.toFixed(1)}% of floor but driving only ${w.sales_pct.toFixed(1)}% of sales`,
+      body:`That's a ${Math.abs(w.delta).toFixed(1)} point gap — the largest on the floor. Consider reducing space or reviewing merchandising and rep training on this line.`});
+  }
+  if(overperformers.length){
+    const s=overperformers[0];
+    insights.push({type:'info',icon:'📈',title:`${s.name} is punching above its footprint`,
+      body:`${s.floor_pct.toFixed(1)}% of floor generating ${s.sales_pct.toFixed(1)}% of revenue (+${s.delta.toFixed(1)} pts). Expanding this display is likely to lift total revenue.`});
+  }
+  if(flooredNotSold.length){
+    const names=flooredNotSold.map(b=>b.brand).join(', ');
+    const units=flooredNotSold.reduce((s,b)=>s+Number(b.floor_units||0),0);
+    insights.push({type:'warn',icon:'🔻',title:`${flooredNotSold.length} brand${flooredNotSold.length>1?'s':''} on the floor with zero recorded sales`,
+      body:`${names} — occupying ${num(units)} floor units combined. Either sales aren't being attributed, or this space isn't earning its keep.`});
+  }
+  if(soldNotFloored.length){
+    const names=soldNotFloored.map(b=>b.brand).join(', ');
+    const rev=soldNotFloored.reduce((s,b)=>s+Number(b.revenue||0),0);
+    insights.push({type:'info',icon:'👻',title:`${soldNotFloored.length} brand${soldNotFloored.length>1?'s':''} selling with no floor display`,
+      body:`${names} generated ${money(rev)} without showroom presence. Special orders or catalogue sales — worth evaluating for a display.`});
+  }
+  if(insights.length){
+    h+='<div class="card"><div class="card-header"><span class="card-title">Key Insights</span></div>';
+    insights.forEach(i=>{
+      h+=`<div class="alert-box alert-${i.type}"><div class="alert-icon">${i.icon}</div><div class="alert-body"><h4>${esc(i.title)}</h4><p>${esc(i.body)}</p></div></div>`;
+    });
+    h+='</div>';
+  }
+
+  // ── Brand floor vs sales dual bars ──
+  h+=`<div class="card">
+    <div class="card-header"><span class="card-title">Brand — Floor Presence vs Sales Share</span>
+    <span class="card-note">Sorted by biggest gap · <span style="color:var(--blue)">▬</span> Floor &nbsp; <span style="color:var(--green)">▬</span> Sales</span></div>`;
+  brands.forEach(b=>{
+    const dc=b.delta>1?'positive':b.delta<-1?'negative':'neutral';
+    const sign=b.delta>0?'+':'';
+    h+=`<div class="dual-row">
+      <div class="dual-head"><span class="dual-name">${esc(b.name)}</span><span class="dual-delta ${dc}">${sign}${b.delta.toFixed(1)} pts</span></div>
+      <div class="dual-bars">
+        <div class="dual-line"><span class="dual-tag">Floor</span><div class="dual-track"><div class="dual-fill" style="width:${Math.min(b.floor_pct,100)}%;background:var(--blue)"></div></div><span class="dual-pct">${b.floor_pct.toFixed(1)}%</span></div>
+        <div class="dual-line"><span class="dual-tag">Sales</span><div class="dual-track"><div class="dual-fill" style="width:${Math.min(b.sales_pct,100)}%;background:var(--green)"></div></div><span class="dual-pct">${b.sales_pct.toFixed(1)}%</span></div>
+      </div>
+    </div>`;
+  });
+  h+='</div>';
+
+  // ── Category comparison ──
+  h+=`<div class="card">
+    <div class="card-header"><span class="card-title">Category — Floor Presence vs Sales Share</span></div>
+    <table><thead><tr><th>Category</th><th style="text-align:right">Floor %</th><th style="text-align:right">Sales %</th><th style="text-align:right">Revenue</th><th style="text-align:right">Delta</th></tr></thead><tbody>`;
+  cats.forEach(c=>{
+    const dc=c.delta>1?'positive':c.delta<-1?'negative':'neutral';
+    const sign=c.delta>0?'+':'';
+    h+=`<tr><td><strong>${esc(titleCase(c.name))}</strong></td>
+      <td style="text-align:right">${c.floor_pct.toFixed(1)}%</td>
+      <td style="text-align:right">${c.sales_pct.toFixed(1)}%</td>
+      <td style="text-align:right">${money(c.sales_amount)}</td>
+      <td style="text-align:right" class="${dc}">${sign}${c.delta.toFixed(1)}%</td></tr>`;
+  });
+  h+='</tbody></table></div>';
+
+  // ── Store breakdown ──
+  if(byStore.length){
+    h+=`<div class="card"><div class="card-header"><span class="card-title">Floor by Store</span><span class="card-note">${byStore.length} store${byStore.length>1?'s':''} with active displays</span></div>
+      <div class="grid-2">`;
+    byStore.forEach(s=>{
+      const cfg=Number(s.configured_units||0);
+      const used=Number(s.total_floor_units||0);
+      const util=cfg>0?(used/cfg*100):null;
+      h+=`<div class="store-card">
+        <h4>${esc(s.store_name)}</h4>
+        <div class="loc">${esc(s.city||'')} ${util!=null?'· '+util.toFixed(0)+'% of floor allocated':''}</div>
+        <div class="store-metrics">
+          <div class="store-metric"><div class="m-val">${s.total_displays}</div><div class="m-lbl">Displays</div></div>
+          <div class="store-metric"><div class="m-val">${s.total_skus}</div><div class="m-lbl">SKUs</div></div>
+          <div class="store-metric"><div class="m-val">${num(s.total_floor_units)}</div><div class="m-lbl">${esc(s.unit_label||'Units')}</div></div>
+          <div class="store-metric"><div class="m-val">${s.brand_count}</div><div class="m-lbl">Brands</div></div>
+        </div>
+      </div>`;
+    });
+    h+='</div></div>';
+  }
+
+  // ── Gaps ──
+  if(soldNotFloored.length||flooredNotSold.length){
+    h+='<div class="grid-2">';
+    if(flooredNotSold.length){
+      h+=`<div class="card" style="margin-bottom:0"><div class="card-header"><span class="card-title">Floored — No Sales</span><span class="card-note">Space not converting</span></div>
+        <table><thead><tr><th>Brand</th><th style="text-align:right">Floor Units</th></tr></thead><tbody>`;
+      flooredNotSold.forEach(b=>{h+=`<tr><td>${esc(b.brand)}</td><td style="text-align:right">${num(b.floor_units)}</td></tr>`;});
+      h+='</tbody></table></div>';
+    }
+    if(soldNotFloored.length){
+      h+=`<div class="card" style="margin-bottom:0"><div class="card-header"><span class="card-title">Selling — Not Floored</span><span class="card-note">Revenue without display</span></div>
+        <table><thead><tr><th>Brand</th><th style="text-align:right">Units</th><th style="text-align:right">Revenue</th></tr></thead><tbody>`;
+      soldNotFloored.forEach(b=>{h+=`<tr><td>${esc(b.brand)}</td><td style="text-align:right">${b.units}</td><td style="text-align:right">${money(b.revenue)}</td></tr>`;});
+      h+='</tbody></table></div>';
+    }
+    h+='</div><div style="height:20px"></div>';
+  }
+
+  // ── SKU drill-down ──
+  h+=`<div class="card">
+    <div class="card-header"><span class="card-title">SKU Sell-Through</span>
+    <span class="card-note">${flooredSkus.length} floored · ${nonFlooredSkus.length} not floored${nonFlooredRev>0?' ('+money(nonFlooredRev)+')':''}</span></div>
+    <div class="filter-bar">
+      <label>Show</label>
+      <select id="skuFilter" onchange="filterSkus()">
+        <option value="all">All SKUs (${skus.length})</option>
+        <option value="floored">Floored only (${flooredSkus.length})</option>
+        <option value="not">Not floored only (${nonFlooredSkus.length})</option>
+      </select>
+    </div>
+    <table><thead><tr><th>Model</th><th>Brand</th><th>Category</th><th style="text-align:right">Units</th><th style="text-align:right">Revenue</th><th style="text-align:center">Floored</th></tr></thead><tbody id="skuBody">`;
+  skus.forEach(s=>{
+    h+=`<tr data-floored="${s.is_floored}"><td>${esc(s.model||'—')}</td><td>${esc(s.brand||'—')}</td>
+      <td>${esc(titleCase(s.category||''))}</td><td style="text-align:right">${s.units}</td>
+      <td style="text-align:right">${money(s.revenue)}</td>
+      <td style="text-align:center"><span class="badge ${s.is_floored?'badge-yes':'badge-no'}">${s.is_floored?'✓ Yes':'✗ No'}</span></td></tr>`;
+  });
+  h+='</tbody></table></div>';
+
+  el.innerHTML=h;
+}
+
+window.filterSkus=function(){
+  const v=document.getElementById('skuFilter').value;
+  document.querySelectorAll('#skuBody tr').forEach(r=>{
+    const f=r.dataset.floored==='true';
+    r.style.display=(v==='all'||(v==='floored'&&f)||(v==='not'&&!f))?'':'none';
+  });
+};
+
+init();
+</script>
+</body>
+</html>
