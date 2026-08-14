@@ -249,6 +249,7 @@ h1,h2,h3,h4 { font-family:'Sora',sans-serif; }
       <button class="tab-btn" onclick="switchTab('analytics')">Floor Analytics</button>
       <button class="tab-btn" onclick="switchTab('sellthrough')">Sell-Through</button>
       <button class="tab-btn" onclick="switchTab('holes')">Floor Holes <span id="holeBadge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:5px;font-weight:700"></span></button>
+      <button class="tab-btn" onclick="switchTab('recs')">AI Recommendations</button>
     </div>
 
     <!-- Store Selector (shared across tabs) -->
@@ -272,6 +273,7 @@ h1,h2,h3,h4 { font-family:'Sora',sans-serif; }
     <div id="tab-analytics" style="display:none"></div>
     <div id="tab-sellthrough" style="display:none"></div>
     <div id="tab-holes" style="display:none"></div>
+    <div id="tab-recs" style="display:none"></div>
   </main>
 </div>
 
@@ -675,6 +677,8 @@ async function loadStores() {
 window.onStoreChange = async function() {
   currentStoreId = document.getElementById('storeSelect').value;
   document.getElementById('configBtn').style.display = currentStoreId ? 'inline-flex' : 'none';
+  recsData = null;
+  holesData = null;
   if (currentStoreId) {
     await loadFloorConfig();
     await loadDisplays();
@@ -713,12 +717,13 @@ let currentTab = 'displays';
 window.switchTab = function(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    b.classList.toggle('active', ['displays','analytics','sellthrough','holes'][i] === tab);
+    b.classList.toggle('active', ['displays','analytics','sellthrough','holes','recs'][i] === tab);
   });
   document.getElementById('tab-displays').style.display = tab === 'displays' ? '' : 'none';
   document.getElementById('tab-analytics').style.display = tab === 'analytics' ? '' : 'none';
   document.getElementById('tab-sellthrough').style.display = tab === 'sellthrough' ? '' : 'none';
   document.getElementById('tab-holes').style.display = tab === 'holes' ? '' : 'none';
+  document.getElementById('tab-recs').style.display = tab === 'recs' ? '' : 'none';
   renderCurrentTab();
 };
 
@@ -727,6 +732,7 @@ function renderCurrentTab() {
   else if (currentTab === 'analytics') renderAnalyticsTab();
   else if (currentTab === 'sellthrough') renderSellThroughTab();
   else if (currentTab === 'holes') renderHolesTab();
+  else if (currentTab === 'recs') renderRecsTab();
 }
 
 // ── DISPLAYS TAB ──
@@ -1390,6 +1396,159 @@ window.markHoleFilled = async function() {
   showToast('Hole marked filled', 'success');
   renderHolesTab();
 };
+
+// ── AI RECOMMENDATIONS TAB ──
+let recsData = null;
+
+async function renderRecsTab(forceRefresh) {
+  const el = document.getElementById('tab-recs');
+  if (!currentOrg) { el.innerHTML = '<div class="empty-state"><h3>No Organization</h3></div>'; return; }
+
+  if (recsData && !forceRefresh) { paintRecs(recsData); return; }
+
+  el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>'
+    + '<div style="text-align:center;color:var(--muted);font-size:13px;margin-top:-20px">Analyzing floor performance…</div>';
+
+  const { data: { session } } = await sb.auth.getSession();
+  try {
+    const resp = await fetch(`${SB_URL}/functions/v1/floor-recommendations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': SB_KEY
+      },
+      body: JSON.stringify({
+        organization_id: currentOrg,
+        store_id: currentStoreId || null,
+        narrative: true
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Request failed');
+    recsData = data;
+    paintRecs(data);
+  } catch (e) {
+    el.innerHTML = `<div class="empty-state"><h3>Could not generate recommendations</h3><p>${esc(e.message)}</p>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="refreshRecs()">Try Again</button></div>`;
+  }
+}
+
+window.refreshRecs = function() { recsData = null; renderRecsTab(true); };
+
+function paintRecs(data) {
+  const el = document.getElementById('tab-recs');
+  const recs = data.recommendations || [];
+  const t = data.totals || {};
+
+  const scopeLabel = currentStoreId
+    ? (stores.find(x => x.id === currentStoreId)?.name || 'this store')
+    : 'all stores';
+
+  let h = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div style="font-size:12px;color:var(--muted)">Analysis scope: <strong style="color:var(--navy)">${esc(scopeLabel)}</strong> · ${t.total_floor_units||0} floor units · ${data.generated_at ? new Date(data.generated_at).toLocaleString() : ''}</div>
+    <button class="btn btn-secondary btn-sm" onclick="refreshRecs()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+      Re-analyze
+    </button>
+  </div>`;
+
+  // Executive summary
+  if (data.summary) {
+    h += `<div class="card" style="margin-bottom:20px;border-left:3px solid var(--green)">
+      <div class="card-header"><span class="card-title">Executive Summary</span>
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600">AI Generated</span></div>
+      <p style="font-size:13.5px;line-height:1.65;color:var(--navy)">${esc(data.summary)}</p>
+    </div>`;
+  }
+
+  if (recs.length === 0) {
+    h += `<div class="empty-state"><h3>Floor is Well Balanced</h3>
+      <p>No recommendations meet the confidence threshold right now. Floor allocation broadly matches sales performance.</p></div>`;
+    el.innerHTML = h;
+    return;
+  }
+
+  // Group by severity
+  const groups = { high:[], medium:[], low:[] };
+  recs.forEach(r => (groups[r.severity] || groups.low).push(r));
+
+  const sevMeta = {
+    high:   { label:'High Impact',   color:'var(--red)',   bg:'var(--light-red)' },
+    medium: { label:'Worth Acting On', color:'var(--amber)', bg:'var(--light-amber)' },
+    low:    { label:'Monitor',       color:'var(--blue)',  bg:'var(--light-blue)' }
+  };
+
+  const typeIcons = {
+    expand_category:'📈', reduce_category:'📉', add_sku_to_floor:'🏷️',
+    dead_space:'🕳️', brand_underperforming:'⚠️', brand_overperforming:'⭐'
+  };
+
+  ['high','medium','low'].forEach(sev => {
+    const items = groups[sev];
+    if (!items.length) return;
+    const m = sevMeta[sev];
+    h += `<div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;color:${m.color}">${m.label}</span>
+      <span style="font-size:11px;color:var(--muted)">${items.length} recommendation${items.length!==1?'s':''}</span>
+    </div>`;
+
+    items.forEach(r => {
+      const confColor = r.confidence === 'high' ? 'var(--green)' : r.confidence === 'medium' ? 'var(--amber)' : 'var(--muted)';
+      h += `<div class="card" style="margin-bottom:12px;border-left:3px solid ${m.color}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+              <span style="font-size:16px">${typeIcons[r.type]||'💡'}</span>
+              <strong style="font-size:14px;font-family:'Sora',sans-serif">${esc(r.headline)}</strong>
+            </div>
+            <div style="font-size:11px;color:var(--muted)">
+              ${esc(titleCaseH(r.scope))} · ${esc(r.subject)} ·
+              <span style="color:${confColor};font-weight:600">${esc(r.confidence)} confidence</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg);border-radius:8px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:6px">Evidence</div>
+          ${r.evidence.map(e => `<div style="font-size:12.5px;color:var(--navy);padding:2px 0;display:flex;gap:7px"><span style="color:${m.color}">•</span><span>${esc(e)}</span></div>`).join('')}
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-bottom:4px">Recommended Action</div>
+            <div style="font-size:13px;line-height:1.55">${esc(r.suggested_action)}</div>
+          </div>
+        </div>
+
+        ${renderRecMetrics(r)}
+      </div>`;
+    });
+  });
+
+  el.innerHTML = h;
+}
+
+function renderRecMetrics(r) {
+  const m = r.metrics || {};
+  const chips = [];
+  if (m.floor_pct != null && m.sales_pct != null) {
+    chips.push(`<span style="font-size:11px;padding:4px 10px;background:var(--light-blue);color:var(--blue);border-radius:12px;font-weight:600">Floor ${m.floor_pct}%</span>`);
+    chips.push(`<span style="font-size:11px;padding:4px 10px;background:var(--light-green);color:var(--green);border-radius:12px;font-weight:600">Sales ${m.sales_pct}%</span>`);
+  }
+  if (m.unit_delta != null && Math.abs(Number(m.unit_delta)) > 0) {
+    const d = Number(m.unit_delta);
+    chips.push(`<span style="font-size:11px;padding:4px 10px;background:${d>0?'var(--light-green)':'var(--light-red)'};color:${d>0?'var(--green)':'var(--red)'};border-radius:12px;font-weight:600">${d>0?'+':''}${d} units</span>`);
+  }
+  if (m.revenue != null && Number(m.revenue) > 0) {
+    chips.push(`<span style="font-size:11px;padding:4px 10px;background:var(--bg);color:var(--navy);border-radius:12px;font-weight:600">$${Number(m.revenue).toLocaleString()}</span>`);
+  }
+  if (m.units_sold != null && Number(m.units_sold) > 0) {
+    chips.push(`<span style="font-size:11px;padding:4px 10px;background:var(--bg);color:var(--muted);border-radius:12px;font-weight:600">${m.units_sold} sold</span>`);
+  }
+  if (!chips.length) return '';
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">${chips.join('')}</div>`;
+}
 
 // ── Helpers ──
 function getInsight(r) {

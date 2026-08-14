@@ -177,7 +177,66 @@ window.loadAll=async function(){
     sb.rpc('get_floor_gaps',{p_org_id:currentOrg})
   ]);
   render(vs||{},byStore||[],gaps||{});
+  loadRecommendations();
 };
+
+async function loadRecommendations(){
+  const holder=document.getElementById('aiRecs');
+  if(!holder)return;
+  holder.innerHTML='<div class="card"><div class="loading-spinner"><div class="spinner"></div></div><div style="text-align:center;color:var(--muted);font-size:12px;margin-top:-24px">Analyzing floor performance…</div></div>';
+  const {data:{session}}=await sb.auth.getSession();
+  try{
+    const r=await fetch(`${SB_URL}/functions/v1/floor-recommendations`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SB_KEY},
+      body:JSON.stringify({organization_id:currentOrg,narrative:true})
+    });
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Failed');
+    paintRecs(d);
+  }catch(e){
+    holder.innerHTML=`<div class="card"><div class="card-header"><span class="card-title">AI Recommendations</span></div>
+      <p style="font-size:13px;color:var(--muted)">Could not generate recommendations: ${esc(e.message)}</p></div>`;
+  }
+}
+
+function paintRecs(d){
+  const holder=document.getElementById('aiRecs');
+  const recs=d.recommendations||[];
+  let h='';
+  if(d.summary){
+    h+=`<div class="card" style="border-left:3px solid var(--green)">
+      <div class="card-header"><span class="card-title">Executive Summary</span><span class="card-note">AI Generated</span></div>
+      <p style="font-size:13.5px;line-height:1.65">${esc(d.summary)}</p></div>`;
+  }
+  if(!recs.length){
+    h+=`<div class="card"><div class="card-header"><span class="card-title">AI Recommendations</span></div>
+      <p style="font-size:13px;color:var(--muted)">Floor allocation broadly matches sales — no recommendations meet the confidence threshold.</p></div>`;
+    holder.innerHTML=h;return;
+  }
+  const sevMeta={high:{c:'var(--red)',bg:'var(--light-red)',l:'High Impact'},medium:{c:'var(--amber)',bg:'var(--light-amber)',l:'Worth Acting On'},low:{c:'var(--blue)',bg:'var(--light-blue)',l:'Monitor'}};
+  const icons={expand_category:'📈',reduce_category:'📉',add_sku_to_floor:'🏷️',dead_space:'🕳️',brand_underperforming:'⚠️',brand_overperforming:'⭐'};
+
+  h+=`<div class="card"><div class="card-header"><span class="card-title">AI Recommendations</span>
+    <span class="card-note">${recs.length} finding${recs.length!==1?'s':''} · validated against hard data</span></div>`;
+  recs.forEach(r=>{
+    const m=sevMeta[r.severity]||sevMeta.low;
+    const cc=r.confidence==='high'?'var(--green)':r.confidence==='medium'?'var(--amber)':'var(--muted)';
+    h+=`<div style="border-left:3px solid ${m.c};background:${m.bg};border-radius:8px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap">
+        <span style="font-size:15px">${icons[r.type]||'💡'}</span>
+        <strong style="font-size:13.5px">${esc(r.headline)}</strong>
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:${cc}">${esc(r.confidence)}</span>
+      </div>
+      <div style="margin:8px 0">
+        ${r.evidence.map(e=>`<div style="font-size:12px;padding:1px 0;display:flex;gap:6px"><span style="color:${m.c}">•</span><span>${esc(e)}</span></div>`).join('')}
+      </div>
+      <div style="font-size:12.5px;line-height:1.5;padding-top:8px;border-top:1px solid rgba(0,0,0,.06)"><strong>Action:</strong> ${esc(r.suggested_action)}</div>
+    </div>`;
+  });
+  h+='</div>';
+  holder.innerHTML=h;
+}
 
 function render(vs,byStore,gaps){
   const el=document.getElementById('content');
@@ -229,7 +288,8 @@ function render(vs,byStore,gaps){
     <div class="summary-stat"><div class="stat-label">Floored SKUs</div><div class="stat-value">${vs.total_skus}</div><div class="stat-sub">On showroom</div></div>
     <div class="summary-stat"><div class="stat-label">Won Revenue</div><div class="stat-value">${money(vs.total_sales)}</div><div class="stat-sub">Closed deals</div></div>
     <div class="summary-stat"><div class="stat-label">Brands</div><div class="stat-value">${(vs.brand_floor||[]).length}</div><div class="stat-sub">Represented</div></div>
-  </div>`;
+  </div>
+  <div id="aiRecs"></div>`;
 
   // ── Insights ──
   const insights=[];
