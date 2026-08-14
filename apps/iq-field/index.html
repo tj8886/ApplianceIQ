@@ -485,6 +485,7 @@ function buildNav() {
     { id: 'v-dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'v-start-walk', icon: '🚶', label: 'Start Walk' },
     { id: 'v-actions', icon: '⚡', label: 'Action Plans', countId: 'navActionCount' },
+    { id: 'floor-plan', icon: '🏬', label: 'Floor Plan', href: 'floor-plan.html' },
     { id: 'v-history', icon: '📋', label: 'Visit History' },
     { id: 'v-schedule', icon: '📅', label: 'Schedule' },
   ];
@@ -492,7 +493,7 @@ function buildNav() {
   document.getElementById('sidebarNav').innerHTML = `
     <div class="nav-section">Navigation</div>
     ${navItems.map(n => `
-      <div class="nav-item ${n.id === 'v-dashboard' ? 'active' : ''}" onclick="navTo('${n.id}', this)" data-view="${n.id}">
+      <div class="nav-item ${n.id === 'v-dashboard' ? 'active' : ''}" onclick="${n.href ? "window.location.href='" + n.href + "'" : "navTo('" + n.id + "', this)"}" data-view="${n.id}">
         <span class="icon">${n.icon}</span>${n.label}
         ${n.countId ? `<span class="count" id="${n.countId}" style="display:none">0</span>` : ''}
       </div>
