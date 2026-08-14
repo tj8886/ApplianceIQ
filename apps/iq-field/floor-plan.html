@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floor Plan Manager | IQ Field</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f6f8fb; --white: #ffffff; --navy: #0f1f3d; --green: #1a9e56; --blue: #2f6fed;
+  --border: #e2e8f0; --muted: #64748b; --light-green: #ecfdf5; --light-blue: #eff6ff;
+  --light-red: #fef2f2; --red: #dc2626; --amber: #f59e0b; --light-amber: #fffbeb;
+  --shadow: 0 1px 3px rgba(15,31,61,0.08); --radius: 10px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--navy); min-height:100vh; }
+h1,h2,h3,h4 { font-family:'Sora',sans-serif; }
+
+/* Layout */
+.app-shell { display:flex; min-height:100vh; }
+.sidebar { width:240px; background:var(--navy); padding:20px 0; flex-shrink:0; display:flex; flex-direction:column; }
+.sidebar .logo { padding:0 20px 24px; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:8px; }
+.sidebar .logo h2 { color:#fff; font-size:15px; font-weight:600; }
+.sidebar .logo span { color:var(--green); font-size:11px; font-weight:500; letter-spacing:0.5px; text-transform:uppercase; }
+.nav-item { display:flex; align-items:center; gap:10px; padding:11px 20px; color:rgba(255,255,255,0.6); font-size:13.5px; cursor:pointer; transition:all 0.15s; border-left:3px solid transparent; }
+.nav-item:hover { color:#fff; background:rgba(255,255,255,0.05); }
+.nav-item.active { color:#fff; background:rgba(26,158,86,0.15); border-left-color:var(--green); }
+.nav-item svg { width:18px; height:18px; flex-shrink:0; }
+.nav-section { padding:16px 20px 6px; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.3); font-weight:600; }
+.main-content { flex:1; padding:28px 32px; overflow-y:auto; max-height:100vh; }
+
+/* Tabs */
+.tab-bar { display:flex; gap:2px; background:var(--white); border-radius:var(--radius); padding:4px; box-shadow:var(--shadow); margin-bottom:24px; }
+.tab-btn { padding:10px 20px; border:none; background:transparent; font-family:'Inter',sans-serif; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-radius:8px; transition:all 0.15s; white-space:nowrap; }
+.tab-btn.active { background:var(--navy); color:#fff; }
+.tab-btn:hover:not(.active) { background:var(--bg); color:var(--navy); }
+
+/* Header */
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.page-header h1 { font-size:22px; font-weight:700; }
+.page-header .subtitle { color:var(--muted); font-size:13px; margin-top:2px; }
+.header-actions { display:flex; gap:10px; }
+
+/* Buttons */
+.btn { padding:9px 18px; border:none; border-radius:8px; font-family:'Inter',sans-serif; font-size:13px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all 0.15s; }
+.btn-primary { background:var(--green); color:#fff; }
+.btn-primary:hover { background:#158c4a; }
+.btn-secondary { background:var(--white); color:var(--navy); border:1px solid var(--border); }
+.btn-secondary:hover { background:var(--bg); }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-danger:hover { background:#b91c1c; }
+.btn-sm { padding:6px 12px; font-size:12px; }
+.btn-icon { width:32px; height:32px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:8px; border:1px solid var(--border); background:var(--white); cursor:pointer; }
+.btn-icon:hover { background:var(--bg); }
+
+/* Cards */
+.card { background:var(--white); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+.card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.card-title { font-size:14px; font-weight:600; }
+
+/* Store selector */
+.store-selector { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.store-selector label { font-size:13px; font-weight:600; color:var(--muted); }
+.store-selector select { padding:9px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Inter',sans-serif; background:var(--white); min-width:260px; }
+
+/* Display grid */
+.display-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px,1fr)); gap:16px; }
+.display-card { background:var(--white); border-radius:var(--radius); border:1px solid var(--border); overflow:hidden; transition:box-shadow 0.15s; }
+.display-card:hover { box-shadow:0 4px 12px rgba(15,31,61,0.1); }
+.display-card-header { padding:14px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+.display-card-header .brand-badge { display:flex; align-items:center; gap:8px; }
+.display-card-header .brand-badge .dot { width:10px; height:10px; border-radius:50%; }
+.display-card-header .type-tag { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; padding:3px 8px; border-radius:4px; font-weight:600; }
+.type-manufacturer { background:var(--light-blue); color:var(--blue); }
+.type-category { background:var(--light-green); color:var(--green); }
+.type-endcap { background:var(--light-amber); color:#92400e; }
+.type-island { background:#f0f0ff; color:#4338ca; }
+.type-custom { background:#f5f5f5; color:#525252; }
+.display-card-body { padding:14px 16px; }
+.display-meta { display:flex; gap:16px; margin-bottom:12px; }
+.display-meta .meta-item { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:4px; }
+.display-meta .meta-item strong { color:var(--navy); }
+.sku-list { display:flex; flex-direction:column; gap:6px; }
+.sku-row { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:var(--bg); border-radius:6px; font-size:12px; }
+.sku-row .sku-info { display:flex; flex-direction:column; }
+.sku-row .sku-name { font-weight:500; color:var(--navy); }
+.sku-row .sku-detail { color:var(--muted); font-size:11px; }
+.sku-row .sku-actions { display:flex; gap:4px; }
+.display-card-footer { padding:10px 16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.add-sku-btn { font-size:12px; color:var(--blue); cursor:pointer; display:flex; align-items:center; gap:4px; background:none; border:none; font-family:'Inter',sans-serif; font-weight:500; }
+.add-sku-btn:hover { text-decoration:underline; }
+
+/* Floor summary bar */
+.floor-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.summary-stat { background:var(--white); border-radius:var(--radius); padding:16px 20px; box-shadow:var(--shadow); }
+.summary-stat .stat-label { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:600; margin-bottom:4px; }
+.summary-stat .stat-value { font-size:24px; font-weight:700; font-family:'Sora',sans-serif; }
+.summary-stat .stat-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* Analytics */
+.analytics-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+.analytics-grid.full { grid-template-columns:1fr; }
+.bar-chart { display:flex; flex-direction:column; gap:10px; }
+.bar-row { display:flex; align-items:center; gap:12px; }
+.bar-label { font-size:12px; font-weight:500; width:120px; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+.bar-track { flex:1; height:28px; background:var(--bg); border-radius:6px; position:relative; overflow:hidden; }
+.bar-fill { height:100%; border-radius:6px; display:flex; align-items:center; padding:0 10px; font-size:11px; font-weight:600; color:#fff; transition:width 0.5s ease; min-width:fit-content; }
+.bar-value { font-size:12px; font-weight:600; width:50px; text-align:right; flex-shrink:0; }
+.dual-bar { display:flex; align-items:center; gap:8px; }
+.dual-bar .bar-segment { height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; color:#fff; min-width:30px; }
+
+/* Comparison table */
+.comparison-table { width:100%; border-collapse:separate; border-spacing:0; }
+.comparison-table th { padding:10px 14px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:600; border-bottom:2px solid var(--border); }
+.comparison-table td { padding:10px 14px; font-size:13px; border-bottom:1px solid var(--border); }
+.comparison-table tr:last-child td { border-bottom:none; }
+.comparison-table .positive { color:var(--green); font-weight:600; }
+.comparison-table .negative { color:var(--red); font-weight:600; }
+.comparison-table .neutral { color:var(--muted); }
+.floor-pct-cell { display:flex; align-items:center; gap:6px; }
+.mini-bar { width:60px; height:6px; background:var(--bg); border-radius:3px; overflow:hidden; }
+.mini-bar-fill { height:100%; border-radius:3px; }
+
+/* Modal */
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,31,61,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+.modal-overlay.open { opacity:1; pointer-events:auto; }
+.modal { background:var(--white); border-radius:12px; width:100%; max-width:520px; max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(15,31,61,0.2); }
+.modal-header { padding:20px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-header h3 { font-size:16px; font-weight:600; }
+.modal-body { padding:24px; }
+.modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
+.form-group input, .form-group select, .form-group textarea { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:'Inter',sans-serif; }
+.form-group textarea { resize:vertical; min-height:60px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+/* Product search */
+.product-search-wrap { position:relative; }
+.product-search-results { position:absolute; top:100%; left:0; right:0; background:var(--white); border:1px solid var(--border); border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto; z-index:10; display:none; }
+.product-search-results.show { display:block; }
+.product-search-result { padding:8px 12px; cursor:pointer; font-size:12px; border-bottom:1px solid var(--border); }
+.product-search-result:hover { background:var(--bg); }
+.product-search-result .psr-name { font-weight:500; }
+.product-search-result .psr-meta { color:var(--muted); font-size:11px; }
+
+/* Toast */
+.toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:8px; font-size:13px; font-weight:500; color:#fff; z-index:2000; transform:translateY(80px); opacity:0; transition:all 0.3s; }
+.toast.show { transform:translateY(0); opacity:1; }
+.toast-success { background:var(--green); }
+.toast-error { background:var(--red); }
+
+/* Empty state */
+.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-state svg { width:48px; height:48px; margin-bottom:12px; opacity:0.4; }
+.empty-state h3 { font-size:16px; color:var(--navy); margin-bottom:6px; }
+.empty-state p { font-size:13px; max-width:360px; margin:0 auto; }
+
+/* Loading */
+.loading-spinner { display:flex; align-items:center; justify-content:center; padding:40px; }
+.spinner { width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin 0.6s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Responsive */
+@media(max-width:1024px) {
+  .sidebar { width:56px; overflow:hidden; }
+  .sidebar .logo h2, .sidebar .logo span, .nav-item span, .nav-section { display:none; }
+  .nav-item { justify-content:center; padding:12px; }
+  .main-content { padding:20px; }
+  .floor-summary { grid-template-columns:repeat(2,1fr); }
+  .analytics-grid { grid-template-columns:1fr; }
+  .display-grid { grid-template-columns:1fr; }
+}
+
+/* Drill down panel */
+.drill-panel { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:24px; overflow:hidden; }
+.drill-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+.drill-header .back-btn { cursor:pointer; display:flex; align-items:center; gap:4px; font-size:13px; color:var(--blue); background:none; border:none; font-family:'Inter',sans-serif; }
+.drill-body { padding:20px; }
+.floored-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+.floored-yes { background:var(--light-green); color:var(--green); }
+.floored-no { background:var(--light-red); color:var(--red); }
+
+.section-divider { height:1px; background:var(--border); margin:24px 0; }
+
+/* Period selector */
+.period-selector { display:flex; gap:4px; background:var(--bg); border-radius:6px; padding:3px; }
+.period-btn { padding:5px 12px; border:none; background:transparent; font-size:11px; font-weight:500; border-radius:4px; cursor:pointer; color:var(--muted); font-family:'Inter',sans-serif; }
+.period-btn.active { background:var(--white); color:var(--navy); box-shadow:0 1px 2px rgba(0,0,0,0.06); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">
+      <h2>IQ Field</h2>
+      <span>ApplianceIQ</span>
+    </div>
+    <div class="nav-section">Operations</div>
+    <div class="nav-item" onclick="window.location.href='index.html'">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>Visits</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      <span>Checklists</span>
+    </div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Floor Plan</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7-7h6m6 0h6"/></svg>
+      <span>Assets</span>
+    </div>
+    <div class="nav-section">Intelligence</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Analytics</span>
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+      <span>Reports</span>
+    </div>
+    <div class="nav-section">Settings</div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Config</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main-content" id="main">
+    <div class="page-header">
+      <div>
+        <h1>Floor Plan Manager</h1>
+        <div class="subtitle">Manage showroom displays, track floor presence, and analyze sell-through</div>
+      </div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('displays')">Displays</button>
+      <button class="tab-btn" onclick="switchTab('analytics')">Floor Analytics</button>
+      <button class="tab-btn" onclick="switchTab('sellthrough')">Sell-Through</button>
+    </div>
+
+    <!-- Store Selector (shared across tabs) -->
+    <div class="store-selector">
+      <label>Store</label>
+      <select id="storeSelect" onchange="onStoreChange()">
+        <option value="">Select a store...</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="openFloorConfig()" id="configBtn" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Floor Config
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div id="tab-displays"></div>
+    <div id="tab-analytics" style="display:none"></div>
+    <div id="tab-sellthrough" style="display:none"></div>
+  </main>
+</div>
+
+<!-- Display Modal -->
+<div class="modal-overlay" id="displayModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="displayModalTitle">Add Display</h3>
+      <button class="btn-icon" onclick="closeModal('displayModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editDisplayId">
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="displayName" placeholder="e.g. Samsung Kitchen Suite, Fridge Aisle A">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Display Type</label>
+          <select id="displayType" onchange="onDisplayTypeChange()">
+            <option value="manufacturer">Manufacturer</option>
+            <option value="category">Category Aisle</option>
+            <option value="endcap">Endcap</option>
+            <option value="island">Island</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Floor Units (Space)</label>
+          <input type="number" id="displayFloorUnits" value="1" min="0.5" step="0.5">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" id="brandSelectGroup">
+          <label>Brand</label>
+          <select id="displayBrand">
+            <option value="">Select brand...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Primary Category</label>
+          <select id="displayCategory">
+            <option value="">Mixed / Multiple</option>
+            <option value="refrigeration">Refrigeration</option>
+            <option value="cooking">Cooking</option>
+            <option value="laundry">Laundry</option>
+            <option value="dishwashers">Dishwashers</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="small_appliance">Small Appliances</option>
+            <option value="ventilation">Ventilation</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Location Notes</label>
+        <textarea id="displayNotes" placeholder="e.g. Back wall, near entrance, aisle 3..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('displayModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDisplay()">Save Display</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKU Modal -->
+<div class="modal-overlay" id="skuModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Product to Display</h3>
+      <button class="btn-icon" onclick="closeModal('skuModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="skuDisplayId">
+      <div class="form-group">
+        <label>Search Products (PIM)</label>
+        <div class="product-search-wrap">
+          <input type="text" id="productSearch" placeholder="Search by name, model, or SKU..." oninput="searchProducts(this.value)" autocomplete="off">
+          <div class="product-search-results" id="productResults"></div>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Or add manually:</p>
+      <div class="form-group">
+        <label>Product Name</label>
+        <input type="text" id="skuProductName" placeholder="Product name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Brand</label>
+          <select id="skuBrand">
+            <option value="">Select brand...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="skuCategory">
+            <option value="refrigeration">Refrigeration</option>
+            <option value="cooking">Cooking</option>
+            <option value="laundry">Laundry</option>
+            <option value="dishwashers">Dishwashers</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="small_appliance">Small Appliances</option>
+            <option value="ventilation">Ventilation</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Model Number</label>
+          <input type="text" id="skuModel" placeholder="Model #">
+        </div>
+        <div class="form-group">
+          <label>SKU</label>
+          <input type="text" id="skuSku" placeholder="SKU (optional)">
+        </div>
+      </div>
+      <input type="hidden" id="skuAiqProductId">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('skuModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSku()">Add Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- Floor Config Modal -->
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Floor Configuration</h3>
+      <button class="btn-icon" onclick="closeModal('configModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Total Floor Units</label>
+          <input type="number" id="configTotalUnits" value="0" min="0" step="0.5">
+        </div>
+        <div class="form-group">
+          <label>Unit Label</label>
+          <input type="text" id="configUnitLabel" value="bays" placeholder="bays, sq ft, sections...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="configNotes" placeholder="Floor layout notes..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('configModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFloorConfig()">Save Config</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNjc2NTMsImV4cCI6MjA1Mzk0MzY1M30.xM1SXHQZ_JYbkMYYsMFnmjRFaBFnV7jXsiaonX0eVTY';
+const sb = createClient(SB_URL, SB_KEY);
+
+// ── State ──
+let currentUser = null;
+let currentOrg = null;
+let currentStoreId = null;
+let stores = [];
+let displays = [];
+let displaySkus = {};
+let floorConfig = null;
+let brands = [];
+let productSearchTimeout = null;
+
+// ── Init ──
+async function init() {
+  const { data:{ session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; return; }
+  currentUser = session.user;
+
+  // Get org
+  const { data: mem } = await sb.from('org_members').select('organization_id').eq('user_id', currentUser.id).limit(1).single();
+  if (mem) currentOrg = mem.organization_id;
+
+  await loadBrands();
+  await loadStores();
+}
+
+async function loadBrands() {
+  const { data } = await sb.from('brand_catalog').select('id,brand_name').order('brand_name');
+  brands = data || [];
+  const opts = brands.map(b => `<option value="${b.id}" data-name="${b.brand_name}">${b.brand_name}</option>`).join('');
+  document.getElementById('displayBrand').innerHTML = '<option value="">Select brand...</option>' + opts;
+  document.getElementById('skuBrand').innerHTML = '<option value="">Select brand...</option>' + opts;
+}
+
+async function loadStores() {
+  if (!currentOrg) return;
+  const { data } = await sb.from('org_locations').select('id,name,city,province_state').eq('organization_id', currentOrg).eq('is_active', true).order('name');
+  stores = data || [];
+  const sel = document.getElementById('storeSelect');
+  sel.innerHTML = '<option value="">Select a store...</option>' + stores.map(s =>
+    `<option value="${s.id}">${s.name}${s.city ? ' — '+s.city+', '+(s.province_state||'') : ''}</option>`
+  ).join('');
+}
+
+window.onStoreChange = async function() {
+  currentStoreId = document.getElementById('storeSelect').value;
+  document.getElementById('configBtn').style.display = currentStoreId ? 'inline-flex' : 'none';
+  if (currentStoreId) {
+    await loadFloorConfig();
+    await loadDisplays();
+    renderCurrentTab();
+  } else {
+    displays = [];
+    displaySkus = {};
+    floorConfig = null;
+    renderCurrentTab();
+  }
+};
+
+async function loadFloorConfig() {
+  const { data } = await sb.from('field_floor_config').select('*').eq('organization_id', currentOrg).eq('store_id', currentStoreId).maybeSingle();
+  floorConfig = data;
+}
+
+async function loadDisplays() {
+  const { data } = await sb.from('field_floor_displays').select('*').eq('organization_id', currentOrg).eq('store_id', currentStoreId).order('sort_order').order('display_name');
+  displays = data || [];
+
+  // Load all SKUs for these displays
+  displaySkus = {};
+  if (displays.length > 0) {
+    const ids = displays.map(d => d.id);
+    const { data: skus } = await sb.from('field_floor_display_skus').select('*').in('display_id', ids).eq('is_active', true).order('added_at');
+    (skus || []).forEach(s => {
+      if (!displaySkus[s.display_id]) displaySkus[s.display_id] = [];
+      displaySkus[s.display_id].push(s);
+    });
+  }
+}
+
+// ── Tab switching ──
+let currentTab = 'displays';
+window.switchTab = function(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['displays','analytics','sellthrough'][i] === tab);
+  });
+  document.getElementById('tab-displays').style.display = tab === 'displays' ? '' : 'none';
+  document.getElementById('tab-analytics').style.display = tab === 'analytics' ? '' : 'none';
+  document.getElementById('tab-sellthrough').style.display = tab === 'sellthrough' ? '' : 'none';
+  renderCurrentTab();
+};
+
+function renderCurrentTab() {
+  if (currentTab === 'displays') renderDisplaysTab();
+  else if (currentTab === 'analytics') renderAnalyticsTab();
+  else if (currentTab === 'sellthrough') renderSellThroughTab();
+}
+
+// ── DISPLAYS TAB ──
+function renderDisplaysTab() {
+  const el = document.getElementById('tab-displays');
+  if (!currentStoreId) {
+    el.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <h3>Select a Store</h3>
+      <p>Choose a store above to manage its floor displays and product placements.</p>
+    </div>`;
+    return;
+  }
+
+  const totalUnits = displays.reduce((s,d) => s + (d.is_active ? Number(d.floor_units||0) : 0), 0);
+  const totalSkus = Object.values(displaySkus).flat().length;
+  const brandSet = new Set(displays.filter(d=>d.is_active && d.brand_name).map(d=>d.brand_name));
+
+  let html = `
+    <div class="floor-summary">
+      <div class="summary-stat"><div class="stat-label">Displays</div><div class="stat-value">${displays.filter(d=>d.is_active).length}</div><div class="stat-sub">Active on floor</div></div>
+      <div class="summary-stat"><div class="stat-label">Floor Units</div><div class="stat-value">${totalUnits}</div><div class="stat-sub">${floorConfig?.floor_unit_label || 'bays'} allocated</div></div>
+      <div class="summary-stat"><div class="stat-label">SKUs Floored</div><div class="stat-value">${totalSkus}</div><div class="stat-sub">Across all displays</div></div>
+      <div class="summary-stat"><div class="stat-label">Brands</div><div class="stat-value">${brandSet.size}</div><div class="stat-sub">Represented on floor</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 style="font-size:15px;">Showroom Displays</h3>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="takeSnapshot()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Snapshot
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openAddDisplay()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Display
+        </button>
+      </div>
+    </div>`;
+
+  if (displays.length === 0) {
+    html += `<div class="empty-state"><h3>No Displays Yet</h3><p>Add your first showroom display to start mapping your floor plan.</p></div>`;
+  } else {
+    html += '<div class="display-grid">';
+    displays.filter(d=>d.is_active).forEach(d => {
+      const skus = displaySkus[d.id] || [];
+      const typeClass = 'type-' + d.display_type;
+      const typeLabel = d.display_type.charAt(0).toUpperCase() + d.display_type.slice(1);
+      const pct = totalUnits > 0 ? ((Number(d.floor_units)/totalUnits)*100).toFixed(1) : '0';
+
+      html += `<div class="display-card">
+        <div class="display-card-header">
+          <div class="brand-badge">
+            <div class="dot" style="background:${brandColor(d.brand_name)}"></div>
+            <strong style="font-size:13px;">${esc(d.display_name)}</strong>
+          </div>
+          <span class="type-tag ${typeClass}">${typeLabel}</span>
+        </div>
+        <div class="display-card-body">
+          <div class="display-meta">
+            ${d.brand_name ? `<div class="meta-item"><strong>${esc(d.brand_name)}</strong></div>` : ''}
+            <div class="meta-item">📐 <strong>${d.floor_units}</strong> ${floorConfig?.floor_unit_label || 'bays'}</div>
+            <div class="meta-item">${pct}% of floor</div>
+          </div>
+          <div class="sku-list">
+            ${skus.length === 0 ? '<div style="font-size:12px;color:var(--muted);padding:8px 0;">No products assigned</div>' :
+              skus.map(s => `<div class="sku-row">
+                <div class="sku-info">
+                  <span class="sku-name">${esc(s.product_name)}</span>
+                  <span class="sku-detail">${[s.brand_name,s.model_number,s.product_category].filter(Boolean).join(' · ')}</span>
+                </div>
+                <div class="sku-actions">
+                  <button class="btn-icon" style="width:24px;height:24px;border:none;" onclick="removeSku('${s.id}')" title="Remove">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>`).join('')
+            }
+          </div>
+        </div>
+        <div class="display-card-footer">
+          <button class="add-sku-btn" onclick="openAddSku('${d.id}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Product
+          </button>
+          <div style="display:flex;gap:4px;">
+            <button class="btn-icon" style="width:28px;height:28px;" onclick="editDisplay('${d.id}')" title="Edit">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-icon" style="width:28px;height:28px;" onclick="deleteDisplay('${d.id}')" title="Remove">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ── ANALYTICS TAB ──
+function renderAnalyticsTab() {
+  const el = document.getElementById('tab-analytics');
+  if (!currentStoreId) { el.innerHTML = '<div class="empty-state"><h3>Select a Store</h3><p>Choose a store to view floor presence analytics.</p></div>'; return; }
+
+  const activeDisplays = displays.filter(d => d.is_active);
+  const totalUnits = activeDisplays.reduce((s,d) => s + Number(d.floor_units||0), 0);
+  if (totalUnits === 0) { el.innerHTML = '<div class="empty-state"><h3>No Floor Data</h3><p>Add displays to see analytics.</p></div>'; return; }
+
+  // Brand breakdown
+  const brandMap = {};
+  activeDisplays.forEach(d => {
+    const skus = displaySkus[d.id] || [];
+    if (skus.length === 0) {
+      // Attribute entire display to its brand
+      const bn = d.brand_name || 'Unbranded';
+      if (!brandMap[bn]) brandMap[bn] = { units:0, skuCount:0 };
+      brandMap[bn].units += Number(d.floor_units||0);
+    } else {
+      // Distribute floor units across SKU brands
+      const perSku = Number(d.floor_units||0) / skus.length;
+      skus.forEach(s => {
+        const bn = s.brand_name || d.brand_name || 'Unbranded';
+        if (!brandMap[bn]) brandMap[bn] = { units:0, skuCount:0 };
+        brandMap[bn].units += perSku;
+        brandMap[bn].skuCount++;
+      });
+    }
+  });
+
+  // Category breakdown
+  const catMap = {};
+  activeDisplays.forEach(d => {
+    const skus = displaySkus[d.id] || [];
+    if (skus.length === 0) {
+      const cat = normCat(d.primary_category || 'Other');
+      if (!catMap[cat]) catMap[cat] = { units:0, skuCount:0 };
+      catMap[cat].units += Number(d.floor_units||0);
+    } else {
+      const perSku = Number(d.floor_units||0) / skus.length;
+      skus.forEach(s => {
+        const cat = normCat(s.product_category || d.primary_category || 'Other');
+        if (!catMap[cat]) catMap[cat] = { units:0, skuCount:0 };
+        catMap[cat].units += perSku;
+        catMap[cat].skuCount++;
+      });
+    }
+  });
+
+  const brandSorted = Object.entries(brandMap).sort((a,b) => b[1].units - a[1].units);
+  const catSorted = Object.entries(catMap).sort((a,b) => b[1].units - a[1].units);
+
+  const brandColors = ['#2f6fed','#1a9e56','#f59e0b','#dc2626','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1'];
+  const catColors = ['#1a9e56','#2f6fed','#f59e0b','#dc2626','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
+
+  let html = `
+    <div class="floor-summary">
+      <div class="summary-stat"><div class="stat-label">Total Floor</div><div class="stat-value">100%</div><div class="stat-sub">${totalUnits} ${floorConfig?.floor_unit_label||'bays'}</div></div>
+      <div class="summary-stat"><div class="stat-label">Brands</div><div class="stat-value">${brandSorted.length}</div><div class="stat-sub">On the floor</div></div>
+      <div class="summary-stat"><div class="stat-label">Categories</div><div class="stat-value">${catSorted.length}</div><div class="stat-sub">Product types</div></div>
+      <div class="summary-stat"><div class="stat-label">Total SKUs</div><div class="stat-value">${Object.values(displaySkus).flat().length}</div><div class="stat-sub">Floored products</div></div>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Floor Presence by Brand</span></div>
+        <div class="bar-chart">
+          ${brandSorted.map(([name, data], i) => {
+            const pct = ((data.units / totalUnits) * 100).toFixed(1);
+            return `<div class="bar-row">
+              <span class="bar-label">${esc(name)}</span>
+              <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${brandColors[i%brandColors.length]}">${pct}%</div></div>
+              <span class="bar-value">${data.units.toFixed(1)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Floor Presence by Category</span></div>
+        <div class="bar-chart">
+          ${catSorted.map(([name, data], i) => {
+            const pct = ((data.units / totalUnits) * 100).toFixed(1);
+            return `<div class="bar-row">
+              <span class="bar-label">${esc(name)}</span>
+              <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${catColors[i%catColors.length]}">${pct}%</div></div>
+              <span class="bar-value">${data.units.toFixed(1)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Composition ring summary -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-header"><span class="card-title">Floor Composition</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+        ${brandSorted.map(([name,data],i) => {
+          const pct = ((data.units/totalUnits)*100).toFixed(1);
+          return `<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg);border-radius:6px;font-size:12px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${brandColors[i%brandColors.length]}"></div>
+            <strong>${esc(name)}</strong>
+            <span style="color:var(--muted)">${pct}% · ${data.skuCount} SKUs</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  el.innerHTML = html;
+}
+
+// ── SELL-THROUGH TAB ──
+async function renderSellThroughTab() {
+  const el = document.getElementById('tab-sellthrough');
+  if (!currentStoreId) { el.innerHTML = '<div class="empty-state"><h3>Select a Store</h3><p>Choose a store to view sell-through analytics.</p></div>'; return; }
+
+  const activeDisplays = displays.filter(d => d.is_active);
+  const totalUnits = activeDisplays.reduce((s,d) => s + Number(d.floor_units||0), 0);
+  if (totalUnits === 0) { el.innerHTML = '<div class="empty-state"><h3>No Floor Data</h3><p>Add displays first to compare floor presence against sales.</p></div>'; return; }
+
+  el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+  // Get floor brand breakdown
+  const brandFloor = {};
+  activeDisplays.forEach(d => {
+    const skus = displaySkus[d.id] || [];
+    if (skus.length === 0) {
+      const bn = d.brand_name || 'Unbranded';
+      brandFloor[bn] = (brandFloor[bn]||0) + Number(d.floor_units||0);
+    } else {
+      const perSku = Number(d.floor_units||0) / skus.length;
+      skus.forEach(s => {
+        const bn = s.brand_name || d.brand_name || 'Unbranded';
+        brandFloor[bn] = (brandFloor[bn]||0) + perSku;
+      });
+    }
+  });
+
+  // Get floor category breakdown
+  const catFloor = {};
+  activeDisplays.forEach(d => {
+    const skus = displaySkus[d.id] || [];
+    if (skus.length === 0) {
+      const cat = normCat(d.primary_category || 'Other');
+      catFloor[cat] = (catFloor[cat]||0) + Number(d.floor_units||0);
+    } else {
+      const perSku = Number(d.floor_units||0) / skus.length;
+      skus.forEach(s => {
+        const cat = normCat(s.product_category || d.primary_category || 'Other');
+        catFloor[cat] = (catFloor[cat]||0) + perSku;
+      });
+    }
+  });
+
+  // Get all floored SKU model numbers / aiq_product_ids for drill-down
+  const flooredSkuSet = new Set();
+  const flooredProductIds = new Set();
+  Object.values(displaySkus).flat().forEach(s => {
+    if (s.model_number) flooredSkuSet.add(s.model_number.toLowerCase());
+    if (s.sku) flooredSkuSet.add(s.sku.toLowerCase());
+    if (s.aiq_product_id) flooredProductIds.add(s.aiq_product_id);
+  });
+
+  // Pull sales data — try transaction line facts first, fall back to CRM deals
+  let salesByBrand = {};
+  let salesByCat = {};
+  let salesLines = [];
+
+  const { data: txLines } = await sb.from('iq_transaction_line_facts')
+    .select('brand,product_category,item_number,line_amount,quantity,description')
+    .eq('organization_id', currentOrg)
+    .not('is_warranty','eq',true)
+    .not('is_service','eq',true)
+    .not('is_delivery','eq',true)
+    .limit(1000);
+
+  if (txLines && txLines.length > 0) {
+    salesLines = txLines;
+    txLines.forEach(l => {
+      const b = l.brand || 'Unknown';
+      const c = normCat(l.product_category || 'Other');
+      salesByBrand[b] = (salesByBrand[b]||0) + Number(l.line_amount||0);
+      salesByCat[c] = (salesByCat[c]||0) + Number(l.line_amount||0);
+    });
+  } else {
+    // Fall back to CRM deals won_products
+    const { data: deals } = await sb.from('crm_deals')
+      .select('won_products,value_amount,product_categories')
+      .eq('organization_id', currentOrg)
+      .eq('stage', 'won')
+      .not('won_products','is',null)
+      .limit(500);
+
+    if (deals) {
+      deals.forEach(deal => {
+        if (Array.isArray(deal.won_products)) {
+          deal.won_products.forEach(p => {
+            const b = p.brand || p.brand_name || 'Unknown';
+            const c = normCat(p.category || 'Other');
+            const amt = Number(p.price || p.amount || 0);
+            salesByBrand[b] = (salesByBrand[b]||0) + amt;
+            salesByCat[c] = (salesByCat[c]||0) + amt;
+            salesLines.push({ brand:b, product_category:c, item_number:p.model||p.sku||'', line_amount:amt, quantity:1, description:p.name||'' });
+          });
+        }
+      });
+    }
+  }
+
+  const totalSales = Object.values(salesByBrand).reduce((s,v) => s+v, 0);
+  const totalCatSales = Object.values(salesByCat).reduce((s,v) => s+v, 0);
+
+  // Build brand comparison table
+  const allBrands = [...new Set([...Object.keys(brandFloor), ...Object.keys(salesByBrand)])].sort();
+  const brandRows = allBrands.map(name => {
+    const floorPct = totalUnits > 0 ? ((brandFloor[name]||0)/totalUnits*100) : 0;
+    const salesPct = totalSales > 0 ? ((salesByBrand[name]||0)/totalSales*100) : 0;
+    const delta = salesPct - floorPct;
+    return { name, floorPct, salesPct, salesAmt: salesByBrand[name]||0, delta };
+  }).sort((a,b) => b.floorPct - a.floorPct);
+
+  // Build category comparison
+  const allCats = [...new Set([...Object.keys(catFloor), ...Object.keys(salesByCat)])].sort();
+  const catRows = allCats.map(name => {
+    const floorPct = totalUnits > 0 ? ((catFloor[name]||0)/totalUnits*100) : 0;
+    const salesPct = totalCatSales > 0 ? ((salesByCat[name]||0)/totalCatSales*100) : 0;
+    const delta = salesPct - floorPct;
+    return { name, floorPct, salesPct, salesAmt: salesByCat[name]||0, delta };
+  }).sort((a,b) => b.floorPct - a.floorPct);
+
+  // SKU drill down data
+  const skuSales = {};
+  salesLines.forEach(l => {
+    const key = (l.item_number||l.description||'unknown').toLowerCase();
+    if (!skuSales[key]) skuSales[key] = { model: l.item_number||l.description, brand: l.brand, category: l.product_category, revenue:0, qty:0 };
+    skuSales[key].revenue += Number(l.line_amount||0);
+    skuSales[key].qty += Number(l.quantity||0);
+  });
+
+  const skuRows = Object.values(skuSales).sort((a,b) => b.revenue - a.revenue).slice(0, 50);
+
+  let html = `
+    <div class="floor-summary">
+      <div class="summary-stat"><div class="stat-label">Floor Units</div><div class="stat-value">${totalUnits}</div><div class="stat-sub">${floorConfig?.floor_unit_label||'bays'}</div></div>
+      <div class="summary-stat"><div class="stat-label">Total Sales</div><div class="stat-value">$${formatNum(totalSales)}</div><div class="stat-sub">${salesLines.length} line items</div></div>
+      <div class="summary-stat"><div class="stat-label">Brands (Floor)</div><div class="stat-value">${Object.keys(brandFloor).length}</div><div class="stat-sub">On showroom</div></div>
+      <div class="summary-stat"><div class="stat-label">Brands (Sold)</div><div class="stat-value">${Object.keys(salesByBrand).length}</div><div class="stat-sub">In transactions</div></div>
+    </div>
+
+    <!-- Brand: Floor vs Sales -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <span class="card-title">Brand Floor Presence vs Sales Share</span>
+        <span style="font-size:11px;color:var(--muted);">Green = sales outpacing floor space · Red = floor space underperforming</span>
+      </div>
+      <table class="comparison-table">
+        <thead><tr>
+          <th>Brand</th><th>Floor %</th><th>Sales %</th><th>Sales $</th><th>Delta</th><th>Insight</th>
+        </tr></thead>
+        <tbody>
+        ${brandRows.map(r => `<tr>
+          <td><strong>${esc(r.name)}</strong></td>
+          <td><div class="floor-pct-cell"><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(r.floorPct,100)}%;background:var(--blue)"></div></div>${r.floorPct.toFixed(1)}%</div></td>
+          <td><div class="floor-pct-cell"><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(r.salesPct,100)}%;background:var(--green)"></div></div>${r.salesPct.toFixed(1)}%</div></td>
+          <td>$${formatNum(r.salesAmt)}</td>
+          <td class="${r.delta > 1 ? 'positive' : r.delta < -1 ? 'negative' : 'neutral'}">${r.delta > 0 ? '+' : ''}${r.delta.toFixed(1)}%</td>
+          <td style="font-size:12px;color:var(--muted);">${getInsight(r)}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Category: Floor vs Sales -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <span class="card-title">Category Floor Presence vs Sales Share</span>
+      </div>
+      <table class="comparison-table">
+        <thead><tr>
+          <th>Category</th><th>Floor %</th><th>Sales %</th><th>Sales $</th><th>Delta</th>
+        </tr></thead>
+        <tbody>
+        ${catRows.map(r => `<tr>
+          <td><strong>${esc(r.name)}</strong></td>
+          <td><div class="floor-pct-cell"><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(r.floorPct,100)}%;background:var(--blue)"></div></div>${r.floorPct.toFixed(1)}%</div></td>
+          <td><div class="floor-pct-cell"><div class="mini-bar"><div class="mini-bar-fill" style="width:${Math.min(r.salesPct,100)}%;background:var(--green)"></div></div>${r.salesPct.toFixed(1)}%</div></td>
+          <td>$${formatNum(r.salesAmt)}</td>
+          <td class="${r.delta > 1 ? 'positive' : r.delta < -1 ? 'negative' : 'neutral'}">${r.delta > 0 ? '+' : ''}${r.delta.toFixed(1)}%</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SKU Drill Down: Floored vs Not Floored -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">SKU Sell-Through — Floored vs Non-Floored</span>
+        <span style="font-size:11px;color:var(--muted);">Top ${skuRows.length} SKUs by revenue</span>
+      </div>
+      <table class="comparison-table">
+        <thead><tr><th>Product / Model</th><th>Brand</th><th>Category</th><th>Qty</th><th>Revenue</th><th>Floored?</th></tr></thead>
+        <tbody>
+        ${skuRows.map(r => {
+          const isFloored = r.model && flooredSkuSet.has(r.model.toLowerCase());
+          return `<tr>
+            <td>${esc(r.model||'—')}</td>
+            <td>${esc(r.brand||'—')}</td>
+            <td>${esc(normCat(r.category||''))}</td>
+            <td>${r.qty}</td>
+            <td>$${formatNum(r.revenue)}</td>
+            <td><span class="floored-badge ${isFloored ? 'floored-yes' : 'floored-no'}">${isFloored ? '✓ Floored' : '✗ Not Floored'}</span></td>
+          </tr>`;
+        }).join('')}
+        ${skuRows.length === 0 ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No sales data found for this store. Connect POS or close deals in CRM to see sell-through.</td></tr>' : ''}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  el.innerHTML = html;
+}
+
+// ── Helpers ──
+function getInsight(r) {
+  if (r.floorPct > 0 && r.salesPct === 0) return 'Floor space with no sales';
+  if (r.floorPct === 0 && r.salesPct > 0) return 'Selling without floor display';
+  if (r.delta > 5) return 'Strong performer — consider more space';
+  if (r.delta < -5) return 'Underperforming — review display';
+  if (Math.abs(r.delta) <= 1) return 'Balanced';
+  return r.delta > 0 ? 'Slightly outperforming' : 'Slightly under';
+}
+
+function normCat(cat) {
+  if (!cat) return 'Other';
+  const c = cat.toLowerCase().trim();
+  if (c.includes('refrig') || c.includes('fridge') || c.includes('freezer') || c === 'built-in') return 'Refrigeration';
+  if (c.includes('range') || c.includes('cooktop') || c.includes('wall oven') || c.includes('cooking') || c.includes('dual-fuel') || c.includes('gas') || c.includes('electric') || c.includes('induction')) return 'Cooking';
+  if (c.includes('laundry') || c.includes('washer') || c.includes('dryer')) return 'Laundry';
+  if (c.includes('dishwash')) return 'Dishwashers';
+  if (c.includes('outdoor') || c.includes('grill') || c.includes('bbq')) return 'Outdoor';
+  if (c.includes('hood') || c.includes('ventil') || c.includes('wall-mount') || c.includes('downdraft') || c.includes('insert') || c.includes('range hood')) return 'Ventilation';
+  if (c.includes('microwave')) return 'Cooking';
+  if (c.includes('beverage') || c.includes('wine')) return 'Refrigeration';
+  if (c.includes('small') || c.includes('accessory') || c.includes('cookware')) return 'Small Appliances';
+  return cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
+function brandColor(name) {
+  if (!name) return '#94a3b8';
+  const colors = ['#2f6fed','#1a9e56','#f59e0b','#dc2626','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1','#14b8a6','#a855f7'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function formatNum(n) { return Number(n||0).toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:0 }); }
+
+// ── Modal helpers ──
+window.openAddDisplay = function() {
+  document.getElementById('editDisplayId').value = '';
+  document.getElementById('displayModalTitle').textContent = 'Add Display';
+  document.getElementById('displayName').value = '';
+  document.getElementById('displayType').value = 'manufacturer';
+  document.getElementById('displayFloorUnits').value = '1';
+  document.getElementById('displayBrand').value = '';
+  document.getElementById('displayCategory').value = '';
+  document.getElementById('displayNotes').value = '';
+  onDisplayTypeChange();
+  openModal('displayModal');
+};
+
+window.editDisplay = function(id) {
+  const d = displays.find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('editDisplayId').value = d.id;
+  document.getElementById('displayModalTitle').textContent = 'Edit Display';
+  document.getElementById('displayName').value = d.display_name || '';
+  document.getElementById('displayType').value = d.display_type || 'manufacturer';
+  document.getElementById('displayFloorUnits').value = d.floor_units || 1;
+  document.getElementById('displayBrand').value = d.brand_id || '';
+  document.getElementById('displayCategory').value = d.primary_category || '';
+  document.getElementById('displayNotes').value = d.location_notes || '';
+  onDisplayTypeChange();
+  openModal('displayModal');
+};
+
+window.onDisplayTypeChange = function() {
+  const t = document.getElementById('displayType').value;
+  document.getElementById('brandSelectGroup').style.display = (t === 'category') ? 'none' : '';
+};
+
+window.saveDisplay = async function() {
+  const id = document.getElementById('editDisplayId').value;
+  const brandSel = document.getElementById('displayBrand');
+  const brandId = brandSel.value || null;
+  const brandName = brandId ? brandSel.options[brandSel.selectedIndex].dataset.name : null;
+
+  const payload = {
+    organization_id: currentOrg,
+    store_id: currentStoreId,
+    display_name: document.getElementById('displayName').value.trim(),
+    display_type: document.getElementById('displayType').value,
+    brand_id: brandId,
+    brand_name: brandName,
+    primary_category: document.getElementById('displayCategory').value || null,
+    floor_units: parseFloat(document.getElementById('displayFloorUnits').value) || 1,
+    location_notes: document.getElementById('displayNotes').value.trim() || null,
+    created_by: currentUser.id
+  };
+
+  if (!payload.display_name) { showToast('Display name is required','error'); return; }
+
+  let err;
+  if (id) {
+    delete payload.created_by;
+    const { error } = await sb.from('field_floor_displays').update(payload).eq('id', id);
+    err = error;
+  } else {
+    const { error } = await sb.from('field_floor_displays').insert(payload);
+    err = error;
+  }
+
+  if (err) { showToast('Error: ' + err.message, 'error'); return; }
+  closeModal('displayModal');
+  showToast(id ? 'Display updated' : 'Display added', 'success');
+  await loadDisplays();
+  renderCurrentTab();
+};
+
+window.deleteDisplay = async function(id) {
+  if (!confirm('Remove this display and all its products?')) return;
+  const { error } = await sb.from('field_floor_displays').update({ is_active: false }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Display removed', 'success');
+  await loadDisplays();
+  renderCurrentTab();
+};
+
+// ── SKU management ──
+window.openAddSku = function(displayId) {
+  document.getElementById('skuDisplayId').value = displayId;
+  document.getElementById('productSearch').value = '';
+  document.getElementById('skuProductName').value = '';
+  document.getElementById('skuBrand').value = '';
+  document.getElementById('skuCategory').value = 'refrigeration';
+  document.getElementById('skuModel').value = '';
+  document.getElementById('skuSku').value = '';
+  document.getElementById('skuAiqProductId').value = '';
+  document.getElementById('productResults').classList.remove('show');
+  openModal('skuModal');
+};
+
+window.searchProducts = function(q) {
+  clearTimeout(productSearchTimeout);
+  if (q.length < 2) { document.getElementById('productResults').classList.remove('show'); return; }
+  productSearchTimeout = setTimeout(async () => {
+    // Use PostgREST REST API for ilike search (avoids .or() 406 bug)
+    const url = `${SB_URL}/rest/v1/aiq_products?select=id,product_name,brand_name,category,model_number&or=(product_name.ilike.*${encodeURIComponent(q)}*,model_number.ilike.*${encodeURIComponent(q)}*,brand_name.ilike.*${encodeURIComponent(q)}*)&limit=10`;
+    const resp = await fetch(url, { headers: { 'apikey': SB_KEY, 'Authorization': `Bearer ${(await sb.auth.getSession()).data.session.access_token}` }});
+    const data = await resp.json();
+    const container = document.getElementById('productResults');
+    if (!data || data.length === 0) { container.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted);">No products found</div>'; container.classList.add('show'); return; }
+    container.innerHTML = data.map(p => `<div class="product-search-result" onclick="selectProduct(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+      <div class="psr-name">${esc(p.product_name)}</div>
+      <div class="psr-meta">${[p.brand_name, p.model_number, p.category].filter(Boolean).join(' · ')}</div>
+    </div>`).join('');
+    container.classList.add('show');
+  }, 300);
+};
+
+window.selectProduct = function(p) {
+  document.getElementById('skuProductName').value = p.product_name || '';
+  document.getElementById('skuModel').value = p.model_number || '';
+  document.getElementById('skuAiqProductId').value = p.id || '';
+  document.getElementById('productResults').classList.remove('show');
+  document.getElementById('productSearch').value = p.product_name || '';
+
+  // Try to set brand
+  if (p.brand_name) {
+    const brandOpts = document.getElementById('skuBrand').options;
+    for (let i = 0; i < brandOpts.length; i++) {
+      if (brandOpts[i].dataset.name === p.brand_name) { document.getElementById('skuBrand').value = brandOpts[i].value; break; }
+    }
+  }
+
+  // Set category
+  const nc = normCat(p.category || '');
+  const catSel = document.getElementById('skuCategory');
+  const catMap = { 'Refrigeration':'refrigeration','Cooking':'cooking','Laundry':'laundry','Dishwashers':'dishwashers','Outdoor':'outdoor','Ventilation':'ventilation','Small Appliances':'small_appliance' };
+  catSel.value = catMap[nc] || 'other';
+};
+
+window.saveSku = async function() {
+  const displayId = document.getElementById('skuDisplayId').value;
+  const brandSel = document.getElementById('skuBrand');
+  const brandId = brandSel.value || null;
+  const brandName = brandId ? brandSel.options[brandSel.selectedIndex].dataset.name : null;
+
+  const payload = {
+    display_id: displayId,
+    organization_id: currentOrg,
+    store_id: currentStoreId,
+    aiq_product_id: document.getElementById('skuAiqProductId').value || null,
+    brand_id: brandId,
+    brand_name: brandName,
+    product_name: document.getElementById('skuProductName').value.trim(),
+    product_category: document.getElementById('skuCategory').value,
+    model_number: document.getElementById('skuModel').value.trim() || null,
+    sku: document.getElementById('skuSku').value.trim() || null,
+    created_by: currentUser.id
+  };
+
+  if (!payload.product_name) { showToast('Product name is required','error'); return; }
+
+  const { error } = await sb.from('field_floor_display_skus').insert(payload);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  closeModal('skuModal');
+  showToast('Product added to display', 'success');
+  await loadDisplays();
+  renderCurrentTab();
+};
+
+window.removeSku = async function(id) {
+  const { error } = await sb.from('field_floor_display_skus').update({ is_active: false, removed_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Product removed', 'success');
+  await loadDisplays();
+  renderCurrentTab();
+};
+
+// ── Floor Config ──
+window.openFloorConfig = function() {
+  document.getElementById('configTotalUnits').value = floorConfig?.total_floor_units || 0;
+  document.getElementById('configUnitLabel').value = floorConfig?.floor_unit_label || 'bays';
+  document.getElementById('configNotes').value = floorConfig?.notes || '';
+  openModal('configModal');
+};
+
+window.saveFloorConfig = async function() {
+  const payload = {
+    organization_id: currentOrg,
+    store_id: currentStoreId,
+    total_floor_units: parseFloat(document.getElementById('configTotalUnits').value) || 0,
+    floor_unit_label: document.getElementById('configUnitLabel').value.trim() || 'bays',
+    notes: document.getElementById('configNotes').value.trim() || null,
+    created_by: currentUser.id
+  };
+
+  const { error } = await sb.from('field_floor_config').upsert(payload, { onConflict: 'organization_id,store_id' });
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  closeModal('configModal');
+  showToast('Floor config saved', 'success');
+  await loadFloorConfig();
+  renderCurrentTab();
+};
+
+// ── Snapshot ──
+window.takeSnapshot = async function() {
+  const activeDisplays = displays.filter(d => d.is_active);
+  const totalUnits = activeDisplays.reduce((s,d) => s + Number(d.floor_units||0), 0);
+
+  // Brand breakdown
+  const brandMap = {};
+  activeDisplays.forEach(d => {
+    const skus = displaySkus[d.id] || [];
+    if (skus.length === 0) {
+      const bn = d.brand_name || 'Unbranded';
+      brandMap[bn] = (brandMap[bn]||0) + Number(d.floor_units||0);
+    } else {
+      const perSku = Number(d.floor_units||0) / skus.length;
+      skus.forEach(s => {
+        const bn = s.brand_name || d.brand_name || 'Unbranded';
+        brandMap[bn] = (brandMap[bn]||0) + perSku;
+      });
+    }
+  });
+
+  // Category breakdown
+  const catMap = {};
+  activeDisplays.forEach(d => {
+    const skus = displaySkus[d.id] || [];
+    if (skus.length === 0) {
+      const cat = normCat(d.primary_category || 'Other');
+      catMap[cat] = (catMap[cat]||0) + Number(d.floor_units||0);
+    } else {
+      const perSku = Number(d.floor_units||0) / skus.length;
+      skus.forEach(s => {
+        const cat = normCat(s.product_category || d.primary_category || 'Other');
+        catMap[cat] = (catMap[cat]||0) + perSku;
+      });
+    }
+  });
+
+  const payload = {
+    organization_id: currentOrg,
+    store_id: currentStoreId,
+    snapshot_date: new Date().toISOString().split('T')[0],
+    total_displays: activeDisplays.length,
+    total_skus: Object.values(displaySkus).flat().length,
+    total_floor_units: totalUnits,
+    brand_breakdown: Object.entries(brandMap).map(([name,units]) => ({ name, units, pct: totalUnits > 0 ? (units/totalUnits*100) : 0 })),
+    category_breakdown: Object.entries(catMap).map(([name,units]) => ({ name, units, pct: totalUnits > 0 ? (units/totalUnits*100) : 0 })),
+    created_by: currentUser.id
+  };
+
+  const { error } = await sb.from('field_floor_snapshots').upsert(payload, { onConflict: 'organization_id,store_id,snapshot_date' });
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  showToast('Floor snapshot saved', 'success');
+};
+
+// ── Modal open/close ──
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast toast-${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('open'); });
+});
+
+// Close product search on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.product-search-wrap')) document.getElementById('productResults').classList.remove('show');
+});
+
+init();
+</script>
+</body>
+</html>
