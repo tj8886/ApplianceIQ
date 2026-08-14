@@ -248,6 +248,7 @@ h1,h2,h3,h4 { font-family:'Sora',sans-serif; }
       <button class="tab-btn active" onclick="switchTab('displays')">Displays</button>
       <button class="tab-btn" onclick="switchTab('analytics')">Floor Analytics</button>
       <button class="tab-btn" onclick="switchTab('sellthrough')">Sell-Through</button>
+      <button class="tab-btn" onclick="switchTab('holes')">Floor Holes <span id="holeBadge" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:5px;font-weight:700"></span></button>
     </div>
 
     <!-- Store Selector (shared across tabs) -->
@@ -270,6 +271,7 @@ h1,h2,h3,h4 { font-family:'Sora',sans-serif; }
     <div id="tab-displays"></div>
     <div id="tab-analytics" style="display:none"></div>
     <div id="tab-sellthrough" style="display:none"></div>
+    <div id="tab-holes" style="display:none"></div>
   </main>
 </div>
 
@@ -477,6 +479,136 @@ h1,h2,h3,h4 { font-family:'Sora',sans-serif; }
   </div>
 </div>
 
+<!-- Floor Hole Modal -->
+<div class="modal-overlay" id="holeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="holeModalTitle">Log Floor Hole</h3>
+      <button class="btn-icon" onclick="closeModal('holeModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="holeId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Display</label>
+          <select id="holeDisplay"><option value="">— No specific display —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Slot Label</label>
+          <input type="text" id="holeSlotLabel" placeholder="e.g. Slot 3, Aisle A Pos 2">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Product That Left</label>
+          <input type="text" id="holeRemovedProduct" placeholder="Product name">
+        </div>
+        <div class="form-group">
+          <label>Model #</label>
+          <input type="text" id="holeRemovedModel" placeholder="Model number">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Reason</label>
+          <select id="holeReason">
+            <option value="sold_off_floor">Sold Off Floor</option>
+            <option value="damaged">Damaged</option>
+            <option value="discontinued">Discontinued</option>
+            <option value="recalled">Recalled</option>
+            <option value="returned_to_vendor">Returned to Vendor</option>
+            <option value="seasonal_swap">Seasonal Swap</option>
+            <option value="never_filled">Never Filled</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date Removed</label>
+          <input type="date" id="holeRemovedAt">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Expected Category</label>
+          <select id="holeCategory">
+            <option value="">— Any —</option>
+            <option value="refrigeration">Refrigeration</option>
+            <option value="cooking">Cooking</option>
+            <option value="laundry">Laundry</option>
+            <option value="dishwashers">Dishwashers</option>
+            <option value="ventilation">Ventilation</option>
+            <option value="outdoor">Outdoor</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="holePriority">
+            <option value="low">Low</option>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section-divider"></div>
+
+      <div class="form-group">
+        <label>Status</label>
+        <select id="holeStatus" onchange="onHoleStatusChange()">
+          <option value="open">Open — needs order</option>
+          <option value="ordered">Ordered</option>
+          <option value="in_transit">In Transit</option>
+          <option value="received">Received — needs placement</option>
+          <option value="filled">Filled</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div id="holeOrderSection" style="display:none">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Replacement Product</label>
+            <input type="text" id="holeReplacementProduct" placeholder="What's coming in">
+          </div>
+          <div class="form-group">
+            <label>Replacement Model #</label>
+            <input type="text" id="holeReplacementModel" placeholder="Model number">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>PO Number</label>
+            <input type="text" id="holePO" placeholder="PO-12345">
+          </div>
+          <div class="form-group">
+            <label>Date Ordered</label>
+            <input type="date" id="holeOrderedAt">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Expected Arrival</label>
+          <input type="date" id="holeExpectedArrival">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="holeNotes" placeholder="Context, vendor conversations, decisions..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('holeModal')">Cancel</button>
+      <button class="btn btn-secondary" onclick="markHoleFilled()">Mark Filled</button>
+      <button class="btn btn-primary" onclick="saveHole()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -581,11 +713,12 @@ let currentTab = 'displays';
 window.switchTab = function(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab-btn').forEach((b,i) => {
-    b.classList.toggle('active', ['displays','analytics','sellthrough'][i] === tab);
+    b.classList.toggle('active', ['displays','analytics','sellthrough','holes'][i] === tab);
   });
   document.getElementById('tab-displays').style.display = tab === 'displays' ? '' : 'none';
   document.getElementById('tab-analytics').style.display = tab === 'analytics' ? '' : 'none';
   document.getElementById('tab-sellthrough').style.display = tab === 'sellthrough' ? '' : 'none';
+  document.getElementById('tab-holes').style.display = tab === 'holes' ? '' : 'none';
   renderCurrentTab();
 };
 
@@ -593,6 +726,7 @@ function renderCurrentTab() {
   if (currentTab === 'displays') renderDisplaysTab();
   else if (currentTab === 'analytics') renderAnalyticsTab();
   else if (currentTab === 'sellthrough') renderSellThroughTab();
+  else if (currentTab === 'holes') renderHolesTab();
 }
 
 // ── DISPLAYS TAB ──
@@ -1015,6 +1149,247 @@ async function renderSellThroughTab() {
 
   el.innerHTML = html;
 }
+
+// ── FLOOR HOLES TAB ──
+let holesData = null;
+
+async function renderHolesTab() {
+  const el = document.getElementById('tab-holes');
+  if (!currentOrg) { el.innerHTML = '<div class="empty-state"><h3>No Organization</h3></div>'; return; }
+  el.innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+  const { data, error } = await sb.rpc('get_floor_holes', {
+    p_org_id: currentOrg,
+    p_store_id: currentStoreId || null
+  });
+  if (error) { el.innerHTML = '<div class="empty-state"><h3>Error</h3><p>'+esc(error.message)+'</p></div>'; return; }
+
+  holesData = data || {};
+  const s = holesData.summary || {};
+  const holes = holesData.holes || [];
+  const tasks = holesData.tasks || [];
+  const sla = holesData.sla || {};
+
+  // Update tab badge
+  const critCount = tasks.filter(t => t.urgency === 'critical').length;
+  const badge = document.getElementById('holeBadge');
+  if (critCount > 0) { badge.textContent = critCount; badge.style.display = 'inline-block'; }
+  else { badge.style.display = 'none'; }
+
+  const scopeLabel = currentStoreId
+    ? (stores.find(x => x.id === currentStoreId)?.name || 'this store')
+    : 'all stores';
+
+  let h = `<div class="floor-summary">
+    <div class="summary-stat"><div class="stat-label">Open Holes</div><div class="stat-value">${s.total_open||0}</div><div class="stat-sub">${esc(scopeLabel)}</div></div>
+    <div class="summary-stat"><div class="stat-label">Not Ordered</div><div class="stat-value" style="color:${(s.not_ordered||0)>0?'var(--red)':'var(--navy)'}">${s.not_ordered||0}</div><div class="stat-sub">Past ${sla.days_to_order||3}-day window</div></div>
+    <div class="summary-stat"><div class="stat-label">In Pipeline</div><div class="stat-value">${s.in_pipeline||0}</div><div class="stat-sub">${s.overdue_eta||0} past ETA</div></div>
+    <div class="summary-stat"><div class="stat-label">Avg Days Open</div><div class="stat-value">${s.avg_days_open||0}</div><div class="stat-sub">${s.filled_last_30||0} filled in 30d</div></div>
+  </div>`;
+
+  // ── ACTION TASK LIST ──
+  h += `<div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <span class="card-title">Action Required</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:11px;color:var(--muted)">${tasks.length} open task${tasks.length!==1?'s':''}</span>
+        <button class="btn btn-primary btn-sm" onclick="openAddHole()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Log Hole
+        </button>
+      </div>
+    </div>`;
+
+  if (tasks.length === 0) {
+    h += '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">No outstanding actions — every hole is on track.</div>';
+  } else {
+    tasks.forEach(t => {
+      const uc = t.urgency === 'critical' ? 'var(--red)' : t.urgency === 'high' ? 'var(--amber)' : 'var(--blue)';
+      const ubg = t.urgency === 'critical' ? 'var(--light-red)' : t.urgency === 'high' ? 'var(--light-amber)' : 'var(--light-blue)';
+      h += `<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:8px;background:${ubg};border-left:3px solid ${uc};margin-bottom:8px">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap">
+            <strong style="font-size:13px">${esc(t.action)}</strong>
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:${uc}">${esc(t.urgency)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--navy);margin-bottom:2px">${esc(t.what)} · ${esc(t.display_name)}</div>
+          <div style="font-size:11px;color:var(--muted)">${esc(t.store_name)} — ${esc(t.detail)}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openEditHole('${t.hole_id}')" style="flex-shrink:0">Update</button>
+      </div>`;
+    });
+  }
+  h += '</div>';
+
+  // ── ALL HOLES TABLE ──
+  h += `<div class="card">
+    <div class="card-header">
+      <span class="card-title">Floor Holes</span>
+      <div class="period-selector">
+        <button class="period-btn active" onclick="filterHoles('all',this)">All (${holes.length})</button>
+        <button class="period-btn" onclick="filterHoles('open',this)">Awaiting Order</button>
+        <button class="period-btn" onclick="filterHoles('pipeline',this)">In Pipeline</button>
+      </div>
+    </div>`;
+
+  if (holes.length === 0) {
+    h += '<div style="padding:30px;text-align:center;color:var(--muted);font-size:13px">No open floor holes. Log one when a unit leaves the floor.</div>';
+  } else {
+    h += `<div style="overflow-x:auto"><table class="comparison-table"><thead><tr>
+      <th>Slot / Display</th><th>What's Missing</th><th>Reason</th><th>Days</th><th>Status</th><th>Replacement</th><th>ETA</th><th>Issue</th><th></th>
+    </tr></thead><tbody id="holesBody">`;
+
+    holes.forEach(x => {
+      const uc = x.urgency === 'critical' ? 'var(--red)' : x.urgency === 'high' ? 'var(--amber)' : x.urgency === 'normal' ? 'var(--blue)' : 'var(--muted)';
+      const statusColors = { open:'var(--red)', ordered:'var(--blue)', in_transit:'var(--blue)', received:'var(--amber)' };
+      const etaTxt = x.expected_arrival
+        ? (x.days_past_eta > 0
+            ? `<span style="color:var(--red);font-weight:600">${x.expected_arrival} (${x.days_past_eta}d late)</span>`
+            : x.expected_arrival)
+        : (x.status === 'ordered' || x.status === 'in_transit' ? '<span style="color:var(--amber)">No ETA</span>' : '—');
+      const group = ['ordered','in_transit','received'].includes(x.status) ? 'pipeline' : 'open';
+
+      h += `<tr data-group="${group}">
+        <td><strong style="font-size:12px">${esc(x.display_name || x.slot_label || '—')}</strong>
+          ${x.slot_label && x.display_name ? '<div style="font-size:11px;color:var(--muted)">'+esc(x.slot_label)+'</div>' : ''}
+          ${!currentStoreId ? '<div style="font-size:11px;color:var(--muted)">'+esc(x.store_name)+'</div>' : ''}</td>
+        <td>${esc(x.removed_product_name || (x.brand_name ? x.brand_name+' '+(x.expected_category||'') : 'Empty slot'))}
+          ${x.removed_model_number ? '<div style="font-size:11px;color:var(--muted)">'+esc(x.removed_model_number)+'</div>' : ''}</td>
+        <td style="font-size:12px">${esc(titleCaseH(x.removal_reason))}</td>
+        <td style="font-weight:600;color:${x.days_open > 14 ? 'var(--red)' : 'var(--navy)'}">${x.days_open}</td>
+        <td><span class="floored-badge" style="background:var(--bg);color:${statusColors[x.status]||'var(--muted)'}">${esc(titleCaseH(x.status))}</span></td>
+        <td style="font-size:12px">${esc(x.replacement_product_name || '—')}
+          ${x.po_number ? '<div style="font-size:11px;color:var(--muted)">'+esc(x.po_number)+'</div>' : ''}</td>
+        <td style="font-size:12px">${etaTxt}</td>
+        <td style="font-size:11px;color:${uc};font-weight:500">${esc(x.issue_label)}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openEditHole('${x.id}')">Edit</button></td>
+      </tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+
+  el.innerHTML = h;
+}
+
+function titleCaseH(s) { if (!s) return ''; return s.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase()); }
+
+window.filterHoles = function(mode, btn) {
+  document.querySelectorAll('#tab-holes .period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#holesBody tr').forEach(r => {
+    r.style.display = (mode === 'all' || r.dataset.group === mode) ? '' : 'none';
+  });
+};
+
+// ── Hole modals ──
+window.openAddHole = function() {
+  if (!currentStoreId) { showToast('Select a store first', 'error'); return; }
+  document.getElementById('holeId').value = '';
+  document.getElementById('holeModalTitle').textContent = 'Log Floor Hole';
+  ['holeSlotLabel','holeRemovedProduct','holeRemovedModel','holeReplacementProduct','holeReplacementModel','holePO','holeNotes'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('holeRemovedAt').value = new Date().toISOString().split('T')[0];
+  document.getElementById('holeOrderedAt').value = '';
+  document.getElementById('holeExpectedArrival').value = '';
+  document.getElementById('holeReason').value = 'sold_off_floor';
+  document.getElementById('holeStatus').value = 'open';
+  document.getElementById('holePriority').value = 'normal';
+  document.getElementById('holeCategory').value = '';
+  // Populate display dropdown for this store
+  const dsel = document.getElementById('holeDisplay');
+  dsel.innerHTML = '<option value="">— No specific display —</option>' +
+    displays.filter(d => d.is_active).map(d => `<option value="${d.id}">${esc(d.display_name)}</option>`).join('');
+  onHoleStatusChange();
+  openModal('holeModal');
+};
+
+window.openEditHole = function(id) {
+  const x = (holesData?.holes || []).find(h => h.id === id);
+  if (!x) { showToast('Hole not found', 'error'); return; }
+  document.getElementById('holeId').value = x.id;
+  document.getElementById('holeModalTitle').textContent = 'Update Floor Hole';
+  document.getElementById('holeSlotLabel').value = x.slot_label || '';
+  document.getElementById('holeRemovedProduct').value = x.removed_product_name || '';
+  document.getElementById('holeRemovedModel').value = x.removed_model_number || '';
+  document.getElementById('holeRemovedAt').value = x.removed_at || '';
+  document.getElementById('holeReason').value = x.removal_reason || 'sold_off_floor';
+  document.getElementById('holeStatus').value = x.status || 'open';
+  document.getElementById('holeReplacementProduct').value = x.replacement_product_name || '';
+  document.getElementById('holeReplacementModel').value = x.replacement_model_number || '';
+  document.getElementById('holePO').value = x.po_number || '';
+  document.getElementById('holeOrderedAt').value = x.ordered_at || '';
+  document.getElementById('holeExpectedArrival').value = x.expected_arrival || '';
+  document.getElementById('holePriority').value = x.priority || 'normal';
+  document.getElementById('holeCategory').value = x.expected_category || '';
+  document.getElementById('holeNotes').value = x.notes || '';
+
+  const dsel = document.getElementById('holeDisplay');
+  dsel.innerHTML = '<option value="">— No specific display —</option>' +
+    displays.filter(d => d.is_active).map(d => `<option value="${d.id}"${d.id===x.display_id?' selected':''}>${esc(d.display_name)}</option>`).join('');
+
+  onHoleStatusChange();
+  openModal('holeModal');
+};
+
+window.onHoleStatusChange = function() {
+  const st = document.getElementById('holeStatus').value;
+  const showOrder = ['ordered','in_transit','received','filled'].includes(st);
+  document.getElementById('holeOrderSection').style.display = showOrder ? '' : 'none';
+};
+
+window.saveHole = async function() {
+  const id = document.getElementById('holeId').value;
+  const status = document.getElementById('holeStatus').value;
+
+  const payload = {
+    organization_id: currentOrg,
+    store_id: currentStoreId,
+    display_id: document.getElementById('holeDisplay').value || null,
+    slot_label: document.getElementById('holeSlotLabel').value.trim() || null,
+    expected_category: document.getElementById('holeCategory').value || null,
+    removed_product_name: document.getElementById('holeRemovedProduct').value.trim() || null,
+    removed_model_number: document.getElementById('holeRemovedModel').value.trim() || null,
+    removal_reason: document.getElementById('holeReason').value,
+    removed_at: document.getElementById('holeRemovedAt').value || new Date().toISOString().split('T')[0],
+    status: status,
+    replacement_product_name: document.getElementById('holeReplacementProduct').value.trim() || null,
+    replacement_model_number: document.getElementById('holeReplacementModel').value.trim() || null,
+    po_number: document.getElementById('holePO').value.trim() || null,
+    ordered_at: document.getElementById('holeOrderedAt').value || null,
+    expected_arrival: document.getElementById('holeExpectedArrival').value || null,
+    priority: document.getElementById('holePriority').value,
+    notes: document.getElementById('holeNotes').value.trim() || null
+  };
+
+  if (status === 'filled') payload.filled_at = new Date().toISOString().split('T')[0];
+  if (status === 'received' && !payload.received_at) payload.received_at = new Date().toISOString().split('T')[0];
+
+  let err;
+  if (id) {
+    const { error } = await sb.from('field_floor_holes').update(payload).eq('id', id);
+    err = error;
+  } else {
+    payload.created_by = currentUser.id;
+    const { error } = await sb.from('field_floor_holes').insert(payload);
+    err = error;
+  }
+
+  if (err) { showToast('Error: ' + err.message, 'error'); return; }
+  closeModal('holeModal');
+  showToast(id ? 'Hole updated' : 'Hole logged', 'success');
+  renderHolesTab();
+};
+
+window.markHoleFilled = async function() {
+  const id = document.getElementById('holeId').value;
+  if (!id) { showToast('Save the hole first', 'error'); return; }
+  const { error } = await sb.from('field_floor_holes')
+    .update({ status: 'filled', filled_at: new Date().toISOString().split('T')[0] }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message, 'error'); return; }
+  closeModal('holeModal');
+  showToast('Hole marked filled', 'success');
+  renderHolesTab();
+};
 
 // ── Helpers ──
 function getInsight(r) {
