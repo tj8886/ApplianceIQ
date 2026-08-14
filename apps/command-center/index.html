@@ -304,6 +304,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
     <aside class="cc-side">
       <div class="cc-logo"><span class="cnav-pill" style="width:28px;height:28px;font-size:9px">CC</span> Command Center</div>
       <button class="cc-nav-btn active" data-view="overview">📊 Overview</button>
+      <button class="cc-nav-btn" data-view="iqscore">🧠 IQ Score</button>
       <button class="cc-nav-btn" data-view="revenue">💰 Revenue & Budget</button>
       <button class="cc-nav-btn" data-view="warranty">🛡️ Warranty</button>
       <button class="cc-nav-btn" data-view="brands">🏷️ Brands</button>
@@ -312,6 +313,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;line-height:1.15}
       <button class="cc-nav-btn" data-view="coaching">🏆 Coaching</button>
       <button class="cc-nav-btn" data-view="training">🎓 Training</button>
       <button class="cc-nav-btn" data-view="floor">🔄 Floor / Up System</button>
+      <button class="cc-nav-btn" data-view="accountability">📋 CRM Accountability</button>
       <button class="cc-nav-btn" data-view="leaderboard">🏅 Leaderboard</button>
       <button class="cc-nav-btn" data-view="ai">🤖 AI Insights</button>
       <button class="cc-nav-btn" data-view="settings">⚙️ Settings</button>
@@ -405,6 +407,7 @@ async function bootApp(){
 async function renderCC(){
   const m=$('#ccMain');m.innerHTML='<div style="padding:40px;color:var(--steel);text-align:center">Loading…</div>';
   if(currentView==='overview') return renderOverview();
+  if(currentView==='iqscore') return renderIQScore();
   if(currentView==='revenue') return renderRevenue();
   if(currentView==='warranty') return renderWarranty();
   if(currentView==='brands') return renderBrands();
@@ -413,6 +416,7 @@ async function renderCC(){
   if(currentView==='coaching') return renderCoaching();
   if(currentView==='training') return renderTraining();
   if(currentView==='floor') return renderFloor();
+  if(currentView==='accountability') return renderAccountability();
   if(currentView==='leaderboard') return renderLeaderboard();
   if(currentView==='ai') return renderAI();
   if(currentView==='settings') return renderSettings();
@@ -524,14 +528,65 @@ function childCards(d){
   return '';
 }
 
+// IQ Score helpers
+async function fetchIQScore(locId,userId){
+  const{data}=await sb.rpc('compute_iq_score',{p_org_id:currentOrg.id,p_period:'2026-06',p_location_id:locId??null,p_user_id:userId??null});
+  return data??[];
+}
+function iqTotal(rows){return rows.reduce((s,r)=>s+Number(r.earned_points||0),0);}
+function iqColor(score){return score>=80?'var(--verified)':score>=60?'#e67e22':score>=40?'var(--danger)':'#7f1d1d';}
+function iqGrade(score){return score>=90?'A+':score>=85?'A':score>=80?'B+':score>=75?'B':score>=65?'C+':score>=60?'C':score>=50?'D':'F';}
+function iqRing(score,size,label){
+  const r=size/2-6;const c=2*Math.PI*r;const off=c*(1-score/100);const clr=iqColor(score);
+  return `<div style="text-align:center;display:inline-block">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="10"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${clr}" stroke-width="10" stroke-linecap="round"
+        stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${size/2} ${size/2})" style="transition:stroke-dashoffset 1s"/>
+      <text x="${size/2}" y="${size/2-8}" text-anchor="middle" font-family="Sora" font-weight="800" font-size="${size>100?'32':'22'}" fill="var(--navy)">${score.toFixed(0)}</text>
+      <text x="${size/2}" y="${size/2+12}" text-anchor="middle" font-family="Sora" font-weight="700" font-size="${size>100?'14':'11'}" fill="${clr}">${iqGrade(score)}</text>
+      <text x="${size/2}" y="${size/2+28}" text-anchor="middle" font-family="Inter" font-size="10" fill="#94a3b8">/100</text>
+    </svg>
+    ${label?`<div style="font-size:12px;color:var(--steel);margin-top:4px;font-weight:600">${esc(label)}</div>`:''}
+  </div>`;
+}
+function iqBreakdownBar(rows){
+  const total=iqTotal(rows);
+  return `<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">${rows.map(r=>{
+    const pct=Number(r.max_points)>0?(Number(r.earned_points)/Number(r.max_points)*100):0;
+    const clr=pct>=80?'var(--verified)':pct>=60?'#e67e22':'var(--danger)';
+    return `<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+      <span style="font-weight:600;color:var(--navy)">${esc(r.metric_label)}</span>
+      <span style="font-weight:700;color:${clr}">${Number(r.earned_points).toFixed(1)} / ${Number(r.max_points)}</span>
+    </div>
+    <div style="background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden"><div style="background:${clr};height:100%;width:${pct.toFixed(0)}%;border-radius:4px;transition:width .8s"></div></div></div>`;
+  }).join('')}</div>`;
+}
+
 async function renderOverview(){
   const d=await loadAll();const m=$('#ccMain');const isRep=viewLevel.level==='rep';
   const rev=d.g('revenue'),war=d.g('warranty_value'),warA=d.g('warranty_attach'),units=d.g('units_sold');
   const avgO=d.g('avg_order'),ipo=d.g('ipo'),itemV=d.g('item_value'),coach=d.g('coaching_avg'),train=d.g('training_completion'),conv=d.g('floor_conversion'),walks=d.g('walk_ins'),greet=d.g('greeting_time'),warOpp=d.g('warranty_opps');
   const mgD=d.g('margin_dollars'),mgP=d.g('margin_pct'),wpD=d.g('warranty_pen_dollars');
+
+  // Fetch IQ Score for current scope
+  const iqRows=await fetchIQScore(viewLevel.level==='store'?viewLevel.id:viewLevel.level==='region'?viewLevel.id:null,viewLevel.level==='rep'?viewLevel.id:null);
+  const iqScore=iqTotal(iqRows);
+
   m.innerHTML=`${levelBar()}
-    <h2 class="cc-page-title">${isRep?esc(viewLevel.name):viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
-    <p class="cc-page-sub">${esc(currentOrg.name)} · June 2026 · ${esc(viewLevel.name)}</p>
+    <div style="display:flex;gap:24px;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:300px">
+        <h2 class="cc-page-title">${isRep?esc(viewLevel.name):viewLevel.level==='store'?esc(viewLevel.name):viewLevel.level==='region'?esc(viewLevel.name)+' Region':'Operations Overview'}</h2>
+        <p class="cc-page-sub" style="margin-bottom:0">${esc(currentOrg.name)} · June 2026 · ${esc(viewLevel.name)}</p>
+      </div>
+      <div style="background:#fff;border:2px solid ${iqColor(iqScore)};border-radius:16px;padding:20px 28px;display:flex;align-items:center;gap:18px;cursor:pointer;transition:box-shadow .2s;box-shadow:0 2px 12px ${iqColor(iqScore)}22" onclick="document.querySelectorAll('.cc-nav-btn').forEach(x=>x.classList.remove('active'));document.querySelector('[data-view=iqscore]').classList.add('active');currentView='iqscore';renderCC();">
+        ${iqRing(iqScore,100,'')}
+        <div>
+          <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:${iqColor(iqScore)}">IQ Score</div>
+          <div style="font-size:12px;color:var(--steel);margin-top:2px">Tap for breakdown →</div>
+        </div>
+      </div>
+    </div>
     ${childCards(d)}
     <div class="cc-stat-grid">
       ${statCard('Revenue',money(rev.actual_value),'Budget: '+money(rev.target_value),rev.variance_pct)}
@@ -556,6 +611,101 @@ async function renderOverview(){
     ${!isRep&&d.storeList.length>1?storeTable('Warranty Attach',d,'warranty_attach',fmtP):''}
     ${viewLevel.level==='store'&&d.userIds.length>0?repTable(d):''}
     ${await channelPanel()}`;
+  bindClicks();
+}
+
+async function renderIQScore(){
+  const d=await loadAll();const m=$('#ccMain');const lv=viewLevel;
+
+  // Fetch score for current scope
+  const iqRows=await fetchIQScore(
+    lv.level==='store'?lv.id:lv.level==='region'?lv.id:null,
+    lv.level==='rep'?lv.id:null
+  );
+  const iqScore=iqTotal(iqRows);
+
+  // Fetch scores for all stores
+  const storeScores=[];
+  for(const s of d.storeList){
+    const rows=await fetchIQScore(s.id,null);
+    storeScores.push({store:s,rows,score:iqTotal(rows)});
+  }
+  storeScores.sort((a,b)=>b.score-a.score);
+
+  // Fetch scores for all reps
+  const repScores=[];
+  for(const uid of d.userIds){
+    const rows=await fetchIQScore(null,uid);
+    repScores.push({uid,rows,score:iqTotal(rows)});
+  }
+  repScores.sort((a,b)=>b.score-a.score);
+
+  // Region scores
+  const regions=d.locs.filter(l=>l.location_type==='region');
+  const regionScores=[];
+  for(const reg of regions){
+    const rows=await fetchIQScore(reg.id,null);
+    regionScores.push({region:reg,rows,score:iqTotal(rows)});
+  }
+  regionScores.sort((a,b)=>b.score-a.score);
+
+  const scopeLabel=lv.level==='corporate'?'Corporate':lv.level==='region'?esc(lv.name)+' Region':lv.level==='store'?esc(lv.name):esc(repName(lv.id));
+
+  m.innerHTML=`${levelBar()}
+    <div style="text-align:center;padding:20px 0 30px">
+      <div style="font-family:'Sora',sans-serif;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:var(--accent);margin-bottom:12px">🧠 IQ Performance Score</div>
+      ${iqRing(iqScore,160,scopeLabel)}
+      <div style="margin-top:12px;font-size:14px;color:var(--steel)">${iqScore>=80?'Strong overall performance':iqScore>=60?'Room for improvement in key areas':'Significant gaps — coaching recommended'}</div>
+    </div>
+
+    <div class="cc-panel"><h3>Score Breakdown · ${scopeLabel}</h3>
+    <table class="cc-table"><thead><tr><th>Metric</th><th class="num">Actual</th><th class="num">Target</th><th class="num">% of Target</th><th class="num">Points Earned</th><th class="num">Max</th><th style="width:25%">Bar</th></tr></thead><tbody>
+    ${iqRows.map(r=>{
+      const pct=Number(r.pct_of_target);const clr=pct>=80?'var(--verified)':pct>=60?'#e67e22':'var(--danger)';
+      const fmtVal=(k,v)=>{if(v==null)return '—';if(k==='revenue'||k==='avg_order')return money(v);if(k.includes('pct')||k.includes('attach')||k.includes('conversion')||k.includes('completion')||k==='crm_completion'||k==='follow_up_compliance')return fmtP(v);if(k==='coaching_avg')return Number(v).toFixed(1)+'/10';if(k==='ipo')return Number(v).toFixed(2);return Number(v).toFixed(1);};
+      return `<tr><td><b>${esc(r.metric_label)}</b></td>
+        <td class="num">${fmtVal(r.metric_key,r.actual_value)}</td>
+        <td class="num">${fmtVal(r.metric_key,r.target_value)}</td>
+        <td class="num" style="color:${clr};font-weight:700">${pct.toFixed(0)}%</td>
+        <td class="num" style="font-weight:800;color:${clr}">${Number(r.earned_points).toFixed(1)}</td>
+        <td class="num" style="color:var(--steel)">${Number(r.max_points)}</td>
+        <td><div style="background:#e5e7eb;border-radius:4px;height:10px;overflow:hidden"><div style="background:${clr};height:100%;width:${pct.toFixed(0)}%;border-radius:4px"></div></div></td></tr>`;
+    }).join('')}
+    <tr style="border-top:2px solid var(--navy)"><td><b style="font-size:14px">IQ SCORE</b></td><td></td><td></td><td></td>
+      <td class="num" style="font-family:'Sora',sans-serif;font-size:18px;font-weight:800;color:${iqColor(iqScore)}">${iqScore.toFixed(1)}</td>
+      <td class="num" style="font-size:14px;font-weight:700">100</td><td></td></tr>
+    </tbody></table></div>
+
+    ${regionScores.length>0?`<div class="cc-panel"><h3>🗺️ IQ Score by Region</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">${regionScores.map(rs=>`
+      <div style="flex:1;min-width:200px;text-align:center;border:2px solid ${iqColor(rs.score)};border-radius:14px;padding:18px;cursor:pointer" onclick="setLevel('region','${rs.region.id}','${esc(rs.region.name)}')">
+        ${iqRing(rs.score,90,rs.region.name)}
+      </div>`).join('')}</div></div>`:''}
+
+    <div class="cc-panel"><h3>🏬 IQ Score by Store</h3>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px">${storeScores.map(ss=>`
+      <div style="flex:1;min-width:180px;text-align:center;border:2px solid ${iqColor(ss.score)};border-radius:14px;padding:18px;cursor:pointer" onclick="setLevel('store','${ss.store.id}','${esc(ss.store.name)}')">
+        ${iqRing(ss.score,90,ss.store.name)}
+      </div>`).join('')}</div></div>
+
+    <div class="cc-panel"><h3>👤 IQ Score by Rep</h3>
+    <table class="cc-table"><thead><tr><th style="width:40px">#</th><th>Rep</th><th class="num">IQ Score</th><th class="num">Grade</th><th style="width:30%">Score</th>
+      ${iqRows.map(r=>`<th class="num" style="font-size:10px;writing-mode:vertical-lr;transform:rotate(180deg);max-width:40px">${esc(r.metric_label)}</th>`).join('')}
+    </tr></thead><tbody>
+    ${repScores.map((rs,i)=>{
+      const medals=['🥇','🥈','🥉'];
+      return `<tr style="cursor:pointer" data-rep-id="${rs.uid}" data-rep-name="${esc(repName(rs.uid))}">
+        <td style="text-align:center;font-weight:800">${i<3?medals[i]:(i+1)}</td>
+        <td><b>${esc(repName(rs.uid))}</b></td>
+        <td class="num" style="font-family:'Sora',sans-serif;font-size:18px;font-weight:800;color:${iqColor(rs.score)}">${rs.score.toFixed(0)}</td>
+        <td class="num"><span style="font-family:'Sora',sans-serif;font-weight:800;font-size:14px;color:${iqColor(rs.score)}">${iqGrade(rs.score)}</span></td>
+        <td><div style="background:#e5e7eb;border-radius:4px;height:12px;overflow:hidden"><div style="background:${iqColor(rs.score)};height:100%;width:${rs.score}%;border-radius:4px"></div></div></td>
+        ${rs.rows.map(r=>{const p=Number(r.max_points)>0?(Number(r.earned_points)/Number(r.max_points)*100):0;
+          return `<td class="num" style="font-size:11px;color:${p>=80?'var(--verified)':p>=60?'#e67e22':'var(--danger)'};font-weight:700">${Number(r.earned_points).toFixed(0)}</td>`;
+        }).join('')}
+      </tr>`;
+    }).join('')}</tbody></table></div>
+  `;
   bindClicks();
 }
 
@@ -730,25 +880,345 @@ async function renderTraining(){
 
 async function renderFloor(){
   const d=await loadAll();const m=$('#ccMain');
-  m.innerHTML=`<h2 class="cc-page-title">Floor / Up System</h2><p class="cc-page-sub">Walk-in traffic, conversion, and greeting times · June 2026</p>
-    <div class="cc-stat-grid">
-      ${statCard('Total Walk-Ins',fmtN(d.g('walk_ins').actual_value,0),'All stores',null)}
-      ${statCard('Floor Conversion',fmtP(d.g('floor_conversion').actual_value),'Target: '+fmtP(d.g('floor_conversion').target_value),d.g('floor_conversion').variance_pct)}
-      ${statCard('Avg Greeting',fmtN(d.g('greeting_time').actual_value,0)+'s','Target: '+fmtN(d.g('greeting_time').target_value,0)+'s',d.g('greeting_time').variance_pct)}
-    </div>
-    <div class="cc-panel"><h3>Floor Performance by Store</h3>
-    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Walk-Ins</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Greeting Time</th><th class="num">Target</th><th>Status</th></tr></thead><tbody>
-    ${d.storeList.map(s=>{
-      const wi=d.gl(d.stores,s.id,'walk_ins')||{};const fc=d.gl(d.stores,s.id,'floor_conversion')||{};const gt=d.gl(d.stores,s.id,'greeting_time')||{};
-      const v=fc.variance_pct??0;
-      return `<tr><td><b>${esc(s.name)}</b></td><td class="num">${fmtN(wi.actual_value,0)}</td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${fmtN(gt.actual_value,0)}s</td><td class="num">${fmtN(gt.target_value,0)}s</td><td>${badge(v)}</td></tr>`;
-    }).join('')}</tbody></table></div>
-    <div class="cc-panel"><h3>Conversion by Rep</h3>
-    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Conversion</th><th class="num">Target</th><th class="num">Revenue</th><th>Status</th></tr></thead><tbody>
-    ${d.userIds.map(uid=>{
-      const fc=d.gu(d.reps,uid,'floor_conversion')||{};const rv=d.gu(d.reps,uid,'revenue')||{};const v=fc.variance_pct??0;
-      return `<tr><td><b>${esc(repName(uid))}</b></td><td class="num">${fmtP(fc.actual_value)}</td><td class="num">${fmtP(fc.target_value)}</td><td class="num">${money(rv.actual_value)}</td><td>${badge(v)}</td></tr>`;
+  const lv=viewLevel;
+
+  // Load floor analytics from view
+  let faQ=sb.from('v_floor_analytics').select('*').eq('organization_id',currentOrg.id);
+  if(lv.level==='store') faQ=faQ.eq('store_id',lv.id);
+  else if(lv.level==='rep') faQ=faQ.eq('salesperson_user_id',lv.id);
+  const{data:floorData}=await faQ;
+  const fa=floorData??[];
+
+  // Load commercial project timelines
+  let ptQ=sb.from('v_commercial_project_timelines').select('*').eq('organization_id',currentOrg.id);
+  if(lv.level==='rep') ptQ=ptQ.eq('owner_user_id',lv.id);
+  const{data:projData}=await ptQ;
+  const pt=projData??[];
+
+  // Helper: filter by scope
+  const scopeFa=(rows,storeId,repId)=>{
+    let r=rows;
+    if(storeId) r=r.filter(x=>x.store_id===storeId);
+    if(repId) r=r.filter(x=>x.salesperson_user_id===repId);
+    return r;
+  };
+
+  // Helper: compute stats from rows
+  const stats=(rows)=>{
+    const valid=rows.filter(r=>r.interaction_minutes!=null&&r.interaction_minutes>0&&r.interaction_minutes<600);
+    const sold=valid.filter(r=>r.outcome==='sale');
+    const noSale=valid.filter(r=>r.outcome==='no_sale');
+    const greeted=rows.filter(r=>r.greeting_seconds!=null&&r.greeting_seconds>=0);
+    const greetToEnd=rows.filter(r=>r.greeting_to_end_minutes!=null&&r.greeting_to_end_minutes>0&&r.greeting_to_end_minutes<600);
+    const avgN=(arr,key)=>arr.length?arr.reduce((s,r)=>s+(Number(r[key])||0),0)/arr.length:null;
+    return {
+      total:rows.length,
+      soldCount:sold.length,
+      noSaleCount:noSale.length,
+      convPct:valid.length?(sold.length/valid.length*100):null,
+      avgInteraction:avgN(valid,'interaction_minutes'),
+      avgSoldTime:avgN(sold,'interaction_minutes'),
+      avgNoSaleTime:avgN(noSale,'interaction_minutes'),
+      avgGreeting:avgN(greeted,'greeting_seconds'),
+      hasGreeter:greeted.length>0,
+      avgGreetToSale:avgN(sold.filter(r=>r.greeting_to_end_minutes>0&&r.greeting_to_end_minutes<600),'greeting_to_end_minutes'),
+      avgGreetToNoSale:avgN(noSale.filter(r=>r.greeting_to_end_minutes>0&&r.greeting_to_end_minutes<600),'greeting_to_end_minutes'),
+      totalSaleAmt:sold.reduce((s,r)=>s+(Number(r.sale_amount)||0),0),
+    };
+  };
+
+  const clientTypes=['retail','commercial','builder_designer','trade'];
+  const clientLabels={retail:'🏠 Retail',commercial:'🏢 Commercial',builder_designer:'🎨 Builders & Designers',trade:'🔧 Trades'};
+  const clientColors={retail:'var(--accent)',commercial:'#e67e22',builder_designer:'#8e44ad',trade:'#2ecc71'};
+
+  // Overall stats
+  const allStats=stats(fa);
+
+  // By client type
+  const byType={};
+  clientTypes.forEach(ct=>{byType[ct]=stats(fa.filter(r=>r.client_type===ct));});
+
+  // Format helpers
+  const fMin=(v)=>v==null?'—':v.toFixed(1)+' min';
+  const fSec=(v)=>v==null?'—':v.toFixed(0)+'s';
+
+  // Client type tab state
+  const activeTab=window._floorTab||'all';
+
+  // Build tab buttons
+  const tabs=[{key:'all',label:'📊 All Types'},...clientTypes.map(ct=>({key:ct,label:clientLabels[ct]}))];
+  const tabBar=`<div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">${tabs.map(t=>`<button onclick="window._floorTab='${t.key}';renderCC()" style="padding:7px 16px;border-radius:999px;border:1px solid ${activeTab===t.key?'var(--accent)':'var(--line)'};background:${activeTab===t.key?'var(--accent)':'#fff'};color:${activeTab===t.key?'#fff':'var(--steel)'};font-size:12px;font-weight:600;cursor:pointer;font-family:'Sora',sans-serif">${t.label}</button>`).join('')}</div>`;
+
+  // Filter data for active tab
+  const tabFa=activeTab==='all'?fa:fa.filter(r=>r.client_type===activeTab);
+  const tabStats=stats(tabFa);
+  const tabLabel=activeTab==='all'?'All Customer Types':clientLabels[activeTab];
+
+  // ----- STAT CARDS -----
+  const statCards=`<div class="cc-stat-grid">
+    ${statCard('Total Interactions',fmtN(tabStats.total,0),tabLabel,null)}
+    ${statCard('Conversion Rate',tabStats.convPct!=null?tabStats.convPct.toFixed(1)+'%':'—',tabStats.soldCount+' sold / '+tabStats.noSaleCount+' no sale',null)}
+    ${tabStats.hasGreeter?statCard('Avg Greeting Time',fSec(tabStats.avgGreeting),'Arrival → First Acknowledgement',null):''}
+    ${statCard('Avg Time with Customer',fMin(tabStats.avgInteraction),'All interactions',null)}
+    ${statCard('Avg Time — Sold',fMin(tabStats.avgSoldTime),'Customers who purchased',null)}
+    ${statCard('Avg Time — No Sale',fMin(tabStats.avgNoSaleTime),'Customers who did not buy',null)}
+    ${tabStats.hasGreeter?statCard('Greeting → Sale',fMin(tabStats.avgGreetToSale),'Greet to purchase close',null):''}
+    ${tabStats.hasGreeter?statCard('Greeting → No Sale',fMin(tabStats.avgGreetToNoSale),'Greet to departure',null):''}
+    ${statCard('Total Sale Value',money(tabStats.totalSaleAmt),tabStats.soldCount+' transactions',null)}
+  </div>`;
+
+  // ----- CLIENT TYPE BREAKDOWN (only on "All" tab) -----
+  let typeBreakdown='';
+  if(activeTab==='all'){
+    typeBreakdown=`<div class="cc-panel"><h3>📊 Performance by Client Type</h3>
+    <table class="cc-table"><thead><tr><th>Client Type</th><th class="num">Interactions</th><th class="num">Conv %</th><th class="num">Avg Time</th><th class="num">Sold Avg</th><th class="num">No Sale Avg</th><th class="num">Greeting</th><th class="num">Revenue</th></tr></thead><tbody>
+    ${clientTypes.map(ct=>{const s=byType[ct];if(!s.total)return '';
+      return `<tr><td><span style="color:${clientColors[ct]};font-weight:700">${clientLabels[ct]}</span></td>
+        <td class="num">${s.total}</td><td class="num">${s.convPct!=null?s.convPct.toFixed(1)+'%':'—'}</td>
+        <td class="num">${fMin(s.avgInteraction)}</td><td class="num">${fMin(s.avgSoldTime)}</td><td class="num">${fMin(s.avgNoSaleTime)}</td>
+        <td class="num">${s.hasGreeter?fSec(s.avgGreeting):'No greeter'}</td><td class="num">${money(s.totalSaleAmt)}</td></tr>`;
     }).join('')}</tbody></table></div>`;
+  }
+
+  // ----- BY STORE TABLE -----
+  const storeIds=[...new Set(tabFa.map(r=>r.store_id))];
+  const storeTable2=`<div class="cc-panel"><h3>🏬 By Store · ${esc(tabLabel)}</h3>
+  <table class="cc-table"><thead><tr><th>Store</th><th class="num">Interactions</th><th class="num">Conv %</th><th class="num">Avg Time</th><th class="num">Sold Avg</th><th class="num">No Sale Avg</th><th class="num">Greeting</th><th class="num">Revenue</th></tr></thead><tbody>
+  ${d.storeList.map(s=>{const sfa=tabFa.filter(r=>r.store_id===s.id);const ss=stats(sfa);if(!ss.total)return '';
+    return `<tr style="cursor:pointer" data-store-id="${s.id}" data-store-name="${esc(s.name)}"><td><b>${esc(s.name)}</b></td>
+      <td class="num">${ss.total}</td><td class="num">${ss.convPct!=null?ss.convPct.toFixed(1)+'%':'—'}</td>
+      <td class="num">${fMin(ss.avgInteraction)}</td><td class="num">${fMin(ss.avgSoldTime)}</td><td class="num">${fMin(ss.avgNoSaleTime)}</td>
+      <td class="num">${ss.hasGreeter?fSec(ss.avgGreeting):'<span style="color:var(--danger);font-size:11px">No greeter</span>'}</td>
+      <td class="num">${money(ss.totalSaleAmt)}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+
+  // ----- BY REGION TABLE -----
+  const regions=d.locs.filter(l=>l.location_type==='region');
+  let regionTable='';
+  if(lv.level==='corporate'&&regions.length>0){
+    regionTable=`<div class="cc-panel"><h3>🗺️ By Region · ${esc(tabLabel)}</h3>
+    <table class="cc-table"><thead><tr><th>Region</th><th class="num">Interactions</th><th class="num">Conv %</th><th class="num">Avg Time</th><th class="num">Sold Avg</th><th class="num">No Sale Avg</th><th class="num">Greeting</th><th class="num">Revenue</th></tr></thead><tbody>
+    ${regions.map(reg=>{
+      const regStores=d.locs.filter(l=>l.parent_id===reg.id&&l.location_type==='store').map(l=>l.id);
+      const rfa=tabFa.filter(r=>regStores.includes(r.store_id));const rs=stats(rfa);if(!rs.total)return '';
+      return `<tr><td><b>${esc(reg.name)}</b></td>
+        <td class="num">${rs.total}</td><td class="num">${rs.convPct!=null?rs.convPct.toFixed(1)+'%':'—'}</td>
+        <td class="num">${fMin(rs.avgInteraction)}</td><td class="num">${fMin(rs.avgSoldTime)}</td><td class="num">${fMin(rs.avgNoSaleTime)}</td>
+        <td class="num">${rs.hasGreeter?fSec(rs.avgGreeting):'—'}</td><td class="num">${money(rs.totalSaleAmt)}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }
+
+  // ----- BY REP TABLE -----
+  const repIds=[...new Set(tabFa.map(r=>r.salesperson_user_id))];
+  const repTable=`<div class="cc-panel"><h3>👤 By Sales Associate · ${esc(tabLabel)}</h3>
+  <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Interactions</th><th class="num">Conv %</th><th class="num">Avg Time</th><th class="num">Sold Avg</th><th class="num">No Sale Avg</th><th class="num">Greeting → Sale</th><th class="num">Greeting → No Sale</th><th class="num">Revenue</th></tr></thead><tbody>
+  ${repIds.map(uid=>{const rfa=tabFa.filter(r=>r.salesperson_user_id===uid);const rs=stats(rfa);if(!rs.total)return '';
+    return `<tr style="cursor:pointer" data-rep-id="${uid}" data-rep-name="${esc(repName(uid))}"><td><b>${esc(repName(uid))}</b></td>
+      <td class="num">${rs.total}</td><td class="num">${rs.convPct!=null?rs.convPct.toFixed(1)+'%':'—'}</td>
+      <td class="num">${fMin(rs.avgInteraction)}</td><td class="num">${fMin(rs.avgSoldTime)}</td><td class="num">${fMin(rs.avgNoSaleTime)}</td>
+      <td class="num">${fMin(rs.avgGreetToSale)}</td><td class="num">${fMin(rs.avgGreetToNoSale)}</td>
+      <td class="num">${money(rs.totalSaleAmt)}</td></tr>`;
+  }).join('')}</tbody></table></div>`;
+
+  // ----- COMMERCIAL PROJECT TIMELINES -----
+  let projPanel='';
+  const commProj=pt.filter(p=>p.record_type==='commercial'||p.record_type==='builder_designer'||p.record_type==='trade');
+  if(commProj.length>0||activeTab==='commercial'||activeTab==='builder_designer'||activeTab==='trade'){
+    const avgLQ=commProj.filter(p=>p.lead_to_quote_days!=null);
+    const avgSD=commProj.filter(p=>p.sale_to_delivery_days!=null);
+    const avgLC=commProj.filter(p=>p.lead_to_close_days!=null);
+    const avgVal=(arr,key)=>arr.length?(arr.reduce((s,r)=>s+(Number(r[key])||0),0)/arr.length).toFixed(1):null;
+    projPanel=`<div class="cc-panel" style="border-left:4px solid #e67e22"><h3>🏗️ Commercial / B&D / Trade — Project Timelines</h3>
+    <div class="cc-stat-grid" style="margin-bottom:16px">
+      ${statCard('Lead → Quote',avgVal(avgLQ,'lead_to_quote_days')!=null?avgVal(avgLQ,'lead_to_quote_days')+' days':'No data',avgLQ.length+' projects',null)}
+      ${statCard('Sale → Delivery',avgVal(avgSD,'sale_to_delivery_days')!=null?avgVal(avgSD,'sale_to_delivery_days')+' days':'No data',avgSD.length+' projects',null)}
+      ${statCard('Lead → Close',avgVal(avgLC,'lead_to_close_days')!=null?avgVal(avgLC,'lead_to_close_days')+' days':'No data',avgLC.length+' projects',null)}
+    </div>
+    ${commProj.length>0?`<table class="cc-table"><thead><tr><th>Type</th><th>Stage</th><th class="num">Value</th><th class="num">Lead→Quote</th><th class="num">Sale→Delivery</th><th class="num">Lead→Close</th></tr></thead><tbody>
+    ${commProj.slice(0,20).map(p=>{
+      const typeLabel={commercial:'🏢 Commercial',builder_designer:'🎨 B&D',trade:'🔧 Trade'}[p.record_type]||p.record_type;
+      return `<tr><td>${typeLabel}</td><td>${esc(p.stage??'—')}</td><td class="num">${money(p.value_amount)}</td>
+        <td class="num">${p.lead_to_quote_days!=null?p.lead_to_quote_days+' days':'—'}</td>
+        <td class="num">${p.sale_to_delivery_days!=null?p.sale_to_delivery_days+' days':'—'}</td>
+        <td class="num">${p.lead_to_close_days!=null?p.lead_to_close_days+' days':'—'}</td></tr>`;
+    }).join('')}</tbody></table>`:'<p style="color:var(--steel);font-size:13px">No commercial deals with timeline data yet. As deals get <code>quote_sent_at</code>, <code>purchase_date</code>, and <code>delivery_date</code> populated in CRM, timelines will appear here.</p>'}
+    </div>`;
+  }
+
+  // ----- ASSEMBLE -----
+  m.innerHTML=`${levelBar()}
+    <h2 class="cc-page-title">Floor Analytics & Customer Timelines</h2>
+    <p class="cc-page-sub">Greeting performance, interaction times, sold vs. not sold, by client type · Drill by region, store, or rep</p>
+    ${tabBar}
+    ${statCards}
+    ${typeBreakdown}
+    ${regionTable}
+    ${storeTable2}
+    ${repTable}
+    ${projPanel}`;
+  bindClicks();
+}
+
+async function renderAccountability(){
+  const d=await loadAll();const m=$('#ccMain');const lv=viewLevel;
+
+  // Load CRM accountability data
+  let accQ=sb.from('v_crm_accountability').select('*').eq('organization_id',currentOrg.id);
+  if(lv.level==='store') accQ=accQ.eq('store_id',lv.id);
+  else if(lv.level==='rep') accQ=accQ.eq('salesperson_user_id',lv.id);
+  const{data:accData}=await accQ;
+  const acc=accData??[];
+
+  // Load archive log
+  let logQ=sb.from('crm_archive_log').select('*').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}).limit(100);
+  const{data:logData}=await logQ;
+  const archLog=logData??[];
+
+  // ---- COMPUTE STATS ----
+  const totalInteractions=acc.length;
+  const noCrm=acc.filter(r=>r.no_crm_created);
+  const withCrm=acc.filter(r=>!r.no_crm_created);
+  const complete=withCrm.filter(r=>r.crm_completeness==='complete');
+  const partial=withCrm.filter(r=>r.crm_completeness==='partial');
+  const incomplete=withCrm.filter(r=>r.crm_completeness==='incomplete');
+  const deleted=acc.filter(r=>r.contact_was_deleted);
+  const dealDeleted=acc.filter(r=>r.deal_was_deleted);
+  const noFollowUp=acc.filter(r=>r.no_follow_up&&r.outcome!=='sale');
+  const hasFollowUp=acc.filter(r=>r.follow_up_date&&r.outcome!=='sale');
+  const soldNoFollowUp=acc.filter(r=>r.outcome==='sale'&&!r.follow_up_date&&r.no_follow_up);
+
+  const crmRate=totalInteractions?(withCrm.length/totalInteractions*100):0;
+  const completeRate=withCrm.length?(complete.length/withCrm.length*100):0;
+  const deleteRate=withCrm.length?(deleted.length/withCrm.length*100):0;
+  const followUpRate=acc.filter(r=>r.outcome!=='sale').length?(hasFollowUp.length/acc.filter(r=>r.outcome!=='sale').length*100):0;
+
+  // ---- BY REP ----
+  const repIds=[...new Set(acc.map(r=>r.salesperson_user_id))];
+  const repStats=repIds.map(uid=>{
+    const ra=acc.filter(r=>r.salesperson_user_id===uid);
+    const rWithCrm=ra.filter(r=>!r.no_crm_created);
+    const rComplete=rWithCrm.filter(r=>r.crm_completeness==='complete');
+    const rDeleted=ra.filter(r=>r.contact_was_deleted);
+    const rNoFU=ra.filter(r=>r.outcome!=='sale'&&r.no_follow_up);
+    const rHasFU=ra.filter(r=>r.outcome!=='sale'&&r.follow_up_date);
+    const rNoSaleNoFU=ra.filter(r=>r.outcome==='no_sale'&&!r.follow_up_date&&r.no_follow_up);
+    const archCount=archLog.filter(l=>l.actor_user_id===uid).length;
+    return {
+      uid, total:ra.length, withCrm:rWithCrm.length, complete:rComplete.length,
+      deleted:rDeleted.length, archCount, noFollowUp:rNoFU.length, hasFU:rHasFU.length,
+      noSaleNoFU:rNoSaleNoFU.length,
+      crmRate:ra.length?(rWithCrm.length/ra.length*100):0,
+      completeRate:rWithCrm.length?(rComplete.length/rWithCrm.length*100):0,
+      deleteRate:rWithCrm.length?(rDeleted.length/rWithCrm.length*100):0,
+      fuRate:ra.filter(r=>r.outcome!=='sale').length?(rHasFU.length/ra.filter(r=>r.outcome!=='sale').length*100):0,
+    };
+  });
+
+  // ---- BY STORE ----
+  const storeStats=d.storeList.map(s=>{
+    const sa=acc.filter(r=>r.store_id===s.id);
+    const sWithCrm=sa.filter(r=>!r.no_crm_created);
+    const sComplete=sWithCrm.filter(r=>r.crm_completeness==='complete');
+    const sDeleted=sa.filter(r=>r.contact_was_deleted);
+    const sHasFU=sa.filter(r=>r.outcome!=='sale'&&r.follow_up_date);
+    const sNoSaleTotal=sa.filter(r=>r.outcome!=='sale');
+    return {
+      store:s, total:sa.length, withCrm:sWithCrm.length, complete:sComplete.length,
+      deleted:sDeleted.length,
+      crmRate:sa.length?(sWithCrm.length/sa.length*100):0,
+      completeRate:sWithCrm.length?(sComplete.length/sWithCrm.length*100):0,
+      deleteRate:sWithCrm.length?(sDeleted.length/sWithCrm.length*100):0,
+      fuRate:sNoSaleTotal.length?(sHasFU.length/sNoSaleTotal.length*100):0,
+    };
+  });
+
+  // Color helpers
+  const rateClr=(v,good,bad)=>v>=good?'var(--verified)':v<=bad?'var(--danger)':'#e67e22';
+  const rateBadge=(v,good,bad)=>`<span style="font-weight:700;color:${rateClr(v,good,bad)}">${v.toFixed(1)}%</span>`;
+
+  m.innerHTML=`${levelBar()}
+    <h2 class="cc-page-title">CRM Accountability</h2>
+    <p class="cc-page-sub">Track CRM completion, deletions, and follow-up compliance. Every walk-in should become a CRM contact — incomplete records and deletions signal missed opportunities.</p>
+
+    <div class="cc-stat-grid">
+      ${statCard('Total Interactions',fmtN(totalInteractions,0),'Floor interactions tracked',null)}
+      ${statCard('CRM Created Rate',crmRate.toFixed(1)+'%',withCrm.length+' of '+totalInteractions+' linked to CRM',null)}
+      ${statCard('Contact Complete Rate',completeRate.toFixed(1)+'%',complete.length+' complete / '+partial.length+' partial / '+incomplete.length+' incomplete',null)}
+      ${statCard('Contacts Deleted',fmtN(deleted.length,0),deleteRate.toFixed(1)+'% deletion rate',null)}
+      ${statCard('Follow-Up Set (No Sale)',followUpRate.toFixed(1)+'%',hasFollowUp.length+' with follow-up / '+noFollowUp.length+' no follow-up',null)}
+    </div>
+
+    <div class="cc-panel" style="border-left:4px solid var(--danger)">
+      <h3>🚨 Accountability Flags</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px">
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:800;color:var(--danger)">${noCrm.length}</div>
+          <div style="font-size:12px;color:#991b1b;font-weight:600">Interactions with NO CRM</div>
+          <div style="font-size:11px;color:var(--steel);margin-top:4px">Customer walked in, no contact created</div>
+        </div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:800;color:var(--danger)">${deleted.length}</div>
+          <div style="font-size:12px;color:#991b1b;font-weight:600">Contacts Deleted by Reps</div>
+          <div style="font-size:11px;color:var(--steel);margin-top:4px">Archived, not lost — trackable</div>
+        </div>
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:800;color:#92400e">${incomplete.length+partial.length}</div>
+          <div style="font-size:12px;color:#92400e;font-weight:600">Incomplete CRM Contacts</div>
+          <div style="font-size:11px;color:var(--steel);margin-top:4px">${partial.length} partial (name only) + ${incomplete.length} incomplete</div>
+        </div>
+        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:28px;font-weight:800;color:#92400e">${noFollowUp.length}</div>
+          <div style="font-size:12px;color:#92400e;font-weight:600">No-Sale Without Follow-Up</div>
+          <div style="font-size:11px;color:var(--steel);margin-top:4px">Customer left with no scheduled follow-up</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cc-panel"><h3>👤 Accountability by Sales Associate</h3>
+    <table class="cc-table"><thead><tr><th>Rep</th><th class="num">Interactions</th><th class="num">CRM Rate</th><th class="num">Complete Rate</th><th class="num">Deleted</th><th class="num">Delete Rate</th><th class="num">No Follow-Up</th><th class="num">Follow-Up Rate</th><th>Status</th></tr></thead><tbody>
+    ${repStats.sort((a,b)=>a.completeRate-b.completeRate).map(r=>{
+      const status=r.deleteRate>15||r.completeRate<50?'<span class="cc-badge dn">Needs coaching</span>':r.completeRate<80?'<span class="cc-badge flat">Monitor</span>':'<span class="cc-badge up">Strong</span>';
+      return `<tr style="cursor:pointer" data-rep-id="${r.uid}" data-rep-name="${esc(repName(r.uid))}">
+        <td><b>${esc(repName(r.uid))}</b></td>
+        <td class="num">${r.total}</td>
+        <td class="num">${rateBadge(r.crmRate,90,70)}</td>
+        <td class="num">${rateBadge(r.completeRate,80,50)}</td>
+        <td class="num" style="color:${r.deleted>0?'var(--danger)':'var(--steel)'}">${r.deleted}${r.archCount>0?' ('+r.archCount+' archived)':''}</td>
+        <td class="num">${rateBadge(100-r.deleteRate,85,70)}</td>
+        <td class="num" style="color:${r.noSaleNoFU>0?'var(--danger)':'var(--steel)'}">${r.noSaleNoFU}</td>
+        <td class="num">${rateBadge(r.fuRate,80,50)}</td>
+        <td>${status}</td></tr>`;
+    }).join('')}</tbody></table></div>
+
+    <div class="cc-panel"><h3>🏬 Accountability by Store</h3>
+    <table class="cc-table"><thead><tr><th>Store</th><th class="num">Interactions</th><th class="num">CRM Rate</th><th class="num">Complete Rate</th><th class="num">Deleted</th><th class="num">Delete Rate</th><th class="num">Follow-Up Rate</th><th>Status</th></tr></thead><tbody>
+    ${storeStats.filter(s=>s.total>0).map(s=>{
+      const status=s.deleteRate>15||s.completeRate<50?'<span class="cc-badge dn">At risk</span>':s.completeRate<80?'<span class="cc-badge flat">Monitor</span>':'<span class="cc-badge up">Strong</span>';
+      return `<tr style="cursor:pointer" data-store-id="${s.store.id}" data-store-name="${esc(s.store.name)}">
+        <td><b>${esc(s.store.name)}</b></td>
+        <td class="num">${s.total}</td>
+        <td class="num">${rateBadge(s.crmRate,90,70)}</td>
+        <td class="num">${rateBadge(s.completeRate,80,50)}</td>
+        <td class="num" style="color:${s.deleted>0?'var(--danger)':'var(--steel)'}">${s.deleted}</td>
+        <td class="num">${rateBadge(100-s.deleteRate,85,70)}</td>
+        <td class="num">${rateBadge(s.fuRate,80,50)}</td>
+        <td>${status}</td></tr>`;
+    }).join('')}</tbody></table></div>
+
+    ${archLog.length>0?`<div class="cc-panel" style="border-left:4px solid #e67e22"><h3>📜 Recent Archive / Deletion Log</h3>
+    <table class="cc-table"><thead><tr><th>When</th><th>Rep</th><th>Type</th><th>Record</th><th>Completeness</th><th>Reason</th></tr></thead><tbody>
+    ${archLog.slice(0,25).map(l=>{
+      const snap=l.record_snapshot||{};
+      const when=new Date(l.created_at).toLocaleDateString('en-CA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `<tr><td style="white-space:nowrap">${when}</td>
+        <td>${esc(repName(l.actor_user_id))}</td>
+        <td><span class="cc-badge ${l.record_type==='contact'?'dn':'flat'}">${l.record_type}</span></td>
+        <td>${esc(snap.full_name||snap.title||'—')}</td>
+        <td>${l.contact_completeness?`<span class="cc-badge ${l.contact_completeness==='complete'?'up':l.contact_completeness==='partial'?'flat':'dn'}">${l.contact_completeness}</span>`:'—'}</td>
+        <td style="font-size:12px;color:var(--steel)">${esc(l.reason||'No reason given')}</td></tr>`;
+    }).join('')}</tbody></table></div>`:''}
+  `;
+  bindClicks();
 }
 
 async function renderBrands(){

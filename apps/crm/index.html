@@ -792,6 +792,9 @@ let coachLog=[],coachPersona=null;
 let cache={stages:[],deals:[],contacts:[],companies:[],buyingGroups:[],participants:[],recordings:[]};
 let searchTerm='';
 let currentRole='member'; // owner | admin | manager | member
+let currentVisibility='own'; // all | region | store | team | own
+let myLocationIds=[]; // store IDs this user belongs to
+let myRegionStoreIds=[]; // all store IDs in user's region(s)
 let realtimeChannel=null;
 
 let authMode='login'; // login | signup | reset
@@ -859,8 +862,25 @@ async function boot(){
   orgs=(memberships??[]).map(m=>m.organizations).filter(Boolean);
   const roleMap={};(memberships??[]).forEach(m=>{if(m.organizations)roleMap[m.organizations.id]=m.role;});
   if(!orgs.length){await sb.rpc('join_demo_org');const{data:m2}=await sb.from('organization_members').select('organization_id,role,organizations(id,name,slug)').eq('status','active');orgs=(m2??[]).map(m=>m.organizations).filter(Boolean);(m2??[]).forEach(m=>{if(m.organizations)roleMap[m.organizations.id]=m.role;});}
-  if(!orgs.length){mainEl.innerHTML='<div class="empty" style="max-width:400px;margin:60px auto;text-align:center"><h2 style="margin:0 0 8px">Welcome to ApplianceIQ CRM</h2><p style="color:var(--steel);margin-bottom:20px">You\'re not part of an organization yet. Create one to get started, or ask your admin for an invite link.</p><button class="btn btn-primary" id="createOrgBtn">Create Organization</button></div>';$('#createOrgBtn').onclick=()=>{openModal('<h2>Create Organization</h2><div class="field"><label>Organization name</label><input id="org_name" placeholder="Your Store Name"></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="org_save">Create</button></div>');$('#org_save').onclick=async()=>{const name=$('#org_name').value.trim();if(!name)return formErr("Name required.");const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");const{data:org,error}=await sb.from("organizations").insert({name,slug}).select("id").single();if(error)return formErr(error.message);await sb.from("organization_members").insert({organization_id:org.id,user_id:currentUser.id,role:"owner",status:"active"});const defaultStages=[{name:"Lead",sort_order:1},{name:"Qualified",sort_order:2},{name:"Quote Sent",sort_order:3},{name:"Floor Visit / Demo",sort_order:4},{name:"Negotiation",sort_order:5},{name:"Closed Won",sort_order:6,is_terminal:true},{name:"Delivery Scheduled",sort_order:7},{name:"Warranty Follow-up",sort_order:8},{name:"Closed Lost",sort_order:9,is_terminal:true}];for(const s of defaultStages){await sb.from("pipeline_stages").insert({organization_id:org.id,...s});}closeModal();boot();};};return;}
+  if(!orgs.length){mainEl.innerHTML='<div class="empty" style="max-width:400px;margin:60px auto;text-align:center"><h2 style="margin:0 0 8px">Welcome to ApplianceIQ CRM</h2><p style="color:var(--steel);margin-bottom:20px">You\'re not part of an organization yet. Create one to get started, or ask your admin for an invite link.</p><button class="btn btn-primary" id="createOrgBtn">Create Organization</button></div>';$('#createOrgBtn').onclick=()=>{openModal('<h2>Create Organization</h2><div class="field"><label>Organization name</label><input id="org_name" placeholder="Your Store Name"></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="org_save">Create</button></div>');$('#org_save').onclick=async()=>{const name=$('#org_name').value.trim();if(!name)return formErr("Name required.");const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");const{data:org,error}=await sb.from("organizations").insert({name,slug}).select("id").single();if(error)return formErr(error.message);await sb.from("organization_members").insert({organization_id:org.id,user_id:currentUser.id,role:"owner",status:"active"});const defaultStages=[{name:"Lead",sort_order:1,stage_group:"sales"},{name:"Floor Visit",sort_order:2,stage_group:"sales"},{name:"Quote",sort_order:3,stage_group:"sales"},{name:"Follow Up",sort_order:4,stage_group:"sales"},{name:"Closed Won",sort_order:5,is_terminal:true,stage_group:"sales"},{name:"Product In Stock",sort_order:6,stage_group:"fulfillment"},{name:"Delivery Scheduled",sort_order:7,stage_group:"fulfillment"},{name:"Post-Sale Follow Up",sort_order:8,stage_group:"fulfillment"},{name:"Warranty Follow Up",sort_order:9,stage_group:"fulfillment"},{name:"Closed Lost",sort_order:10,is_terminal:true,stage_group:"sales"}];for(const s of defaultStages){await sb.from("pipeline_stages").insert({organization_id:org.id,...s});}closeModal();boot();};};return;}
   currentOrg=orgs[0];currentRole=roleMap[currentOrg.id]||'member';
+  // Load visibility scope and location memberships
+  const{data:myMem}=await sb.from('organization_members').select('visibility_scope').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).eq('status','active').maybeSingle();
+  currentVisibility=myMem?.visibility_scope||'own';
+  const{data:myLocs}=await sb.from('org_location_members').select('location_id').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id);
+  myLocationIds=(myLocs??[]).map(l=>l.location_id);
+  // If user is at a region level, get all child store IDs
+  const{data:allLocs}=await sb.from('org_locations').select('id,parent_id,location_type').eq('organization_id',currentOrg.id);
+  const allL=allLocs??[];
+  myRegionStoreIds=[];
+  myLocationIds.forEach(lid=>{
+    const loc=allL.find(l=>l.id===lid);
+    if(loc&&loc.location_type==='region'){
+      myRegionStoreIds.push(...allL.filter(l=>l.parent_id===lid&&l.location_type==='store').map(l=>l.id));
+    } else if(loc&&loc.location_type==='store'){
+      myRegionStoreIds.push(lid);
+    }
+  });
   const sel=$('#orgSelect');
   sel.innerHTML=orgs.map(o=>'<option value="'+o.id+'">'+esc(o.name)+'</option>').join('');
   sel.onchange=()=>{currentOrg=orgs.find(o=>o.id===sel.value);currentRole=roleMap[currentOrg.id]||'member';setupRealtime();applyRBAC();render();};
@@ -957,18 +977,35 @@ function bindSearch(cb){
 async function loadCore(){
   const[st,dl,ct,co,bg]=await Promise.all([
     sb.from('pipeline_stages').select('*').eq('organization_id',currentOrg.id).order('sort_order'),
-    sb.from('crm_deals').select('*,contacts(id,first_name,last_name),crm_buying_groups(id,name),companies(id,name)').eq('organization_id',currentOrg.id).order('created_at'),
+    sb.from('crm_deals').select('*,contacts(id,first_name,last_name),crm_buying_groups(id,name),companies(id,name)').eq('organization_id',currentOrg.id).is('deleted_at',null).order('created_at'),
     sb.from('contacts').select('*,companies(id,name)').eq('organization_id',currentOrg.id).order('created_at',{ascending:false}),
     sb.from('companies').select('*').eq('organization_id',currentOrg.id).order('name'),
     sb.from('crm_buying_groups').select('*,crm_buying_group_members(id,contact_id,buying_role,is_primary,contacts(id,first_name,last_name,email,phone))').eq('organization_id',currentOrg.id).order('created_at',{ascending:false})
   ]);
   cache={stages:st.data??[],deals:dl.data??[],contacts:ct.data??[],companies:co.data??[],buyingGroups:bg.data??[],participants:[],recordings:[]};
   if(cache.deals.length){const ids=cache.deals.map(d=>d.id);const[{data:p},{data:recs}]=await Promise.all([sb.from('crm_deal_participants').select('*,contacts(id,first_name,last_name)').in('deal_id',ids),sb.from('sales_recordings').select('id,deal_id').eq('organization_id',currentOrg.id).not('deal_id','is',null)]);cache.participants=p??[];cache.recordings=recs??[];}
-  // RBAC: reps only see their own deals and contacts
-  if(currentRole==='member'){
-    cache.deals=cache.deals.filter(d=>d.owner_user_id===currentUser.id||d.contact_id&&cache.contacts.some(c=>c.id===d.contact_id&&c.owner_user_id===currentUser.id));
-    cache.contacts=cache.contacts.filter(c=>c.owner_user_id===currentUser.id||!c.owner_user_id);
+  // RBAC: filter deals and contacts by visibility hierarchy
+  if(currentVisibility==='own'){
+    // Rep: sees only their own
+    cache.deals=cache.deals.filter(d=>d.owner_user_id===currentUser.id);
+    cache.contacts=cache.contacts.filter(c=>c.owner_user_id===currentUser.id||c.created_by===currentUser.id||!c.owner_user_id);
+  } else if(currentVisibility==='team'){
+    // Team lead: sees own store's deals
+    if(myLocationIds.length){
+      cache.deals=cache.deals.filter(d=>myLocationIds.includes(d.location_id)||d.owner_user_id===currentUser.id);
+    }
+  } else if(currentVisibility==='store'){
+    // Store manager: sees all deals in their store(s)
+    if(myLocationIds.length){
+      cache.deals=cache.deals.filter(d=>myLocationIds.includes(d.location_id)||d.owner_user_id===currentUser.id);
+    }
+  } else if(currentVisibility==='region'){
+    // Regional: sees all deals in stores under their region(s)
+    if(myRegionStoreIds.length){
+      cache.deals=cache.deals.filter(d=>myRegionStoreIds.includes(d.location_id)||d.owner_user_id===currentUser.id);
+    }
   }
+  // 'all' = corporate/owner/admin — no filtering
 }
 
 async function render(){
@@ -1134,7 +1171,9 @@ function renderPipeline(){
     return (d.title||'').toLowerCase().includes(q)||cn.toLowerCase().includes(q)||(d.companies?.name||'').toLowerCase().includes(q)||(d.crm_buying_groups?.name||'').toLowerCase().includes(q);
   });
   const total=filtered.filter(d=>!d.closed_at).reduce((s,d)=>s+Number(d.value_amount||0),0);
-  const cols=cache.stages.map(st=>{
+  const salesStages=cache.stages.filter(s=>s.stage_group!=='fulfillment');
+  const fulfillStages=cache.stages.filter(s=>s.stage_group==='fulfillment');
+  const renderCol=(st)=>{
     const items=filtered.filter(d=>d.stage===st.name);
     const cv=items.reduce((s,d)=>s+Number(d.value_amount||0),0);
     return '<div class="col" data-stage="'+esc(st.name)+'"><h3><span>'+esc(st.name)+'</span><span class="cv num">'+(items.length?money(cv):'')+'</span></h3>'
@@ -1157,15 +1196,23 @@ function renderPipeline(){
         +'<div class="v num">'+money(d.value_amount)+(d.margin_pct?' <span style="font-size:11px;color:var(--steel)">'+d.margin_pct+'%</span>':'')+'</div>'
         +'<div class="m">'+esc(cn||d.crm_buying_groups?.name||d.companies?.name||'')+(parts.length>1?' <span style="color:var(--steel);font-size:11px">+'+parts.slice(1).map(p=>p.contacts?.first_name||'').filter(Boolean).join(', ')+'</span>':'')+(d.next_action?' · '+esc(d.next_action):'')+'</div>'
         +(tags?'<div class="dm">'+tags+'</div>':'')
-        +'<select class="move-stage" data-move="'+d.id+'" onclick="event.stopPropagation()"><option value="">Move to…</option>'+cache.stages.filter(s2=>s2.name!==st.name).map(s2=>'<option value="'+esc(s2.name)+'">'+esc(s2.name)+'</option>').join('')+'</select>'
+        +'<select class="move-stage" data-move="'+d.id+'" onclick="event.stopPropagation()"><option value="">Move to…</option>'+cache.stages.filter(s2=>s2.name!==st.name).map(s2=>'<option value="'+esc(s2.name)+'">'+(s2.stage_group==='fulfillment'?'📦 ':'')+esc(s2.name)+'</option>').join('')+'</select>'
         +'</button>';
     }).join('')||'<div class="m" style="padding:6px 4px;font-size:12px">No deals</div>')+'</div>';
-  }).join('');
+  };
+  const salesCols=salesStages.map(renderCol).join('');
+  const divider='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:48px;padding:8px 0"><div style="writing-mode:vertical-lr;transform:rotate(180deg);font-family:Sora,sans-serif;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:rgba(15,31,61,.2)">FULFILLMENT</div><div style="width:2px;flex:1;background:linear-gradient(180deg,transparent,rgba(15,31,61,.15),transparent);margin:8px 0;border-radius:2px"></div></div>';
+  const fulfillCols=fulfillStages.map(renderCol).join('');
+  const nurtureStages=cache.stages.filter(s=>s.stage_group==='nurture');
+  const divider2=nurtureStages.length?'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:48px;padding:8px 0"><div style="writing-mode:vertical-lr;transform:rotate(180deg);font-family:Sora,sans-serif;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;color:rgba(139,92,246,.2)">DATABASE</div><div style="width:2px;flex:1;background:linear-gradient(180deg,transparent,rgba(139,92,246,.15),transparent);margin:8px 0;border-radius:2px"></div></div>':'';
+  const nurtureCols=nurtureStages.map(renderCol).join('');
+  const cols=salesCols+divider+fulfillCols+divider2+nurtureCols;
   mainEl.innerHTML='<div class="page-head"><div><h1>Pipeline</h1><div class="sub">'+esc(currentOrg.name)+' · <b class="num">'+money(total)+'</b> open</div></div>'
     +'<div class="head-actions"><button class="btn btn-ghost btn-sm" id="pipeAnalytics">📊 Analytics</button><button class="btn btn-ghost btn-sm" id="editStagesBtn">Edit stages</button><button class="btn btn-primary" id="newDealBtn">+ New opportunity</button></div></div>'
     +aiCoachBar()
     +searchBar('Search deals by name, contact, or company…')
     +'<div class="view-toggle" id="vt"><button class="'+(pipeView==='active'?'active':'')+'" data-pv="active">Active</button><button class="'+(pipeView==='archived'?'active':'')+'" data-pv="archived">Archived</button><button class="'+(pipeView==='all'?'active':'')+'" data-pv="all">All</button></div>'
+    +'<div style="display:flex;gap:0;margin-bottom:6px"><div style="flex:1;text-align:center;font-family:Sora,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--navy);padding:6px 0;background:rgba(47,111,237,.06);border-radius:8px 0 0 0">📋 Sales Pipeline</div><div style="width:48px"></div><div style="flex:1;text-align:center;font-family:Sora,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#e67e22;padding:6px 0;background:rgba(230,126,34,.06)">📦 Order Fulfillment</div>'+(nurtureStages.length?'<div style="width:48px"></div><div style="flex:0 0 260px;text-align:center;font-family:Sora,sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8b5cf6;padding:6px 0;background:rgba(139,92,246,.06);border-radius:0 8px 0 0">⭐ VIP Database</div>':'')+'</div>'
     +'<div class="board" id="pipeBoard">'+cols+'</div>';
   bindCoachBar();
   bindSearch(renderPipeline);
@@ -1310,7 +1357,7 @@ function openDealModal(deal){
   if(!isNew){$('#f_cal')?.addEventListener('click',()=>syncToCalendar(deal));}
   if(!isNew){loadStageTimeline(deal.id);}
   if(!isNew){
-    $('#f_del')?.addEventListener('click',async()=>{if(!confirm('Delete this deal permanently?'))return;await sb.from('crm_deals').delete().eq('id',deal.id);closeModal();render();});
+    $('#f_del')?.addEventListener('click',async()=>{if(!confirm('Archive this deal? It will be tracked in the deletion log.'))return;await sb.from('crm_deals').update({deleted_at:new Date().toISOString(),archive_reason:'Manual deletion by rep'}).eq('id',deal.id);closeModal();toast('Deal archived','ok');render();});
     $('#f_arch')?.addEventListener('click',async()=>{await sb.from('crm_deals').update({is_archived:true,archived_at:new Date().toISOString()}).eq('id',deal.id);closeModal();render();});
     $('#f_rest')?.addEventListener('click',async()=>{await sb.from('crm_deals').update({is_archived:false,archived_at:null}).eq('id',deal.id);closeModal();render();});
   }
@@ -2453,21 +2500,69 @@ window.sendFeedback=async function(idx,signal){const m=coachLog[idx];if(!m||!m.m
 // ===== TEAM =====
 async function renderTeam(){
   const isAdmin=await checkAdmin();
-  const{data:members}=await sb.from('organization_members').select('id,user_id,role,status,created_at').eq('organization_id',currentOrg.id);
-  // Fetch profiles separately (no FK join available)
+  const{data:members}=await sb.from('organization_members').select('id,user_id,role,status,visibility_scope,created_at').eq('organization_id',currentOrg.id);
   const uids=(members??[]).map(m=>m.user_id);
   let profileMap={};
   if(uids.length){const{data:profiles}=await sb.from('profiles').select('user_id,full_name,email').in('user_id',uids);(profiles??[]).forEach(p=>{profileMap[p.user_id]=p;});}
+  // Count open deals per member
+  const{data:dealCounts}=await sb.from('crm_deals').select('owner_user_id').eq('organization_id',currentOrg.id).is('deleted_at',null).not('stage','in','("Closed Won","Closed Lost","VIP")');
+  const countMap={};(dealCounts??[]).forEach(d=>{countMap[d.owner_user_id]=(countMap[d.owner_user_id]||0)+1;});
   const{data:invites}=await sb.from('org_invites').select('id,invited_email,role,status,invite_code,created_at').eq('organization_id',currentOrg.id).order('created_at',{ascending:false});
-  mainEl.innerHTML='<div class="page-head"><div><h1>👥 Team</h1><div class="sub">'+(members??[]).length+' members</div></div>'+(isAdmin?'<button class="btn btn-primary" id="invBtn">+ Invite</button>':'')+'</div>'
-  +'<div class="dash-panel"><h3>Members</h3>'+(members??[]).map(m=>{
-    const prof=profileMap[m.user_id];
-    const displayName=prof?.full_name||prof?.email||m.user_id.slice(0,8)+'…';
-    return '<div class="member-row"><div style="flex:1"><b>'+esc(displayName)+'</b>'+(prof?.email&&prof?.full_name?'<div class="sub">'+esc(prof.email)+'</div>':'')+'</div><span class="member-role">'+esc(m.role)+'</span></div>';
+  const active=(members??[]).filter(m=>m.status==='active');
+  const inactive=(members??[]).filter(m=>m.status!=='active');
+  const roleLabels={owner:'👑 Owner',admin:'🔑 Admin',manager:'👔 Manager',member:'👤 Rep'};
+  const scopeLabels={all:'🏢 Corporate',region:'🗺️ Region',store:'🏬 Store',team:'👥 Team',own:'👤 Own'};
+  mainEl.innerHTML='<div class="page-head"><div><h1>👥 Team</h1><div class="sub">'+active.length+' active · '+inactive.length+' inactive</div></div>'+(isAdmin?'<button class="btn btn-primary" id="invBtn">+ Invite</button>':'')+'</div>'
+  +'<div class="dash-panel"><h3>Active Members</h3>'+active.map(m=>{
+    const prof=profileMap[m.user_id];const dn=prof?.full_name||prof?.email||m.user_id.slice(0,8)+'…';const openDeals=countMap[m.user_id]||0;
+    return '<div class="member-row" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f3f5f8"><div style="flex:1"><b>'+esc(dn)+'</b>'+(prof?.email&&prof?.full_name?'<div class="sub" style="font-size:11px;color:var(--steel)">'+esc(prof.email)+'</div>':'')+'</div>'
+      +'<span class="chip n" style="font-size:10px">'+esc(roleLabels[m.role]||m.role)+'</span>'
+      +'<span class="chip n" style="font-size:10px">'+esc(scopeLabels[m.visibility_scope]||m.visibility_scope||'own')+'</span>'
+      +'<span class="chip n" style="font-size:10px">'+openDeals+' deals</span>'
+      +(isAdmin&&m.role!=='owner'?'<button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--danger)" data-deactivate="'+m.user_id+'" data-name="'+esc(dn)+'" data-deals="'+openDeals+'">Deactivate</button>':'')
+      +'</div>';
   }).join('')+'</div>'
+  +(inactive.length?'<div class="dash-panel" style="border-left:3px solid var(--danger)"><h3>⚠️ Inactive Members</h3>'+inactive.map(m=>{
+    const prof=profileMap[m.user_id];const dn=prof?.full_name||prof?.email||m.user_id.slice(0,8)+'…';const openDeals=countMap[m.user_id]||0;
+    return '<div class="member-row" style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f3f5f8;opacity:0.7"><div style="flex:1"><b>'+esc(dn)+'</b><div class="sub" style="font-size:11px;color:var(--danger)">'+m.status+'</div></div>'
+      +(openDeals>0?'<span class="chip" style="font-size:10px;background:#fef2f2;color:var(--danger);font-weight:700">⚠️ '+openDeals+' orphaned deals</span>':'<span class="chip n" style="font-size:10px">No open deals</span>')
+      +(isAdmin&&openDeals>0?'<button class="btn btn-primary btn-sm" style="font-size:11px" data-reassign="'+m.user_id+'" data-name="'+esc(dn)+'">Reassign Deals</button>':'')
+      +(isAdmin?'<button class="btn btn-ghost btn-sm" style="font-size:11px" data-reactivate="'+m.user_id+'">Reactivate</button>':'')
+      +'</div>';
+  }).join('')+'</div>':'')
   +(isAdmin?'<div class="dash-panel"><h3>Invites</h3>'+((invites??[]).length?'<div class="invite-grid">'+(invites??[]).map(i=>'<div class="invite-card"><div class="ie">'+esc(i.invited_email)+'</div><div class="ir">'+esc(i.role)+'</div><span class="is '+i.status+'">'+esc(i.status)+'</span>'+(i.status==='pending'?'<div style="margin-top:6px"><button class="btn btn-ghost btn-sm" data-cpinv="'+esc(i.invite_code)+'">📋 Copy link</button></div>':'')+'</div>').join('')+'</div>':'<div class="empty">No invites sent yet.</div>')+'</div>':'');
   if(isAdmin)$('#invBtn')?.addEventListener('click',showInviteModal);
   $$('[data-cpinv]').forEach(b=>{b.onclick=()=>{const link=location.origin+location.pathname+'?invite='+b.dataset.cpinv;navigator.clipboard.writeText(link).then(()=>alert('Invite link copied!')).catch(()=>prompt('Copy this link:',link));};});
+  // Deactivate handler
+  $$('[data-deactivate]').forEach(b=>{b.onclick=()=>{
+    const uid=b.dataset.deactivate,name=b.dataset.name,deals=parseInt(b.dataset.deals);
+    const msg=deals>0?'⚠️ '+name+' has '+deals+' open deals. Deactivating will notify managers to reassign them. Continue?':'Deactivate '+name+'? They will lose CRM access.';
+    if(!confirm(msg))return;
+    sb.from('organization_members').update({status:'inactive'}).eq('organization_id',currentOrg.id).eq('user_id',uid).then(()=>{toast(name+' deactivated','ok');renderTeam();});
+  };});
+  // Reactivate handler
+  $$('[data-reactivate]').forEach(b=>{b.onclick=async()=>{
+    await sb.from('organization_members').update({status:'active'}).eq('organization_id',currentOrg.id).eq('user_id',b.dataset.reactivate);
+    toast('Member reactivated','ok');renderTeam();
+  };});
+  // Reassign handler
+  $$('[data-reassign]').forEach(b=>{b.onclick=()=>{
+    const fromUid=b.dataset.reassign,fromName=b.dataset.name;
+    const activeReps=active.filter(m=>m.user_id!==fromUid);
+    openModal('<h2>Reassign Deals from '+esc(fromName)+'</h2>'
+      +'<p style="color:var(--steel);font-size:13px;margin-bottom:16px">All open deals owned by this deactivated rep will be transferred to the selected team member.</p>'
+      +'<div class="field"><label>Reassign to</label><select id="ra_to">'+activeReps.map(m=>{const p=profileMap[m.user_id];return '<option value="'+m.user_id+'">'+esc(p?.full_name||p?.email||m.user_id.slice(0,8))+(m.role!=='member'?' ('+m.role+')':'')+'</option>';}).join('')+'</select></div>'
+      +'<div class="form-err" id="formErr"></div>'
+      +'<div class="sheet-actions"><button class="btn btn-ghost" id="ra_cancel">Cancel</button><button class="btn btn-primary" id="ra_go">Reassign All Deals</button></div>');
+    $('#ra_cancel').onclick=closeModal;
+    $('#ra_go').onclick=async()=>{
+      const toUid=$('#ra_to').value;if(!toUid)return formErr('Select a team member.');
+      const btn=$('#ra_go');btn.disabled=true;btn.textContent='Reassigning…';
+      const{data:count,error}=await sb.rpc('crm_reassign_rep_deals',{p_org_id:currentOrg.id,p_from_user_id:fromUid,p_to_user_id:toUid,p_reason:'rep_deactivated',p_actor_id:currentUser.id});
+      if(error){formErr(error.message);btn.disabled=false;btn.textContent='Reassign All Deals';return;}
+      closeModal();toast(count+' deals reassigned','ok');renderTeam();
+    };
+  };});
 }
 async function checkAdmin(){const{data}=await sb.from('organization_members').select('role').eq('organization_id',currentOrg.id).eq('user_id',currentUser.id).maybeSingle();return data?.role==='owner'||data?.role==='admin';}
 function showInviteModal(){openModal('<h2>Invite Team Member</h2><div class="field"><label>Email</label><input id="inv_e" type="email" placeholder="colleague@company.com"></div><div class="field"><label>Role</label><select id="inv_r"><option value="member">Member</option><option value="admin">Admin</option></select></div><div class="form-err" id="formErr"></div><div class="sheet-actions"><button class="btn btn-ghost" id="inv_cancel">Cancel</button><button class="btn btn-primary" id="inv_s">Send Invite</button></div>');
