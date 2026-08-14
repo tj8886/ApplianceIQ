@@ -452,7 +452,7 @@ async function init() {
   currentUser = session.user;
 
   // Get org
-  const { data: mem } = await sb.from('org_members').select('organization_id').eq('user_id', currentUser.id).limit(1).single();
+  const { data: mem } = await sb.from('organization_members').select('organization_id').eq('user_id', currentUser.id).limit(1).single();
   if (mem) currentOrg = mem.organization_id;
 
   await loadBrands();
