@@ -1,0 +1,36 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "brief-email-sender",
+  "status": "ACTIVE v1",
+  "jwt_verification": true,
+  "access": "native verified session; mapped active organization manager/admin; recipients limited to confirmed native mapped active managers of the same tenant",
+  "delivery": "service-only status completion repeats scope and recipient checks; provider acceptance is recorded, not inbox delivery",
+  "bounds": "8KiB request, 20 recipients, 128KiB stored brief, 100KiB rendered body, 25 second provider budget",
+  "configuration": "transferred encrypted Resend key; source EMAIL_FROM fallback preserved; verified custom sender remains unconfigured if absent in source",
+  "unknown_figures": "null/empty/nonfinite figures stay unknown, not zero",
+  "retry": "deterministic payload-based Resend idempotency key; provider retention is 24 hours, not permanent exactly-once delivery",
+  "tests": "mocked provider acceptance/rejection/configuration/commit checks, live rollback tenant/recipient/brief/identity/status checks and all 11 app bundles passed; no real email sent",
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 595,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 915,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_remediation": "https://supabase.com/docs/guides/database/database-linter",
+  "provider_idempotency_reference": "https://resend.com/changelog/idempotency-keys",
+  "browser_and_real_provider": "pending",
+  "app_cutover": "pending"
+}
