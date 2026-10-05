@@ -6,6 +6,11 @@ export function configuredModel(env:(name:string)=>string|undefined,tier:string)
  const key=provider?env(provider==='anthropic'?'ANTHROPIC_API_KEY':provider==='openai'?'OPENAI_API_KEY':'GOOGLE_API_KEY'):undefined;
  return provider&&key?{model,provider,key}:null;
 }
+export function configuredUtilityModels(env:(name:string)=>string|undefined){
+ let values:unknown;try{values=JSON.parse(env('AI_UTILITY_MODELS')??'[]');}catch{return [];}
+ if(!Array.isArray(values)||values.length>20)return [];
+ return values.filter((v):v is string=>typeof v==='string').map(model=>configuredModel(n=>n==='AI_MODEL_STANDARD'?model:env(n),'standard')).filter((v):v is NonNullable<typeof v>=>!!v);
+}
 export async function callConfiguredModel(config:{model:string;provider:string;key:string},system:string,messages:Message[],maxTokens:number,fetchImpl:typeof fetch=fetch){
  let url:string;let body:any;let headers:Record<string,string>={'Content-Type':'application/json'};
  if(config.provider==='anthropic'){

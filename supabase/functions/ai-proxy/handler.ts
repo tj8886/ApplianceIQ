@@ -1,4 +1,4 @@
-import {configuredModel,callConfiguredModel, type Message} from '../_shared/configured-model.ts';
+import {configuredModel,configuredUtilityModels,callConfiguredModel, type Message} from '../_shared/configured-model.ts';
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json'};
 export function createHandler({createClient,env,fetchImpl=fetch}:{createClient:any;env:(name:string)=>string|undefined;fetchImpl?:typeof fetch}){
  const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
@@ -27,7 +27,7 @@ export function createHandler({createClient,env,fetchImpl=fetch}:{createClient:a
    }
    const system=body.system??'';const maxTokens=body.max_tokens??1000;
    if(typeof system!=='string'||system.length>16000||textLength>48000||!Number.isInteger(maxTokens)||maxTokens<1||maxTokens>4096)return reply({error:'invalid_request_limits'},400);
-   const configs=['fast','light','standard','strong','heavy'].map(tier=>({tier,config:configuredModel(env,tier)})).filter(x=>x.config);
+   const configs=[...['fast','light','standard','strong','heavy'].map(tier=>({tier,config:configuredModel(env,tier)})),...configuredUtilityModels(env).map(config=>({tier:'utility',config}))].filter(x=>x.config);
    const selected=body.model?configs.find(x=>x.config!.model===body.model):configs.find(x=>x.tier===(body._tier??'standard'));
    if(!selected?.config)return reply({error:'model_not_configured'},503);
    const config=selected.config;
