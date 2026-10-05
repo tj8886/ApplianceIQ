@@ -1,0 +1,35 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "contact-form",
+  "status": "ACTIVE v1",
+  "jwt_verification": false,
+  "public_contract": "original anonymous website demo request; no sign-in required; Edge service invokes a narrowly scoped service-only intake RPC",
+  "table_access": "no new anonymous/authenticated table or intake RPC grants; private rate ledger is RLS-enabled with no direct client or service grants",
+  "bounds": "16KiB body; bounded name/email/company/role/message/source; 20 submissions/minute globally, 200/day globally, 3/day/email; duplicate content in the UTC day returns the original ID without resending",
+  "notification": "source fixed account-owner recipient and sender fallback preserved; HTML escaped, subject line normalized; failed/missing notification configuration does not discard saved lead",
+  "tests": "mocked notification and live rollback input/deduplication/throttle/privilege checks passed; no real email sent",
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 596,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 915,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_note": "One additional RLS-without-policy finding is the intentionally private rate ledger, with all client and direct service table privileges revoked; other findings retain project baseline.",
+  "advisor_remediation": "https://supabase.com/docs/guides/database/database-linter",
+  "public_http_and_real_provider": "pending",
+  "captcha": "source captcha configuration remains absent; bounded SQL throttling is active",
+  "app_cutover": "pending"
+}
