@@ -1,0 +1,23 @@
+BEGIN; SET LOCAL ROLE authenticated;
+SELECT "id","brand_name" FROM tj.brand_catalog WHERE false;
+SELECT "title","stage","value_amount","value_currency","updated_at" FROM tj.crm_deals WHERE false;
+SELECT "package_name","status","total_final","approval_status","created_at" FROM tj.speciq_packages WHERE false;
+SELECT "user_id","queue_position","is_current_up","is_next_in_line","status_code" FROM tj.iq_up_queue_entries WHERE false;
+SELECT "id" FROM tj.field_clients WHERE false;
+SELECT "id" FROM tj.field_visits WHERE false;
+SELECT "response","notes","flagged","responded_at" FROM tj.field_checklist_responses WHERE false;
+
+SELECT id,persona_name,persona_role,organization_id FROM tj.ai_personas WHERE false;
+SELECT brand_name,model,country_availability,market,category,short_description,width_inches,height_inches,depth_inches,depth_with_handles,capacity_cu_ft,energy_star,installation_type,voltage,amperage,msrp,sale_price,price_currency,price_checked_at,finish FROM tj.aiq_products_app WHERE false;
+SELECT product_category,subcategory,country,electrical_voltage,electrical_amperage,electrical_circuit,gas_connection,water_connection,drain_required,ventilation_cfm,min_clearances,licensed_trades_required,common_issues,notes FROM tj.installation_requirements WHERE false;
+SELECT title,hazard,recall_date,units_affected,remedy,url,model_numbers FROM tj.aiq_recalls WHERE false;
+SELECT category,full_coverage_years,full_coverage_notes,component_warranties,key_exclusions,last_verified_date FROM tj.aiq_warranty_policies WHERE false;
+SELECT country,customer_service_phone,customer_service_phone_label,customer_service_hours,service_repair_phone,warranty_phone,support_email,service_portal_url,confidence_level FROM tj.aiq_vendor_contacts WHERE false;
+SELECT brand_name,map_enforced,online_price_display,cart_pricing_allowed,map_policy_notes,violation_consequences FROM tj.brand_map_policies WHERE false;
+SELECT name,"rightFor","sellingAngles","specGuides" FROM tj.mfr_vendors WHERE false;
+SELECT brand_name,model_number,product_name,category,lifecycle_status,announced_date,launch_date,discontinued_date,end_of_life_date,predecessor_model,successor_model,changes_from_predecessor,notes FROM tj.product_lifecycle WHERE false;
+SELECT category,comparison_notes,brand1_id,brand1_model,brand1_notes,brand2_id,brand2_model,brand2_notes,brand3_id,brand3_model,brand3_notes,brand4_id,brand4_model,brand4_notes,brand5_id,brand5_model,brand5_notes,brand6_id,brand6_model,brand6_notes FROM tj.competitive_cross_reference WHERE false;
+SELECT brand_id,level,module_key,completed_at FROM tj.academy_brand_progress WHERE false;
+SELECT brand_id,tier,awarded_at,expires_at FROM tj.academy_brand_certifications WHERE false;
+SELECT brand_id,level,score,total,passed,completed_at FROM tj.academy_brand_quiz_scores WHERE false;
+ROLLBACK;

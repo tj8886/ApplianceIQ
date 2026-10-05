@@ -1,6 +1,6 @@
-export type Message={role:'user'|'assistant';content:string};
+export type Message={role:'user'|'assistant';content:string|Array<{type:'text';text:string}|{type:'image';source:{type:'base64';media_type:string;data:string}}>};
 export function configuredModel(env:(name:string)=>string|undefined,tier:string){
- const model=tier==='fast'?env('AI_MODEL_FAST')??env('AI_MODEL_LIGHT'):tier==='light'?env('AI_MODEL_LIGHT')??env('AI_MODEL_FAST'):tier==='strong'||tier==='heavy'?env('AI_MODEL_HEAVY'):tier==='standard'?env('AI_MODEL_STANDARD')??env('AI_MODEL'):undefined;
+ const model=tier==='fast'?env('AI_MODEL_FAST')??env('AI_MODEL_LIGHT'):tier==='light'?env('AI_MODEL_LIGHT')??env('AI_MODEL_FAST'):tier==='strong'?env('AI_MODEL_HEAVY')??env('AI_TEAM_MODEL_STRONG'):tier==='heavy'?env('AI_MODEL_HEAVY')??env('AI_REQUEST_MODEL_HEAVY'):tier==='standard'?env('AI_MODEL_STANDARD')??env('AI_MODEL'):undefined;
  if(!model||!/^[a-zA-Z0-9._-]{1,120}$/.test(model))return null;
  const provider=model.startsWith('claude')?'anthropic':/^(gpt-|o[134]-)/.test(model)?'openai':model.startsWith('gemini')?'gemini':null;
  const key=provider?env(provider==='anthropic'?'ANTHROPIC_API_KEY':provider==='openai'?'OPENAI_API_KEY':'GOOGLE_API_KEY'):undefined;
@@ -11,10 +11,10 @@ export async function callConfiguredModel(config:{model:string;provider:string;k
  if(config.provider==='anthropic'){
   url='https://api.anthropic.com/v1/messages';headers['x-api-key']=config.key;headers['anthropic-version']='2023-06-01';body={model:config.model,max_tokens:maxTokens,system,messages};
  }else if(config.provider==='openai'){
-  url='https://api.openai.com/v1/chat/completions';headers.Authorization='Bearer '+config.key;body={model:config.model,messages:[{role:'system',content:system},...messages],max_completion_tokens:maxTokens,store:false};
+  url='https://api.openai.com/v1/chat/completions';headers.Authorization='Bearer '+config.key;body={model:config.model,messages:[{role:'system',content:system},...messages.map(m=>({role:m.role,content:typeof m.content==='string'?m.content:m.content.map(b=>b.type==='text'?{type:'text',text:b.text}:{type:'image_url',image_url:{url:'data:'+b.source.media_type+';base64,'+b.source.data}})}))],max_completion_tokens:maxTokens,store:false};
  }else{
   url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(config.model)+':generateContent';headers['x-goog-api-key']=config.key;
-  body={systemInstruction:{parts:[{text:system}]},contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]})),generationConfig:{maxOutputTokens:maxTokens}};
+  body={systemInstruction:{parts:[{text:system}]},contents:messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:typeof m.content==='string'?[{text:m.content}]:m.content.map(b=>b.type==='text'?{text:b.text}:{inlineData:{mimeType:b.source.media_type,data:b.source.data}})})),generationConfig:{maxOutputTokens:maxTokens}};
  }
  const r=await fetchImpl(url,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(45000)});if(!r.ok)throw new Error('model_call_failed');
  const data=await r.json();
