@@ -1,0 +1,43 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migration": "20261005011635_enable_field_and_catalog_reads_batch",
+  "new_read_tables": 11,
+  "policies": {
+    "field_assignments": "tj_private.can_read_field_record(client_id,store_id,rep_user_id)",
+    "field_visits": "tj_private.can_read_field_record(client_id,store_id,rep_user_id)",
+    "field_stores": "tj_private.can_read_field_store(id)",
+    "field_checklist_responses": "EXISTS(SELECT 1 FROM tj.field_visits v WHERE v.id=visit_id)",
+    "field_competitive_intel": "EXISTS(SELECT 1 FROM tj.field_visits v WHERE v.id=visit_id AND v.store_id=field_competitive_intel.store_id)",
+    "field_media": "EXISTS(SELECT 1 FROM tj.field_visits v WHERE v.id=visit_id)",
+    "field_action_status_history": "EXISTS(SELECT 1 FROM tj.field_actions a WHERE a.id=action_id AND tj_private.can_read_field_record(a.client_id,a.store_id,a.assigned_to_user_id))",
+    "field_action_comments": "tj_private.can_read_field_comment(action_id,visit_id,finding_id,author_user_id,visibility)",
+    "brand_training_cards": "(organization_id IS NOT NULL AND tj_private.can_read_runtime_org(organization_id) AND (status='published' OR tj.is_org_admin(organization_id)))",
+    "iq_notifications": "tj_private.can_read_runtime_org(org_id) AND (rep_id IS NULL OR tj_private.is_source_self(rep_id) OR tj.is_org_admin(org_id))",
+    "mfr_vendors": "(SELECT tj_private.has_active_mapped_org()) AND (status='active' OR EXISTS(SELECT 1 FROM tj.mfr_members m WHERE m.vendor_id=mfr_vendors.id AND tj_private.is_source_self(m.user_id)))"
+  },
+  "verification": {
+    "fixture": "scripts/migration/test-field-catalog-read-batch.sql",
+    "status": "passed",
+    "checks": [
+      "11 authenticated query paths",
+      "mapped Field store/visit/media/comment reads",
+      "foreign client and mismatched store organization blocked",
+      "paused client and inherited media blocked",
+      "unmapped identity blocked across 11 tables",
+      "no anonymous SELECT or native write grants"
+    ],
+    "fixture_writes": "rolled back",
+    "browser_workflows": "not yet verified"
+  },
+  "advisors": {
+    "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+    "baseline_warnings_unchanged": true,
+    "rls_no_policy_info": 624
+  },
+  "limits": [
+    "Published training cards require an organization; global rows remain private",
+    "Vendor creation and editing remain gated",
+    "Field native writes and private Storage upload/download workflows remain pending",
+    "General product assets, invite codes and private response caches remain gated"
+  ]
+}

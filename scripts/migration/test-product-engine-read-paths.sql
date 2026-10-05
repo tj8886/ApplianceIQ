@@ -1,0 +1,32 @@
+BEGIN; SET LOCAL statement_timeout='60s';
+DO $$ DECLARE u uuid; src uuid; org uuid; foreign_org uuid; p uuid:=gen_random_uuid(); hidden uuid:=gen_random_uuid(); BEGIN
+ SELECT im.target_user_id,im.source_user_id,m.organization_id INTO u,src,org FROM tj.source_user_identity_map im JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM tj.product_iq_platform_roles r WHERE r.user_id=im.source_user_id AND r.status='active') LIMIT 1;
+ SELECT id INTO foreign_org FROM tj.organizations o WHERE o.status='active' AND o.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM tj.organization_members m WHERE m.organization_id=o.id AND m.user_id=src AND m.status='active') LIMIT 1;
+ IF u IS NULL OR foreign_org IS NULL THEN RAISE EXCEPTION 'Fixture unavailable'; END IF;
+ PERFORM set_config('request.jwt.claim.sub',u::text,true); PERFORM set_config('test.product',p::text,true); PERFORM set_config('test.hidden',hidden::text,true);
+ INSERT INTO tj.aiq_products(id,organization_id,manufacturer_name,brand_name,model,status,approval_status,public_visible,dealer_cost) VALUES(p,org,'Rollback fixture','Rollback fixture',p::text,'draft','draft',false,123),(hidden,foreign_org,'Rollback fixture','Rollback fixture',hidden::text,'draft','draft',false,456);
+ INSERT INTO tj.pim_product_images(product_id,file_url,approved,embargoed,audience_tiers) VALUES(p,'https://example.invalid/allowed',true,false,ARRAY['all']),(p,'https://example.invalid/embargo',true,true,ARRAY['all']),(p,'https://example.invalid/unapproved',false,false,ARRAY['all']),(hidden,'https://example.invalid/foreign',true,false,ARRAY['all']);
+ INSERT INTO tj.pim_product_images(product_id,file_url,approved,embargoed,audience_tiers,available_from) VALUES(p,'https://example.invalid/future',true,false,ARRAY['all'],now()+interval '1 day');
+ INSERT INTO tj.pim_product_images(product_id,file_url,approved,embargoed,audience_tiers,exclusive_codes) VALUES(p,'https://example.invalid/exclusive',true,false,ARRAY['all'],ARRAY['rollback-no-entitlement']);
+ INSERT INTO tj.pim_product_dimensions(product_id,dimension_type,width_inches) VALUES(p,'product',30),(hidden,'product',48);
+ INSERT INTO tj.pim_retailer_prices(product_id,brand_name,model,retailer_name,price) VALUES(p,'Rollback fixture',p::text,'Rollback fixture',123),(hidden,'Rollback fixture',hidden::text,'Rollback fixture',456);
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE t text; visible boolean; BEGIN
+ IF NOT EXISTS(SELECT 1 FROM tj.aiq_products_app WHERE id=current_setting('test.product')::uuid) OR EXISTS(SELECT 1 FROM tj.aiq_products_app WHERE id=current_setting('test.hidden')::uuid) THEN RAISE EXCEPTION 'Product organization guard'; END IF;
+ IF (SELECT count(*) FROM tj.pim_product_images WHERE product_id=current_setting('test.product')::uuid)<>1 OR EXISTS(SELECT 1 FROM tj.pim_product_images WHERE product_id=current_setting('test.hidden')::uuid) THEN RAISE EXCEPTION 'Asset restriction guards'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.pim_product_dimensions WHERE product_id=current_setting('test.product')::uuid) OR EXISTS(SELECT 1 FROM tj.pim_product_dimensions WHERE product_id=current_setting('test.hidden')::uuid) THEN RAISE EXCEPTION 'Dimension parent guard'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.installation_requirements) THEN RAISE EXCEPTION 'Installation reference unavailable'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.pim_retailer_prices WHERE product_id=current_setting('test.product')::uuid) OR EXISTS(SELECT 1 FROM tj.pim_retailer_prices WHERE product_id=current_setting('test.hidden')::uuid) THEN RAISE EXCEPTION 'Price parent guard'; END IF;
+ BEGIN PERFORM dealer_cost FROM tj.aiq_products LIMIT 1; RAISE EXCEPTION 'Dealer cost exposed'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
+ IF tj_private.catalog_asset_allowed(NULL,NULL,true,ARRAY['all'],NULL) OR tj_private.catalog_asset_allowed(now()+interval '1 day',NULL,false,ARRAY['all'],NULL) OR tj_private.catalog_asset_allowed(NULL,now()-interval '1 day',false,ARRAY['all'],NULL) OR tj_private.catalog_asset_allowed(NULL,NULL,false,ARRAY['all'],ARRAY['rollback-no-entitlement']) THEN RAISE EXCEPTION 'Asset restriction bypass'; END IF;
+ FOREACH t IN ARRAY ARRAY['pim_product_dimensions','installation_requirements','pim_price_history','pim_product_certifications','pim_product_features','pim_retailer_prices','pim_product_documents','pim_product_images','pim_product_videos','pim_price_changes','product_relationships','retailer_discovered_products','pim_brand_content','pim_scrape_runs','retailer_brand_pages','retailer_crawl_runs','aiq_products_app'] LOOP EXECUTE format('SELECT EXISTS(SELECT 1 FROM tj.%I)',t) INTO visible; END LOOP;
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ FOREACH t IN ARRAY ARRAY['pim_product_dimensions','installation_requirements','pim_price_history','pim_product_certifications','pim_product_features','pim_retailer_prices','pim_product_documents','pim_product_images','pim_product_videos','pim_price_changes','product_relationships','retailer_discovered_products','pim_brand_content','pim_scrape_runs','retailer_brand_pages','retailer_crawl_runs','aiq_products_app'] LOOP EXECUTE format('SELECT EXISTS(SELECT 1 FROM tj.%I)',t) INTO visible; IF visible THEN RAISE EXCEPTION 'Unmapped read: %',t; END IF; END LOOP;
+END $$;
+RESET ROLE;
+DO $$ DECLARE t text; BEGIN
+ IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='tj' AND table_name='aiq_products_app' AND column_name='dealer_cost') OR has_column_privilege('authenticated','tj.aiq_products','dealer_cost','SELECT') THEN RAISE EXCEPTION 'Dealer cost projection/grant'; END IF;
+ FOREACH t IN ARRAY ARRAY['pim_product_dimensions','installation_requirements','pim_price_history','pim_product_certifications','pim_product_features','pim_retailer_prices','pim_product_documents','pim_product_images','pim_product_videos','pim_price_changes','product_relationships','retailer_discovered_products','pim_brand_content','pim_scrape_runs','retailer_brand_pages','retailer_crawl_runs','aiq_products','aiq_products_app'] LOOP IF has_table_privilege('anon',format('tj.%I',t),'SELECT') OR has_table_privilege('authenticated',format('tj.%I',t),'INSERT,UPDATE,DELETE') THEN RAISE EXCEPTION 'Unexpected grant: %',t; END IF; END LOOP;
+END $$;
+ROLLBACK;

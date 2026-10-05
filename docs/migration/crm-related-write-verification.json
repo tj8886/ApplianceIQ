@@ -1,0 +1,175 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migrations": [
+    "20261005014654_enable_crm_related_record_writes",
+    "20261005014952_refresh_crm_creator_visibility_during_insert",
+    "20261005015012_scope_company_only_trigger_fields",
+    "20261005015117_enable_owned_group_member_unlink",
+    "20261005015208_index_crm_creator_references"
+  ],
+  "tables": [
+    "companies",
+    "crm_buying_groups",
+    "crm_buying_group_members",
+    "crm_deal_participants"
+  ],
+  "column_grants": {
+    "companies": [
+      "organization_id",
+      "name",
+      "display_name",
+      "legal_name",
+      "business_type",
+      "industry",
+      "main_phone",
+      "general_email",
+      "website",
+      "city",
+      "region",
+      "country_code",
+      "account_classification",
+      "annual_revenue_potential",
+      "credit_status",
+      "account_terms",
+      "notes",
+      "source"
+    ],
+    "crm_buying_groups": [
+      "organization_id",
+      "name",
+      "group_type",
+      "primary_contact_id",
+      "communication_default",
+      "company_id",
+      "notes",
+      "is_archived",
+      "archived_at"
+    ],
+    "crm_buying_group_members": [
+      "buying_group_id",
+      "contact_id",
+      "buying_role",
+      "is_primary",
+      "communication_preference",
+      "share_quotes",
+      "share_products_filter",
+      "notes"
+    ],
+    "crm_deal_participants": [
+      "deal_id",
+      "contact_id",
+      "buying_role",
+      "is_primary",
+      "communication_preference",
+      "notes"
+    ]
+  },
+  "native_write_policies_added": 9,
+  "triggers_added": 4,
+  "ownership": "Private creator registry for newly created companies/groups; existing records are administrator-writable without inferring prior ownership.",
+  "verification": {
+    "fixture": "scripts/migration/test-crm-related-record-writes.sql",
+    "status": "passed",
+    "checks": [
+      "Member creates and edits company and buying group with INSERT RETURNING",
+      "Creator recorded transactionally",
+      "Group contact and deal participant insert/update/read-back",
+      "Deal can reference new company/group/contact",
+      "Owned group-member link can be removed",
+      "Tenant moves, foreign parent/contact links, credit approval and unmapped creation blocked",
+      "Buying-group deletion remains denied"
+    ],
+    "test_business_writes": "rolled back",
+    "regressions": [
+      "native CRM write batch",
+      "CRM contacts",
+      "management batch",
+      "76-table access regression",
+      "all 11 app bundle checks"
+    ],
+    "corrections": [
+      "Creator lookup uses a fresh snapshot to observe BEFORE-trigger inserts during INSERT RETURNING",
+      "Company-only fields are validated only in the company trigger branch"
+    ],
+    "browser_workflows": "pending"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 605,
+        "level": "INFO"
+      },
+      {
+        "name": "security_definer_view",
+        "count": 8,
+        "level": "ERROR"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 27,
+        "level": "WARN"
+      },
+      {
+        "name": "extension_in_public",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "count": 5,
+        "level": "WARN"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 698,
+        "level": "INFO"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 53,
+        "level": "WARN"
+      },
+      {
+        "name": "no_primary_key",
+        "count": 55,
+        "level": "INFO"
+      },
+      {
+        "name": "unused_index",
+        "count": 925,
+        "level": "INFO"
+      },
+      {
+        "name": "duplicate_index",
+        "count": 8,
+        "level": "WARN"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "count": 1,
+        "level": "INFO"
+      }
+    ]
+  },
+  "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+  "limits": [
+    "Entity hard deletion remains gated; only authorized group-member relationship unlink is granted",
+    "Existing company/group ownership is not inferred",
+    "Tax fields and account-manager assignment columns are not granted",
+    "Credit status and account terms changes require organization administration",
+    "Sequence enrollment, external effects, remaining module writes, Edge functions and hosted cutover remain pending"
+  ]
+}

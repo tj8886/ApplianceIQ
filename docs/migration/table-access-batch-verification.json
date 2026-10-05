@@ -1,0 +1,164 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migrations": [
+    "20261005005922_enable_app_table_access_batch",
+    "20261005010539_tighten_retailer_profile_org_scope"
+  ],
+  "new_read_tables": 76,
+  "new_read_policies": {
+    "academy_brand_certifications": "tj_private.is_source_self(user_id)",
+    "academy_brand_progress": "tj_private.is_source_self(user_id)",
+    "academy_daily_metrics": "tj_private.is_source_self(user_id)",
+    "academy_learning_events": "tj_private.is_source_self(user_id)",
+    "academy_progress": "tj_private.is_source_self(user_id)",
+    "academy_quiz_scores": "tj_private.is_source_self(user_id)",
+    "ai_conversation_turns": "tj_private.is_source_self(user_id)",
+    "piq_retailer_brands": "tj_private.is_source_self(user_id)",
+    "piq_retailer_profiles": "tj_private.is_source_self(user_id) AND (organization_id IS NULL OR tj_private.can_read_runtime_org(organization_id))",
+    "mfr_members": "tj_private.is_source_self(user_id)",
+    "mfr_user_roles": "tj_private.is_source_self(user_id)",
+    "academy_notifications": "tj_private.is_source_self(user_id) AND (organization_id IS NULL OR tj_private.can_read_runtime_org(organization_id))",
+    "academy_chapters": "(SELECT tj_private.has_active_mapped_org())",
+    "academy_quizzes": "(SELECT tj_private.has_active_mapped_org())",
+    "academy_volumes": "(SELECT tj_private.has_active_mapped_org())",
+    "aiq_recalls": "(SELECT tj_private.has_active_mapped_org())",
+    "aiq_vendor_contacts": "(SELECT tj_private.has_active_mapped_org())",
+    "aiq_warranty_policies": "(SELECT tj_private.has_active_mapped_org())",
+    "brand_map_policies": "(SELECT tj_private.has_active_mapped_org())",
+    "buying_groups": "(SELECT tj_private.has_active_mapped_org())",
+    "competitive_cross_reference": "(SELECT tj_private.has_active_mapped_org())",
+    "crm_replacement_cycles": "(SELECT tj_private.has_active_mapped_org())",
+    "intel_news": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_badges": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_cards": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_courses": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_decks": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_lanes": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_product_cards": "(SELECT tj_private.has_active_mapped_org())",
+    "iq_zones": "(SELECT tj_private.has_active_mapped_org())",
+    "pim_category_map": "(SELECT tj_private.has_active_mapped_org())",
+    "platform_plan_modules": "(SELECT tj_private.has_active_mapped_org())",
+    "platform_seat_tiers": "(SELECT tj_private.has_active_mapped_org())",
+    "scraper_brand_sources": "(SELECT tj_private.has_active_mapped_org())",
+    "scraper_retailer_sources": "(SELECT tj_private.has_active_mapped_org())",
+    "field_checklist_categories": "(SELECT tj_private.has_active_mapped_org()) AND is_active",
+    "field_checklist_items": "(SELECT tj_private.has_active_mapped_org()) AND is_active",
+    "platform_ai_credit_packs": "(SELECT tj_private.has_active_mapped_org()) AND is_active",
+    "platform_plans": "(SELECT tj_private.has_active_mapped_org()) AND is_active",
+    "service_iq_templates": "(SELECT tj_private.has_active_mapped_org()) AND is_active",
+    "aiq_service_providers": "(SELECT tj_private.has_active_mapped_org()) AND status='active'",
+    "aicrm_outreach_campaigns": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "aicrm_sequence_enrollments": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "aicrm_sequence_steps": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "communication_templates": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "crm_archive_log": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "crm_buying_groups": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "crm_coaching_queue": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "crm_custom_fields": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "crm_sla_rules": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "crm_temperature_history": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "product_iq_brand_scopes": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "product_iq_governance_audit_log": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "product_iq_platform_roles": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "speciq_retailer_settings": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id)",
+    "organization_brands": "tj_private.can_read_runtime_org(organization_id)",
+    "crm_activity_goals": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "crm_analytics_events": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "crm_commissions": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "crm_daily_five": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "crm_emails": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "performance_observations": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "performance_skill_state": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "platform_ai_credits": "tj_private.can_read_runtime_org(org_id) AND tj.is_org_admin(org_id)",
+    "platform_subscriptions": "tj_private.can_read_runtime_org(org_id) AND tj.is_org_admin(org_id)",
+    "performance_competencies": "(organization_id IS NULL AND (SELECT tj_private.has_active_mapped_org())) OR tj_private.can_read_runtime_org(organization_id)",
+    "crm_deals": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,owner_user_id) AND tj.aiq_store_allows(organization_id,location_id) AND deleted_at IS NULL",
+    "crm_tasks": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,assignee_user_id) AND deleted_at IS NULL AND (deal_id IS NULL OR EXISTS(SELECT 1 FROM tj.crm_deals d WHERE d.id=crm_tasks.deal_id AND d.organization_id=crm_tasks.organization_id))",
+    "crm_sla_events": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,assigned_to)",
+    "crm_delivery_workflows": "tj_private.can_read_runtime_org(organization_id) AND EXISTS(SELECT 1 FROM tj.crm_deals d WHERE d.id=crm_delivery_workflows.deal_id AND d.organization_id=crm_delivery_workflows.organization_id)",
+    "crm_stage_history": "tj_private.can_read_runtime_org(organization_id) AND EXISTS(SELECT 1 FROM tj.crm_deals d WHERE d.id=crm_stage_history.deal_id AND d.organization_id=crm_stage_history.organization_id)",
+    "crm_deal_participants": "EXISTS(SELECT 1 FROM tj.crm_deals d JOIN tj.contacts c ON c.id=crm_deal_participants.contact_id AND c.organization_id=d.organization_id WHERE d.id=crm_deal_participants.deal_id)",
+    "crm_buying_group_members": "EXISTS(SELECT 1 FROM tj.crm_buying_groups g JOIN tj.contacts c ON c.id=crm_buying_group_members.contact_id AND c.organization_id=g.organization_id WHERE g.id=crm_buying_group_members.buying_group_id)",
+    "speciq_package_events": "EXISTS(SELECT 1 FROM tj.speciq_packages p WHERE p.id=speciq_package_events.package_id AND p.deleted_at IS NULL AND tj_private.can_read_runtime_org(p.organization_id) AND tj.aiq_scope_allows(p.organization_id,p.created_by))",
+    "speciq_package_versions": "EXISTS(SELECT 1 FROM tj.speciq_packages p WHERE p.id=speciq_package_versions.package_id AND p.deleted_at IS NULL AND tj_private.can_read_runtime_org(p.organization_id) AND tj.aiq_scope_allows(p.organization_id,p.created_by))",
+    "profiles": "tj_private.can_read_source_profile(user_id)"
+  },
+  "total_readable_tj_tables": 178,
+  "referenced_relations_readable": 129,
+  "referenced_relations_total": 166,
+  "verification": {
+    "mapped_actor_and_shared_reference": "passed",
+    "all_76_query_paths": "passed",
+    "cross_org_reads": "blocked",
+    "unmapped_reads": "blocked",
+    "anonymous_select_grants": 0,
+    "progress_insert_and_upsert": "passed",
+    "progress_ownership_change": "blocked",
+    "notification_read_receipt": "passed",
+    "foreign_org_notification": "blocked",
+    "notification_content_edit": "blocked",
+    "certification_insert": "blocked",
+    "delete_grants": 0,
+    "all_test_writes": "rolled_back",
+    "app_bundle_routing_tests": 11,
+    "browser_workflows": "pending"
+  },
+  "advisor_counts": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 635
+      },
+      {
+        "name": "security_definer_view",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "count": 933
+      },
+      {
+        "name": "duplicate_index",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "count": 1
+      }
+    ]
+  }
+}

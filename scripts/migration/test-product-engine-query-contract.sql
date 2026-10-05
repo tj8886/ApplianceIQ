@@ -1,0 +1,10 @@
+BEGIN; SET LOCAL ROLE authenticated;
+SELECT id,brand_name,manufacturer_name,category,product_family,product_line,series,model,status,msrp,sale_price,lowest_price,price_currency,price_checked_at,short_description,long_description,finish,color,color_family,energy_star,ada_compliant,width_inches,height_inches,depth_inches,depth_with_handles,depth_without_handles,capacity_cu_ft,voltage,amperage,wattage,installation_type,market,country_availability,public_visible,approval_status,is_discontinued,is_clearance,is_end_of_life,specs_json,source_reference,source_confidence,source_review_status,updated_at FROM tj.aiq_products_app LIMIT 0;
+SELECT product_id,feature_category,feature_name,feature_value,feature_description,is_key_feature,is_differentiator,display_order FROM tj.pim_product_features LIMIT 0;
+SELECT product_id,dimension_type,width_inches,height_inches,depth_inches,depth_with_door_inches,depth_with_handle_inches,cutout_width,cutout_height,cutout_depth,door_swing_clearance,door_swing_direction,dim_drawing_url,notes FROM tj.pim_product_dimensions LIMIT 0;
+SELECT product_id,doc_type,title,file_url,language,locale,is_current,approved,verification_status,manufacturer_verified FROM tj.pim_product_documents LIMIT 0;
+SELECT product_id,image_type,file_url,cdn_url,alt_text,is_primary,approved,verification_status,manufacturer_verified FROM tj.pim_product_images LIMIT 0;
+SELECT product_id,retailer_name,product_url,price,regular_price,on_sale,sale_label,in_stock,stock_note,price_currency,checked_at,country FROM tj.pim_retailer_prices LIMIT 0;
+SELECT product_id,retailer_name,product_url,price,regular_price,on_sale,sale_label,in_stock,stock_note,price_currency,checked_at,country FROM tj.pim_retailer_prices LIMIT 0;
+SELECT product_category,subcategory,electrical_voltage,electrical_amperage,electrical_circuit,gas_connection,water_connection,drain_required,ventilation_cfm,min_clearances,typical_install_time,licensed_trades_required,common_issues,notes,country FROM tj.installation_requirements LIMIT 0;
+ROLLBACK;

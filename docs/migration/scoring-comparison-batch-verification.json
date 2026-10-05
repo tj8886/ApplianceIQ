@@ -1,0 +1,57 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "recommendation-scoring-engine",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true
+    },
+    {
+      "slug": "product-comparison-engine",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true
+    }
+  ],
+  "tests": {
+    "handler_contracts": "passed",
+    "live_database_ownership": "passed; fixtures rolled back",
+    "live_unauthenticated_http": "401 both endpoints",
+    "app_bundle_regression": "11 passed"
+  },
+  "behavior": [
+    "Native caller JWT and tj schema, no service-role reads",
+    "Comparison insert stamps mapped source identity on server",
+    "Owner-only conversation memory updates and comparison insert/update",
+    "Product and winner references validated against allowed catalog",
+    "Missing price/dimension values stay unknown; unsupported candidates do not receive winner labels"
+  ],
+  "remaining_source_snapshots": 82,
+  "limitations": [
+    "Browser and authenticated HTTP workflows unverified",
+    "CRM record linking intentionally rejects requests until parent authorization workflow is reviewed",
+    "Conversation creation/profile editing not activated in this batch",
+    "Hosted apps not cut over"
+  ],
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 601,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 925,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_remediation": "https://supabase.com/docs/guides/database/database-linter"
+}

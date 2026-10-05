@@ -1,0 +1,208 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migrations": [
+    "20261005013846_enable_crm_write_workflows_batch",
+    "20261005014139_correct_crm_write_actor_and_goal_scope"
+  ],
+  "tables": [
+    "crm_deals",
+    "crm_tasks",
+    "crm_activity_goals",
+    "crm_postmortems"
+  ],
+  "column_grants": {
+    "crm_deals": [
+      "organization_id",
+      "owner_user_id",
+      "location_id",
+      "title",
+      "stage",
+      "record_type",
+      "contact_id",
+      "company_id",
+      "buying_group_id",
+      "value_amount",
+      "margin_pct",
+      "margin_amount",
+      "value_currency",
+      "expected_close_date",
+      "quote_expiry_date",
+      "product_categories",
+      "next_action",
+      "next_action_date",
+      "priority",
+      "source",
+      "closed_at",
+      "temperature",
+      "temperature_changed_at",
+      "temperature_changed_by",
+      "temperature_reason",
+      "stage_entered_at",
+      "order_number",
+      "purchase_date",
+      "delivery_date",
+      "warranty_status",
+      "won_products",
+      "lost_reason",
+      "lost_competitor",
+      "lost_objection",
+      "future_followup_permitted",
+      "last_contact_at",
+      "is_archived",
+      "archived_at",
+      "archive_reason",
+      "quote_sent_at",
+      "updated_at"
+    ],
+    "crm_tasks": [
+      "organization_id",
+      "assignee_user_id",
+      "deal_id",
+      "company_id",
+      "contact_id",
+      "title",
+      "description",
+      "due_at",
+      "completed_at",
+      "priority",
+      "metadata",
+      "task_type",
+      "task_category",
+      "source",
+      "resolution_note",
+      "updated_at"
+    ],
+    "crm_activity_goals": [
+      "organization_id",
+      "user_id",
+      "period",
+      "calls_target",
+      "emails_target",
+      "meetings_target",
+      "deals_target",
+      "revenue_target"
+    ],
+    "crm_postmortems": [
+      "organization_id",
+      "deal_id",
+      "salesperson_id",
+      "review_type",
+      "salesperson_reflection",
+      "what_went_well",
+      "what_to_improve",
+      "controllability",
+      "is_recoverable",
+      "is_private",
+      "completed_at"
+    ]
+  },
+  "native_write_policies_added": 8,
+  "triggers_added": 5,
+  "verification": {
+    "fixture": "scripts/migration/test-crm-native-write-batch.sql",
+    "status": "passed",
+    "checks": [
+      "Member-owned deal create/edit/stage/temperature updates",
+      "Server-computed margin overrides client value",
+      "Task create and completion",
+      "Own weekly goals insert/upsert",
+      "Own sale reflection create/edit and profile-ID normalization",
+      "Archive and restore with two audit entries",
+      "Stage audit uses profile.id; temperature audit uses profile.user_id",
+      "Cross-organization insert, move, parent link and update denied",
+      "Unauthorized owner reassignment denied",
+      "Active organization administrator can reassign in organization",
+      "Viewer and unmapped writes denied",
+      "AI field forgery and hard delete denied",
+      "NaN financial values denied"
+    ],
+    "test_business_writes": "rolled back",
+    "regressions": [
+      "management batch",
+      "business dashboard",
+      "CRM contact workflows",
+      "all 11 app bundle routing checks"
+    ],
+    "browser_verification": "pending"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 604,
+        "level": "INFO"
+      },
+      {
+        "name": "security_definer_view",
+        "count": 8,
+        "level": "ERROR"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 27,
+        "level": "WARN"
+      },
+      {
+        "name": "extension_in_public",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "count": 5,
+        "level": "WARN"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 698,
+        "level": "INFO"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 53,
+        "level": "WARN"
+      },
+      {
+        "name": "no_primary_key",
+        "count": 55,
+        "level": "INFO"
+      },
+      {
+        "name": "unused_index",
+        "count": 924,
+        "level": "INFO"
+      },
+      {
+        "name": "duplicate_index",
+        "count": 8,
+        "level": "WARN"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "count": 1,
+        "level": "INFO"
+      }
+    ]
+  },
+  "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+  "limits": [
+    "General CRM CRUD remains partial; new company/buying-group creation and sequence enrollment are pending",
+    "The archived flag workflow is enabled; deleted_at soft-delete and hard-delete workflows remain gated",
+    "Postmortem AI processing, raw transcript and manager commentary writes remain server-only",
+    "Email notifications, automatic campaign enrollment and Intelligence sync triggers were not activated",
+    "Native goals allow own active member targets or active organization administration; viewer roles cannot write",
+    "Real browser workflows, final source delta and hosted cutover remain pending"
+  ]
+}

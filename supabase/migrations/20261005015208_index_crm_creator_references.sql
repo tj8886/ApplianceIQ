@@ -1,0 +1,2 @@
+CREATE INDEX crm_container_creator_org_idx ON tj_private.crm_container_creators(organization_id,source_user_id);
+CREATE INDEX crm_container_creator_user_idx ON tj_private.crm_container_creators(source_user_id);

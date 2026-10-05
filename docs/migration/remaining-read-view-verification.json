@@ -1,0 +1,140 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migrations": [
+    "20261005012913_enable_remaining_reviewed_views",
+    "20261005013203_enable_accountability_contact_projection",
+    "20261005013340_short_circuit_unmapped_view_reads"
+  ],
+  "new_app_read_relations": 9,
+  "source_staffing_records_approved": 1028,
+  "retained_us_only_staffing_records_withheld": 74,
+  "policies": {
+    "academy_content_suggestions": "(SELECT tj_private.is_product_governance_admin())",
+    "aiq_product_versions": "tj_private.can_read_runtime_org(organization_id) AND tj.is_org_admin(organization_id) AND EXISTS(SELECT 1 FROM tj.aiq_products p WHERE p.id=product_id AND p.organization_id=aiq_product_versions.organization_id)",
+    "crm_postmortems": "tj_private.can_read_runtime_org(organization_id) AND EXISTS(SELECT 1 FROM tj.profiles p WHERE p.id=salesperson_id AND tj.aiq_scope_allows(crm_postmortems.organization_id,p.user_id) AND (is_private IS FALSE OR tj_private.is_source_self(p.user_id))) AND EXISTS(SELECT 1 FROM tj.crm_deals d WHERE d.id=deal_id AND d.organization_id=crm_postmortems.organization_id) AND (recording_id IS NULL OR EXISTS(SELECT 1 FROM tj.sales_recordings r WHERE r.id=recording_id AND r.organization_id=crm_postmortems.organization_id AND r.consent_confirmed IS TRUE))",
+    "iq_staffing_predictions": "id=ANY((SELECT tj_private.approved_staffing_ids())::uuid[]) AND tj_private.can_read_runtime_org(organization_id) AND tj.aiq_store_allows(organization_id,store_id)",
+    "performance_metric_competency_map": "(organization_id IS NULL AND (SELECT tj_private.has_active_mapped_org())) OR tj_private.can_read_runtime_org(organization_id)"
+  },
+  "restrictive_parent_policies": {
+    "activities": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "sales_recordings": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id)",
+    "recording_transcripts": "tj_private.can_read_runtime_org(organization_id) AND EXISTS(SELECT 1 FROM tj.sales_recordings r WHERE r.id=recording_id AND r.organization_id=recording_transcripts.organization_id AND r.consent_confirmed IS TRUE)",
+    "ai_coaching_reviews": "tj_private.can_read_runtime_org(organization_id) AND (activity_id IS NULL OR EXISTS(SELECT 1 FROM tj.activities a WHERE a.id=activity_id AND a.organization_id=ai_coaching_reviews.organization_id)) AND (recording_id IS NULL OR EXISTS(SELECT 1 FROM tj.sales_recordings r WHERE r.id=recording_id AND r.organization_id=ai_coaching_reviews.organization_id AND r.consent_confirmed IS TRUE))",
+    "metric_snapshots": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,user_id) AND tj.aiq_store_allows(organization_id,location_id)",
+    "iq_customer_interactions": "tj_private.can_read_runtime_org(organization_id) AND tj.aiq_scope_allows(organization_id,salesperson_user_id)"
+  },
+  "projection": "aiq_product_versions_app",
+  "intentionally_private": [
+    "mfr_invites",
+    "ai_response_cache"
+  ],
+  "verification": {
+    "remaining_view_fixture": "passed",
+    "privacy_fixture": "passed",
+    "regression_suites": [
+      "business dashboard",
+      "Command Centre",
+      "coaching Academy",
+      "CRM contacts",
+      "floor analytics"
+    ],
+    "fixture_writes": "rolled back",
+    "checks": [
+      "9 read paths execute",
+      "Version snapshot redacts top-level dealer_cost",
+      "Raw version snapshot column denied",
+      "Unmapped identities blocked across 9 paths",
+      "Approved staffing ledger includes 1028 source IDs; 74 extras withheld",
+      "Views retain security_invoker",
+      "Own consented transcript visible",
+      "Other-owner recording/transcript hidden with own visibility scope",
+      "Nonconsented transcript hidden",
+      "Conversation join omits nonconsented recording/transcript",
+      "No anonymous or native write grants added"
+    ],
+    "corrections": [
+      "Added narrowly scoped contact columns required by accountability view",
+      "Added once-per-query mapped-identity gates after unmapped negative scan exceeded timeout"
+    ],
+    "browser_workflows": "pending"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 604,
+        "level": "INFO"
+      },
+      {
+        "name": "security_definer_view",
+        "count": 8,
+        "level": "ERROR"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 27,
+        "level": "WARN"
+      },
+      {
+        "name": "extension_in_public",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "count": 5,
+        "level": "WARN"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 698,
+        "level": "INFO"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 53,
+        "level": "WARN"
+      },
+      {
+        "name": "no_primary_key",
+        "count": 55,
+        "level": "INFO"
+      },
+      {
+        "name": "unused_index",
+        "count": 926,
+        "level": "INFO"
+      },
+      {
+        "name": "duplicate_index",
+        "count": 8,
+        "level": "WARN"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "count": 1,
+        "level": "INFO"
+      }
+    ]
+  },
+  "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+  "limits": [
+    "Read grants are not write or browser cutover verification",
+    "Invitation and shared cache workflows need controlled endpoints",
+    "74 retained staffing records remain stored and private",
+    "Snapshot redaction removes the top-level dealer_cost key; version access is restricted to organization administrators",
+    "Source data/files delta and app hosting cutover remain pending"
+  ]
+}

@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {createFloorHandler} from '../../supabase/functions/floor-recommendations/handler.ts';
+const org='11111111-1111-4111-8111-111111111111';
+let calls=0, user=true, denied=false, narrativeCalls=0;
+const handler=createFloorHandler({env:()=>'',fetchImpl:async()=>{narrativeCalls++;throw Error('No configured AI');},createClient:(_url,_key,opts)=>{assert.equal(opts.auth.persistSession,false);return {auth:{getUser:async()=>({data:{user:user?{id:org}:null},error:null})},rpc:async(name,args)=>{calls++;assert.equal(name,'tj_floor_recommendation_data');assert.equal(args.p_org_id,org);return denied?{error:{code:'42501',message:'private details'}}:{data:{total_floor_units:10,total_revenue:10000,categories:[{category:'cooking',gap_pts:20,unit_delta:2,units_sold:5,sales_revenue:5000,floor_pct:30,sales_pct:50,floor_units:3,target_units:5}],brands:[],holes:{open_holes:0}},error:null}}}}});
+const request=(body,auth=true,method='POST')=>new Request('https://example.test',{method,headers:auth?{Authorization:'Bearer test'}:{},body:method==='POST'?JSON.stringify(body):undefined});
+assert.equal((await handler(request({},false))).status,401);assert.equal(calls,0);
+assert.equal((await handler(request(null))).status,400);
+assert.equal((await handler(request({organization_id:'invalid'}))).status,400);
+user=false;assert.equal((await handler(request({organization_id:org}))).status,401);assert.equal(calls,0);user=true;
+denied=true;const rejected=await handler(request({organization_id:org}));assert.equal(rejected.status,403);assert.ok(!(await rejected.text()).includes('private details'));denied=false;
+const response=await handler(request({organization_id:org}));assert.equal(response.status,200);const data=await response.json();assert.equal(data.recommendations[0].type,'expand_category');assert.equal(data.recommendations[0].metrics.revenue,5000);assert.equal(data.summary,null);assert.equal(narrativeCalls,0);
+assert.equal((await handler(request({},true,'OPTIONS'))).status,200);
+console.log('Floor handler: authentication, input, denied access, deterministic recommendations and no-key fallback passed');

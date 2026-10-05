@@ -1,0 +1,15 @@
+CREATE POLICY consolidation_mapped_read_gate ON tj.academy_content_suggestions AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.aiq_product_versions AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.crm_postmortems AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.iq_staffing_predictions AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.performance_metric_competency_map AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.activities AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.sales_recordings AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.recording_transcripts AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.ai_coaching_reviews AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.metric_snapshots AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.iq_customer_interactions AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.aicrm_contacts AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.performance_competencies AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.iq_customer_waiting_queue AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
+CREATE POLICY consolidation_mapped_read_gate ON tj.crm_deals AS RESTRICTIVE FOR SELECT TO authenticated USING((SELECT tj_private.has_active_mapped_org()));
