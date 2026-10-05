@@ -3168,7 +3168,7 @@ async function loadNotifications(){
   });
   $('#runScheduled')?.addEventListener('click',async()=>{
     toast('Running scheduled tasks…','');
-    try{const resp=await fetch(SUPABASE_URL+'/functions/v1/crm-scheduled-tasks',{method:'POST',headers:{'Content-Type':'application/json'}});const data=await resp.json();toast('Done — '+data.anniversaries_created+' anniversaries, '+data.overdue_notifications+' overdue alerts'+(data.holiday_tasks?' , '+data.holiday_tasks+' holiday tasks':''),'ok');loadNotifications();}catch(e){toast('Error: '+(e.message||e),'err');}
+    try{const{data:{session}}=await sb.auth.getSession();if(!session||!currentOrg)throw new Error('Sign-in and organization required');const resp=await fetch(SUPABASE_URL+'/functions/v1/crm-scheduled-tasks',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({organization_id:currentOrg.id})});const data=await resp.json();if(!resp.ok||!data.ok)throw new Error(data.error||'Scheduled task check failed');toast('Done — '+data.anniversaries_created+' anniversaries, '+data.overdue_notifications+' overdue alerts'+(data.holiday_tasks?' , '+data.holiday_tasks+' holiday tasks':''),'ok');loadNotifications();}catch(e){toast('Error: '+(e.message||e),'err');}
   });
   $('#pullCal')?.addEventListener('click',pullCalendarEvents);
 }
