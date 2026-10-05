@@ -759,7 +759,7 @@ function copyInvite(code,btn){
 }
 async function revokeInvite(id){
   try{
-    await api("/rest/v1/org_invites?id=eq."+id,{method:"PATCH",body:JSON.stringify({status:"revoked"})});
+    await rpc("revoke_org_invite",{p_id:id});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
   }catch(e){alert("Failed: "+e.message)}
@@ -1100,8 +1100,7 @@ async function sendInvites(){
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Sending…';
   let ok=0,fail=0,emailed=0,created=[];
   const send=async(em,rl)=>{
-    const rows=await api("/rest/v1/org_invites",{method:"POST",headers:{Prefer:"return=representation"},
-      body:JSON.stringify({organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,location_id:store,invited_by:S.user.id,status:"pending"})});
+    const rows=await rpc("create_org_invite",{p_org:S.org.id,p_email:em.trim().toLowerCase(),p_role:rl,p_position:pos,p_location:store});
     const inv=Array.isArray(rows)?rows[0]:rows;
     if(inv){created.push(inv);const er=await sendInviteEmail(inv);if(er&&er.sent)emailed++}
     return inv;

@@ -19,6 +19,8 @@ for(const app of report.apps){
  await context.window.fetch('https://jdxslqmgjsuzoisuhvlc.supabase.co/rest/v1/products');assert.equal(network.at(-1).headers.get('Accept-Profile'),'tj');
  await context.window.fetch('https://jdxslqmgjsuzoisuhvlc.supabase.co/rest/v1/rpc/my_platform_context',{method:'POST',body:'{}'});assert.ok(network.at(-1).url.endsWith('/rpc/tj_runtime_my_platform_context'));assert.equal(network.at(-1).headers.get('Content-Profile'),'public');
  const prior=network.length;assert.equal((await context.window.fetch('https://jdxslqmgjsuzoisuhvlc.supabase.co/rest/v1/rpc/unreviewed_rpc',{method:'POST',body:'{}'})).status,403);assert.equal(network.length,prior);
+ for(const name of ['create_org_invite','revoke_org_invite','get_invite_preview','accept_org_invite']){await client.rpc(name,{});assert.equal(calls.at(-1)[0],'tj_runtime_'+name);}
+ await context.window.fetch('https://jdxslqmgjsuzoisuhvlc.supabase.co/rest/v1/rpc/get_invite_preview',{method:'POST',body:'{}'});assert.ok(network.at(-1).url.endsWith('/rpc/tj_runtime_get_invite_preview'));assert.equal(network.at(-1).headers.get('Authorization'),null);
  const adapter=readFileSync(join(dir,'_aiq/aiq-module-adapter.js'),'utf8');assert.ok(!adapter.includes('sb.auth.setSession'));assert.ok(adapter.includes('sb.auth.verifyOtp'));
 }
 console.log('11 app bundles passed routing, source-endpoint removal, local assets, auth/storage preservation and ticket-only shared handoff checks');
