@@ -14,7 +14,7 @@ export async function stateHash(value:string){return Array.from(await digest(val
 async function responseJson(r:Response){if(!r.ok){await r.body?.cancel();throw Error('token_exchange_failed');}let text='',size=0;const reader=r.body?.getReader(),decoder=new TextDecoder();if(!reader)throw Error('empty_response');try{for(;;){const n=await reader.read();if(n.done)break;size+=n.value.length;if(size>65536)throw Error('token_response_too_large');text+=decoder.decode(n.value,{stream:true});}text+=decoder.decode();return JSON.parse(text);}catch(e){await reader.cancel();throw e;}}
 export function createHandler({createClient,env,loadEnvironment=async(e:Environment)=>e,fetchImpl=fetch,verifyIdentity}:{createClient:any;env:Environment;loadEnvironment?:(e:Environment,f:typeof fetch)=>Promise<Environment>;fetchImpl?:typeof fetch;verifyIdentity:(t:string,c:any)=>Promise<any>}){
  const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
- const failure=(e:any)=>reply({error:e.code==='42501'?'connection_access_denied':e.code==='40001'?'oauth_state_or_destination_not_ready':'oauth_operation_failed'},e.code==='42501'?403:e.code==='40001'?409:500);
+ const failure=(e:any)=>reply({error:e.code==='42501'?'connection_access_denied':e.code==='40001'?'oauth_state_or_destination_not_ready':e.code==='54000'?'authorization_rate_limit':['22023','22P02'].includes(e.code)?'invalid_connection_or_request':'oauth_operation_failed'},e.code==='42501'?403:e.code==='40001'?409:e.code==='54000'?429:['22023','22P02'].includes(e.code)?400:500);
  return async(req:Request)=>{
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers});if(!['POST','GET'].includes(req.method))return reply({error:'method_not_allowed'},405);
   try{
