@@ -11,7 +11,8 @@ import {createHandler as businessCentral} from '../../supabase/functions/busines
 import {createHandler as chqBooking} from '../../supabase/functions/chq-notify-booking/handler.ts';
 import {createHandler as chqContractor} from '../../supabase/functions/chq-notify-contractor/handler.ts';
 import {createHandler as chqReminders} from '../../supabase/functions/chq-send-reminders/handler.ts';
-for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192],[shopify,'tj_shopify_initial_sync',8192],[storis,'tj_storis_setup',16384],[billing,'tj_billing_preview',8192],[activity,'tj_activity_preflight',8192],[analytics,'tj_daily_analytics',8192],[enrichment,'tj_crm_enrichment_preflight',8192],[chqBooking,'tj_chq_booking_preflight',8192],[chqContractor,'tj_chq_contractor_preflight',8192],[chqReminders,'tj_chq_reminders_preflight',8192],[businessCentral,'tj_business_central_preflight',8192]]){
+import {createHandler as chqPayment} from '../../supabase/functions/chq-stripe/handler.ts';
+for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192],[shopify,'tj_shopify_initial_sync',8192],[storis,'tj_storis_setup',16384],[billing,'tj_billing_preview',8192],[activity,'tj_activity_preflight',8192],[analytics,'tj_daily_analytics',8192],[enrichment,'tj_crm_enrichment_preflight',8192],[chqBooking,'tj_chq_booking_preflight',8192],[chqContractor,'tj_chq_contractor_preflight',8192],[chqReminders,'tj_chq_reminders_preflight',8192],[chqPayment,'tj_chq_payment_preflight',8192],[businessCentral,'tj_business_central_preflight',8192]]){
  let valid=true,anonymous=false,calls=0,mode='success';
  const handler=factory({env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'public'}[n]),createClient:(u,k,opts)=>{
   assert.equal(k,'public');assert.equal(opts.global.headers.Authorization,'Bearer caller');
