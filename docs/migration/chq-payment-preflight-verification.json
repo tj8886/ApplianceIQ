@@ -1,0 +1,124 @@
+{
+  "captured_at": "2026-10-06T13:09:21.684Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "chq-stripe",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "d00af1d73833405eedbc3ef29ca98d594243291aef39876aef313a9b306d5d0e"
+  },
+  "migration_version": "20261006130831",
+  "capability": "Native active tenant-admin payment readiness only; all six legacy Stripe actions blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "all_six_payment_actions_blocked": "passed",
+    "client_booking_price_recipient_payload_rejection": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "safe_grants_and_no_payment_record_mutation": "passed",
+    "unauthenticated_post": 401,
+    "remaining_fixture_orgs": 0
+  },
+  "counts": {
+    "source": {
+      "bookings": 0,
+      "contractors": 0,
+      "payouts": 0
+    },
+    "destination": {
+      "bookings": 0,
+      "contractors": 0,
+      "payouts": 0
+    }
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 921
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No CHQ table policy/grant changed; no new table/index introduced.",
+  "limits": [
+    "CHQ bookings, contractors and payouts lack organization_id. No record ownership, payment amount, payee, customer identity or payout eligibility is inferred from caller membership or request IDs.",
+    "Only native verified activated active tenant admins can view blockers. No CHQ record lookup, Stripe key access, provider call, payment intent, session, subscription, Connect account, transfer or payout ledger write occurs.",
+    "create_checkout, contractor_subscription, connect_onboarding, connect_status, process_payout and process_all_payouts all return 409 after authorization.",
+    "Client-supplied booking objects/prices/email are rejected. No source hardcoded USD plan price or app return URL is treated as approved destination configuration.",
+    "Both Canada and US contain zero bookings, contractors and payout records; no payment/customer-data copy occurred.",
+    "Full payment workflow requires tenant ownership/RLS, server pricing/currency/tax contract, Stripe account/mode verification, authorized customer/payee, verified webhooks/reconciliation and idempotent payment/payout ledger.",
+    "Native admin readiness is deliberately narrower than historical customer/service-role action routes. No service-role browser route or unattended payout schedule is enabled.",
+    "No hosted cutover, main merge, final source data/storage delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 55,
+    "absent_snapshots": 31,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "connector-alert-dispatcher"
+}
