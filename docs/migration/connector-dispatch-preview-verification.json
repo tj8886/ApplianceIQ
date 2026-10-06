@@ -1,0 +1,132 @@
+{
+  "captured_at": "2026-10-06T13:18:55.872Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "connector-alert-dispatcher",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "eca26adecc1e00c9009e8d7e24f09eb0315e267969fd57ae7a536296911ea3dd"
+    },
+    {
+      "slug": "connector-recovery-dispatcher",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "ec6539a76e6c0d7763eae15937ce7968c69bd9929470da2d7d82f1bf7d276957"
+    }
+  ],
+  "migration_version": "20261006131751",
+  "capability": "Native active tenant-admin redacted due queue preview, 25 items/page; all dispatch/schedules blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "twenty_six_items_pagination_25_then_1": "passed",
+    "repeat_preview_no_queue_mutation": "passed",
+    "cross_org_delivery_connection_and_job_connection_mismatch_exclusion": "passed",
+    "future_retry_and_exhausted_attempt_exclusion": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "private_title_message_error_reason_cursor_and_recipient_redaction": "passed",
+    "no_bot_membership_queue_claim_attempt_or_sent_change": "passed",
+    "legacy_dispatch_and_cron_headers_unauthenticated_post": {
+      "connector-alert-dispatcher": 401,
+      "connector-recovery-dispatcher": 401
+    },
+    "remaining_fixture_orgs": 0
+  },
+  "destination_records_before_and_after": {
+    "alerts": 5,
+    "deliveries": 8,
+    "recovery": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All security/performance WARN/ERROR counts unchanged. Unused-index INFO count decreased from 921 to 919 after fixture access. No index removed or new table/index created.",
+  "limits": [
+    "Preview explicitly requires one organization and active mapped native tenant admin. Optional connection filters must belong to that organization.",
+    "Delivery rows must join same-org alert/connection, active recipient membership, valid channel/open alert state and bounded recorded attempt/due metadata. Recovery rows must join the failed/partial job on the same connection.",
+    "UUID cursor pagination fetches at most 26 rows, returns at most 25 and exposes only IDs/status/attempt/due metadata; it is a live queue view, not a frozen multi-page snapshot.",
+    "Recorded due metadata is not sender/recipient identity, provider availability, connector readiness, successful delivery or safe retry execution.",
+    "No email, in-app notification, escalation enqueue, queue claim, attempt update, bot creation/login, temporary membership, connector invocation or schedule activation occurred. Real existing queues remain unchanged.",
+    "Legacy cron/dispatch-token modes cannot bypass native identity. Default dispatch/manual/scheduled requests return 409 after tenant authorization.",
+    "Sending requires verified recipients/sender, idempotent outbox and atomic claim. Recovery requires reviewed least-privilege worker authority, connector idempotency/readiness and completion reconciliation.",
+    "No customer-data copy, hosted app cutover, main merge, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 57,
+    "absent_snapshots": 29,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "email-webhook"
+}
