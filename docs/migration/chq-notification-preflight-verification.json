@@ -1,0 +1,147 @@
+{
+  "captured_at": "2026-10-06T13:06:05.578Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "chq-notify-booking",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "dfc3433c3f7bfba4519cb0f19ca2c59e181e1d5287d1043804ac96d30ae788a1"
+    },
+    {
+      "slug": "chq-notify-contractor",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "2ba3c9b62c6fe81a8631f06abc72dff74718574ea1179c4dff66f793196b4f82"
+    },
+    {
+      "slug": "chq-send-reminders",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "23e2fabb22466cb16939164f6503853b9d31dd496d62d12b80fbbd64d43f6d7b"
+    }
+  ],
+  "migration_version": "20261006130502",
+  "capability": "Native active tenant-admin notification readiness only. Legacy webhook payloads rejected; send/run blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_access_denial": "passed",
+    "spoofed_record_and_recipient_payload_rejection": "passed",
+    "no_chq_row_recipient_email_or_address_reads": "confirmed_by_code_review",
+    "no_delivery_attempt_or_notification_write": "passed",
+    "live_unauthenticated_posts": {
+      "chq-notify-booking": 401,
+      "chq-notify-contractor": 401,
+      "chq-send-reminders": 401
+    },
+    "remaining_fixture_orgs": 0
+  },
+  "counts": {
+    "source": {
+      "bookings": 0,
+      "jobs": 0,
+      "customers": 0,
+      "contractors": 0,
+      "notifications": 0
+    },
+    "destination": {
+      "bookings": 0,
+      "jobs": 0,
+      "customers": 0,
+      "contractors": 0,
+      "notifications": 0
+    }
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 921
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No existing CHQ table policy/grant changed and no new table/index introduced.",
+  "limits": [
+    "CHQ bookings, open jobs, customers and contractors lack organization_id; no tenant ownership was guessed from caller membership or payload claims.",
+    "Status reports readiness blockers only, reads no CHQ recipient/record data. Only a mapped native active tenant admin can request it.",
+    "Source JWT verification is disabled; all three destination endpoints require JWT verification and native getUser. Legacy unauthenticated webhook/scheduler integrations remain intentionally unsupported pending verified event authorization.",
+    "Sending and scheduler execution are disabled. No Resend key access, external request, notification receipt, success count, delivery attempt or recipient log is created.",
+    "Both source and destination contain zero bookings, open jobs, customers, contractors and notification records; this checkpoint copied no customer data.",
+    "Full workflows need explicit tenant ownership/RLS, verified event authorization/replay protection, scoped recipients and eligibility, verified sender, escaped templates, approved app links, idempotent outbox/provider result handling and reminder timezone/DST/deduplication rules.",
+    "No automatic reminder schedule, hosted app cutover, main merge, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 54,
+    "absent_snapshots": 32,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "chq-stripe"
+}
