@@ -27,4 +27,8 @@ const hScope={job_id:'job',lease:'lease',version:'v1',phase:'fetch',resource:'tr
 const handler=createHandler({createClient:clients,env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',XSTORE_ALLOWED_ORIGINS:'["https://xstore.example","https://identity.example"]'}[n]),fetchImpl:async(url)=>{fetches++;if(url===cfg.token_url)return new Response('{"access_token":"server-token","token_type":"Bearer","expires_in":3600}',{headers:{'content-type':'application/json'}});return new Response('{"items":[{"transactionId":"one"}]}',{headers:{'content-type':'application/json'}});}});
 const request=()=>new Request('https://edge.test',{method:'POST',headers:{Authorization:'Bearer caller'},body:JSON.stringify({action:'sync',connection_id:'11111111-1111-4111-8111-111111111111'})});
 assert.equal((await handler(request())).status,202);assert.equal((await handler(request())).status,200);assert.equal(fetches,2);
+
+next=false;
+const blocked=createHandler({createClient:(u,k,o)=>{assert.notEqual(k,'service');return clients(u,k,o);},env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',XSTORE_ALLOWED_ORIGINS:'[]'}[n]),fetchImpl:async()=>{throw Error('provider_should_not_be_called');}});
+const denied=await blocked(request());assert.equal(denied.status,503);assert.equal((await denied.json()).job_id,'job');
 console.log('Resumable Xstore runner passed: Basic OAuth, JSON-only normalized records, strict bounded page shapes, same endpoint pagination, server-only credentials, scoped ingestion, cursor-preserving retries, scope rechecks and full bridge failure counts/cursors.');

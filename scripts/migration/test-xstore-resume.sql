@@ -210,4 +210,33 @@ DO $$ DECLARE r jsonb;BEGIN
  IF r->>'done'<>'true' OR r->>'status'<>'failed' THEN RAISE EXCEPTION 'page_limit_not_terminal';END IF;
 END $$;
 RESET ROLE;
+
+-- Resource order is canonical; loss of native mapping verification denies both caller and service.
+UPDATE tj.platform_connector_connections SET settings=jsonb_set(settings,'{xstore_api,endpoints}','{"customers":"customers","transactions":"transactions"}') WHERE id=current_setting('test.xstore.connection')::uuid;
+UPDATE tj_private.xstore_sync_contracts SET config_digest=(SELECT encode(sha256(convert_to((settings->'xstore_api')::text,'UTF8')),'hex') FROM tj.platform_connector_connections WHERE id=current_setting('test.xstore.connection')::uuid) WHERE connection_id=current_setting('test.xstore.connection')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_xstore_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.xstore.connection'),'resources','["transactions","customers"]'::jsonb));
+ IF r->>'resource'<>'customers' THEN RAISE EXCEPTION 'resource_order_not_canonical';END IF;
+ PERFORM set_config('test.xstore.job',r->>'job_id',true);PERFORM set_config('test.xstore.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+SELECT public.aiq_xstore_sync_finish(current_setting('test.xstore.connection')::uuid,current_setting('test.xstore.native')::uuid,current_setting('test.xstore.job')::uuid,current_setting('test.xstore.lease')::uuid,'{"kind":"retry"}');
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_xstore_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.xstore.connection'),'job_id',current_setting('test.xstore.job'),'resources','["customers","transactions"]'::jsonb));
+ IF r->>'resource'<>'customers' THEN RAISE EXCEPTION 'reordered_resource_resume_failed';END IF;
+ PERFORM set_config('test.xstore.lease',r->>'lease',true);
+END $$;
+RESET ROLE;
+UPDATE tj.source_user_identity_map SET identity_verified=false WHERE target_user_id=current_setting('test.xstore.native')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN
+ BEGIN PERFORM public.tj_xstore_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.xstore.connection')));RAISE EXCEPTION 'unverified_identity_claim_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+END $$;
+SET LOCAL ROLE service_role;
+DO $$ BEGIN
+ BEGIN PERFORM public.aiq_xstore_sync_context(current_setting('test.xstore.connection')::uuid,current_setting('test.xstore.native')::uuid,current_setting('test.xstore.job')::uuid,current_setting('test.xstore.lease')::uuid);RAISE EXCEPTION 'unverified_identity_secret_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+END $$;
+RESET ROLE;
 ROLLBACK;
