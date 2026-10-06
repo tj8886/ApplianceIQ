@@ -1,0 +1,118 @@
+{
+  "captured_at": "2026-10-06T19:09:58.253Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "retailvantage-performance-bridge",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "df0fe53ea8a038beb3baa3f0142817d2f03f110a4fcfeb0524ede0c834715bc9"
+  },
+  "migration_version": "20261006190851",
+  "capability": "Native scoped RetailVantage connection readiness only; financial ingestion and metric refresh blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_org_connection_unmapped_nonadmin_denial": "passed",
+    "caller_financial_payload_rejection": "passed",
+    "imported_settings_and_credentials_not_trusted": "passed",
+    "bridge_blocked": "passed",
+    "restricted_grants": "passed",
+    "no_financial_facts_sync_jobs_cursor_or_success_markers": "passed",
+    "unauthenticated_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "connections": 0,
+    "pos_transactions": 0,
+    "line_facts": 0,
+    "sales_transactions": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "WARN/ERROR counts unchanged. INFO counts recorded; no index removed or existing policy/grant changes.",
+  "limits": [
+    "Native verified activated identity and active same-org admin required for connection scope; connector must be RetailVantage and optional org must match.",
+    "Status returns IDs and blockers only; no settings/credential/financial/employee/customer payload or verified provider assertion.",
+    "Default/bridge HTTP 409 with executed=false, transactions_processed=0, line_facts_created=0 and metrics_refreshed=false. No financial input parsing, mapping lookup, ingestion or metric refresh.",
+    "Execution requires verified ingestion event identity, reviewed connection-scoped location/employee mapping, strict date/timezone/currency/numeric/revenue-cost contract, connection-scoped idempotency, atomic transaction-line-sales reconciliation and scoped metrics.",
+    "Source random transaction identity/current-date fallback, header-plus-line cost double count, unknown costs as zero and unchecked partial writes are not enabled.",
+    "No customer-data copy, hosted cutover, main merge, schedules, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 71,
+    "absent_snapshots": 15,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "retailvantage-sync"
+}
