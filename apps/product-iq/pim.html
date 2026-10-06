@@ -1830,61 +1830,40 @@ window.runBatchEnrich = runBatchEnrich;
 // ── INTELLIGENCE FETCHERS (AI-powered with web search) ──
 const INTEL_URL = SB_URL + '/functions/v1/fetch-intelligence';
 
-function getAnthropicKey() {
-  let key = localStorage.getItem('aiq_anthropic_key');
-  if (!key) {
-    key = prompt('Enter your Anthropic API key (needed for AI intelligence search):');
-    if (key) localStorage.setItem('aiq_anthropic_key', key);
-  }
-  return key;
+async function requestIntelligence(type, query) {
+  const status = document.getElementById('intelFetchStatus');
+  status.textContent = 'Researching cited sources…';
+  try {
+    const {data:{session}} = await sb.auth.getSession();
+    if (!session) throw new Error('Sign in before researching intelligence.');
+    const response = await fetch(INTEL_URL, {method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,apikey:SB_KEY},body:JSON.stringify({type,...(query?{query}:{})})});
+    const result = await response.json();
+    if (!response.ok || result.error) throw new Error(result.error || 'Research failed.');
+    status.replaceChildren();
+    const message = document.createElement('p');
+    message.textContent = 'Saved '+(result.proposals_saved||0)+' research proposals for review. News and recall records remain unchanged.';
+    status.appendChild(message);
+    if(result.request_id){const ref=document.createElement('p');ref.textContent='Research reference: '+result.request_id;status.appendChild(ref);}
+    for(const item of result.results||[]){
+      const row=document.createElement('div'),title=document.createElement('strong'),summary=document.createElement('p'),source=document.createElement('a');
+      title.textContent=item.headline||item.title||'Research proposal';
+      summary.textContent=item.summary||[item.hazard,item.remedy].filter(Boolean).join(' ');
+      const url=new URL(item.url);if(url.protocol!=='https:')continue;
+      source.href=url.toString();source.textContent=item.source_name||item.source||'Source';source.target='_blank';source.rel='noopener noreferrer';
+      row.append(title,summary,source);status.appendChild(row);
+    }
+  } catch (error) {status.textContent='Research failed: '+error.message;}
 }
-
 async function fetchNewIntelligence() {
-  const key = getAnthropicKey(); if (!key) return;
-  const query = document.getElementById('intelQuery')?.value;
-  if (!query) { document.getElementById('intelFetchStatus').innerHTML = '⚠️ Enter a search query first'; return; }
-  const status = document.getElementById('intelFetchStatus');
-  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Searching with AI + web search…';
-  try {
-    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, type: 'general', anthropic_key: key }) });
-    const result = await resp.json();
-    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
-    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> items, saved <strong>' + result.items_saved + '</strong> new entries';
-    if (result.items_saved > 0) { intelLoaded = false; loadIntelligence(); }
-  } catch (e) { status.innerHTML = '❌ ' + e.message; }
+  const query=document.getElementById('intelQuery')?.value?.trim();
+  if(!query){document.getElementById('intelFetchStatus').textContent='Enter a search query first.';return;}
+  await requestIntelligence('general',query);
 }
-window.fetchNewIntelligence = fetchNewIntelligence;
-
-async function fetchIndustryNews() {
-  const key = getAnthropicKey(); if (!key) return;
-  const status = document.getElementById('intelFetchStatus');
-  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Fetching latest industry news…';
-  try {
-    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'news', anthropic_key: key }) });
-    const result = await resp.json();
-    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
-    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> news articles, saved <strong>' + result.items_saved + '</strong> new';
-    if (result.items_saved > 0) { intelLoaded = false; loadIntelligence(); }
-  } catch (e) { status.innerHTML = '❌ ' + e.message; }
-}
-window.fetchIndustryNews = fetchIndustryNews;
-
-async function fetchLatestRecalls() {
-  const key = getAnthropicKey(); if (!key) return;
-  const status = document.getElementById('intelFetchStatus');
-  status.innerHTML = '<div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:6px;vertical-align:middle"></div>Scanning for new recalls…';
-  try {
-    const resp = await fetch(INTEL_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'recalls', anthropic_key: key }) });
-    const result = await resp.json();
-    if (result.error) { status.innerHTML = '❌ ' + result.error; return; }
-    status.innerHTML = '✅ Found <strong>' + result.items_found + '</strong> recalls, saved <strong>' + result.items_saved + '</strong> new';
-    if (result.items_saved > 0) { recallsLoaded = false; loadRecalls(); }
-  } catch (e) { status.innerHTML = '❌ ' + e.message; }
-}
-window.fetchLatestRecalls = fetchLatestRecalls;
+async function fetchIndustryNews(){await requestIntelligence('news');}
+async function fetchLatestRecalls(){await requestIntelligence('recalls');}
+window.fetchNewIntelligence=fetchNewIntelligence;
+window.fetchIndustryNews=fetchIndustryNews;
+window.fetchLatestRecalls=fetchLatestRecalls;
 
 // ── INTELLIGENCE PAGE ──
 let intelLoaded = false;
