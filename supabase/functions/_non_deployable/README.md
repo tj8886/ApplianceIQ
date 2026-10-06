@@ -103,3 +103,5 @@ MDF email source is superseded by native tenant-admin readiness in `mdf-send-ema
 Performance recording review is superseded by native scoped metadata preflight in `performance-recording-review`. Consent and transcript organization/recording/status links are enforced. No transcript text, provider request, score or review write is enabled.
 
 PIM batch enrichment source is superseded by native tenant-admin readiness in `pim-batch-enrich`. Cross-tenant selection, unverified manufacturer scraping and offer-price-as-MSRP writes remain blocked pending evidence, region/currency/model validation and atomic scoped publishing controls.
+
+Product detail enrichment is superseded by native tenant-admin readiness in `product-detail-enrich`, with JWT verification enabled. Caller URLs, global candidate selection, partial extraction, unchecked multi-table writes and existing-spec overwrites remain blocked pending scoped evidence validation and atomic updates.
