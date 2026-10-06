@@ -1,0 +1,97 @@
+{
+  "captured_at": "2026-10-06T01:40:16.231Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "epass-performance-bridge",
+  "version": 2,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006013655"
+  ],
+  "checks": {
+    "handler": "passed",
+    "live_metric_rollback": "passed",
+    "live_bridge_regression_rollback": "passed",
+    "live_unauthenticated_http": 401,
+    "persisted_reconciliation_approvals": 0
+  },
+  "behavior": "Read-only bounded metric preview from current reconciled invoice facts, explicit IANA calendar timezone, reviewed active employee attribution, unknown costs preserved. Tenant-wide apply requires complete POS coverage and an unexpired administrator reconciliation approval matching the exact evidence digest; atomic bounded snapshot replacement is idempotent and preserves unrelated subtypes.",
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 601
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 912
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "Existing WARN/ERROR and performance counts unchanged; private approval table increases RLS-without-policy INFO from 600 to 601 and revokes all direct API role privileges.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "No production reconciliation approval exists; production metric writes remain gated.",
+    "Automatic ePASS polling/sync remains pending; no real provider request or signed-in browser execution was performed.",
+    "Real header/line/refund evidence, legacy duplication, mixed-provider receipt coverage and destination calendar scope require reconciliation before dashboard activation.",
+    "Final data and Storage deltas, hosted cutover and source retirement remain pending."
+  ]
+}
