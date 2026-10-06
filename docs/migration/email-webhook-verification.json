@@ -1,0 +1,62 @@
+{
+  "captured_at": "2026-10-06T14:22:03.523Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "email-webhook",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": false,
+    "hash": "43f29590fd451a4dac334ff27278d08d8f112346057bc3880b13fefdeed5d30e"
+  },
+  "capability": "Bounded exact raw-body Svix HMAC validation only; every supported signed event remains retryably blocked, not acknowledged or written.",
+  "checks": {
+    "independent_node_hmac_signature_tests": "passed",
+    "raw_bytes_whitespace_reserialization_and_id_tamper_rejection": "passed",
+    "past_future_300_second_boundary_and_301_second_denial": "passed",
+    "malformed_timestamp_and_signature_header_rejection": "passed",
+    "multiple_signature_candidates_and_max_eight": "passed",
+    "signed_invalid_json_schema_and_unknown_event_rejection": "passed",
+    "body_262144_byte_limit_and_oversized_stream_cancel": "passed",
+    "destination_only_secret_and_no_source_secret_adoption": "passed",
+    "redacted_retryable_503_no_acknowledgement": "passed",
+    "live_unsigned_post": 401,
+    "live_fake_signature_post": 503,
+    "live_destination_configuration": "RESEND_US_WEBHOOK_SECRET not configured"
+  },
+  "schema_assessment": {
+    "source_and_destination_existing": [
+      "communication_audit_events",
+      "communication_email_messages",
+      "communication_templates",
+      "communication_webhook_events"
+    ],
+    "source_and_destination_missing": [
+      "communication_email_threads",
+      "communication_email_attachments",
+      "communication_record_links"
+    ],
+    "source_and_destination_counts": {
+      "events": 0,
+      "messages": 0
+    },
+    "ddl_changes": 0
+  },
+  "limits": [
+    "Gateway verify_jwt=false is necessary for external provider callbacks. POST raw-body HMAC and timestamp checks guard the handler; bearer tokens do not authorize callbacks.",
+    "A fresh destination-only RESEND_US_WEBHOOK_SECRET must be configured through provider endpoint registration; the Canada signing key is never read or adopted. No registration/secret change was performed.",
+    "Supported signed callbacks receive 503 with processed=false,recorded=false,associated=false while processing is disabled. No 2xx acknowledgement discards events prematurely; malformed authenticated payloads are 400/422.",
+    "Raw event body max 256 KiB, bounded ID/timestamp/signature headers and at most eight signature candidates. No secret/signature/email/body logging.",
+    "No database client or external provider call exists in this checkpoint. No thread fallback, global contact-email lookup, attachment download/storage, message status change, inbound association or audit write is reachable.",
+    "Both projects have the same existing schema gaps and zero webhook/message records. No customer-data copy or schema repair was claimed.",
+    "Processing requires reviewed provider-account/endpoint tenant routing, explicit message ownership, missing thread/attachment/link schema with tenant RLS, atomic replay receipts/finalization, event ordering and privacy review.",
+    "No DDL or grants changed; database advisors were not rerun for this code-only checkpoint.",
+    "No hosted app cutover, main merge, automatic schedule, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 58,
+    "absent_snapshots": 28,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "embed-knowledge"
+}
