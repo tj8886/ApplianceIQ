@@ -1,0 +1,113 @@
+{
+  "captured_at": "2026-10-06T11:39:25.638Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "oracle-xstore-performance-bridge",
+  "version": 1,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006113800"
+  ],
+  "checks": {
+    "handler": "passed",
+    "live_latest_revision_zero_unknown_cost_reviewed_mapping_two_connections_cursor_and_atomic_rollback": "passed",
+    "oracle_identity_dates_single_object_line_and_header_cost": "passed",
+    "ingestion_epass_and_xstore_setup_regressions": "passed",
+    "live_unauthenticated_post": 401,
+    "remaining_fixture_connections": 0,
+    "remaining_fixture_locations": 0,
+    "destination_xstore_credentials": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 607
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 924
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "All counts unchanged from the scoped Xstore setup checkpoint. Existing baseline findings remain documented.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "contract": {
+    "input": "Native admin connection_id, limit (1..100, default 25), after_external_id; no caller financial payload or metrics action.",
+    "source": "Latest tenant/connection-provenance transaction ingestion event for each external ID; normalized JSON receipt ID must equal ingestion external ID.",
+    "dates": "Explicit ISO date interpreted as UTC or ISO timestamp with offset; missing/ambiguous dates fail.",
+    "limits": {
+      "request_bytes": 8192,
+      "event_bytes": 262144,
+      "lines_per_receipt": 200,
+      "returned_errors": 20
+    },
+    "writes": "POS/sales/line facts atomic per receipt; stale line facts replaced. Receipt identity includes connection ID.",
+    "attribution": "Confirmed destination-reviewed same-connection location queue plus entity map; employee queue plus matching provider/store POS map and active organization member."
+  },
+  "limits": [
+    "No real provider, signed-in browser or import was run. Resumable Xstore sync remains gated; its existing dependency list is a workflow gate rather than deployed-function inventory.",
+    "Only normalized top-level JSON transaction events are supported. Raw nested XML/POSLog and refund event types need a reviewed adapter.",
+    "Header/line totals, refunds, retail timezone/calendar, inferred service categories and historical receipt duplication require reconciliation.",
+    "Sales facts currently use UTC dates; metric refresh is explicitly false and dashboard activation remains pending.",
+    "Prepared apps are not hosted; final data/Storage deltas, hosted cutover and source retirement remain pending."
+  ]
+}
