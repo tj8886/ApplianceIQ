@@ -111,3 +111,5 @@ Product IQ governance is superseded by native tenant-admin readiness in `product
 Product video discovery is superseded by native tenant-admin readiness in `product-video-discovery`. Legacy run-key authority, global job claims, unverified source/embed URLs and non-atomic completion are not enabled.
 
 RetailVantage performance bridge is superseded by native scoped connection readiness. Request financial payloads, fallback transaction IDs/dates, unreviewed mappings, cost double counting and partial multi-table writes remain blocked.
+
+RetailVantage sync is superseded by scoped native tenant-admin readiness in `retailvantage-sync`. Credential adoption, arbitrary authenticated endpoint requests, unbounded pagination URLs, 100-page truncation and premature completion markers remain blocked pending verified resumable provider controls.
