@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {createHandler as scraper} from '../../supabase/functions/scraper-write/handler.ts';
 import {createHandler as sequence} from '../../supabase/functions/sequence-executor/handler.ts';
-for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192]]){
+import {createHandler as shopify} from '../../supabase/functions/shopify-initial-sync/handler.ts';
+for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192],[shopify,'tj_shopify_initial_sync',8192]]){
  let valid=true,anonymous=false,calls=0,mode='success';
  const handler=factory({env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'public'}[n]),createClient:(u,k,opts)=>{
   assert.equal(k,'public');assert.equal(opts.global.headers.Authorization,'Bearer caller');
@@ -22,4 +23,4 @@ for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence
   mode=code;const r=await handler(req());assert.equal(r.status,status,code);assert(!JSON.stringify(await r.json()).includes('private'));
  }
 }
-console.log('Scraper and sequence handlers passed: native identity, legacy-key rejection, bounded streaming bodies, caller RPC only, safe errors and blocked sends.');
+console.log('Scraper, sequence and Shopify handlers passed: native identity, legacy-key rejection, bounded streaming bodies, caller RPC only, safe errors and blocked sends.');
