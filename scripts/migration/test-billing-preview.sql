@@ -1,0 +1,51 @@
+begin;set local statement_timeout='30s';
+do $$declare native uuid;actor uuid;org uuid;foreign_org uuid;begin
+ select im.target_user_id,im.source_user_id into native,actor from tj.source_user_identity_map im join tj.organization_members m on m.user_id=im.source_user_id join tj.organizations o on o.id=m.organization_id where im.activation_status='activated' and m.status='active' and m.role in ('owner','admin') and o.status='active' and o.deleted_at is null limit 1;
+ if native is null then raise exception 'missing_fixture';end if;
+ insert into tj.organizations(name,slug,billing_currency,stripe_customer_id,stripe_subscription_id,billing_email) values('Rollback billing preview','rollback-billing-'||gen_random_uuid(),'cad','cus_PRIVATE','sub_PRIVATE','private@example.invalid') returning id into org;
+ insert into tj.organization_members(organization_id,user_id,role,status) values(org,actor,'admin','active');
+ delete from tj.org_app_entitlements where organization_id=org;
+ insert into tj.org_app_entitlements(organization_id,app_key,price_cents_monthly,status,canceled_at,metadata) values(org,'crm',1500,'active',null,'{"private":"NEVER-RETURN"}'),(org,'analytics',2500,'active',null,'{}'),(org,'spec_iq',0,'active',null,'{}'),(org,'iq_academy',9999,'suspended',null,'{}'),(org,'ai_coach',9999,'active',now(),'{}');
+ insert into tj.organizations(name,slug,billing_currency) values('Rollback foreign billing','rollback-billing-foreign-'||gen_random_uuid(),'usd') returning id into foreign_org;
+ perform set_config('request.jwt.claim.sub',native::text,true);perform set_config('test.billing.native',native::text,true);perform set_config('test.billing.actor',actor::text,true);perform set_config('test.billing.org',org::text,true);perform set_config('test.billing.foreign',foreign_org::text,true);
+end $$;
+set local role authenticated;
+do $$declare r jsonb;act text;begin
+ r:=public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org'),'action','preview'));
+ if r->>'monthly_cents'<>'4000' or r->>'items'<>'3' or r->>'currency'<>'cad' or r->>'pricing_valid'<>'true' or r->>'billing_enabled'<>'false' or r->>'executed'<>'false' or r->>'stripe_verified'<>'false' or r::text like '%PRIVATE%' or r::text like '%NEVER-RETURN%' or r::text like '%example.invalid%' then raise exception 'preview_totals_or_privacy_failed';end if;
+ foreach act in array array['create_checkout','create_portal','sync_subscription'] loop
+  r:=public.tj_billing_preview(jsonb_build_object('action',act,'organization_id',current_setting('test.billing.org'),'return_url','https://evil.example'));
+  if r->>'error'<>'stripe_destination_verification_required' or r->>'ok'<>'false' or r->>'synced'<>'false' or r ? 'url' then raise exception 'billing_write_accepted';end if;
+ end loop;
+ begin perform public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.foreign')));raise exception 'foreign_org_accepted';exception when insufficient_privilege then null;end;
+ begin perform public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org'),'price_cents',1));raise exception 'caller_price_accepted';exception when invalid_parameter_value then null;end;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);begin perform public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org')));raise exception 'unmapped_accepted';exception when insufficient_privilege then null;end;perform set_config('request.jwt.claim.sub',current_setting('test.billing.native'),true);
+end $$;
+reset role;
+update tj.org_app_entitlements set price_cents_monthly=-1 where organization_id=current_setting('test.billing.org')::uuid and app_key='crm';
+set local role authenticated;
+do $$declare r jsonb;begin r:=public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org')));if r->>'pricing_valid'<>'false' or r->>'monthly_cents' is not null then raise exception 'negative_price_accepted';end if;end $$;
+reset role;
+update tj.org_app_entitlements set price_cents_monthly=2147483647 where organization_id=current_setting('test.billing.org')::uuid and app_key in ('crm','analytics');
+set local role authenticated;
+do $$declare r jsonb;begin r:=public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org')));if r->>'monthly_cents'<>'4294967294' then raise exception 'integer_overflow';end if;end $$;
+reset role;
+update tj.organizations set billing_currency=null where id=current_setting('test.billing.org')::uuid;
+set local role authenticated;
+do $$declare r jsonb;begin r:=public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org')));if r->>'pricing_valid'<>'false' or r->>'monthly_cents' is not null or r->>'currency' is not null then raise exception 'currency_guessed';end if;end $$;
+reset role;
+update tj.organizations set billing_currency='usd',status='suspended' where id=current_setting('test.billing.org')::uuid;
+set local role authenticated;
+do $$begin begin perform public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org')));raise exception 'inactive_org_accepted';exception when insufficient_privilege then null;end;end $$;
+reset role;
+update tj.organizations set status='active' where id=current_setting('test.billing.org')::uuid;
+update tj.organization_members set role='member' where organization_id=current_setting('test.billing.org')::uuid and user_id=current_setting('test.billing.actor')::uuid;
+set local role authenticated;
+do $$begin begin perform public.tj_billing_preview(jsonb_build_object('organization_id',current_setting('test.billing.org')));raise exception 'nonadmin_accepted';exception when insufficient_privilege then null;end;end $$;
+reset role;
+do $$declare f text;r text;begin
+ foreach f in array array['public.tj_billing_preview(jsonb)','tj_private.billing_preview(jsonb)'] loop foreach r in array array['anon','service_role'] loop if has_function_privilege(r,f,'EXECUTE') then raise exception 'unsafe_grants';end if;end loop;end loop;
+ if not exists(select 1 from tj.organizations where id=current_setting('test.billing.org')::uuid and stripe_customer_id='cus_PRIVATE' and stripe_subscription_id='sub_PRIVATE') then raise exception 'stripe_links_mutated';end if;
+end $$;
+rollback;
+select jsonb_build_object('passed',true,'fixture','billing preview','persisted_rows',0) verification;
