@@ -113,3 +113,5 @@ Product video discovery is superseded by native tenant-admin readiness in `produ
 RetailVantage performance bridge is superseded by native scoped connection readiness. Request financial payloads, fallback transaction IDs/dates, unreviewed mappings, cost double counting and partial multi-table writes remain blocked.
 
 RetailVantage sync is superseded by scoped native tenant-admin readiness in `retailvantage-sync`. Credential adoption, arbitrary authenticated endpoint requests, unbounded pagination URLs, 100-page truncation and premature completion markers remain blocked pending verified resumable provider controls.
+
+Schema dump is superseded by native tenant-admin readiness in `schema-dump`. Fixed URL-key export, absent historical snapshot-table reads and incomplete 200-response backups remain blocked pending verified operator authority, export integrity and restore validation.
