@@ -1,3 +1,4 @@
+import {runStep} from './runner.ts';
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store'};
 export function approvedEpassEndpoint(base:string,path:string,origins:string|undefined){
  let allow;try{allow=JSON.parse(origins??'[]');}catch{throw new Error('epass_origin_not_approved');}
@@ -17,6 +18,14 @@ export function createHandler({createClient,env,fetchImpl=fetch}:{createClient:a
    let body;try{body=JSON.parse(raw);}catch{return reply({error:'invalid_json'},400);}
    if(!body||typeof body!=='object'||Array.isArray(body)||!['status','configure','test','sync'].includes(body.action??'status')||typeof body.connection_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.connection_id))return reply({error:'invalid_request'},400);
    const scope=await user.rpc('tj_epass_setup',{p_body:body});if(scope.error)return failure(scope.error);if(scope.data?.ok===false)return reply(scope.data,409);
+   if(body.action==='sync'){
+    if(scope.data?.done)return reply(scope.data);
+    let endpoint;try{endpoint=approvedEpassEndpoint(scope.data.configuration.base_url,scope.data.configuration.endpoints[scope.data.resource]??Object.values(scope.data.configuration.endpoints)[0],env('EPASS_ALLOWED_ORIGINS'));}catch{return reply({error:'epass_origin_not_approved',job_id:scope.data.job_id},503);}
+    const service=createClient(env('SUPABASE_URL'),env('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false}});
+    const result=await runStep({user,service,native:identity.data.user.id,body,scope:scope.data,endpoint,fetchImpl});
+    if(result.error){if(result.error.code==='502')return reply({error:'epass_step_failed',job_id:scope.data.job_id,resumable:true},502);return failure(result.error);}
+    return reply(result.data,result.data?.done?200:202);
+   }
    if(body.action!=='test')return reply(scope.data);
    const cfg=scope.data.configuration;let endpoint;
    try{const paths=Object.values(cfg.endpoints??{});endpoint=approvedEpassEndpoint(cfg.base_url,String(paths[0]??''),env('EPASS_ALLOWED_ORIGINS'));}catch{return reply({error:'epass_origin_not_approved'},503);}

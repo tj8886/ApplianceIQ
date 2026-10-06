@@ -15,7 +15,7 @@ DO $$ DECLARE r jsonb;conn text:=current_setting('test.epass.connection');bad js
  END LOOP;
  r:=public.tj_epass_setup(jsonb_build_object('action','configure','connection_id',conn,'base_url','https://epass.example/api','endpoints',jsonb_build_object('customers','customers'),'credential',jsonb_build_object('api_key','rollback-synthetic')));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'configure_failed';END IF;
  r:=public.tj_epass_setup(jsonb_build_object('connection_id',conn));IF r::text LIKE '%rollback-synthetic%' OR r#>>'{configuration,configured}'<>'true' THEN RAISE EXCEPTION 'credential_leak_or_missing';END IF;PERFORM set_config('test.epass.version',r->>'version',true);
- r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',conn));IF r->>'ok'<>'false' OR r->>'error'<>'epass_import_dependencies_pending' THEN RAISE EXCEPTION 'sync_false_ready';END IF;
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',conn));IF r->>'ok'<>'false' OR r->>'error'<>'epass_destination_verification_required' THEN RAISE EXCEPTION 'sync_false_ready';END IF;
  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);BEGIN PERFORM public.tj_epass_setup(jsonb_build_object('connection_id',conn));RAISE EXCEPTION 'unmapped_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
  PERFORM set_config('request.jwt.claim.sub',current_setting('test.epass.native'),true);
 END $$;
