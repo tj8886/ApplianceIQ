@@ -10,8 +10,9 @@ export function createHandler({createClient,env}:{createClient:any;env:(n:string
    const raw=await req.text();if(new TextEncoder().encode(raw).length>8192)return reply({error:'body_too_large'},413);
    let body;try{body=JSON.parse(raw);}catch{return reply({error:'invalid_json'},400);}
    if(!body||typeof body!=='object'||Array.isArray(body))return reply({error:'invalid_body'},400);
-   const result=await user.rpc('tj_epass_performance_bridge',{p_body:body});
-   if(result.error){const status=({'42501':403,'40001':409,'22023':400,'22P02':400,'22007':400,'22008':400} as Record<string,number>)[result.error.code]??500;return reply({error:status===403?'organization_access_denied':status===409?'connection_not_ready':status===400?'invalid_record':'bridge_operation_failed'},status);}
+   if(body.action!==undefined&&body.action!=='refresh_metrics')return reply({error:'invalid_action'},400);
+   const result=await user.rpc(body.action==='refresh_metrics'?'tj_epass_metric_refresh':'tj_epass_performance_bridge',{p_body:body});
+   if(result.error){const status=({'42501':403,'40001':409,'22023':400,'22P02':400,'22007':400,'22008':400,'54000':409} as Record<string,number>)[result.error.code]??500;return reply({error:status===403?'organization_access_denied':status===409?'connection_not_ready':status===400?'invalid_record':'bridge_operation_failed'},status);}
    return reply(result.data,result.data?.ok===false?207:200);
   }catch{return reply({error:'bridge_operation_failed'},500);}
  };
