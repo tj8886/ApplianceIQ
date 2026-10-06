@@ -97,3 +97,5 @@ US East email-webhook checkpoint (2026-10-06): deployable `email-webhook` now ve
 US East file governance checkpoint (2026-10-06): file-scanner and file-url-mint now deploy native tenant-admin readiness only. Source and destination both lack file_assets/file_access_events/signed_url_nonces/v_files_pending_scan and nonce functions. Scanning, clean classifications, legacy nonce adoption and Storage URL issuance remain blocked; the historical implementations are not deployable as live workflows.
 
 MDF billing source is superseded by native tenant-admin readiness in `mdf-billing`. Checkout, billing portal and unsigned subscription-webhook writes remain blocked pending explicit MDF/core identity mapping and verified provider contracts.
+
+MDF email source is superseded by native tenant-admin readiness in `mdf-send-email`. Arbitrary recipient/body submissions, global queue processing and global expiry writes remain blocked pending verified tenant ownership, delivery controls and worker authority.
