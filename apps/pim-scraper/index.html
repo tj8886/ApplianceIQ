@@ -265,7 +265,6 @@ const _rawSb = createClient(SB_URL, SB_KEY);
 
 /* ═══ WRITE PROXY — routes all writes through scraper-write edge function ═══ */
 const WRITE_PROXY_URL = SB_URL + '/functions/v1/scraper-write';
-const PROXY_KEY = localStorage.getItem('aiq_scraper_proxy_key') || '';
 
 // Tables that the scraper-write edge function handles
 const PROXY_TABLES = new Set([
@@ -279,43 +278,42 @@ const PROXY_TABLES = new Set([
 ]);
 
 async function _proxyWrite(table, operation, data, opts = {}) {
-  const body = { table, operation, data };
-  if (opts.onConflict) body.conflict_columns = opts.onConflict;
-  if (opts.match) body.match = opts.match;
-
-  const headers = { 'Content-Type': 'application/json', 'apikey': SB_KEY };
-  // Primary auth: JWT from user session
-  if (currentSession?.access_token) {
-    headers['Authorization'] = 'Bearer ' + currentSession.access_token;
-  }
-  // Fallback: proxy key
-  if (PROXY_KEY) headers['x-proxy-key'] = PROXY_KEY;
-
-  try {
-    const res = await fetch(WRITE_PROXY_URL, { method: 'POST', headers, body: JSON.stringify(body) });
-    const json = await res.json();
-    if (!res.ok || json.error) {
-      return { data: null, error: { message: json.error || json.details || 'Proxy write failed', code: json.code || res.status, details: json.details, hint: json.hint } };
+  const parts = ['insert','upsert'].includes(operation) && Array.isArray(data)
+    ? Array.from({length: Math.ceil(data.length / 100)}, (_,i) => data.slice(i*100,(i+1)*100)) : [data];
+  let saved = [], count = 0;
+  if (!parts.length) return {data:[],error:null,count:0};
+  for (const part of parts) {
+    try {
+      const {data:auth,error:authError} = await _rawSb.auth.getSession();
+      if (authError || !auth?.session?.access_token) throw Error('Sign in before importing.');
+      const body = {table,operation,data:part};
+      if (opts.onConflict) body.conflict_columns = opts.onConflict;
+      if (opts.match) body.match = opts.match;
+      const res = await fetch(WRITE_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer '+auth.session.access_token},body:JSON.stringify(body)});
+      const json = await res.json();
+      if (!res.ok || json.error || json.ok !== true) throw Error(json.error || 'Import failed');
+      saved.push(...(json.data || [])); count += json.count || 0;
+    } catch(e) {
+      return {data:null,error:{message:e.message + (count ? ' ('+count+' rows were saved in earlier batches.)' : '')},count,partial:count>0};
     }
-    return { data: json.data || [], error: null, count: json.count };
-  } catch (e) {
-    return { data: null, error: { message: 'Write proxy network error: ' + e.message } };
   }
+  return {data:saved,error:null,count};
 }
 
 // Create a chainable proxy that mimics Supabase's query builder API
 function _createWriteChain(table) {
   let _op = null, _data = null, _opts = {}, _match = {}, _selectCols = null;
-  let _wantSingle = false, _wantMaybeSingle = false;
+  let _wantSingle = false, _wantMaybeSingle = false, _filterError = null;
 
   function _execute() {
+    if (_filterError) return Promise.resolve({data:null,error:{message:_filterError}});
     if (!_op) return Promise.resolve({ data: null, error: { message: 'No operation specified' } });
     const o = { ..._opts };
     if (Object.keys(_match).length > 0) o.match = _match;
     return _proxyWrite(table, _op, _data, o).then(r => {
       // Filter columns if select was specified
       let d = r.data;
-      if (_selectCols && d && Array.isArray(d)) {
+      if (_selectCols && _selectCols !== '*' && d && Array.isArray(d)) {
         const cols = _selectCols.split(',').map(c => c.trim());
         d = d.map(row => {
           const filtered = {};
@@ -324,10 +322,11 @@ function _createWriteChain(table) {
         });
       }
       // Handle .single() / .maybeSingle()
-      if (_wantSingle || _wantMaybeSingle) {
-        d = Array.isArray(d) ? d[0] || null : d;
+      if (!r.error && (_wantSingle || _wantMaybeSingle)) {
+        if (!Array.isArray(d) || d.length > 1 || (_wantSingle && d.length !== 1)) return {data:null,error:{message:'Expected a single returned row'},count:r.count};
+        d = d[0] || null;
       }
-      return { data: d, error: r.error, count: r.count };
+      return { data: d, error: r.error, count: r.count, partial: r.partial || false };
     });
   }
 
@@ -339,13 +338,14 @@ function _createWriteChain(table) {
     eq(col, val) { _match[col] = val; return chain; },
     in(col, vals) { _match[col] = vals; return chain; },
     is(col, val) { _match[col] = val; return chain; },
-    neq() { return chain; },
+    neq() { _filterError = 'Unsupported write filter: neq'; return chain; },
     select(cols) { _selectCols = cols || '*'; return chain; },
     single() { _wantSingle = true; return chain; },
     maybeSingle() { _wantMaybeSingle = true; return chain; },
     then(resolve, reject) { return _execute().then(resolve, reject); },
     catch(fn) { return _execute().catch(fn); }
   };
+  for (const name of ['not','or','gte','gt','lte','lt','like','ilike','filter','match','contains','containedBy','overlaps','range','limit','order']) chain[name] = () => { _filterError = 'Unsupported write filter: '+name; return chain; };
   return chain;
 }
 

@@ -3342,7 +3342,7 @@ async function renderSettings(){
         +'<button class="btn btn-ghost btn-sm" id="setExpDeals">📤 Export Deals</button>'
         +'<button class="btn btn-ghost btn-sm" id="setExpTasks">📤 Export Tasks</button>'
         +'<button class="btn btn-ghost btn-sm" id="setCustFields">🔧 Custom Fields</button>'
-        +'<button class="btn btn-ghost btn-sm" id="setRunSeq">⚡ Run Sequences</button>'
+        +'<button class="btn btn-ghost btn-sm" id="setRunSeq">Preview sequences</button>'
       +'</div>'
     +'</div>'
     // Notifications
@@ -3374,8 +3374,15 @@ async function renderSettings(){
   $('#setExpTasks')?.addEventListener('click',exportTasks);
   $('#setCustFields')?.addEventListener('click',openCustomFieldsManager);
   $('#setRunSeq')?.addEventListener('click',async()=>{
-    toast('Running sequences…','');
-    try{const resp=await fetch(SUPABASE_URL+'/functions/v1/sequence-executor',{method:'POST',headers:{'Content-Type':'application/json'}});const data=await resp.json();toast('Sent '+data.sent+' emails'+(data.errors?' ('+data.errors+' errors)':''),'ok');}catch(e){toast('Error: '+(e.message||e),'err');}
+    toast('Previewing due sequence steps…','');
+    try {
+      const {data:auth,error:authError}=await sb.auth.getSession();
+      if(authError||!auth?.session?.access_token)throw Error('Sign in before previewing.');
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/sequence-executor',{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY,Authorization:'Bearer '+auth.session.access_token},body:JSON.stringify({action:'preview',organization_id:currentOrg.id})});
+      const data=await resp.json();
+      if(!resp.ok||data.ok!==true)throw Error(data.error||'Preview failed');
+      toast(data.count+' due steps found'+(data.next_cursor?' (more available)':'')+'. Email sending remains disabled.','ok');
+    } catch(e){toast('Error: '+(e.message||e),'err');}
   });
   // Team roles grid (admin only)
   if(isAdmin&&$('#roleGrid')){
