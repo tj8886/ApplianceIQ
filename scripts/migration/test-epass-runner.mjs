@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {parsePage,safePageUrl,runStep} from '../../supabase/functions/epass-sync/runner.ts';
+import {createHandler} from '../../supabase/functions/epass-sync/handler.ts';
 const endpoint='https://epass.example/api/invoices';
 assert.equal(safePageUrl(endpoint,'?page=2'),endpoint+'?page=2');
 for(const link of ['https://evil.example/api/invoices','https://epass.example/api/secrets','https://user:pass@epass.example/api/invoices','#hash','http://epass.example/api/invoices'])assert.throws(()=>safePageUrl(endpoint,link));
@@ -15,4 +16,15 @@ await step();assert.deepEqual(saved.at(-1),{kind:'page',processed:1,failed:2,nex
 for(mode of ['throw','scope','cycle']){const r=await step();assert.equal(r.error.code,'502');assert.deepEqual(saved.at(-1),{kind:'retry'});}
 contextError={code:'40001'};let count=ingested.length;assert.equal((await step()).error.code,'40001');assert.equal(ingested.length,count);contextError=null;
 scope={...scope,phase:'bridge',resource:null};await step();assert.equal(saved.at(-1).failed,30);assert.equal(saved.at(-1).next_cursor,'Z');assert.equal(saved.at(-1).has_more,true);
+let next=false,fetches=0;
+const clients=(url,key,opts)=>key==='service'?{rpc:async(name,args)=>{
+ if(name==='aiq_epass_sync_context')return {data:{...hScope,credential:{api_key:'private-synthetic'}}};
+ assert.equal(name,'aiq_epass_sync_finish');assert.equal(args.p_result.processed,1);next=true;return {data:{ok:true,job_id:'job',done:false,status:'running'}};
+}}:{auth:{getUser:async()=>({data:{user:{id:'native'}}})},rpc:async(name,args)=>{
+ assert.equal(opts.global.headers.Authorization,'Bearer caller');if(name==='tj_epass_setup')return {data:next?{done:true,status:'success',job_id:'job'}:hScope};assert.equal(name,'tj_connector_ingest');return {data:{ok:true}};
+}};
+const hScope={job_id:'job',lease:'lease',version:'v1',phase:'fetch',resource:'invoices',next_url:null,configuration:cfg};
+const handler=createHandler({createClient:clients,env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',EPASS_ALLOWED_ORIGINS:'["https://epass.example"]'}[n]),fetchImpl:async()=>{fetches++;return new Response('{"items":[{"invoice_id":"one"}]}',{headers:{'content-type':'application/json'}});}});
+const request=()=>new Request('https://edge.test',{method:'POST',headers:{Authorization:'Bearer caller'},body:JSON.stringify({action:'sync',connection_id:'11111111-1111-4111-8111-111111111111'})});
+assert.equal((await handler(request())).status,202);assert.equal((await handler(request())).status,200);assert.equal(fetches,1);
 console.log('Resumable ePASS runner passed: strict bounded page shapes, same endpoint pagination, server-only credentials, scoped ingestion, cursor-preserving retries, scope rechecks and full bridge failure counts/cursors.');

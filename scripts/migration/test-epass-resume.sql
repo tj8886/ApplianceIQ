@@ -133,4 +133,82 @@ RESET ROLE;
 DO $$ BEGIN
  IF has_function_privilege('anon','public.aiq_epass_sync_context(uuid,uuid,uuid,uuid)','EXECUTE') OR has_function_privilege('authenticated','public.aiq_epass_sync_finish(uuid,uuid,uuid,uuid,jsonb)','EXECUTE') OR has_table_privilege('authenticated','tj_private.epass_sync_contracts','SELECT') OR has_table_privilege('service_role','tj_private.epass_sync_runs','UPDATE') THEN RAISE EXCEPTION 'unsafe_sync_grants';END IF;
 END $$;
+
+-- Lease expiry, exact configuration binding, cancellation without current approval.
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.oldlease',r->>'lease',true);
+END $$;
+RESET ROLE;
+UPDATE tj_private.epass_sync_runs SET lease_until=clock_timestamp()-interval '1 second' WHERE job_id=current_setting('test.epass.job')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection'),'job_id',current_setting('test.epass.job')));IF r->>'lease'=current_setting('test.epass.oldlease') THEN RAISE EXCEPTION 'expired_lease_reused';END IF;PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+DO $$ BEGIN
+ BEGIN PERFORM public.aiq_epass_sync_context(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.oldlease')::uuid);RAISE EXCEPTION 'reclaimed_old_lease_accepted';EXCEPTION WHEN serialization_failure THEN NULL;END;
+END $$;
+RESET ROLE;
+UPDATE tj.platform_connector_connections SET settings=jsonb_set(settings,'{epass_api,api_key_header}','"X-New-Key"') WHERE id=current_setting('test.epass.connection')::uuid;
+SET LOCAL ROLE service_role;
+DO $$ BEGIN
+ BEGIN PERFORM public.aiq_epass_sync_context(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid);RAISE EXCEPTION 'unreviewed_config_change_accepted';EXCEPTION WHEN serialization_failure THEN NULL;END;
+END $$;
+SET LOCAL ROLE authenticated;
+SELECT public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection'),'job_id',current_setting('test.epass.job'),'cancel',true));
+RESET ROLE;
+UPDATE tj.platform_connector_connections SET settings=jsonb_set(settings,'{epass_api,api_key_header}','"X-API-Key"') WHERE id=current_setting('test.epass.connection')::uuid;
+
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+SELECT public.aiq_epass_sync_finish(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid,'{"kind":"retry"}');
+
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+SELECT public.aiq_epass_sync_finish(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid,'{"kind":"retry"}');
+
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+SELECT public.aiq_epass_sync_finish(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid,'{"kind":"retry"}');
+
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+SELECT public.aiq_epass_sync_finish(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid,'{"kind":"retry"}');
+
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+SET LOCAL ROLE service_role;
+SELECT public.aiq_epass_sync_finish(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid,'{"kind":"retry"}');
+
+RESET ROLE;
+DO $$ BEGIN
+ IF (SELECT status FROM tj.platform_sync_jobs WHERE id=current_setting('test.epass.job')::uuid)<>'failed' THEN RAISE EXCEPTION 'retry_limit_not_terminal';END IF;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_epass_setup(jsonb_build_object('action','sync','connection_id',current_setting('test.epass.connection')));PERFORM set_config('test.epass.job',r->>'job_id',true);PERFORM set_config('test.epass.lease',r->>'lease',true);
+END $$;
+RESET ROLE;
+UPDATE tj_private.epass_sync_runs SET pages=999 WHERE job_id=current_setting('test.epass.job')::uuid;
+SET LOCAL ROLE service_role;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.aiq_epass_sync_finish(current_setting('test.epass.connection')::uuid,current_setting('test.epass.native')::uuid,current_setting('test.epass.job')::uuid,current_setting('test.epass.lease')::uuid,'{"kind":"page","processed":1,"failed":0,"page_url":"https://epass.example/api/invoices","next_url":"https://epass.example/api/invoices?page=2"}');
+ IF r->>'done'<>'true' OR r->>'status'<>'failed' THEN RAISE EXCEPTION 'page_limit_not_terminal';END IF;
+END $$;
+RESET ROLE;
 ROLLBACK;
