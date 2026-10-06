@@ -1,0 +1,115 @@
+{
+  "captured_at": "2026-10-06T12:15:25.851Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "shopify-initial-sync",
+  "version": 1,
+  "status": "ACTIVE",
+  "verify_jwt": true,
+  "migration_version": "20261006121410",
+  "capability": "Tenant-admin preflight only; initial import remains blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "sql_rollback_native_scope_admin_unmapped_legacy_token_settings_domain_and_uninstall": "passed",
+    "safe_error_and_no_job_or_connection_activation": "passed",
+    "setup_ui_guard_and_script_parse": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_app_routing": "passed",
+    "live_unauthenticated_post": 401,
+    "remaining_fixture_connections": 0,
+    "remaining_fixture_jobs": 0,
+    "source_linked_stores": 0,
+    "destination_linked_stores": 0,
+    "source_shopify_connections": 2,
+    "destination_shopify_connections": 2
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 610
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 925
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "No new security findings or performance WARN findings. Unused-index INFO count decreased from 927 to 925 after tests; retain required indexes.",
+  "limits": [
+    "No provider request, token/Vault read, job creation, fact import, performance bridge call, connection activation or hosted app update.",
+    "Default sync returns HTTP 409 after scope checks. status returns redacted readiness with sync_ready=false, executed=false and imported_records=0.",
+    "Imported credential references, legacy inline tokens and destination_connection_verified settings never authorize an import.",
+    "Linked store, destination-owned credential/scope review, bounded resumable GraphQL adapter with nested pagination, financial/refund/location/staff reconciliation and performance bridge remain pending.",
+    "Shopify remains a pending complete-workflow dependency. Both projects have zero linked stores; there are no omitted store records to migrate.",
+    "Final source data/Storage deltas, hosted cutover, main merge and source retirement remain pending."
+  ],
+  "current_docs_reviewed": [
+    "https://shopify.dev/docs/apps/build/apis/graphql-admin/rate-limits",
+    "https://shopify.dev/docs/apps/build/apis/graphql-admin/bulk-operations/queries"
+  ],
+  "inventory": {
+    "deployed_snapshots": 45,
+    "absent_snapshots": 41,
+    "retired_snapshots": 1
+  },
+  "next_absent_literal_dependency": "storis-sync"
+}
