@@ -107,3 +107,5 @@ PIM batch enrichment source is superseded by native tenant-admin readiness in `p
 Product detail enrichment is superseded by native tenant-admin readiness in `product-detail-enrich`, with JWT verification enabled. Caller URLs, global candidate selection, partial extraction, unchecked multi-table writes and existing-spec overwrites remain blocked pending scoped evidence validation and atomic updates.
 
 Product IQ governance is superseded by native tenant-admin readiness in `product-iq-governance`. Search, edits, validation and related-record writes remain blocked pending destination authority verification, missing tenant-owned schema and atomic audited version checks.
+
+Product video discovery is superseded by native tenant-admin readiness in `product-video-discovery`. Legacy run-key authority, global job claims, unverified source/embed URLs and non-atomic completion are not enabled.
