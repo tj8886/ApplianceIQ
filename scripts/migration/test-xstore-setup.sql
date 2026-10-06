@@ -15,7 +15,7 @@ DO $$ DECLARE r jsonb;conn text:=current_setting('test.xstore.connection');bad j
  END LOOP;
  r:=public.tj_xstore_setup(jsonb_build_object('action','configure','connection_id',conn,'base_url','https://xstore.example/api','token_url','https://identity.example/oauth2/v1/token','endpoints',jsonb_build_object('customers','customers'),'client_id','synthetic-client','client_secret','rollback-synthetic','scope','synthetic-scope'));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'configure_failed';END IF;
  r:=public.tj_xstore_setup(jsonb_build_object('connection_id',conn));IF r::text LIKE '%rollback-synthetic%' OR r#>>'{configuration,configured}'<>'true' THEN RAISE EXCEPTION 'credential_leak_or_missing';END IF;PERFORM set_config('test.xstore.version',r->>'version',true);
- r:=public.tj_xstore_setup(jsonb_build_object('action','sync','connection_id',conn));IF r->>'ok'<>'false' OR r->>'error'<>'xstore_import_dependencies_pending' THEN RAISE EXCEPTION 'sync_false_ready';END IF;
+ r:=public.tj_xstore_setup(jsonb_build_object('action','sync','connection_id',conn));IF r->>'ok'<>'false' OR r->>'error'<>'xstore_destination_verification_required' THEN RAISE EXCEPTION 'sync_false_ready';END IF;
  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);BEGIN PERFORM public.tj_xstore_setup(jsonb_build_object('connection_id',conn));RAISE EXCEPTION 'unmapped_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
  PERFORM set_config('request.jwt.claim.sub',current_setting('test.xstore.native'),true);
 END $$;
