@@ -1,0 +1,29 @@
+{
+  "captured_at": "2026-10-06T01:58:19.324Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "fetch-intelligence",
+  "version": 1,
+  "verify_jwt": true,
+  "checks": {
+    "handler": "passed",
+    "live_governed_proposal_persistence_and_usage_rollback": "passed",
+    "live_product_governance_context_rollback": "passed",
+    "spec_enrichment_regression": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_pim_inline_script_parse": "passed",
+    "live_unauthenticated_http": 401
+  },
+  "behavior": "Native non-anonymous identity, Product IQ governance and mapped active organization are required before a bounded request. The configured standard server Anthropic model performs at most three web searches, then extracts at most ten research proposals from retrieved cited evidence. Citations must match actual search-result URLs; recency/date, required fields and official recall sources are checked. Tenant-owned governed requests persist proposals and token/search metadata without modifying shared news/recall facts. Prepared PIM sends session authorization, removes browser provider-key collection, and safely renders proposal sources.",
+  "limits": [
+    "No real provider request or signed-in browser run was performed. Actual configured model/search availability, provider account settings and end-to-end citations need verification.",
+    "Only official CPSC and Health Canada recall evidence is accepted; manufacturer-only or uncited recall assertions are rejected.",
+    "AI citations show provenance and do not prove every assertion. Proposals require review; an approved publish/apply workflow and saved-proposal retrieval remain pending.",
+    "Provider calls are bounded to two 45-second requests, 4096 output tokens each, 1 MiB response per call, three searches and ten items. Pause/tool errors or unsupported responses fail closed.",
+    "Tokens, including available cache usage, are metered through the existing completion broker. Search count is retained in proposal metadata; this change does not add a separate monetary search-charge meter.",
+    "No DDL, hosted app cutover, source retirement or final database/Storage delta transfer was performed."
+  ],
+  "references": [
+    "https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool",
+    "https://supabase.com/docs/guides/functions/auth-legacy-jwt"
+  ]
+}
