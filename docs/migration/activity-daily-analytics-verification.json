@@ -1,0 +1,127 @@
+{
+  "captured_at": "2026-10-06T12:40:56.465Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "activity-analyzer",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "capability": "Access and recording-consent preflight only."
+    },
+    {
+      "slug": "ai-analytics-daily",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "capability": "Manual native tenant-admin UTC daily rollup."
+    }
+  ],
+  "migration_version": "20261006123857",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback_usage_cost_feedback_gap_and_consent": "passed",
+    "more_than_500_conversations": 502,
+    "assistant_requests_before_unknown_cost_fixture": 505,
+    "utc_microsecond_end_boundary": "passed",
+    "same_org_parent_joins_and_foreign_feedback_exclusion": "passed",
+    "repeat_day_same_id_and_empty_day_zero_reset": "passed",
+    "missing_cost_nulls_unknown_tier_and_no_feedback_null_satisfaction": "passed",
+    "foreign_unmapped_nonadmin_and_unowned_activity_denial": "passed",
+    "unconsented_transcribe_process_coach_and_summary_denial": "passed",
+    "no_audio_access_provider_processing_or_recording_mutation": "passed",
+    "live_unauthenticated_post": {
+      "activity-analyzer": 401,
+      "ai-analytics-daily": 401
+    },
+    "remaining_fixture_orgs": 0,
+    "remaining_fixture_recordings": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 925
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All security and performance WARN/ERROR counts unchanged. Unused-index INFO count decreased from 926 to 925 after tests; retain required access indexes.",
+  "limits": [
+    "Daily rollup is manual and scoped to one native active tenant admin and one UTC date. No global bucket or unattended scheduler is supported/enabled.",
+    "Usage, feedback and knowledge-gap reads share one SQL statement snapshot. Existing unique index plus per-org/day transaction lock and atomic upsert make reruns consistent and idempotent.",
+    "Day bounds are [UTC midnight,next UTC midnight), avoiding missing fractional-second events. Assistant data is read via same-org conversation joins without the source's 500-conversation mapping cap.",
+    "Missing/invalid/negative/oversized cost metadata produces null total/affected tier costs, cost_complete=false and unknown_cost_requests. Unknown tiers are counted separately; no-feedback satisfaction is null. Old rows default to unverified cost_complete=false; consumers must handle these fields/null costs before dashboard cutover.",
+    "Activity processing remains gated pending provider/model governance, authorized storage/transcript ownership, atomic result finalization and input/output validation. No file, transcript, email or organizational knowledge content is returned by preflight.",
+    "Every recording-based processing mode checks same-org ownership and consent; process/transcribe additionally enforce file-size/duration bounds. No provider request, recording status change, transcript, coaching review or audit content was created.",
+    "No real tenant rollup was executed; all data writes in tests rolled back. No hosted app update, main merge, schedule activation, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 49,
+    "absent_snapshots": 37,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "aicrm-ai-enrichment-runner"
+}
