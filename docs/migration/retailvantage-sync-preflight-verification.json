@@ -1,0 +1,116 @@
+{
+  "captured_at": "2026-10-06T19:16:55.813Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "retailvantage-sync",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "8b308df2ff10b26171586c6389839f0a258947aa286168f1e8f3aea2b499cba9"
+  },
+  "migration_version": "20261006191540",
+  "capability": "Native scoped RetailVantage connection readiness only; configure, provider test and sync blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_org_connection_unmapped_nonadmin_denial": "passed",
+    "credential_auth_url_endpoint_resource_cursor_payload_rejection": "passed",
+    "imported_settings_and_credentials_not_trusted": "passed",
+    "configure_test_sync_blocked": "passed",
+    "restricted_grants": "passed",
+    "no_financial_facts_sync_jobs_cursor_or_success_markers": "passed",
+    "unauthenticated_sync_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "connections": 0,
+    "sync_jobs": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "WARN/ERROR counts unchanged. INFO counts recorded; no index removed or existing policy/grant changes.",
+  "limits": [
+    "Verified activated native identity and active same-org tenant admin required. Connector must be RetailVantage; optional org must agree.",
+    "Default/status returns connection/org IDs and blockers only. Imported refs/settings do not establish destination credential authority; no credential decryption.",
+    "Configure/test/sync returns HTTP 409 with executed=false, records_imported=0, sync_job_created=false, cursor_advanced=false, provider_verified=false. No Vault/config writes, OAuth/provider call, ingest/bridge call, job or connection marker change.",
+    "Full execution requires reviewed fresh destination credential/auth contract, approved HTTPS/token/redirect origins, allowlisted resources/same-origin pagination, bounded resumable pages/atomic checkpoints, stable source identity/dates/scope and truthful completion reconciliation.",
+    "Source absolute endpoint/pagination URLs can forward credentials; 100-page cap and initial-sync completion on partial results are not enabled.",
+    "No customer-data copy, hosted cutover, main merge, schedules, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 72,
+    "absent_snapshots": 14,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "schema-dump"
+}
