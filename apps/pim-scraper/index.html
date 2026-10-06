@@ -278,6 +278,7 @@ const PROXY_TABLES = new Set([
 ]);
 
 async function _proxyWrite(table, operation, data, opts = {}) {
+  if (SB_URL !== 'https://jdxslqmgjsuzoisuhvlc.supabase.co') return {data:null,error:{message:'Governed imports require the migrated US workspace.'},count:0};
   const parts = ['insert','upsert'].includes(operation) && Array.isArray(data)
     ? Array.from({length: Math.ceil(data.length / 100)}, (_,i) => data.slice(i*100,(i+1)*100)) : [data];
   let saved = [], count = 0;

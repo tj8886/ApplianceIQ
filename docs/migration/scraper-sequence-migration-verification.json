@@ -1,0 +1,134 @@
+{
+  "captured_at": "2026-10-06T12:08:45.614Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "scraper-write",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true
+    },
+    {
+      "slug": "sequence-executor",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true
+    }
+  ],
+  "migration_version": "20261006120520",
+  "checks": {
+    "handler_tests": "passed",
+    "scraper_client_tests": "passed",
+    "live_sql_rollback_fixture": "passed",
+    "all_seven_raw_tables": "passed",
+    "default_preservation_upsert_null_array_match_atomic_batch": "passed",
+    "reviewer_org_scoped_role_unmapped_and_foreign_denial": "passed",
+    "sequence_delay_future_action_cursor_cross_org_contact_and_step": "passed",
+    "no_send_and_no_mutation": "passed",
+    "source_app_scripts_parse": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_app_routing": "passed",
+    "live_unauthenticated_post": {
+      "scraper-write": 401,
+      "sequence-executor": 401
+    },
+    "remaining_fixture_orgs": 0,
+    "remaining_fixture_products": 0,
+    "remaining_fixture_enrollments": 0,
+    "audit_rows": 0,
+    "raw_noninternal_triggers": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 610
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 927
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Existing security ERROR/WARN and performance WARN findings are unchanged. The audit table adds one INFO RLS-without-policy finding intentionally: it is private, all direct API privileges are revoked, and only the checked broker inserts. Both foreign keys are indexed; no new missing-FK-index finding. Unused-index count decreased from 929 to 927 after tests; retain indexes for required access paths.",
+  "scope": [
+    "Seven shared raw tj tables only; unscoped active global data publisher/superadmin plus strictly verified activated mapped native identity and active organization required.",
+    "100 rows/request and bounded match set; 1 MiB request, 2 MiB response; request and audit atomic. UI chunks expose partial saves accurately.",
+    "Curated tables return governed_catalog_write_required; raw discovery cannot set aiq_product_id or organization/actor ownership columns.",
+    "Sequence previews require same-organization active admin and exact same-organization campaign/step/contact/account joins. Preview includes IDs/eligibility only, no recipient addresses or templates.",
+    "execute returns a blocked verification response; no mail provider, enrollment mutation or schedule is enabled.",
+    "Prepared clients reject the Canada endpoint before sending migration-specific import/preview requests."
+  ],
+  "limits": [
+    "No new customer data import was performed in this checkpoint; live data tests rolled back.",
+    "Curated scraper publishing workflow remains pending, so scraper-write stays a pending complete-workflow dependency.",
+    "Sequence sending and scheduled execution remain pending, so sequence-executor stays a pending complete-workflow dependency.",
+    "Hosted app cutover, signed-in browser/provider verification, final source deltas, main merge and source retirement remain pending."
+  ],
+  "inventory": {
+    "deployed_snapshots": 44,
+    "absent_snapshots": 42,
+    "retired_snapshots": 1,
+    "source_snapshot_drift": 0
+  },
+  "next_absent_literal_dependency": "shopify-initial-sync"
+}

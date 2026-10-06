@@ -3376,6 +3376,7 @@ async function renderSettings(){
   $('#setRunSeq')?.addEventListener('click',async()=>{
     toast('Previewing due sequence steps…','');
     try {
+      if(SUPABASE_URL!=='https://jdxslqmgjsuzoisuhvlc.supabase.co')throw Error('Sequence preview requires the migrated US workspace.');
       const {data:auth,error:authError}=await sb.auth.getSession();
       if(authError||!auth?.session?.access_token)throw Error('Sign in before previewing.');
       const resp=await fetch(SUPABASE_URL+'/functions/v1/sequence-executor',{method:'POST',headers:{'Content-Type':'application/json',apikey:SUPABASE_KEY,Authorization:'Bearer '+auth.session.access_token},body:JSON.stringify({action:'preview',organization_id:currentOrg.id})});
