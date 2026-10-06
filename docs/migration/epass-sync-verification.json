@@ -1,0 +1,100 @@
+{
+  "captured_at": "2026-10-06T01:11:13.141Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "epass-sync",
+  "deployed_version": 1,
+  "verify_jwt": true,
+  "migration_version": "20261006011005",
+  "checks": {
+    "handler": "passed",
+    "live_rollback_setup_vault_actor_and_version_guards": "passed",
+    "prepared_app_bundles": 11,
+    "live_unauthenticated_http": 401
+  },
+  "scope": "Status, Vault configuration and bounded origin-approved endpoint test migrated. Sync explicitly returns 409 until connector-ingest and epass-performance-bridge are migrated. No sync jobs or external records created.",
+  "connection_inventory": {
+    "epass_connections": 1,
+    "destination_credential_references": 0,
+    "configured_api_urls": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 600
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      }
+    ],
+    "performance": [
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      }
+    ],
+    "delta": "Only RLS-enabled/no-policy INFO increased by one for private epass_credentials; it is intentionally inaccessible to all API roles and accessed exclusively by guarded broker code. Existing WARN/ERROR findings unchanged.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "No real ePASS API call or signed-in browser workflow was executed.",
+    "EPASS_ALLOWED_ORIGINS must contain the verified provider origin before any credential-bearing fetch.",
+    "Destination ePASS credentials and API endpoints remain unconfigured.",
+    "Imports, performance metrics and onboarding verification remain blocked until dependencies migrate; source success and endpoint reachability do not activate the connection.",
+    "Hosted cutover and final source/Storage deltas remain pending."
+  ]
+}
