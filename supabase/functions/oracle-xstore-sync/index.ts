@@ -1,0 +1,4 @@
+import {createClient} from 'npm:@supabase/supabase-js@2.117.2';
+import {migratedEnvironment} from '../_shared/migrated-environment.ts';
+import {createHandler} from './handler.ts';
+Deno.serve(createHandler({createClient,env:n=>Deno.env.get(n),loadEnvironment:migratedEnvironment}));
