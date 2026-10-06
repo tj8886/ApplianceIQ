@@ -109,3 +109,5 @@ Product detail enrichment is superseded by native tenant-admin readiness in `pro
 Product IQ governance is superseded by native tenant-admin readiness in `product-iq-governance`. Search, edits, validation and related-record writes remain blocked pending destination authority verification, missing tenant-owned schema and atomic audited version checks.
 
 Product video discovery is superseded by native tenant-admin readiness in `product-video-discovery`. Legacy run-key authority, global job claims, unverified source/embed URLs and non-atomic completion are not enabled.
+
+RetailVantage performance bridge is superseded by native scoped connection readiness. Request financial payloads, fallback transaction IDs/dates, unreviewed mappings, cost double counting and partial multi-table writes remain blocked.
