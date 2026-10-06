@@ -1,0 +1,121 @@
+{
+  "captured_at": "2026-10-06T18:33:52.314Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "performance-recording-review",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "1314d24cf17e157d53219a8e94017daf8782e9c74aa276fa0e6b91d43024b72a"
+  },
+  "migration_version": "20261006161332",
+  "capability": "Native scoped recording consent and completed transcript metadata linkage only; AI review remains blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "unconsented_no_transcript_metadata_check": "passed",
+    "foreign_org_wrong_recording_and_failed_transcript_rejected": "passed",
+    "scoped_fallback_without_explicit_pointer": "passed",
+    "own_active_member_access": "passed",
+    "nonowner_nonadmin_suspended_and_unmapped_denial": "passed",
+    "raw_transcript_payload_rejected": "passed",
+    "no_private_path_text_model_or_transcript_id_returned": "passed",
+    "restricted_grants": "passed",
+    "existing_recording_transcript_review_hashes_unchanged": "passed",
+    "no_status_or_review_pointer_mutation": "passed",
+    "unauthenticated_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "recordings": 3,
+    "transcripts": 0,
+    "reviews": 6
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No new table/index or existing policy/grant changes.",
+  "limits": [
+    "Native activated mapped identity must be an active organization member and recording owner or same-org admin; manager delegation remains pending.",
+    "Consent is required before transcript metadata checking. Status can report consent=false; default review returns HTTP 409 consent_required.",
+    "Explicit transcript pointers must match tenant, recording and completed status. Fallback only when no pointer is supplied selects newest completed same-org same-recording metadata. No content read; linkage does not assert nonempty or trustworthy content.",
+    "Default review is blocked with completed_transcript_required or recording_review_verification_required; no provider call, transcript/audio text read, score, review insert or recording marker change.",
+    "Execution requires transcript provenance/version/privacy, provider/tier/cost verification, complete finite competency scores with transcript-grounded evidence and atomic idempotent finalization with renewed consent verification.",
+    "No customer-data copy, hosted cutover, main merge, schedule, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 66,
+    "absent_snapshots": 20,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "pim-batch-enrich"
+}
