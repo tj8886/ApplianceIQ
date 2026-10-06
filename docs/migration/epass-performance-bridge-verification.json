@@ -1,0 +1,103 @@
+{
+  "captured_at": "2026-10-06T01:28:54.996Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "epass-performance-bridge",
+  "version": 1,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006012518",
+    "20261006012520",
+    "20261006012603"
+  ],
+  "checks": {
+    "handler": "passed",
+    "live_rollback_invoice_revision_pagination_mapping_and_atomicity": "passed",
+    "ingestion_regression_live_rollback": "passed",
+    "prepared_app_bundles": 11,
+    "remaining_rollback_connections": 0,
+    "live_unauthenticated_http": 401
+  },
+  "behavior": "Caller-authenticated tenant admin broker stages invoice POS/sales/line facts from the newest scoped event per external invoice; reviewed active POS employee/location mappings; connection-namespaced transaction keys; per-invoice atomic updates and line replacement; bounded pagination and partial-error responses. Ingestion now timestamps actual event insertion with clock_timestamp for same-transaction revisions.",
+  "advisors": {
+    "security": [
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 600
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      }
+    ],
+    "performance": [
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 912
+      }
+    ],
+    "delta": "Security counts unchanged; unused-index INFO fell from 916 to 912 with other performance counts unchanged.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "Automatic ePASS provider polling/sync and destination credential/origin verification remain pending.",
+    "Metric refresh is deliberately gated: the imported refresher joins POS employee maps without provider/review scope and cannot be reused safely. Responses explicitly return metrics_refreshed=false.",
+    "No provider API call, signed-in browser execution or large-page load test was performed.",
+    "Invoice header totals are authoritative and explicit zero is preserved; line/header reconciliation and refund validation require real provider evidence.",
+    "Missing costs remain null; source heuristic line categories are advisory classifications, and warranty-offered evidence remains unknown.",
+    "Calendar aggregation currently uses UTC; destination retail timezone reconciliation is required before metric activation.",
+    "Legacy invoice identifiers/hashes require duplicate/delta reconciliation before hosted cutover; unsupported rows preserve old facts and return scoped errors."
+  ]
+}

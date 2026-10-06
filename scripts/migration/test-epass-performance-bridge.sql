@@ -40,11 +40,23 @@ DO $$ DECLARE conn uuid:=current_setting('test.bridge.connection')::uuid;tx uuid
  IF (SELECT count(*) FROM tj.sales_transactions WHERE metadata->>'source_connection_id'=conn::text)<>1 OR NOT EXISTS(SELECT 1 FROM tj.sales_transactions WHERE metadata->>'source_connection_id'=conn::text AND user_id=current_setting('test.bridge.actor')::uuid AND warranty_offered IS NULL AND warranty_value=0) THEN RAISE EXCEPTION 'sales_or_reviewed_mapping_failed';END IF;
  IF (SELECT cost_amount FROM tj.iq_pos_transactions WHERE source_connection_id=current_setting('test.bridge.second')::uuid) IS NOT NULL THEN RAISE EXCEPTION 'unknown_cost_invented';END IF;
  -- A later failed revision must not delete the existing transaction or its lines.
- UPDATE tj.intelligence_events SET payload=payload||jsonb_build_object('location_id','unreviewed-store') WHERE id=(SELECT intelligence_event_id FROM tj.platform_connector_ingestion_keys WHERE connection_id=conn AND external_id='a' ORDER BY created_at DESC,id DESC LIMIT 1);
+ UPDATE tj.intelligence_events SET payload=payload||jsonb_build_object('location_id','unreviewed-store') WHERE id=(SELECT ev.id FROM tj.platform_connector_ingestion_keys k JOIN tj.intelligence_events ev ON ev.id=k.intelligence_event_id WHERE k.connection_id=conn AND k.external_id='a' ORDER BY ev.created_at DESC,ev.id DESC LIMIT 1);
 END $$;
 SET LOCAL ROLE authenticated;
 DO $$ DECLARE r jsonb;BEGIN r:=public.tj_epass_performance_bridge(jsonb_build_object('connection_id',current_setting('test.bridge.connection')));IF r->>'failed'<>'2' THEN RAISE EXCEPTION 'unreviewed_location_accepted: %',r;END IF;END $$;
 RESET ROLE;
+DO $$ BEGIN
+ INSERT INTO tj.sales_transactions(organization_id,invoice_number,order_total,metadata) VALUES(current_setting('test.bridge.org')::uuid,'epass:'||current_setting('test.bridge.connection')||':c',7,jsonb_build_object('source_connection_id',current_setting('test.bridge.second')));
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb;BEGIN
+ r:=public.tj_connector_ingest(jsonb_build_object('connection_id',current_setting('test.bridge.connection'),'external_entity_type','invoice','external_id','c','payload',jsonb_build_object('invoice_number','CONFLICT','items',jsonb_build_array(jsonb_build_object('id','C','unit_price',30,'unit_cost',0)))));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'conflict_fixture_failed';END IF;
+ r:=public.tj_epass_performance_bridge(jsonb_build_object('connection_id',current_setting('test.bridge.connection'),'after_external_id','b'));IF r->>'failed'<>'1' OR r#>>'{errors,0,error}'<>'invoice_mapping_or_scope_rejected' THEN RAISE EXCEPTION 'sales_scope_conflict_accepted: %',r;END IF;
+END $$;
+RESET ROLE;
+DO $$ BEGIN
+ IF (SELECT count(*) FROM tj.iq_pos_transactions WHERE source_connection_id=current_setting('test.bridge.connection')::uuid)<>1 OR (SELECT order_total FROM tj.sales_transactions WHERE organization_id=current_setting('test.bridge.org')::uuid AND invoice_number='epass:'||current_setting('test.bridge.connection')||':c')<>7 THEN RAISE EXCEPTION 'post_pos_failure_not_atomic';END IF;
+END $$;
 DO $$ BEGIN
  IF (SELECT count(*) FROM tj.iq_transaction_line_facts WHERE source_connection_id=current_setting('test.bridge.connection')::uuid)<>1 THEN RAISE EXCEPTION 'failed_revision_not_atomic';END IF;
  UPDATE tj.organization_members SET role='member' WHERE organization_id=current_setting('test.bridge.org')::uuid AND user_id=current_setting('test.bridge.actor')::uuid;
