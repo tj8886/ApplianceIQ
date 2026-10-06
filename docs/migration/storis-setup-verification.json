@@ -1,0 +1,115 @@
+{
+  "captured_at": "2026-10-06T12:22:26.833Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "storis-sync",
+  "status": "ACTIVE",
+  "version": 1,
+  "verify_jwt": true,
+  "migration_version": "20261006122045",
+  "capability": "Tenant-admin status/configuration and scoped Vault credential storage/rotation. Provider tests and data import blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback_setup_rotation_and_scope": "passed",
+    "bearer_basic_and_api_key": "passed",
+    "invalid_paths_headers_and_credentials": "passed",
+    "unmapped_foreign_nonadmin_and_paused_denial": "passed",
+    "no_job_activation_or_secret_response": "passed",
+    "setup_ui_guard_disabled_provider_actions_and_parse": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_app_routing": "passed",
+    "live_unauthenticated_post": 401,
+    "remaining_fixture_connections": 0,
+    "remaining_credentials": 0,
+    "remaining_vault_secrets": 0,
+    "source_storis_connections": 0,
+    "destination_storis_connections": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 926
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Existing ERROR/WARN findings unchanged. One INFO RLS-without-policy finding is intentional for the private credential ledger: all direct API privileges are revoked. All three foreign keys are indexed; one additional INFO unused index is retained for the organization ownership lookup.",
+  "limits": [
+    "No actual retailer credential supplied or saved; all synthetic Vault writes rolled back.",
+    "test and sync return HTTP 409 after native active-admin connection checks. No provider request, secret retrieval, ingestion, performance bridge, sync job or connection activation occurred.",
+    "Imported credential references never authorize use or rotation of another secret. The private ledger binds organization, connection and auth type; changing auth type requires a matching replacement credential.",
+    "Source and destination have zero STORIS connector connections. Retailer endpoint/credentials setup, provider-origin and pagination/ID contract review, resumable importer and financial/location/staff bridge remain pending.",
+    "STORIS remains a pending complete-workflow dependency. Hosted app cutover, final source deltas, main merge and source retirement remain pending."
+  ],
+  "docs_reviewed": [
+    "https://supabase.com/docs/guides/database/vault"
+  ],
+  "inventory": {
+    "deployed_snapshots": 46,
+    "absent_snapshots": 40,
+    "retired_snapshots": 1
+  },
+  "next_absent_literal_dependency": "stripe-billing"
+}
