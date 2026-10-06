@@ -4,7 +4,9 @@ import {createHandler as sequence} from '../../supabase/functions/sequence-execu
 import {createHandler as shopify} from '../../supabase/functions/shopify-initial-sync/handler.ts';
 import {createHandler as storis} from '../../supabase/functions/storis-sync/handler.ts';
 import {createHandler as billing} from '../../supabase/functions/stripe-billing/handler.ts';
-for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192],[shopify,'tj_shopify_initial_sync',8192],[storis,'tj_storis_setup',16384],[billing,'tj_billing_preview',8192]]){
+import {createHandler as activity} from '../../supabase/functions/activity-analyzer/handler.ts';
+import {createHandler as analytics} from '../../supabase/functions/ai-analytics-daily/handler.ts';
+for(const [factory,rpc,limit] of [[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192],[shopify,'tj_shopify_initial_sync',8192],[storis,'tj_storis_setup',16384],[billing,'tj_billing_preview',8192],[activity,'tj_activity_preflight',8192],[analytics,'tj_daily_analytics',8192]]){
  let valid=true,anonymous=false,calls=0,mode='success';
  const handler=factory({env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'public'}[n]),createClient:(u,k,opts)=>{
   assert.equal(k,'public');assert.equal(opts.global.headers.Authorization,'Bearer caller');
