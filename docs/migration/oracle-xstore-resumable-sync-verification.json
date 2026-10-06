@@ -1,0 +1,132 @@
+{
+  "captured_at": "2026-10-06T11:49:18.662Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "oracle-xstore-sync",
+  "version": 3,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006114543"
+  ],
+  "checks": {
+    "handler_and_runner": "passed",
+    "live_scope_approval_digest_leases_retry_cursor_partial_bridge_and_cancel_rollback": "passed",
+    "resource_order_and_native_verification_withdrawal": "passed",
+    "live_xstore_bridge_regression": "passed",
+    "ingestion_and_xstore_setup_regressions": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_xstore_script_parse": "passed",
+    "live_unauthenticated_post": 401,
+    "remaining_fixture_connections": 0,
+    "remaining_credentials": 0,
+    "remaining_provider_reviews": 0,
+    "remaining_sync_runs": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 609
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 929
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "Existing WARN/ERROR and other performance counts unchanged. Two revoked-access private RLS tables add two no-policy INFO findings; five new indexes add five unused-index INFO findings.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "contract": {
+    "resources": [
+      "customers",
+      "products",
+      "employees",
+      "locations",
+      "inventory",
+      "prices",
+      "transactions"
+    ],
+    "authentication": "Native non-anonymous user and strict approved activated source identity, active tenant admin, actor-bound job lease; service credential access repeats scope/version/digest/review.",
+    "provider": "Oracle Basic client credentials, fixed approved token/API origins, bounded JSON pages, same-origin/same-path pagination; no caller headers, redirects or raw XML/POSLog imports.",
+    "limits": {
+      "page_records": 100,
+      "page_bytes": 1048576,
+      "token_bytes": 65536,
+      "provider_timeout_seconds": 10,
+      "ingestion_budget_seconds": 45,
+      "lease_seconds": 120,
+      "max_job_pages": 1000,
+      "max_consecutive_retries": 5
+    },
+    "approval": "Private operator-created provider contract review binds exact configuration version/digest and unexpired active-admin approver. Production ledger is empty.",
+    "completion": "Staging import only. Transaction bridge failures persist independently; completion never activates connections or refreshes metrics."
+  },
+  "limits": [
+    "No real Oracle OAuth/API request or signed-in hosted browser execution occurred.",
+    "Inventory and price records require reviewed stable id/inventoryId or id/priceId fields; composite-ID adapters are not invented.",
+    "JSON page shape, provider record IDs, actual OAuth scope/endpoints/pagination and approved origins must be reviewed with retailer evidence before adding a private contract approval.",
+    "Raw XML/POSLog and separate refund event adapters remain pending. Endpoint XML reachability is not import verification.",
+    "Provider retries reacquire a token; no unattended worker, scheduler or token cache is enabled.",
+    "Prepared page continues one step per request while open and supports saved job ID, stop and resume; it is not hosted.",
+    "Header/line/refund reconciliation, reviewed mapping, legacy receipt duplication and UTC/retail-calendar reconciliation remain required before metrics/dashboard use.",
+    "Final database/Storage deltas, hosted cutover, main merge and source retirement remain pending."
+  ]
+}
