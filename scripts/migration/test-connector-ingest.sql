@@ -5,8 +5,8 @@ DO $$ DECLARE native uuid;source_actor uuid;org uuid;connector uuid;conn uuid;se
  key:='rollback-ingest-'||gen_random_uuid()::text;
  INSERT INTO tj.platform_connectors(key,name,vendor_name) VALUES(key,'Rollback ingestion','Synthetic') RETURNING id INTO connector;
  INSERT INTO tj.platform_connector_connections(organization_id,connector_id,created_by) VALUES(org,connector,source_actor) RETURNING id INTO conn;
- INSERT INTO tj.platform_connector_connections(organization_id,connector_id,created_by) VALUES(org,connector,source_actor) RETURNING id INTO second;
- INSERT INTO tj.platform_connector_canonical_rules(connector_id,external_entity_type,canonical_entity_type,canonical_event_type) VALUES(connector,'customer','customer','customer.updated'),(connector,'location','store','store.updated'),(connector,'bad','invalid_entity','bad.updated');
+ INSERT INTO tj.platform_connector_connections(organization_id,connector_id,created_by,external_account_id) VALUES(org,connector,source_actor,'second-fixture') RETURNING id INTO second;
+ INSERT INTO tj.platform_connector_canonical_rules(connector_id,external_entity_type,canonical_entity_type,canonical_event_type) VALUES(connector,'customer','customer','customer.updated'),(connector,'location','store','store.updated'),(connector,'bad','learning',NULL);
  INSERT INTO tj.platform_connector_validation_rules(connector_key,external_entity_type,required_all) VALUES(key,'customer','["name"]');
  INSERT INTO tj.platform_connector_entity_map(connection_id,external_entity_type,external_id,local_entity_type,local_id) VALUES(conn,'location','reviewed','org_location',gen_random_uuid());
  PERFORM set_config('request.jwt.claim.sub',native::text,true);PERFORM set_config('test.ingest.native',native::text,true);PERFORM set_config('test.ingest.actor',source_actor::text,true);PERFORM set_config('test.ingest.connection',conn::text,true);PERFORM set_config('test.ingest.second',second::text,true);PERFORM set_config('test.ingest.org',org::text,true);
