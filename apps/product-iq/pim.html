@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 34551)
-Total output lines: 2277
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1102,7 +1099,162 @@ async function openBrandDetail(brandId) {
     + '<div class="stat-card green"><div class="label">Completeness</div><div class="value">' + avgComp + '%</div></div>'
     + '<div class="stat-card purple"><div class="label">Images</div><div class="value">' + fmt(totalImgs) + '</div></div>'
     + '<div class="stat-card pink"><div class="label">Documents</div><div class="value">' + fmt(totalDocs) + '</div></div>'
-    + '<div class="stat-card yellow"><div class="label">V…2551 tokens truncated…').select('color_family').not('color_family','is',null);
+    + '<div class="stat-card yellow"><div class="label">Videos</div><div class="value">' + fmt(totalVids) + '</div></div>'
+    + '</div>';
+
+  // Info grid
+  html += '<div class="bd-info">'
+    + (b.parent_company ? '<div><small>Parent Company</small>' + esc(b.parent_company) + '</div>' : '')
+    + (b.country ? '<div><small>Country</small>' + esc(b.country) + '</div>' : '')
+    + (b.headquarters ? '<div><small>Headquarters</small>' + esc(b.headquarters) + '</div>' : '')
+    + (b.founded_year ? '<div><small>Founded</small>' + esc(b.founded_year) + '</div>' : '')
+    + (b.contact_status ? '<div><small>Contact Status</small>' + prettyLabel(b.contact_status) + '</div>' : '')
+    + '<div><small>Products in DB</small>' + products.length + '</div>'
+    + '</div>';
+
+  // Contact links
+  html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">'
+    + (b.us_website ? '<a class="bc-link" href="' + esc(b.us_website) + '" target="_blank">🌐 US Website</a>' : '')
+    + (b.canada_website ? '<a class="bc-link" href="' + esc(b.canada_website) + '" target="_blank">🍁 CA Website</a>' : '')
+    + (b.canada_phone ? '<a class="bc-link" href="tel:' + esc(b.canada_phone) + '">📞 ' + esc(b.canada_phone) + '</a>' : '')
+    + (b.canada_email ? '<a class="bc-link" href="mailto:' + esc(b.canada_email) + '">✉️ ' + esc(b.canada_email) + '</a>' : '')
+    + '</div>';
+
+  if (b.brand_story) html += '<div class="bd-story">' + esc(b.brand_story) + '</div>';
+  if (innovations.length) html += '<div style="margin:12px 0"><strong style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Key Innovations</strong><div class="bd-innovations">' + innovations.map(i => '<span>' + esc(i) + '</span>').join('') + '</div></div>';
+
+  html += '</div>'; // end brand-detail
+
+  // Category filter for products within brand
+  html += '<div class="panel"><div class="panel-head"><h3>Products (' + prodsOnly.length + ')</h3>'
+    + '<div style="display:flex;gap:8px;align-items:center"><select id="bdCatFilter" style="height:32px;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-size:12px"><option value="">All Categories</option>' + cats.map(c => '<option value="' + esc(c) + '">' + esc(c) + '</option>').join('') + '</select>'
+    + '<input type="text" id="bdProdSearch" placeholder="Search models…" style="height:32px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:12px;width:200px"></div>'
+    + '</div>';
+
+  // Product table with assets
+  html += '<div class="panel-body" style="padding:0"><div class="tbl-wrap" style="max-height:600px" id="bdProdTable">';
+  html += buildBrandProductTable(prodsOnly, '');
+  html += '</div></div></div>';
+
+  el.innerHTML = html;
+
+  // Bind category filter and search
+  const catFilter = document.getElementById('bdCatFilter');
+  const searchInput = document.getElementById('bdProdSearch');
+  const filterAndRender = () => {
+    const cat = catFilter.value;
+    const search = searchInput.value.toLowerCase();
+    let filtered = prodsOnly;
+    if (cat) filtered = filtered.filter(p => p.category === cat);
+    if (search) filtered = filtered.filter(p => (p.model||'').toLowerCase().includes(search) || (p.short_description||'').toLowerCase().includes(search));
+    document.getElementById('bdProdTable').innerHTML = buildBrandProductTable(filtered, search);
+    bindBdProdClicks();
+  };
+  catFilter.addEventListener('change', filterAndRender);
+  searchInput.addEventListener('input', filterAndRender);
+  bindBdProdClicks();
+}
+
+function buildBrandProductTable(prods, highlight) {
+  if (!prods.length) return '<div class="feed-empty">No products match your filters.</div>';
+  return '<table><thead><tr><th>Model</th><th>Category</th><th>Key Specs</th><th>MSRP</th><th>🖼</th><th>📄</th><th>Data</th></tr></thead><tbody>'
+    + prods.map(p => {
+      const comp = calcRichComp(p);
+      const col = pctCol(comp);
+      const ic = imgCounts[p.id] || 0;
+      const dc = docCounts[p.id] || 0;
+      const specSnippets = getCardSpecs(p).slice(0, 3);
+      const jsonKeys = (p.specs_json && typeof p.specs_json === 'object') ? Object.keys(p.specs_json).length : 0;
+      return '<tr class="bd-prod-row" data-prod-id="' + p.id + '">'
+        + '<td><div class="model-name">' + esc(p.model) + '</div>'
+        + (p.short_description ? '<div style="font-size:11px;color:var(--text3);max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.short_description) + '</div>' : '')
+        + '</td>'
+        + '<td class="cat-tag">' + esc(p.category) + '</td>'
+        + '<td style="max-width:220px"><div style="display:flex;gap:4px;flex-wrap:wrap">'
+        + specSnippets.map(s => '<span style="font-size:10px;background:var(--surface2);padding:1px 6px;border-radius:3px;color:var(--text2);white-space:nowrap">' + esc(s) + '</span>').join('')
+        + (jsonKeys > 0 ? '<span style="font-size:10px;color:var(--accent);font-weight:600">+' + jsonKeys + ' specs</span>' : '')
+        + '</div></td>'
+        + '<td style="font-weight:600;color:var(--accent)">' + (p.msrp ? '$' + Number(p.msrp).toLocaleString() : '—') + '</td>'
+        + '<td>' + (ic ? '<span style="color:var(--blue);font-weight:600">' + ic + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
+        + '<td>' + (dc ? '<span style="color:var(--purple);font-weight:600">' + dc + '</span>' : '<span style="color:var(--text3)">0</span>') + '</td>'
+        + '<td><div class="completeness-bar"><div class="mini-bar"><div class="mini-fill" style="width:' + comp + '%;background:' + col + '"></div></div><span style="color:' + col + ';font-weight:600">' + comp + '%</span></div></td>'
+        + '</tr>';
+    }).join('')
+    + '</tbody></table>';
+}
+
+function bindBdProdClicks() {
+  document.querySelectorAll('.bd-prod-row').forEach(row => {
+    row.addEventListener('click', () => openProductDetail(row.dataset.prodId));
+  });
+}
+
+// ── Product Catalog ──
+let catalogProducts = [], productsLoaded = false, catalogPage = 0, catalogTotal = 0;
+let prodFilters = { search: '', brand: '', cat: '', sub: '', size: '', color: '', fuel: '', feature: '', status: '' };
+const PAGE_SIZE = 30;
+
+async function loadCatalog() {
+  productsLoaded = true;
+  const el = document.getElementById('prodContent');
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading products…</div>';
+
+  const selectCols = 'id,brand_name,model,category,subcategory,size_class,msrp,sale_price,short_description,status,finish,color,color_family,width_inches,height_inches,depth_inches,energy_star,specs_json,voltage,capacity_cu_ft,weight_lbs,fuel_type,is_counter_depth,has_ice_maker,has_water_dispenser,has_ice_dispenser,noise_dba,door_style,installation_type,series,defrost_type';
+
+  let q = sb.from('aiq_products')
+    .select(selectCols, { count: 'exact' })
+    .order('brand_name').order('model');
+
+  const s = prodFilters.search.trim();
+  if (s) {
+    const orParts = ['brand_name','model','short_description'].map(c => c+'.ilike.*'+encodeURIComponent(s)+'*');
+    const url = SB_URL+'/rest/v1/aiq_products?select='+selectCols+'&or=('+orParts.join(',')+')'
+      +(prodFilters.cat?'&category=eq.'+encodeURIComponent(prodFilters.cat):'')
+      +(prodFilters.sub?'&subcategory=eq.'+encodeURIComponent(prodFilters.sub):'')
+      +(prodFilters.size?'&size_class=eq.'+encodeURIComponent(prodFilters.size):'')
+      +(prodFilters.fuel?'&fuel_type=eq.'+encodeURIComponent(prodFilters.fuel):'')
+      +(prodFilters.color?'&color_family=eq.'+encodeURIComponent(prodFilters.color):'')
+      +'&order=brand_name,model&offset='+catalogPage*PAGE_SIZE+'&limit='+PAGE_SIZE;
+    try {
+      const headers = {'apikey':SB_ANON,'Authorization':'Bearer '+SB_ANON,'Prefer':'count=exact'};
+      const resp = await fetch(url, {headers});
+      const countHeader = resp.headers.get('content-range');
+      catalogTotal = countHeader ? parseInt(countHeader.split('/')[1]) : 0;
+      catalogProducts = await resp.json();
+    } catch(e) { catalogProducts = []; catalogTotal = 0; }
+    renderCatalog();
+    return;
+  }
+
+  if (prodFilters.brand) q = q.eq('brand_name', prodFilters.brand);
+  if (prodFilters.cat) q = q.eq('category', prodFilters.cat);
+  if (prodFilters.sub) q = q.eq('subcategory', prodFilters.sub);
+  if (prodFilters.size) q = q.eq('size_class', prodFilters.size);
+  if (prodFilters.color) q = q.eq('color_family', prodFilters.color);
+  if (prodFilters.fuel) q = q.eq('fuel_type', prodFilters.fuel);
+  if (prodFilters.status) q = q.eq('status', prodFilters.status);
+  if (prodFilters.feature === 'counter_depth') q = q.eq('is_counter_depth', true);
+  if (prodFilters.feature === 'ice_maker') q = q.eq('has_ice_maker', true);
+  if (prodFilters.feature === 'water') q = q.eq('has_water_dispenser', true);
+  if (prodFilters.feature === 'ice_dispenser') q = q.eq('has_ice_dispenser', true);
+  if (prodFilters.feature === 'energy_star') q = q.eq('energy_star', true);
+  if (prodFilters.feature === 'frost_free') q = q.eq('defrost_type', 'Frost-Free');
+  if (prodFilters.feature === 'manual_defrost') q = q.eq('defrost_type', 'Manual');
+
+  const { data, error, count } = await q.range(catalogPage*PAGE_SIZE, catalogPage*PAGE_SIZE+PAGE_SIZE-1);
+  if (error) { el.innerHTML = '<div class="feed-empty">Error: '+(error.message||'')+'</div>'; return; }
+  catalogProducts = data || [];
+  catalogTotal = count || 0;
+
+  if (document.getElementById('prodBrand').options.length <= 1) {
+    const { data: brands } = await sb.from('aiq_products').select('brand_name').not('brand_name','is',null);
+    const unique = [...new Set((brands||[]).map(b=>b.brand_name))].sort();
+    unique.forEach(b => document.getElementById('prodBrand').insertAdjacentHTML('beforeend','<option>'+b+'</option>'));
+    const { data: cats } = await sb.from('aiq_products').select('category').not('category','is',null);
+    const ucats = [...new Set((cats||[]).map(c=>c.category))].sort();
+    ucats.forEach(c => document.getElementById('prodCat').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
+    ['active','draft','discontinued'].forEach(s => document.getElementById('prodStatus').insertAdjacentHTML('beforeend','<option>'+s+'</option>'));
+    const { data: colors } = await sb.from('aiq_products').select('color_family').not('color_family','is',null);
     const ucolors = [...new Set((colors||[]).map(c=>c.color_family))].sort();
     ucolors.forEach(c => document.getElementById('prodColor').insertAdjacentHTML('beforeend','<option>'+c+'</option>'));
     // Populate size classes
