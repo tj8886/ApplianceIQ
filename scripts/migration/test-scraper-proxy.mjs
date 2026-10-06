@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {createHandler} from '../../supabase/functions/scraper-proxy/handler.ts';
+const config={SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',AI_MODEL_FAST:'claude-configured-fast',ANTHROPIC_API_KEY:'server-synthetic',SCRAPER_PROXY_KEY:'shared-synthetic'};
+let session=true,allowed=true,rateError=null,calls=0,finished=[];
+const client=(url,key,options)=>key==='service'?{rpc:async(name,args)=>{assert.equal(name,'aiq_finish_ai_request');finished.push(args);return {error:null};}}:{auth:{getUser:async()=>({data:{user:session?{id:'native'}:null}})},rpc:async(name,args)=>{
+  assert.equal(options.global.headers.Authorization,'Bearer caller');
+  if(name==='tj_pim_scraper_context')return {data:{allowed}};
+  if(name==='tj_runtime_my_platform_context')return {data:{organization_id:'tenant'}};
+  assert.equal(name,'tj_runtime_ai_submit_request');assert.equal(args.p_context.task_type,'scraper_proxy');assert.equal(args.p_context.source_app,'pim-scraper');return {data:{request_id:'request'},error:rateError};
+}};
+let searchExpected=false;
+const handler=createHandler({createClient:client,env:name=>config[name],fetchImpl:async(url,options)=>{
+  calls++;assert.equal(options.headers['x-api-key'],'server-synthetic');assert.equal(options.headers['x-proxy-key'],undefined);assert.equal(options.headers.Authorization,undefined);
+  const payload=JSON.parse(options.body);assert.equal(payload.model,'claude-configured-fast');
+  if(searchExpected)assert.equal(payload.tools[0].max_uses,3);else assert.equal(payload.tools,undefined);
+  assert.ok(payload.max_tokens<=16000);return new Response(JSON.stringify({content:[{type:'text',text:'{"specs":{}}'}],usage:{input_tokens:2,output_tokens:3}}));
+}});
+const body={messages:[{role:'user',content:'Extract supplied manufacturer evidence.'}]};
+const req=(payload=body,key='shared-synthetic')=>new Request('https://edge.test',{method:'POST',headers:{Authorization:'Bearer caller',...(key?{'x-proxy-key':key}:{})},body:JSON.stringify(payload)});
+assert.equal((await handler(new Request('https://edge.test',{method:'POST'}))).status,401);
+session=false;assert.equal((await handler(req())).status,401);session=true;
+allowed=false;assert.equal((await handler(req())).status,403);allowed=true;
+assert.equal((await handler(req(body,null))).status,401);assert.equal((await handler(req(body,'wrong'))).status,401);
+delete config.SCRAPER_PROXY_KEY;assert.equal((await handler(req())).status,503);config.SCRAPER_PROXY_KEY='shared-synthetic';
+assert.equal((await handler(req({...body,max_tokens:16001}))).status,400);
+assert.equal((await handler(req({...body,tools:[{type:'function',name:'execute'}]}))).status,400);
+assert.equal((await handler(req({...body,model:'unconfigured-model'}))).status,503);
+rateError={code:'54000'};assert.equal((await handler(req())).status,429);rateError=null;assert.equal(calls,0);
+let response=await handler(req({...body,max_tokens:16000}));assert.equal(response.status,200);let result=await response.json();assert.equal(result.content[0].text,'{"specs":{}}');assert.equal(result.requires_review,true);
+assert.equal(finished.at(-1).p_target_user_id,'native');assert.equal(finished.at(-1).p_tokens,5);
+searchExpected=true;assert.equal((await handler(req({...body,tools:[{type:'web_search_20250305',name:'web_search'}]}))).status,200);
+const preflight=await handler(new Request('https://edge.test',{method:'OPTIONS'}));assert.ok(preflight.headers.get('Access-Control-Allow-Headers').includes('x-proxy-key'));
+console.log('Scraper proxy passed: native session/governance/shared-key/rate checks; missing configuration denies use; bounded 16k output; configured fast model; no unrequested search; fixed optional search; provider credential isolation and native usage completion.');
