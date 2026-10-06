@@ -91,3 +91,5 @@ and their source is verified complete.
    history, add `packages/elev8-ai-service/index.ts`, then move to deployable.
 
 US East CRM enrichment checkpoint (2026-10-06): `aicrm-ai-enrichment-runner` now has a deployable native tenant-admin preflight. The historical full runner remains unsuitable for direct deployment: provider errors and invalid output can silently become mock facts, prompts can cross tenant scope, and result writes are not atomic. Run/retry stays blocked; the historical placeholder is superseded.
+
+US East email-webhook checkpoint (2026-10-06): deployable `email-webhook` now verifies bounded raw-body Svix signatures with a fresh destination-only `RESEND_US_WEBHOOK_SECRET`. Every recognized signed event remains retryably blocked with HTTP 503, without acknowledgement, database writes, global contact matching or message/thread fallback. The historical full source remains non-deployable pending reviewed provider-account/tenant routing and atomic replay-safe finalization.
