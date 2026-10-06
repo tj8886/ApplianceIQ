@@ -1,0 +1,185 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "connector-onboarding",
+  "status": "ACTIVE",
+  "version": 1,
+  "verify_jwt": true,
+  "code_commit": "8c20f04841d9395d9007e27d34e9c45eaa4e414d",
+  "handler_tests": "passed",
+  "live_rollback_fixture": "passed",
+  "covered": [
+    "scoped status and redaction",
+    "same-tenant event matching",
+    "exact/fuzzy suggestions only",
+    "manual employee/store resolution",
+    "same-tenant candidate checks",
+    "idempotent location creation",
+    "rejection and locked decisions",
+    "historical confirmation requires destination review",
+    "unmapped/nonadmin/foreign connection denial",
+    "source actor attribution",
+    "activation requires destination verification"
+  ],
+  "app_bundles": 11,
+  "app_routing_regression": "passed",
+  "unauthenticated_http": 401,
+  "migrations": [
+    "20261006005132_enable_scoped_connector_onboarding",
+    "20261006005332_qualify_connector_onboarding_variables",
+    "20261006005409_label_connector_onboarding_scope"
+  ],
+  "advisors": {
+    "security": {
+      "before": [
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 599
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        }
+      ],
+      "after": [
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 599
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        }
+      ],
+      "counts_unchanged": true
+    },
+    "performance": {
+      "before": [
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 917
+        }
+      ],
+      "after": [
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 917
+        }
+      ],
+      "counts_unchanged": true
+    }
+  },
+  "remediation": "https://supabase.com/docs/guides/database/database-linter",
+  "limits": [
+    "Automatch processes up to 500 scoped ingestion keys per request and returns a resume cursor; the prepared page sends the cursor on the next batch.",
+    "Candidate scopes over 1000 require pagination; queue responses above 1000 indicate truncation.",
+    "Real browser workflows remain unverified.",
+    "Destination credential/connection verification remains required for live activation; imported source auth status does not suffice.",
+    "No external provider calls, schedules, hosted cutover or source retirement were performed."
+  ]
+}
