@@ -1,0 +1,99 @@
+{
+  "captured_at": "2026-10-06T11:34:44.382Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "oracle-xstore-sync",
+  "version": 1,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006113125"
+  ],
+  "checks": {
+    "handler": "passed",
+    "live_scoped_setup_vault_version_and_denial_rollback": "passed",
+    "prepared_app_bundles": 11,
+    "live_unauthenticated_post": 401
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 607
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 924
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "Existing WARN/ERROR counts unchanged. One revoked-access private RLS table adds one no-policy INFO; its index adds one unused-index INFO.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "Endpoint reachability only; no actual retailer OAuth/API request or signed-in browser check occurred.",
+    "XSTORE_ALLOWED_ORIGINS must approve both token and API origins. Oracle credentials/scope and actual endpoint contract require retailer verification.",
+    "XML responses are bounded and reject DTD/entities; full POSLog parsing is not implemented.",
+    "Sync returns 409 until transaction bridge and resumable importer are ready. No job, activation or metric refresh is reported.",
+    "Prepared UI is not hosted. Final data/Storage deltas, source retirement and hosted cutover remain pending."
+  ],
+  "references": [
+    "https://docs.oracle.com/en/industries/retail/retail-xstore-cloud/26.0.101.0/xocsg/security-considerations-developers.htm"
+  ]
+}
