@@ -1,0 +1,115 @@
+{
+  "captured_at": "2026-10-06T18:51:51.666Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "pim-batch-enrich",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "68b888a9632017f0742beb5cb3347b5c25ad747747f598d4993446f5402bb4f4"
+  },
+  "migration_version": "20261006185057",
+  "capability": "Native core-tenant admin readiness only; no product selection, scraping or enrichment writes.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "brand_limit_url_product_model_price_payload_rejection": "passed",
+    "default_and_explicit_enrich_blocked": "passed",
+    "restricted_grants": "passed",
+    "all_product_description_price_version_approval_visibility_timestamp_fingerprints_unchanged": "passed",
+    "unauthenticated_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "products": 43527,
+    "tenant_owned": 43527,
+    "null_org": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No new tables/indexes or existing policy/grant changes.",
+  "limits": [
+    "Status returns blockers only; default and explicit enrich return HTTP 409 with executed=false and zero provider requests, products processed or updated.",
+    "No product lookup, manufacturer fetch, redirect, parsing, offer-to-MSRP conversion, publication or customer-data copy occurred.",
+    "Tenant admin readiness confers no global publishing authority. Full execution requires scoped selection and publishing authority, exact model/variant/region/currency matching, authoritative MSRP evidence, bounded approved-origin fetch/redirect rules, reviewed parsing and sanitization, version-guarded atomic audited writes and resumable claims/retries.",
+    "Source unscoped product selection, unbounded redirects/body reads, generic page/price extraction and unchecked database update success are not enabled.",
+    "No hosted cutover, main merge, schedules, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 67,
+    "absent_snapshots": 19,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "product-detail-enrich"
+}
