@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {migrateManufacturerInvitations} from './us-manufacturer-invitations.mjs';
 import {installUsRuntimeRpc} from '../../apps/_shared/us-runtime-rpc.mjs';
 const source=readFileSync(new URL('../../apps/iq-training/manufacturer.html',import.meta.url),'utf8'),html=migrateManufacturerInvitations(source);
-assert(source.includes("member_role:'owner'"));assert(!html.includes("member_role:'owner'"));assert(!html.includes("from('mfr_invites')"));assert(!html.includes('approveVendor'));assert(html.includes('approveTrainingCard,submitManufacturerCode,'));
+assert(source.includes("member_role:'owner'"));assert(!html.includes("member_role:'owner'"));assert(!html.includes("from('mfr_invites')"));assert(!html.includes('approveVendor'));assert(html.includes('approveTrainingCard,submitManufacturerCode,loadAdmin,'));
 const script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import.*;$/m,'').replace(/boot\(\);\s*$/,'');
 new vm.Script(script);
 async function harness({invite='',accept={ok:true},context={ok:true,role:{is_admin:false},vendors:[]},throwRpc=false,signupSession=null,signupError=null}={}){
@@ -18,5 +18,6 @@ for(const error of ['invite_unavailable','membership_review_required','identity_
 const transport=await harness({throwRpc:true});await transport.run('boot()');assert(!transport.element('auth-msg').innerHTML.includes('PRIVATE'));
 const signup=await harness();for(const [id,value] of [['rg-name','Person'],['rg-email','person@example.test'],['rg-pass','not-a-real-password'],['rg-code','new-code']])signup.element(id).value=value;await signup.run('register()');assert.equal(signup.calls.length,1);assert(signup.calls[0].signup);assert.equal(signup.element('si-code').value,'new-code');assert.match(signup.element('auth-msg').innerHTML,/Confirm your email/);
 const admin=await harness({context:{ok:true,vendors:[{id:'vendor-id',name:'<img src=x onerror=1>'}],invites:[{id:'invite-id',email:'<script>bad</script>',vendor_name:'Brand',status:'pending',expires_at:'date'}]}});await admin.run('loadAdmin()');assert(!admin.element('admin-content').innerHTML.includes('<img src=x'));assert(!admin.element('admin-content').innerHTML.includes('<script>bad'));assert(admin.element('admin-content').innerHTML.includes('data-invite-id'));assert(!admin.element('admin-content').innerHTML.includes('<th>Code</th>'));
+const created=await harness({context:{ok:true,email:'rep@example.test',vendor_name:'<img src=x>',code:'fresh-one-time-code',expires_at:'date'}});created.element('inv-email').value='rep@example.test';created.element('inv-vendor').value='vendor-id';await created.run('sendInvite()');assert.equal(created.calls.length,1);assert(created.element('inv-msg').innerHTML.includes('fresh-one-time-code'));assert(!created.element('inv-msg').innerHTML.includes('<img src=x>'));
 assert.throws(()=>migrateManufacturerInvitations('changed'),/contract changed/);
 console.log('PASS: native routing; confirmed signup; acceptance before context; failures retain code; transport redaction; no browser membership/owner writes; admin escaping; complete inline script parses and exposes handlers');

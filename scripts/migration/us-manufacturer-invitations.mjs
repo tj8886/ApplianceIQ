@@ -52,15 +52,15 @@ async function submitManufacturerCode(){
 async function loadAdmin(){
  const el=document.getElementById('admin-content');
  try{const data=await manufacturerApi({action:'list'});
- el.innerHTML='<div class="admin-card"><h3>Create an Invitation</h3><div class="field"><label>Email</label><input type="email" id="inv-email"></div><div class="field"><label>Brand</label><select id="inv-vendor"><option value="">Select an active brand</option>'+data.vendors.map(v=>'<option value="'+mfrEscape(v.id)+'">'+mfrEscape(v.name)+'</option>').join('')+'</select></div><button class="btn" onclick="sendInvite()">Create Invite</button><div id="inv-msg"></div></div><div class="admin-card"><h3>Recent Invitations (up to 100)</h3><table><thead><tr><th>Email</th><th>Brand</th><th>Status</th><th>Expires</th><th></th></tr></thead><tbody>'+data.invites.map(i=>'<tr><td>'+mfrEscape(i.email)+'</td><td>'+mfrEscape(i.vendor_name)+'</td><td>'+mfrEscape(i.status)+'</td><td>'+mfrEscape(i.expires_at)+'</td><td>'+(i.status==='pending'?'<button data-invite-id="'+mfrEscape(i.id)+'">Revoke</button>':'')+'</td></tr>').join('')+'</tbody></table></div>';
+ el.innerHTML='<div class="admin-card"><h3>Create an Invitation</h3><div class="field"><label>Email</label><input type="email" id="inv-email"></div><div class="field"><label>Brand</label><select id="inv-vendor"><option value="">Select an active brand</option>'+data.vendors.map(v=>'<option value="'+mfrEscape(v.id)+'">'+mfrEscape(v.name)+'</option>').join('')+'</select></div><button class="btn" onclick="sendInvite()">Create Invite</button><div id="inv-msg"></div></div><div class="admin-card"><h3>Recent Invitations (up to 100)</h3><button onclick="loadAdmin()">Refresh List</button><table><thead><tr><th>Email</th><th>Brand</th><th>Status</th><th>Expires</th><th></th></tr></thead><tbody>'+data.invites.map(i=>'<tr><td>'+mfrEscape(i.email)+'</td><td>'+mfrEscape(i.vendor_name)+'</td><td>'+mfrEscape(i.status)+'</td><td>'+mfrEscape(i.expires_at)+'</td><td>'+(i.status==='pending'?'<button data-invite-id="'+mfrEscape(i.id)+'">Revoke</button>':'')+'</td></tr>').join('')+'</tbody></table></div>';
  el.querySelectorAll('[data-invite-id]').forEach(b=>b.onclick=async()=>{try{await manufacturerApi({action:'revoke',invite_id:b.dataset.inviteId});await loadAdmin();}catch(e){document.getElementById('inv-msg').textContent=e.message;}});
  }catch(e){el.textContent=e.message;}
 }
 async function sendInvite(){
  const m=document.getElementById('inv-msg'),email=document.getElementById('inv-email').value.trim(),vendor_id=document.getElementById('inv-vendor').value;
  m.textContent='';if(!email||!vendor_id){m.textContent='Enter an email and select a brand.';return;}
- try{const data=await manufacturerApi({action:'create',email,vendor_id});await loadAdmin();
- document.getElementById('inv-msg').innerHTML='<div class="msg ok">Share this code with '+mfrEscape(data.email)+' for '+mfrEscape(data.vendor_name)+': <code>'+mfrEscape(data.code)+'</code><br>Expires '+mfrEscape(data.expires_at)+'. Copy it now; it will not be shown again.</div>';
+ try{const data=await manufacturerApi({action:'create',email,vendor_id});
+ m.innerHTML='<div class="msg ok">Share this code with '+mfrEscape(data.email)+' for '+mfrEscape(data.vendor_name)+': <code>'+mfrEscape(data.code)+'</code><br>Expires '+mfrEscape(data.expires_at)+'. Copy it now; it will not be shown again.</div>';
  }catch(e){document.getElementById('inv-msg').textContent=e.message;}
 }`);
  s=s.replace('<button class="btn" onclick="signIn()">Sign In</button>','<div class="field"><label>Invitation code (if invited)</label><input id="si-code" autocomplete="off"></div><button class="btn" onclick="signIn()">Sign In</button>');
@@ -68,7 +68,7 @@ async function sendInvite(){
  s=s.replace('(optional)</span></label><input type="text" id="rg-code"','(required)</span></label><input type="text" id="rg-code"');
  s=s.replace('By registering you can upload and manage content for your brand only.','An approved invitation grants product-editor access to its brand.');
  s=s.replace("You're not linked to a brand yet. If you registered, your brand may be pending setup. Contact the ApplianceIQ team.","You have no active brand membership. Enter an invitation code or contact the ApplianceIQ team.<div class=\"field\"><input id=\"brand-invite-code\" autocomplete=\"off\"></div><button class=\"btn\" onclick=\"submitManufacturerCode()\">Accept Invitation</button>");
- s=s.replace('approveTrainingCard,approveVendor,','approveTrainingCard,submitManufacturerCode,');
+ s=s.replace('approveTrainingCard,approveVendor,','approveTrainingCard,submitManufacturerCode,loadAdmin,');
  if(/from\(['"](?:mfr_invites|mfr_members|mfr_user_roles)['"]\)/.test(s)||s.includes('approveVendor(')||s.includes('Math.random()'))throw Error('Legacy manufacturer onboarding remains');
  return s;
 }

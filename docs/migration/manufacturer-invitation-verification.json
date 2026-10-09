@@ -1,0 +1,125 @@
+{
+  "verified_at": "2026-10-09T15:51:50.550Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migration": "20261009154036_enable_native_manufacturer_invitations.sql",
+  "applied": true,
+  "implementation_commit": "e70c231b91783ff0f93d8949e5ffa95b70a56607",
+  "scope": "Fresh native manufacturer invitations and unpublished US Academy portal onboarding",
+  "implemented": [
+    "Authenticated confirmed and approved native identity required; source actor is resolved server-side.",
+    "Global product-IQ super admin with current active organization admin membership creates seven-day product-editor invitations for existing active brands.",
+    "32 random bytes per code; raw code returned only at creation; only SHA-256 digest stored; imported codes cannot be redeemed.",
+    "Acceptance binds confirmed native email, current inviter mapping/admin authority, immutable registry provenance, active vendor and pending invitation; invitation consumed atomically.",
+    "Existing approved active owner role preserved; pending/suspended/revoked/expired memberships require review; browser owner/vendor/member/role/invite writes removed.",
+    "Admin list scoped to administrative organization, limited to 100, hides codes/actor IDs; revocation supported; new code remains visible without a follow-up list dependency.",
+    "US context uses mapped source identity and active memberships; Canadian application source unchanged."
+  ],
+  "tests": {
+    "client_vm": "passed: full inline script/handlers, signup confirmation, invite failures retain code, transport redaction, HTML escaping, code display",
+    "eleven_bundles": "passed",
+    "crm_and_analytics_regression": "passed",
+    "live_database_lifecycle": "passed; create/list/accept/revoke; wrong email, legacy, expiry, replay, revoked inviter, tampered role, unmapped/unconfirmed denied; editor/source actor correct; owner preserved; suspended membership denied; authenticated wrapper and private grants",
+    "remaining_fixture_brands": 0,
+    "persisted_invite_registry_rows": 0,
+    "literal_referenced_rpc_names": 63,
+    "authenticated_native_wrappers": 63,
+    "literal_relation_names": 167,
+    "denied_literal_reads": []
+  },
+  "advisors": {
+    "counts": {
+      "security": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 621,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+        }
+      ],
+      "performance": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 927,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1,
+          "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+        }
+      ]
+    },
+    "delta": "WARN/ERROR counts unchanged. One RLS-without-policy INFO is the intentionally closed private registry; four unused-index INFO entries are new FK indexes awaiting real traffic.",
+    "private_rls_remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+  },
+  "published": false,
+  "external_messages_sent": 0,
+  "remaining": [
+    "Unmapped/new native accounts need approved identity activation; signup alone does not grant manufacturer access.",
+    "Hosted authenticated invitation/signup testing pending; bundles unpublished.",
+    "mfr_assets and three other relation references absent in both databases require active-route review.",
+    "Eight archived Edge endpoints absent; 33 deployed endpoints explicitly restricted; real provider tests and final frozen delta pending."
+  ]
+}
