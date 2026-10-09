@@ -1,0 +1,76 @@
+-- Native administrator-owned OAuth; source nonces and credentials are never adopted.
+CREATE TABLE tj_private.shopify_credentials(connection_id uuid PRIMARY KEY REFERENCES tj.platform_connector_connections(id),organization_id uuid NOT NULL REFERENCES tj.organizations(id),shop_domain text UNIQUE NOT NULL,secret_id uuid UNIQUE NOT NULL REFERENCES vault.secrets(id));
+CREATE INDEX shopify_credentials_org_idx ON tj_private.shopify_credentials(organization_id);
+ALTER TABLE tj_private.shopify_credentials ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON tj_private.shopify_credentials FROM PUBLIC,anon,authenticated,service_role;
+CREATE TABLE tj_private.shopify_oauth_sessions(state_hash text PRIMARY KEY CHECK(state_hash~'^[0-9a-f]{64}$'),organization_id uuid NOT NULL REFERENCES tj.organizations(id),connection_id uuid NOT NULL REFERENCES tj.platform_connector_connections(id),actor uuid NOT NULL REFERENCES tj.profiles(id),native_user uuid NOT NULL REFERENCES auth.users(id),shop_domain text NOT NULL,client_id text NOT NULL,redirect_uri text NOT NULL,return_url text NOT NULL,scopes text NOT NULL,connection_version timestamptz NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),expires_at timestamptz NOT NULL DEFAULT clock_timestamp()+interval '10 minutes',claimed_at timestamptz,completed_at timestamptz);
+CREATE INDEX shopify_oauth_sessions_org_idx ON tj_private.shopify_oauth_sessions(organization_id);
+CREATE INDEX shopify_oauth_sessions_conn_idx ON tj_private.shopify_oauth_sessions(connection_id);
+CREATE INDEX shopify_oauth_sessions_actor_idx ON tj_private.shopify_oauth_sessions(actor);
+CREATE INDEX shopify_oauth_sessions_native_idx ON tj_private.shopify_oauth_sessions(native_user);
+ALTER TABLE tj_private.shopify_oauth_sessions ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON tj_private.shopify_oauth_sessions FROM PUBLIC,anon,authenticated,service_role;
+CREATE FUNCTION tj_private.shopify_connection(p_connection uuid,p_actor uuid) RETURNS tj.platform_connector_connections LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE c tj.platform_connector_connections%rowtype;BEGIN
+ SELECT * INTO c FROM tj.platform_connector_connections WHERE id=p_connection FOR UPDATE;
+ IF NOT FOUND OR p_actor IS NULL OR NOT EXISTS(SELECT 1 FROM tj.organization_members m JOIN tj.organizations o ON o.id=m.organization_id WHERE m.organization_id=c.organization_id AND m.user_id=p_actor AND m.status='active' AND m.role IN('owner','admin','super_admin') AND o.status='active' AND o.deleted_at IS NULL) THEN RAISE EXCEPTION 'admin_required' USING ERRCODE='42501';END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.platform_connectors pc WHERE pc.id=c.connector_id AND pc.key='shopify') THEN RAISE EXCEPTION 'shopify_connection_required' USING ERRCODE='22023';END IF;
+ IF c.status IN('paused','disconnected') OR EXISTS(SELECT 1 FROM tj.platform_sync_jobs WHERE connection_id=c.id AND status IN('queued','running')) THEN RAISE EXCEPTION 'connection_busy_or_paused' USING ERRCODE='40001';END IF;
+ IF c.store_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM tj.org_locations l WHERE l.id=c.store_id AND l.organization_id=c.organization_id AND l.is_active) THEN RAISE EXCEPTION 'invalid_store' USING ERRCODE='42501';END IF;
+ RETURN c;
+END $$;
+REVOKE ALL ON FUNCTION tj_private.shopify_connection(uuid,uuid) FROM PUBLIC,anon,authenticated,service_role;
+-- Reuse the existing strict native/source identity verifier; it contains no Microsoft-specific logic.
+CREATE FUNCTION tj_private.shopify_begin(p_native uuid,p_body jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE c tj.platform_connector_connections%rowtype;actor uuid;shop text;BEGIN
+ IF current_setting('role',true) IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'service_required' USING ERRCODE='42501';END IF;
+ actor:=tj_private.microsoft_actor(p_native);
+ IF actor IS NULL THEN RAISE EXCEPTION 'verified_identity_required' USING ERRCODE='42501';END IF;
+ IF p_body IS NULL OR jsonb_typeof(p_body)<>'object' OR octet_length(p_body::text)>10000 OR EXISTS(SELECT 1 FROM jsonb_object_keys(p_body)k WHERE k NOT IN('connection_id','shop','state_hash','client_id','redirect_uri','return_url','scopes')) OR coalesce(p_body->>'state_hash','')!~'^[0-9a-f]{64}$' OR coalesce(p_body->>'client_id','')!~'^[A-Za-z0-9_-]{8,128}$' OR coalesce(p_body->>'shop','')!~'^[a-z0-9][a-z0-9-]{0,62}\.myshopify\.com$' OR coalesce(p_body->>'scopes','')!~'^[a-z_]+(,[a-z_]+)*$' OR length(p_body->>'scopes')>2000 OR coalesce(p_body->>'redirect_uri','')<>'https://jdxslqmgjsuzoisuhvlc.supabase.co/functions/v1/shopify-auth/callback' OR length(coalesce(p_body->>'return_url','')) NOT BETWEEN 10 AND 2048 OR p_body->>'return_url'!~'^https://' THEN RAISE EXCEPTION 'invalid_request' USING ERRCODE='22023';END IF;
+ c:=tj_private.shopify_connection((p_body->>'connection_id')::uuid,actor);shop:=p_body->>'shop';
+ PERFORM pg_advisory_xact_lock(hashtextextended('aiq_shopify:'||shop,0));
+ IF c.external_account_id IS NOT NULL AND lower(c.external_account_id) NOT IN(shop,replace(shop,'.myshopify.com','')) OR EXISTS(SELECT 1 FROM tj.shopify_stores s WHERE lower(s.shop_domain)=shop AND (s.organization_id IS DISTINCT FROM c.organization_id OR s.platform_connection_id IS NOT NULL AND s.platform_connection_id<>c.id)) OR EXISTS(SELECT 1 FROM tj_private.shopify_credentials s WHERE s.shop_domain=shop AND s.connection_id<>c.id) OR EXISTS(SELECT 1 FROM tj_private.shopify_oauth_sessions s WHERE s.shop_domain=shop AND s.connection_id<>c.id AND s.expires_at>clock_timestamp() AND s.completed_at IS NULL) THEN RAISE EXCEPTION 'shop_binding_conflict' USING ERRCODE='42501';END IF;
+ IF (SELECT count(*) FROM tj_private.shopify_oauth_sessions WHERE native_user=p_native AND created_at>clock_timestamp()-interval '10 minutes')>=10 THEN RAISE EXCEPTION 'authorization_rate_limit' USING ERRCODE='54000';END IF;
+ UPDATE tj_private.shopify_oauth_sessions SET expires_at=clock_timestamp() WHERE connection_id=c.id AND completed_at IS NULL;
+ INSERT INTO tj_private.shopify_oauth_sessions(state_hash,organization_id,connection_id,actor,native_user,shop_domain,client_id,redirect_uri,return_url,scopes,connection_version) VALUES(p_body->>'state_hash',c.organization_id,c.id,actor,p_native,shop,p_body->>'client_id',p_body->>'redirect_uri',p_body->>'return_url',p_body->>'scopes',c.updated_at);
+ RETURN jsonb_build_object('ok',true,'connection_id',c.id,'shop',shop);
+END $$;
+CREATE FUNCTION tj_private.shopify_context(p_hash text,p_native uuid DEFAULT NULL,p_claim boolean DEFAULT false) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE s tj_private.shopify_oauth_sessions%rowtype;c tj.platform_connector_connections%rowtype;actor uuid;BEGIN
+ IF current_setting('role',true) IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'service_required' USING ERRCODE='42501';END IF;
+ SELECT * INTO s FROM tj_private.shopify_oauth_sessions WHERE state_hash=p_hash;
+ IF NOT FOUND OR s.expires_at<=clock_timestamp() OR s.claimed_at IS NOT NULL OR s.completed_at IS NOT NULL THEN RAISE EXCEPTION 'state_expired_or_used' USING ERRCODE='40001';END IF;
+ actor:=tj_private.microsoft_actor(s.native_user);
+ IF actor IS DISTINCT FROM s.actor OR actor IS NULL OR p_claim AND p_native IS DISTINCT FROM s.native_user THEN RAISE EXCEPTION 'state_actor_denied' USING ERRCODE='42501';END IF;
+ c:=tj_private.shopify_connection(s.connection_id,actor);
+ SELECT * INTO s FROM tj_private.shopify_oauth_sessions WHERE state_hash=p_hash FOR UPDATE;
+ IF s.expires_at<=clock_timestamp() OR s.claimed_at IS NOT NULL OR s.completed_at IS NOT NULL OR c.updated_at IS DISTINCT FROM s.connection_version OR c.organization_id<>s.organization_id THEN RAISE EXCEPTION 'state_or_connection_changed' USING ERRCODE='40001';END IF;
+ IF p_claim THEN UPDATE tj_private.shopify_oauth_sessions SET claimed_at=clock_timestamp() WHERE state_hash=p_hash;END IF;
+ RETURN jsonb_build_object('connection_id',s.connection_id,'shop',s.shop_domain,'client_id',s.client_id,'redirect_uri',s.redirect_uri,'return_url',s.return_url,'scopes',s.scopes);
+END $$;
+CREATE FUNCTION tj_private.shopify_finish(p_hash text,p_native uuid,p_credential jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE s tj_private.shopify_oauth_sessions%rowtype;c tj.platform_connector_connections%rowtype;actor uuid;sid uuid;BEGIN
+ IF current_setting('role',true) IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'service_required' USING ERRCODE='42501';END IF;
+ SELECT * INTO s FROM tj_private.shopify_oauth_sessions WHERE state_hash=p_hash;
+ IF NOT FOUND OR s.native_user IS DISTINCT FROM p_native OR s.claimed_at IS NULL OR s.completed_at IS NOT NULL OR s.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'state_expired_or_used' USING ERRCODE='40001';END IF;
+ actor:=tj_private.microsoft_actor(p_native);IF actor IS DISTINCT FROM s.actor OR actor IS NULL THEN RAISE EXCEPTION 'actor_changed' USING ERRCODE='42501';END IF;
+ c:=tj_private.shopify_connection(s.connection_id,actor);
+ PERFORM pg_advisory_xact_lock(hashtextextended('aiq_shopify:'||s.shop_domain,0));
+ SELECT * INTO s FROM tj_private.shopify_oauth_sessions WHERE state_hash=p_hash FOR UPDATE;
+ IF s.expires_at<=clock_timestamp() OR s.completed_at IS NOT NULL OR c.updated_at IS DISTINCT FROM s.connection_version OR c.organization_id<>s.organization_id THEN RAISE EXCEPTION 'configuration_changed' USING ERRCODE='40001';END IF;
+ IF EXISTS(SELECT 1 FROM tj.shopify_stores st WHERE lower(st.shop_domain)=s.shop_domain AND (st.organization_id IS DISTINCT FROM s.organization_id OR st.platform_connection_id IS NOT NULL AND st.platform_connection_id<>s.connection_id)) OR EXISTS(SELECT 1 FROM tj_private.shopify_credentials st WHERE st.shop_domain=s.shop_domain AND st.connection_id<>s.connection_id) THEN RAISE EXCEPTION 'shop_binding_conflict' USING ERRCODE='42501';END IF;
+ IF p_credential IS NULL OR jsonb_typeof(p_credential)<>'object' OR octet_length(p_credential::text)>40000 OR p_credential->>'shop' IS DISTINCT FROM s.shop_domain OR length(coalesce(p_credential->>'access_token','')) NOT BETWEEN 1 AND 16000 OR coalesce(p_credential->>'scope','')!~'^[a-z_]+(,[a-z_]+)*$' THEN RAISE EXCEPTION 'invalid_verified_credential' USING ERRCODE='22023';END IF;
+ SELECT secret_id INTO sid FROM tj_private.shopify_credentials WHERE connection_id=c.id AND organization_id=c.organization_id AND shop_domain=s.shop_domain;
+ IF sid IS NULL THEN sid:=vault.create_secret(p_credential::text,'aiq_us_shopify_'||c.id::text,'Shopify OAuth credential');INSERT INTO tj_private.shopify_credentials VALUES(c.id,c.organization_id,s.shop_domain,sid);ELSE PERFORM vault.update_secret(sid,p_credential::text);END IF;
+ UPDATE tj.platform_connector_connections SET external_account_id=s.shop_domain,credential_ref=sid::text,auth_status='valid',status='pending',settings=coalesce(settings,'{}')||jsonb_build_object('shop_domain',s.shop_domain,'destination_connection_verified',false),auth_metadata=jsonb_build_object('provider','shopify','scopes',p_credential->>'scope','identity_connected',true,'connected_at',clock_timestamp()),last_error=NULL,updated_at=clock_timestamp() WHERE id=c.id;
+ UPDATE tj_private.shopify_oauth_sessions SET completed_at=clock_timestamp() WHERE state_hash=p_hash;
+ RETURN jsonb_build_object('ok',true,'connection_id',c.id,'shop',s.shop_domain,'status','pending','requires_api_verification',true,'webhooks_registered',false);
+END $$;
+REVOKE ALL ON FUNCTION tj_private.shopify_begin(uuid,jsonb),tj_private.shopify_context(text,uuid,boolean),tj_private.shopify_finish(text,uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION tj_private.shopify_begin(uuid,jsonb),tj_private.shopify_context(text,uuid,boolean),tj_private.shopify_finish(text,uuid,jsonb) TO service_role;
+CREATE FUNCTION public.aiq_shopify_oauth_begin(p_native uuid,p_body jsonb) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$SELECT tj_private.shopify_begin(p_native,p_body);$$;
+CREATE FUNCTION public.aiq_shopify_oauth_context(p_hash text,p_native uuid DEFAULT NULL,p_claim boolean DEFAULT false) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$SELECT tj_private.shopify_context(p_hash,p_native,p_claim);$$;
+CREATE FUNCTION public.aiq_shopify_oauth_finish(p_hash text,p_native uuid,p_credential jsonb) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$SELECT tj_private.shopify_finish(p_hash,p_native,p_credential);$$;
+REVOKE ALL ON FUNCTION public.aiq_shopify_oauth_begin(uuid,jsonb),public.aiq_shopify_oauth_context(text,uuid,boolean),public.aiq_shopify_oauth_finish(text,uuid,jsonb) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.aiq_shopify_oauth_begin(uuid,jsonb),public.aiq_shopify_oauth_context(text,uuid,boolean),public.aiq_shopify_oauth_finish(text,uuid,jsonb) TO service_role;
+NOTIFY pgrst,'reload schema';
