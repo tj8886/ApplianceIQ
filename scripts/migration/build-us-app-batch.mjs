@@ -1,6 +1,7 @@
 import {readFileSync,writeFileSync,mkdirSync,readdirSync,statSync,copyFileSync,existsSync} from 'node:fs';
 import {resolve,join,relative} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {migrateCrmInvitations} from './us-crm-invitations.mjs';
 const root=resolve(import.meta.dirname,'../..'),out=process.argv[2];
 if(!out)throw Error('Usage: node build-us-app-batch.mjs OUTPUT_DIRECTORY');
 const output=resolve(out);if(output===root||output.startsWith(root+'/apps/'))throw Error('Build outside source apps');
@@ -17,6 +18,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  mkdirSync(join(target,'_aiq'),{recursive:true});copyFileSync(join(root,'apps/platform/aiq-module-adapter.js'),join(target,'_aiq/aiq-module-adapter.js'));
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
+  if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   for(const m of s.matchAll(/\/rest\/v1\/rpc\/([a-z0-9_]+)/g))counts.rpcs.add(m[1]);
   for(const m of s.matchAll(/\.rpc\(\s*['"]([a-z0-9_]+)['"]/g))counts.rpcs.add(m[1]);
   for(const m of s.matchAll(/\.from\(\s*['"]([a-z0-9_]+)['"]\s*\)/g))counts.tables.add(m[1]);

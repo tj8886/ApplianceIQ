@@ -1,0 +1,20 @@
+{
+  "verified_at": "2026-10-09T15:28:52.165Z",
+  "changed": "US CRM bundle invitation flow",
+  "source_behavior": "Canadian source application untouched",
+  "implemented": [
+    "Route acceptance to existing reviewed native accept_org_invite(p_code), before organization membership read.",
+    "Select accepted invitation's organization after the membership reload.",
+    "Preserve invitation URL on any API/recipient/expiry/identity failure and redact private API errors.",
+    "Remove US CRM automatic demo joining and unsupported self-owner creation fallback."
+  ],
+  "tests": {
+    "client_vm_suite": "passed",
+    "eleven_bundle_suite": "passed",
+    "live_native_invitation_lifecycle": "passed and rolled back",
+    "remaining_fixture_organizations": 0
+  },
+  "published": false,
+  "no_ddl_or_edge_changes": true,
+  "remaining": "Hosted authenticated invitation verification and other application contracts remain pending."
+}
