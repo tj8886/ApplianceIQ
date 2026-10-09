@@ -1,6 +1,7 @@
 import {readFileSync,writeFileSync,mkdirSync,readdirSync,statSync,copyFileSync,existsSync} from 'node:fs';
 import {resolve,join,relative} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {omitObsoleteWarrantyCleanup,routeLegacyProductIq,surfaceManufacturerAssetErrors} from './us-app-reference-fixes.mjs';
 import {migrateManufacturerInvitations} from './us-manufacturer-invitations.mjs';
 import {migrateCrmInvitations} from './us-crm-invitations.mjs';
 import {migrateAnalyticsAccess,omitDemoJoin} from './us-analytics-access.mjs';
@@ -17,12 +18,16 @@ const report={destination:config.project_ref,published:false,apps:[],remaining_g
 function files(dir){return readdirSync(dir).flatMap(n=>{const p=join(dir,n);return statSync(p).isDirectory()?files(p):[p]});}
 for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source_path)){
  const target=join(output,app.key);execFileSync(process.execPath,[join(root,'scripts/prepare-aiq-deploy.mjs'),app.source_path,app.key,target],{cwd:root,stdio:'pipe'});
+ if(app.key==='academy')copyFileSync(join(root,'scripts/migration/us-manufacturer-categories.json'),join(target,'mfr_categories.json'));
  mkdirSync(join(target,'_aiq'),{recursive:true});copyFileSync(join(root,'apps/platform/aiq-module-adapter.js'),join(target,'_aiq/aiq-module-adapter.js'));
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
   if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
+  if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=surfaceManufacturerAssetErrors(s);
+  if(app.key==='spec-iq'&&p===join(target,'index.html'))s=omitObsoleteWarrantyCleanup(s);
+  if(app.key==='product-iq'&&p===join(target,'apps/product-iq/index.html'))s=routeLegacyProductIq(s);
   s=omitDemoJoin(s);
   for(const m of s.matchAll(/\/rest\/v1\/rpc\/([a-z0-9_]+)/g))counts.rpcs.add(m[1]);
   for(const m of s.matchAll(/\.rpc\(\s*['"]([a-z0-9_]+)['"]/g))counts.rpcs.add(m[1]);

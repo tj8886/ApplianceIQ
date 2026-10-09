@@ -1,0 +1,37 @@
+{
+  "verified_at": "2026-10-09T16:02:46.072998+00:00",
+  "scope": "Unpublished US app bundles",
+  "implemented": [
+    "Canonical Product IQ landing and PIM paths confirmed. The copied older apps/product-iq/index.html path redirects to /pim.html, retaining query parameters and only a one-use aiq_ticket hash.",
+    "Three obsolete Spec IQ speciq_package_warranties cleanup calls omitted. Existing speciq_product_warranties reads/inserts and package/product operations retained; live FK catalog confirms cascading cleanup.",
+    "US Academy category JSON now bundled: 24 keys/labels match existing trade CAT_LABEL; suggested audiences follow existing trade priority lists plus retailer, with four display groups. These are UI defaults, not authorization.",
+    "Manufacturer library query/network failures show a visible generic error instead of a false empty library; uploaded titles escaped."
+  ],
+  "tests": {
+    "reference_fixes_vm_and_generated_resources": "passed",
+    "all_eleven_bundle_checks": "passed",
+    "manufacturer_invitation_regression": "passed",
+    "crm_invitation_regression": "passed",
+    "analytics_access_regression": "passed",
+    "live_warranty_fk_catalog_and_existing_grants": "passed; read-only",
+    "mutation_fixture_test": "declined by tool; replaced with read-only FK catalog assertions",
+    "sql_rows_changed": 0
+  },
+  "catalog": {
+    "literal_rpc_names": 63,
+    "literal_table_names": 162,
+    "remaining_absent_literal_tables": [
+      "mfr_assets"
+    ],
+    "denied_literal_table_reads": []
+  },
+  "published": false,
+  "ddl_changes": 0,
+  "permission_changes": 0,
+  "source_apps": "Canadian source files unchanged; fixes apply during US bundle generation.",
+  "remaining": [
+    "Active manufacturer and trade portals still require native vendor/organization-scoped mfr_assets data and private file upload/read/review contracts.",
+    "Spec IQ editing/deletion remains subject to existing closed write grants and needs reviewed native atomic mutations; removing an obsolete dependency does not activate writes.",
+    "Hosted authenticated app tests, restricted/missing Edge/provider workflows and final frozen database/files delta remain pending."
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-09T15:51:50.550Z",
+  "captured_at": "2026-10-09T16:02:46.072998+00:00",
   "status": "not_ready_for_cutover",
   "production": "Canada",
   "source_project": "fumwwhyozeouoqscolke",
@@ -21,18 +21,14 @@
     "literal_rpc_names": 63,
     "available_authenticated_native_wrappers": 63,
     "unrouted_literal_rpc_names": [],
-    "literal_relation_names": 167,
-    "readable_literal_relations_including_two_product_view_aliases": 163,
+    "literal_relation_names": 162,
     "product_view_aliases": {
       "aiq_products": "aiq_products_app",
       "aiq_product_versions": "aiq_product_versions_app"
     },
     "denied_literal_reads": [],
     "absent_in_both_source_and_destination": [
-      "aiq_product_relationships",
-      "aiq_product_specifications",
-      "mfr_assets",
-      "speciq_package_warranties"
+      "mfr_assets"
     ],
     "relation_privilege_snapshot": [
       {
@@ -230,16 +226,6 @@
         "name": "aicrm_sequence_steps",
         "relation_kind": "r",
         "selectable": true,
-        "insert_columns": false,
-        "update_columns": false,
-        "deletable": false,
-        "rls": true
-      },
-      {
-        "kind": "relation",
-        "name": "aiq_product_versions",
-        "relation_kind": "r",
-        "selectable": false,
         "insert_columns": false,
         "update_columns": false,
         "deletable": false,
@@ -1397,16 +1383,6 @@
       },
       {
         "kind": "relation",
-        "name": "product_iq_governance_audit_log",
-        "relation_kind": "r",
-        "selectable": true,
-        "insert_columns": false,
-        "update_columns": false,
-        "deletable": false,
-        "rls": true
-      },
-      {
-        "kind": "relation",
         "name": "product_iq_platform_roles",
         "relation_kind": "r",
         "selectable": true,
@@ -1671,7 +1647,10 @@
     "manufacturer_invitation_tests": "passed",
     "manufacturer_invitation_live_rollback_tests": "passed",
     "manufacturer_invitation_migration_applied": true,
-    "manufacturer_signup_identity_activation": "Required for unmapped/new accounts; not automatic"
+    "manufacturer_signup_identity_activation": "Required for unmapped/new accounts; not automatic",
+    "app_reference_fixes_tests": "passed",
+    "warranty_fk_contract_test": "passed; read-only catalog",
+    "readable_literal_relations_including_product_view_aliases": 161
   },
   "edge": {
     "archived_total": 87,
@@ -1841,6 +1820,7 @@
     "33 restricted endpoint classifications come from recorded descriptions; they are a conservative label-based inventory, not new functional verification.",
     "Literal references include copied/nested app files; active routes must be checked before implementing absent historical tables.",
     "Existing synthetic invitation suite was rerun with rollback; no real invitations or messages were sent.",
-    "US manufacturer onboarding now uses a fresh native invitation API, eliminating direct mfr_invites/mfr_members queries and browser owner grants. All 63 literal native RPC routes have authenticated wrappers; table existence/grants do not establish full workflow readiness."
+    "US manufacturer onboarding now uses a fresh native invitation API, eliminating direct mfr_invites/mfr_members queries and browser owner grants. All 63 literal native RPC routes have authenticated wrappers; table existence/grants do not establish full workflow readiness.",
+    "Three obsolete warranty cleanup calls omitted using verified existing cascade FKs; the copied old Product IQ route redirects to the current PIM. All source files retained. Manufacturer categories are generated from existing trade labels/priority lists. One active missing relation remains (mfr_assets); permission/write workflow completion is still separate from relation/RPC reference coverage."
   ]
 }
