@@ -1,0 +1,129 @@
+{
+  "verified_at": "2026-10-09T18:48:24.450Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "17222d3e1c5e2485df850c5ceca3c491280c7b3d",
+  "scope": "Native Spec IQ draft content review and package metadata archive; US app bundles unpublished",
+  "applied_migrations": [
+    "20261009184056_enable_native_speciq_review_archive.sql",
+    "20261009184530_fix_speciq_review_variable_bindings.sql"
+  ],
+  "implemented": [
+    "Native confirmed mapped source identity and fresh active organization role checked for every action. Native packages require an existing private draft journal, protecting legacy packages from unreviewed transitions.",
+    "Tenant-scoped own/manager list (up to 200 current native packages), snapshots/history and server-computed action permissions.",
+    "Draft submission writes ready_for_review/pending and source submitter plus history atomically. Different organization owner/admin/manager must review; both creator and submitter excluded from self approval.",
+    "Approve/conditional approve/reject record locked in_progress draft state and source reviewer/approver. Return writes unlocked draft/returned so existing revision API can preserve and revise it. Conditions and rejection/return reasons required as appropriate.",
+    "Pending archive withdraws submission; locked package archive requires authorized manager. Archived packages, projects, products, warranties, services, snapshots, events and history retained; active list excludes archive/superseded records.",
+    "Request advisory lock plus package row lock; identical request replay, changed request conflicts, optimistic version/update checks prevent stale decisions. Reuses private indexed draft journal with no new client grants.",
+    "US manager UI reads native snapshots/history; explicit draft content approval scope, escaped labels/history, native decision actions, archive label and retained-record confirmation. Browser manager/deletion writes removed. Project bulk archive remains pending.",
+    "Final tax/total, pricing/expiry changes, share tokens, customer sending and CRM financial stages remain unchanged and pending; draft previews retain unreviewed pricing notice."
+  ],
+  "tests": {
+    "client_vm": "passed: complete transformed module parses; submit/decision/archive routing, stable retry IDs after network failure, mapped independent manager error and retained archive wording",
+    "live_sql": "passed with rollback: submit/return/revise/resubmit/approve/conditional approve/reject/withdraw/archive; exact source actors and atomic history, retained projects/products/warranties/snapshots, retry/conflict/stale/self/foreign/viewer/suspended/unmapped denial; actual authenticated invoker and closed direct grants",
+    "eleven_bundle_checks": "passed",
+    "draft_save_asset_invitation_crm_analytics_reference_runtime_regressions": "passed",
+    "persisted_fixture_organizations": 0,
+    "persisted_requests": 0,
+    "hosted_authenticated_browser": "pending"
+  },
+  "catalog": {
+    "literal_rpc_names": 66,
+    "authenticated_native_wrappers": 66,
+    "literal_relation_names": 158,
+    "missing_or_denied_wrappers": [],
+    "missing_or_denied_reads": []
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 622,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 930,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "comparison": "WARN/ERROR, RLS-no-policy and unindexed FK counts unchanged. Unused-index INFO falls 932 to 930 as existing journal indexes exercised. No new tables/indexes/policies or direct grants."
+  },
+  "remaining": [
+    "CRM-linked packages, standalone project create/edit/archive, retailer/warranty/tax/team settings, additional technical metadata and project/salesperson/expiry fields.",
+    "Final tax/pricing review, customer PDF/send/share and actual provider/browser integration tests.",
+    "Remaining brand training writes, provider/Edge workflows, final frozen data/files delta, schedules and cutover."
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft and unmerged"
+}

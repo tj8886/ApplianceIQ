@@ -2,7 +2,7 @@ BEGIN;
 SET LOCAL statement_timeout='25s';
 DO $$
 DECLARE actor uuid; native uuid; other_actor uuid; other_native uuid; org uuid; foreign_org uuid; warranty uuid;
- body jsonb; result jsonb; pkg uuid; new_pkg uuid; before_count bigint; request jsonb; decision_request jsonb; manager_actor uuid; manager_native uuid; v integer; stamp timestamptz;
+ body jsonb; result jsonb; pkg uuid; new_pkg uuid; before_count bigint; request jsonb; decision_request jsonb; manager_actor uuid; manager_native uuid; loop_decision text; v integer; stamp timestamptz;
 BEGIN
  SELECT im.source_user_id,im.target_user_id INTO actor,native FROM tj.source_user_identity_map im JOIN auth.users u ON u.id=im.target_user_id WHERE tj_private.microsoft_actor(u.id)=im.source_user_id AND u.email_confirmed_at IS NOT NULL LIMIT 1;
  SELECT im.source_user_id,im.target_user_id INTO other_actor,other_native FROM tj.source_user_identity_map im JOIN auth.users u ON u.id=im.target_user_id WHERE tj_private.microsoft_actor(u.id)=im.source_user_id AND u.email_confirmed_at IS NOT NULL AND im.source_user_id<>actor LIMIT 1;
@@ -53,6 +53,24 @@ BEGIN
  UPDATE tj.organization_members SET status='suspended' WHERE organization_id=org AND user_id=manager_actor;
  result:=public.tj_runtime_speciq_workflow(request);IF result->>'error' IS DISTINCT FROM 'organization_access_required' THEN RAISE EXCEPTION 'suspended manager retry allowed';END IF;
  UPDATE tj.organization_members SET status='active' WHERE organization_id=org AND user_id=manager_actor;
+
+ FOR loop_decision IN SELECT unnest(ARRAY['approved','rejected','withdrawn']) LOOP
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);
+ result:=public.tj_runtime_speciq_drafts(body||jsonb_build_object('request_id',gen_random_uuid()));IF result->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'additional draft fixture failed';END IF;pkg:=(result->>'package_id')::uuid;
+ SELECT jsonb_build_object('action','submit','organization_id',org,'package_id',id,'expected_version',version,'expected_updated_at',updated_at,'request_id',gen_random_uuid()) INTO request FROM tj.speciq_packages WHERE id=pkg;
+ UPDATE tj.organization_members SET role='viewer' WHERE organization_id=org AND user_id=actor;
+ result:=public.tj_runtime_speciq_workflow(request);IF result->>'error' IS DISTINCT FROM 'forbidden' THEN RAISE EXCEPTION 'viewer submitted';END IF;
+ UPDATE tj.organization_members SET role='member' WHERE organization_id=org AND user_id=actor;
+ result:=public.tj_runtime_speciq_workflow(request);IF result->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'additional submit failed';END IF;
+ IF loop_decision<>'withdrawn' THEN
+ PERFORM set_config('request.jwt.claim.sub',manager_native::text,true);
+ SELECT jsonb_build_object('action','decide','organization_id',org,'package_id',id,'expected_version',version,'expected_updated_at',updated_at,'request_id',gen_random_uuid(),'decision',loop_decision,'comments','Fixture reason') INTO request FROM tj.speciq_packages WHERE id=pkg;
+ result:=public.tj_runtime_speciq_workflow(request);IF result->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'additional decision failed: %',result;END IF;
+ END IF;
+ SELECT jsonb_build_object('action','archive','organization_id',org,'package_id',id,'expected_version',version,'expected_updated_at',updated_at,'request_id',gen_random_uuid()) INTO request FROM tj.speciq_packages WHERE id=pkg;
+ result:=public.tj_runtime_speciq_workflow(request);IF result->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'additional archive failed: %',result;END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.speciq_approval_history WHERE package_id=pkg AND manager_decision=loop_decision) OR NOT EXISTS(SELECT 1 FROM tj.speciq_package_products WHERE package_id=pkg) THEN RAISE EXCEPTION 'approve/reject/withdraw history or retained content wrong';END IF;
+ END LOOP;
  PERFORM set_config('test.review.native',manager_native::text,true);PERFORM set_config('test.review.org',org::text,true);PERFORM set_config('test.review.pkg',new_pkg::text,true);
  IF has_function_privilege('anon','public.tj_runtime_speciq_workflow(jsonb)','EXECUTE') OR has_table_privilege('authenticated','tj.speciq_packages','UPDATE') OR has_table_privilege('authenticated','tj.speciq_packages','DELETE') THEN RAISE EXCEPTION 'direct grants opened';END IF;
 END $$;
@@ -63,4 +81,4 @@ DO $$DECLARE result jsonb;BEGIN
  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);result:=public.tj_runtime_speciq_workflow(jsonb_build_object('action','list','organization_id',current_setting('test.review.org')));IF result->>'error' IS DISTINCT FROM 'identity_review_required' THEN RAISE EXCEPTION 'unmapped user allowed';END IF;
 END $$;
 ROLLBACK;
-SELECT 'PASS: independent manager submit/return/revise/resubmit/conditional approve/archive with exact source identities; snapshots/products/warranties/projects retained; retry/conflict/stale/self/foreign/suspended/unmapped denial; actual authenticated wrapper; no final tax/send/share or direct writes; fixtures rolled back' result;
+SELECT 'PASS: independent manager submit/return/revise/resubmit/approve/conditional approve/reject/withdraw/archive with exact source identities; snapshots/products/warranties/projects retained; retry/conflict/stale/self/foreign/suspended/unmapped denial; actual authenticated wrapper; no final tax/send/share or direct writes; fixtures rolled back' result;

@@ -71,5 +71,8 @@ window.managerDecision=async function(id,decision){
  s=s.replace("p.approval_status===currentApprovalFilter||", "p.approval_status===(currentApprovalFilter==='changes_requested'?'returned':currentApprovalFilter)||");
  s=s.replaceAll('title="Delete package"','title="Archive package"');
  s=s.replaceAll('title="Delete project"','title="Project archive pending"');
+ s=s.replaceAll('(p.quote_number||p.package_name)', 'esc(p.quote_number||p.package_name)').replaceAll("(p.salesperson_name||'—')", "esc(p.salesperson_name||'—')");
+ s=s.replaceAll('onclick="event.stopPropagation();deletePackage', 'title="Archive package; retain history" aria-label="Archive package" onclick="event.stopPropagation();deletePackage');
+ s=s.replace('title="Manager review is pending migration"', 'title="Save the draft, then submit it from the package preview"').replace('Send for Approval</button>', 'Review saved draft from preview</button>');
  return s;
 }
