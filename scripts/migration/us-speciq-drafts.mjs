@@ -65,6 +65,15 @@ window.savePackage=async(status)=>{
  s=s.replace(".from('speciq_tax_rules').select('*').order('is_default'", ".from('speciq_tax_rules').select('*').eq('organization_id',userOrgId).order('is_default'");
  s=s.replace("return s.service_type!=='warranty'","return !['warranty','extended_warranty'].includes(s.service_type)");
  s=s.replace("msrp:parseFloat(p.msrp)||0,width_inches:","msrp:parseFloat(p.msrp)||0,quantity:p.quantity||1,width_inches:");
- s=s.replace('<div id="view-builder"', '<div id="view-builder"');
+ s=s.replace('function buildPrintHTML(pkg,products,retailer,services,warranties){', ()=>`function buildPrintHTML(pkg,products,retailer,services,warranties){
+  if(pkg.status==='draft'&&pkg.total_tax==null){
+   const money=v=>Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+   return '<article><h1>'+esc(pkg.package_name)+'</h1><p>Draft revision '+esc(pkg.version)+' — '+esc(pkg.customer_name)+'</p><p>Prices are entered draft estimates. Final tax, approval, expiry and customer sending are pending.</p><table><thead><tr><th>Product</th><th>Model</th><th>Quantity</th><th>Entered unit price</th></tr></thead><tbody>'+products.map(p=>'<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+esc(p.quantity)+'</td><td>$'+money(p.msrp)+'</td></tr>').join('')+'</tbody></table><p>Products: $'+money(pkg.total_msrp)+' · Services: $'+money(pkg.total_services)+' · Warranties: $'+money(pkg.warranty_total)+'</p><p>Draft subtotal before tax: $'+money(Number(pkg.total_msrp||0)+Number(pkg.total_services||0)+Number(pkg.warranty_total||0))+'</p></article>';
+  }
+ `);
+ s=s.replace("  const canSend=pkg.approval_status===", "  const canSend=false&&pkg.approval_status===");
+ s=s.replace('const grandTotal=total+svcTotal;', 'const grandTotal=pkg.status===\'draft\'&&pkg.total_tax==null?Number(pkg.total_msrp||0)+Number(pkg.total_services||0)+Number(pkg.warranty_total||0):total+svcTotal;');
+ s=s.replace('text-transform:uppercase">Total</span>', 'text-transform:uppercase">Draft subtotal / prior total</span>');
+ s=s.replace(".from('speciq_projects').select('*').order('created_at'", ".from('speciq_projects').select('*').eq('organization_id',userOrgId).order('created_at'");
  return s;
 }
