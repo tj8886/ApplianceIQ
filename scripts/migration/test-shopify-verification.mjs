@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {createHandler} from '../../supabase/functions/shopify-verify-connection/handler.ts';
+const id='11111111-1111-4111-8111-111111111111';let providerCalls=0,saved=0,anonymous=false;
+let context={session_id:id,shop:'fixture.myshopify.com',access_token:'PRIVATE-SYNTHETIC-TOKEN'};
+let result={data:{shop:{id:'gid://shopify/Shop/999999999999999999999',myshopifyDomain:'fixture.myshopify.com',currencyCode:'CAD'},currentAppInstallation:{accessScopes:[{handle:'read_products'}]}}};
+let contextError=null;
+const deps={env:name=>({SUPABASE_URL:'https://jdxslqmgjsuzoisuhvlc.supabase.co',SUPABASE_ANON_KEY:'public-fixture',SUPABASE_SERVICE_ROLE_KEY:'service-fixture'})[name],createClient:(url,key)=>key==='public-fixture'?{auth:{getUser:async()=>({data:{user:{id,is_anonymous:anonymous}},error:null})}}:{rpc:async(name,args)=>{
+ if(name==='aiq_shopify_verify_begin')return {data:context,error:contextError};
+ assert.equal(name,'aiq_shopify_verify_finish');assert.equal(args.p_result.currency,'CAD');assert.ok(!JSON.stringify(args).includes('PRIVATE'));saved++;return {data:{ok:true,currency:'CAD',draft_order_scope_granted:false,draft_creation_enabled:false},error:null};
+}},fetchImpl:async(url,options)=>{providerCalls++;assert.equal(url,'https://fixture.myshopify.com/admin/api/2026-10/graphql.json');assert.equal(options.redirect,'error');assert.equal(options.headers['X-Shopify-Access-Token'],'PRIVATE-SYNTHETIC-TOKEN');assert.ok(!JSON.parse(options.body).query.includes('mutation'));return new Response(JSON.stringify(result));}};
+const handler=createHandler(deps);
+const req=(body={connection_id:id},auth='Bearer fixture')=>new Request('https://unused.test',{method:'POST',headers:{authorization:auth},body:JSON.stringify(body)});
+assert.equal((await handler(req({},''))).status,401);anonymous=true;assert.equal((await handler(req())).status,401);anonymous=false;
+assert.equal((await handler(req({connection_id:id,access_token:'spoof'}))).status,400);
+assert.equal((await handler(req({connection_id:'unsafe'}))).status,400);
+assert.equal(providerCalls,0);
+let response=await handler(req());assert.equal(response.status,200);assert.ok(!(await response.text()).includes('PRIVATE'));assert.equal(saved,1);
+result.data.shop.myshopifyDomain='other.myshopify.com';assert.equal((await handler(req())).status,502);result.data.shop.myshopifyDomain=context.shop;
+result.errors=[{message:'PRIVATE-PROVIDER-ERROR'}];response=await handler(req());assert.equal(response.status,502);assert.ok(!(await response.text()).includes('PRIVATE'));delete result.errors;
+const validId=result.data.shop.id;result.data.shop.id=123;assert.equal((await handler(req())).status,502);result.data.shop.id=validId;
+const validCurrency=result.data.shop.currencyCode;result.data.shop.currencyCode='';assert.equal((await handler(req())).status,502);result.data.shop.currencyCode=validCurrency;
+assert.equal(saved,1);
+context.shop='fixture.myshopify.com.attacker.test';assert.equal((await handler(req())).status,500);context.shop='fixture.myshopify.com';
+contextError={code:'55000'};response=await handler(req());assert.equal(response.status,409);assert.equal((await response.json()).error,'fresh_shopify_authorization_required');
+contextError={code:'42501'};assert.equal((await handler(req())).status,403);
+console.log('PASS: native auth, fresh-credential gate, strict shop origin, read-only query, hostname/currency/GID/scope validation, no secret/provider-error disclosure');
