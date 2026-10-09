@@ -10,6 +10,11 @@ DO $$ DECLARE i integer; BEGIN
   FOR i IN 1..60 LOOP IF NOT public.aiq_turnstile_consume_budget('https://migration-rollback.example') THEN RAISE EXCEPTION 'budget_exhausted_early'; END IF; END LOOP;
   IF public.aiq_turnstile_consume_budget('https://migration-rollback.example') THEN RAISE EXCEPTION 'budget_not_enforced'; END IF;
   IF NOT public.aiq_turnstile_consume_budget('https://another-rollback.example') THEN RAISE EXCEPTION 'origin_budget_not_isolated'; END IF;
+  UPDATE tj_private.turnstile_rate_windows SET attempts=599 WHERE budget_key='global' AND window_start=date_trunc('minute',clock_timestamp());
+  IF NOT public.aiq_turnstile_consume_budget('https://global-rollback.example') OR public.aiq_turnstile_consume_budget('https://global-rollback.example') THEN RAISE EXCEPTION 'global_budget_not_enforced'; END IF;
+  INSERT INTO tj_private.turnstile_rate_windows(budget_key,window_start,attempts) VALUES('expired_fixture',clock_timestamp()-interval '10 minutes',1);
+  PERFORM public.aiq_turnstile_consume_budget('https://global-rollback.example');
+  IF EXISTS(SELECT 1 FROM tj_private.turnstile_rate_windows WHERE budget_key='expired_fixture') THEN RAISE EXCEPTION 'expired_counter_not_removed'; END IF;
 END $$;
 ROLLBACK;
 SELECT 'PASS: private grants, service-only gate, bounded origin budget, isolation; fixtures rolled back' result;

@@ -11,10 +11,12 @@ Completed this batch:
 - All 11 generated app bundles passed local routing/asset/auth-storage/handoff checks earlier in this session; hosted authenticated checks and cutover remain pending.
 
 Remaining work:
-- Eleven archived Edge endpoints are absent; several deployed endpoints still provide readiness gates rather than complete workflows.
+- Ten archived Edge endpoints are absent; several deployed endpoints still provide readiness gates rather than complete workflows.
 - Provider credentials/registrations and real integration tests, remaining application writes and browser workflows.
 - Final frozen database/Storage delta, destination schedules, hosted cutover and source retirement. Main CI still targets Canada; migration PR must remain unmerged until cutover readiness is established.
 
-Next small batch: review and implement one remaining endpoint, starting with turnstile-verify. Read its archived source and destination runtime configuration; test locally, commit before deploying, verify live behavior, and checkpoint. Avoid another broad batch until this endpoint is complete or its exact external blocker is recorded.
+Next small batch: shopify-draft-order. Review its archived source and connection scope, implement and test the smallest complete safe operation, commit before deploying, and record any provider/credential blocker. Do not enable charges, orders or webhooks through imported configuration alone.
+
+Turnstile batch: deployed ACTIVE v1 with strict public challenge verification and distributed private budgets. Handler and live rollback database tests passed; unsigned live probe correctly returns verification_not_configured with no provider call. Fresh namespaced Turnstile secret and site/action configuration, followed by a real widget test, are required for activation. Evidence: turnstile-verification.json. Inventory is 76 archived endpoints deployed, one retired and ten absent; deployed presence includes gates and incomplete provider verification.
 
 Evidence: oct9-append-delta-verification.json, oct9-reviewed-delta-verification.json. Work branch: migration/us-east-consolidation; draft PR #8.

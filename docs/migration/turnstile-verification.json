@@ -1,0 +1,119 @@
+{
+  "verified_at": "2026-10-09T12:36:30.324Z",
+  "endpoint": "turnstile-verify",
+  "deployment": {
+    "status": "ACTIVE",
+    "version": 1,
+    "verify_jwt": false,
+    "sha256": "07255e08eff215a9f10b59a1ad599a533880e96d6a8bc272667582e5eed4eb83"
+  },
+  "behavior": "Public pre-login challenge verification; exact configured HTTPS origins/actions, provider hostname/action/cdata binding, five-minute challenge age, request and provider bounds, redirect denial, distributed per-origin/global minute budgets. No business writes or reusable authorization credential.",
+  "tests": {
+    "handler": "passed",
+    "database": "passed; fixtures rolled back; service-only execution, origin and global bounds, expired-window cleanup",
+    "live_probe": {
+      "status": 503,
+      "code": "verification_not_configured",
+      "provider_requests": 0
+    }
+  },
+  "configuration": {
+    "required": [
+      "AIQ_MIGRATED_TURNSTILE_SECRET_KEY",
+      "AIQ_MIGRATED_TURNSTILE_ALLOWED_ORIGINS"
+    ],
+    "allowed_origins_example": {
+      "https://applianceiq.com": [
+        "login",
+        "signup"
+      ]
+    },
+    "note": "Example only; choose actual widget hostnames/actions. Existing US application secrets are not reused. Equivalent encrypted migrated runtime values may be used."
+  },
+  "limitations": [
+    "Live configuration and widget verification remain pending. Deployment is not provider readiness.",
+    "Aggregate origin budgets are abuse controls, not user identity/IP limits. Forged forwarding headers are not trusted.",
+    "Standalone success does not authorize login/business operations; protected consumers must validate the submitted token server-side."
+  ],
+  "advisors": [
+    {
+      "type": "security",
+      "summary": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 616
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "type": "performance",
+      "summary": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 916
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "documentation": [
+    "https://developers.cloudflare.com/turnstile/get-started/server-side-validation/",
+    "https://supabase.com/docs/guides/functions/function-configuration"
+  ]
+}
