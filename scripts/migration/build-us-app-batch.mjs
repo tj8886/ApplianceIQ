@@ -1,6 +1,7 @@
 import {readFileSync,writeFileSync,mkdirSync,readdirSync,statSync,copyFileSync,existsSync} from 'node:fs';
 import {resolve,join,relative} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {migrateManufacturerInvitations} from './us-manufacturer-invitations.mjs';
 import {migrateCrmInvitations} from './us-crm-invitations.mjs';
 import {migrateAnalyticsAccess,omitDemoJoin} from './us-analytics-access.mjs';
 const root=resolve(import.meta.dirname,'../..'),out=process.argv[2];
@@ -21,6 +22,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
   if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
+  if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
   s=omitDemoJoin(s);
   for(const m of s.matchAll(/\/rest\/v1\/rpc\/([a-z0-9_]+)/g))counts.rpcs.add(m[1]);
   for(const m of s.matchAll(/\.rpc\(\s*['"]([a-z0-9_]+)['"]/g))counts.rpcs.add(m[1]);
