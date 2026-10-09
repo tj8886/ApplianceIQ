@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-09T16:02:46.072998+00:00",
+  "captured_at": "2026-10-09T16:37:15.754Z",
   "status": "not_ready_for_cutover",
   "production": "Canada",
   "source_project": "fumwwhyozeouoqscolke",
@@ -18,18 +18,16 @@
     "live_native_invitation_rollback_tests": "passed",
     "remaining_fixture_organizations": 0,
     "hosted_authenticated_tests": "pending",
-    "literal_rpc_names": 63,
-    "available_authenticated_native_wrappers": 63,
+    "literal_rpc_names": 64,
+    "available_authenticated_native_wrappers": 64,
     "unrouted_literal_rpc_names": [],
-    "literal_relation_names": 162,
+    "literal_relation_names": 160,
     "product_view_aliases": {
       "aiq_products": "aiq_products_app",
       "aiq_product_versions": "aiq_product_versions_app"
     },
     "denied_literal_reads": [],
-    "absent_in_both_source_and_destination": [
-      "mfr_assets"
-    ],
+    "absent_in_both_source_and_destination": [],
     "relation_privilege_snapshot": [
       {
         "kind": "relation",
@@ -1043,16 +1041,6 @@
       },
       {
         "kind": "relation",
-        "name": "mfr_user_roles",
-        "relation_kind": "r",
-        "selectable": true,
-        "insert_columns": false,
-        "update_columns": false,
-        "deletable": false,
-        "rls": true
-      },
-      {
-        "kind": "relation",
         "name": "mfr_vendors",
         "relation_kind": "r",
         "selectable": true,
@@ -1650,7 +1638,11 @@
     "manufacturer_signup_identity_activation": "Required for unmapped/new accounts; not automatic",
     "app_reference_fixes_tests": "passed",
     "warranty_fk_contract_test": "passed; read-only catalog",
-    "readable_literal_relations_including_product_view_aliases": 161
+    "readable_literal_relations_including_product_view_aliases": 160,
+    "manufacturer_assets_tests": "passed",
+    "manufacturer_assets_live_rollback_tests": "passed including authenticated Storage RLS",
+    "manufacturer_assets_migration_applied": true,
+    "manufacturer_assets_hosted_file_transfer": "pending"
   },
   "edge": {
     "archived_total": 87,
@@ -1821,6 +1813,7 @@
     "Literal references include copied/nested app files; active routes must be checked before implementing absent historical tables.",
     "Existing synthetic invitation suite was rerun with rollback; no real invitations or messages were sent.",
     "US manufacturer onboarding now uses a fresh native invitation API, eliminating direct mfr_invites/mfr_members queries and browser owner grants. All 63 literal native RPC routes have authenticated wrappers; table existence/grants do not establish full workflow readiness.",
-    "Three obsolete warranty cleanup calls omitted using verified existing cascade FKs; the copied old Product IQ route redirects to the current PIM. All source files retained. Manufacturer categories are generated from existing trade labels/priority lists. One active missing relation remains (mfr_assets); permission/write workflow completion is still separate from relation/RPC reference coverage."
+    "Three obsolete warranty cleanup calls omitted using verified existing cascade FKs; the copied old Product IQ route redirects to the current PIM. All source files retained. Manufacturer categories are generated from existing trade labels/priority lists. One active missing relation remains (mfr_assets); permission/write workflow completion is still separate from relation/RPC reference coverage.",
+    "Native asset schema and private Storage policies applied; SQL metadata fixtures and SDK-mocked client tests passed, but actual file-byte transfer and hosted browser tests remain pending. All 160 literal relation references now resolve; this does not complete remaining write/provider workflows."
   ]
 }

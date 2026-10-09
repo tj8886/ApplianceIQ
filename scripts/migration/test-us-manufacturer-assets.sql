@@ -59,11 +59,34 @@ BEGIN
  IF EXISTS(SELECT 1 FROM storage.buckets WHERE id='tj-mfr-assets' AND public) OR has_table_privilege('authenticated','tj.mfr_assets','INSERT') OR has_table_privilege('authenticated','tj.mfr_assets','UPDATE') OR has_table_privilege('authenticated','tj.mfr_assets','DELETE') OR has_function_privilege('anon','public.tj_runtime_manufacturer_assets(jsonb)','EXECUTE') THEN RAISE EXCEPTION 'private grants wrong';END IF;
  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
  result:=public.tj_runtime_manufacturer_assets('{"action":"trade"}');IF result->>'error'<>'identity_review_required' THEN RAISE EXCEPTION 'unmapped user allowed';END IF;
- PERFORM set_config('test.assets.native',trade_native::text,true);PERFORM set_config('test.assets.link',link_id::text,true);PERFORM set_config('test.assets.foreign',foreign_id::text,true);PERFORM set_config('test.assets.draft',draft_id::text,true);
+ PERFORM set_config('test.assets.org',org::text,true);PERFORM set_config('test.assets.vendor',vendor::text,true);PERFORM set_config('test.assets.reviewer_native',reviewer_native::text,true);PERFORM set_config('test.assets.upload_path',upload_path,true);PERFORM set_config('test.assets.editor_native',editor_native::text,true);PERFORM set_config('test.assets.native',trade_native::text,true);PERFORM set_config('test.assets.link',link_id::text,true);PERFORM set_config('test.assets.foreign',foreign_id::text,true);PERFORM set_config('test.assets.draft',draft_id::text,true);
 END $$;
 SET LOCAL ROLE authenticated;
-DO $$DECLARE result jsonb;BEGIN
+DO $$DECLARE result jsonb;blocked boolean:=false;reserved_path text;reserved_id uuid;BEGIN
  PERFORM set_config('request.jwt.claim.sub',current_setting('test.assets.native'),true);
+ IF EXISTS(SELECT 1 FROM storage.objects WHERE bucket_id='tj-mfr-assets' AND name=current_setting('test.assets.upload_path')) THEN RAISE EXCEPTION 'archived storage object visible';END IF;
+ BEGIN
+  INSERT INTO storage.objects(bucket_id,name,owner_id,metadata) VALUES('tj-mfr-assets','unreserved/'||gen_random_uuid()::text,auth.uid()::text,'{"size":12,"mimetype":"application/pdf"}');
+ EXCEPTION WHEN insufficient_privilege THEN blocked:=true;END;
+ IF NOT blocked THEN RAISE EXCEPTION 'unreserved upload allowed by real Storage RLS';END IF;
+ PERFORM set_config('request.jwt.claim.sub',current_setting('test.assets.editor_native'),true);
+ blocked:=false;
+ BEGIN
+  INSERT INTO storage.objects(bucket_id,name,owner_id,metadata) VALUES('tj-mfr-assets','unreserved/'||gen_random_uuid()::text,auth.uid()::text,'{"size":12,"mimetype":"application/pdf"}');
+ EXCEPTION WHEN insufficient_privilege THEN blocked:=true;END;
+ IF NOT blocked THEN RAISE EXCEPTION 'editor unreserved upload allowed';END IF;
+ result:=public.tj_runtime_manufacturer_assets(jsonb_build_object('action','reserve_upload','organization_id',current_setting('test.assets.org'),'vendor_id',current_setting('test.assets.vendor'),'category','spec_sheet','title','Authenticated Storage fixture','audiences',jsonb_build_array('builder'),'file_name','authenticated.pdf','mime_type','application/pdf','file_size_bytes',13));
+ IF result->>'ok'<>'true' THEN RAISE EXCEPTION 'authenticated reservation failed: %',result;END IF;
+ reserved_path:=result->>'storage_path';reserved_id:=(result->>'asset_id')::uuid;
+ INSERT INTO storage.objects(bucket_id,name,owner_id,metadata) VALUES('tj-mfr-assets',reserved_path,auth.uid()::text,'{"size":13,"mimetype":"application/pdf"}');
+ result:=public.tj_runtime_manufacturer_assets(jsonb_build_object('action','finalize','asset_id',reserved_id));
+ IF result->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM storage.objects WHERE bucket_id='tj-mfr-assets' AND name=reserved_path) THEN RAISE EXCEPTION 'authorized Storage upload/read failed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',current_setting('test.assets.native'),true);
+ IF EXISTS(SELECT 1 FROM storage.objects WHERE bucket_id='tj-mfr-assets' AND name=reserved_path) THEN RAISE EXCEPTION 'trade saw unpublished file';END IF;
+ PERFORM set_config('request.jwt.claim.sub',current_setting('test.assets.reviewer_native'),true);
+ result:=public.tj_runtime_manufacturer_assets(jsonb_build_object('action','publish','asset_id',reserved_id));IF result->>'ok'<>'true' THEN RAISE EXCEPTION 'authenticated publication failed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',current_setting('test.assets.native'),true);
+ IF NOT EXISTS(SELECT 1 FROM storage.objects WHERE bucket_id='tj-mfr-assets' AND name=reserved_path) THEN RAISE EXCEPTION 'trade cannot read reviewed file';END IF;
  IF NOT EXISTS(SELECT 1 FROM tj.mfr_assets WHERE id=current_setting('test.assets.link')::uuid) OR EXISTS(SELECT 1 FROM tj.mfr_assets WHERE id IN(current_setting('test.assets.foreign')::uuid,current_setting('test.assets.draft')::uuid)) THEN RAISE EXCEPTION 'direct table RLS failed';END IF;
  result:=public.tj_runtime_manufacturer_assets('{"action":"trade"}');IF result->>'ok'<>'true' THEN RAISE EXCEPTION 'authenticated invoker wrapper failed';END IF;
 END $$;

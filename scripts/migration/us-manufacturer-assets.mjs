@@ -70,6 +70,7 @@ async function delAsset(id){
  try{await assetsApi({action:'archive',asset_id:id});await loadAssets();}catch(e){showToast(e.message);}
 }
 `);
+ s=s.replaceAll('${ACTIVE_VENDOR.name}','${assetEscape(ACTIVE_VENDOR.name)}').replaceAll('${v.name}','${assetEscape(v.name)}');
  s=s.replace("function setVendor(id){ ACTIVE_VENDOR=MYVENDORS.find(v=>v.id===id); render(); }","function setVendor(id){ ACTIVE_VENDOR=MYVENDORS.find(v=>v.id===id); ASSET_ORG=null; render(); }");
  if(s.includes("from('mfr_assets')")||s.includes('.getPublicUrl(')||s.includes('.storage.from(STORAGE_BUCKET)'))throw Error('Legacy manufacturer asset access remains');
  return s;
