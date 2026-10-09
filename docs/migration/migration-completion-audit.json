@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-09T18:48:24.450Z",
+  "captured_at": "2026-10-09T18:56:14.248Z",
   "status": "not_ready_for_cutover",
   "production": "Canada",
   "source_project": "fumwwhyozeouoqscolke",
@@ -18,8 +18,8 @@
     "live_native_invitation_rollback_tests": "passed",
     "remaining_fixture_organizations": 0,
     "hosted_authenticated_tests": "pending",
-    "literal_rpc_names": 66,
-    "available_authenticated_native_wrappers": 66,
+    "literal_rpc_names": 67,
+    "available_authenticated_native_wrappers": 67,
     "unrouted_literal_rpc_names": [],
     "literal_relation_names": 158,
     "product_view_aliases": {
@@ -1648,9 +1648,9 @@
       "evidence": "speciq-drafts-verification.json",
       "published": false,
       "remaining": [
-        "CRM-linked packages, standalone project create/edit/archive, retailer/warranty/tax/team settings, additional technical metadata and project/salesperson/expiry fields.",
-        "Final tax/pricing review, customer PDF/send/share and actual provider/browser integration tests.",
-        "Remaining brand training writes, provider/Edge workflows, final frozen data/files delta, schedules and cutover."
+        "Standalone project create/edit/archive and builder/designer/date/notes fields, additional product technical metadata and retailer/warranty/tax/team settings.",
+        "Final tax/pricing/expiry review, customer PDF/share/send, hosted authenticated native app/store-scope tests.",
+        "Remaining brand training writes and provider/Edge workflows, final frozen data/files delta and cutover."
       ]
     },
     "speciq_workflow": {
@@ -1658,9 +1658,19 @@
       "evidence": "speciq-workflow-verification.json",
       "published": false,
       "remaining": [
-        "CRM-linked packages, standalone project create/edit/archive, retailer/warranty/tax/team settings, additional technical metadata and project/salesperson/expiry fields.",
-        "Final tax/pricing review, customer PDF/send/share and actual provider/browser integration tests.",
-        "Remaining brand training writes, provider/Edge workflows, final frozen data/files delta, schedules and cutover."
+        "Standalone project create/edit/archive and builder/designer/date/notes fields, additional product technical metadata and retailer/warranty/tax/team settings.",
+        "Final tax/pricing/expiry review, customer PDF/share/send, hosted authenticated native app/store-scope tests.",
+        "Remaining brand training writes and provider/Edge workflows, final frozen data/files delta and cutover."
+      ]
+    },
+    "speciq_crm_links": {
+      "native_linked_draft_create_revise_clear": "applied; live rollback and local client checks passed",
+      "evidence": "speciq-crm-links-verification.json",
+      "published": false,
+      "remaining": [
+        "Standalone project create/edit/archive and builder/designer/date/notes fields, additional product technical metadata and retailer/warranty/tax/team settings.",
+        "Final tax/pricing/expiry review, customer PDF/share/send, hosted authenticated native app/store-scope tests.",
+        "Remaining brand training writes and provider/Edge workflows, final frozen data/files delta and cutover."
       ]
     }
   },
@@ -2005,5 +2015,90 @@
       }
     ],
     "comparison": "WARN/ERROR, RLS-no-policy and unindexed FK counts unchanged. Unused-index INFO falls 932 to 930 as existing journal indexes exercised. No new tables/indexes/policies or direct grants."
+  },
+  "speciq_crm_link_advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 622,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 928,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "comparison": "WARN/ERROR, RLS-no-policy and unindexed FK counts unchanged. Unused-index INFO falls 930 to 928 as existing CRM indexes exercised. No new tables, indexes, policies or direct grants."
   }
 }
