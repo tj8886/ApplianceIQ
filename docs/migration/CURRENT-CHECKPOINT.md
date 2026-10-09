@@ -2,7 +2,7 @@
 
 Status: in progress; production remains in Canada. Do not interpret endpoint deployment as workflow completion.
 
-Completed this batch:
+Completed so far:
 - Shopify OAuth implementation deployed and tested; live provider verification requires fresh Shopify registration/secrets.
 - All 542 source tables compared: 532 initially identical, ten reviewed differences.
 - Copied 45,753 append rows with exact source checksums and unchanged original prefixes. Temporary relay endpoints closed and service RPC execution revoked.
@@ -15,7 +15,9 @@ Remaining work:
 - Provider credentials/registrations and real integration tests, remaining application writes and browser workflows.
 - Final frozen database/Storage delta, destination schedules, hosted cutover and source retirement. Main CI still targets Canada; migration PR must remain unmerged until cutover readiness is established.
 
-Next small batch: implement read-only Shopify connection verification and the explicit draft-order scope authorization path. Confirm the actual shop identity, currency and granted permissions against fresh credentials. Do not enable draft creation yet; real response validation/reconciliation and currency/tax/discount handling remain unfinished.
+Next small batch: implement explicit draft-order OAuth scope opt-in, preserving existing read-only authorization by default. Then complete currency/tax/discount contracts, same-connection variant/customer mapping, real response validation/reconciliation and atomic business completion before enabling creation. Fresh Shopify registration/secrets and live connection verification remain required.
+
+Shopify connection verification batch: ACTIVE v1, JWT required. Read-only shop identity, currency and actual granted scopes use fresh destination OAuth Vault credentials through service-only calls. One-use short sessions and short proof lifetime bind connection/credential versions; replay/expiry/rotation are rejected. Handler and live rollback SQL tests passed; unsigned live probe is 401. Zero credentials, sessions, proofs and fixture connections persisted; no real provider request or activation occurred. Existing advisor WARN/ERROR counts unchanged; two private RLS-without-policy and four unused-index INFO findings added. Edge totals: 108 destination helpers/endpoints, with archived coverage unchanged at 77 deployed, one retired, nine absent and no source metadata drift. Evidence: shopify-connection-verification.json.
 
 Draft claim batch: applied service-only internal attempt/event journals with one package slot, idempotent request keys, worker fencing, SHA-256 source snapshot guards, expiry/cancel before dispatch, uncertain-state retention and idempotent simulated confirmation. Live rollback lifecycle and preview regression tests passed; persisted attempts/events are zero. No provider call, credential access or package success marker write. Existing advisor WARN/ERROR counts unchanged; two deliberately private RLS-without-policy and three unused-index informational findings documented. The Edge endpoint is still preview-only; the journal is not wired to provider execution. Evidence: shopify-draft-claim-verification.json.
 
