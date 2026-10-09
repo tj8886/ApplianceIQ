@@ -1,7 +1,8 @@
 import {readFileSync,writeFileSync,mkdirSync,readdirSync,statSync,copyFileSync,existsSync} from 'node:fs';
 import {resolve,join,relative} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {omitObsoleteWarrantyCleanup,routeLegacyProductIq,surfaceManufacturerAssetErrors} from './us-app-reference-fixes.mjs';
+import {omitObsoleteWarrantyCleanup,routeLegacyProductIq} from './us-app-reference-fixes.mjs';
+import {migrateManufacturerAssets,migrateTradeAssets} from './us-manufacturer-assets.mjs';
 import {migrateManufacturerInvitations} from './us-manufacturer-invitations.mjs';
 import {migrateCrmInvitations} from './us-crm-invitations.mjs';
 import {migrateAnalyticsAccess,omitDemoJoin} from './us-analytics-access.mjs';
@@ -25,7 +26,8 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
   if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
-  if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=surfaceManufacturerAssetErrors(s);
+  if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerAssets(s);
+  if(app.key==='academy'&&p===join(target,'trade.html'))s=migrateTradeAssets(s);
   if(app.key==='spec-iq'&&p===join(target,'index.html'))s=omitObsoleteWarrantyCleanup(s);
   if(app.key==='product-iq'&&p===join(target,'apps/product-iq/index.html'))s=routeLegacyProductIq(s);
   s=omitDemoJoin(s);
