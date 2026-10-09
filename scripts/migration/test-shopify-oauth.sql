@@ -4,7 +4,7 @@ DO $$DECLARE native uuid;actor uuid;org uuid;connector uuid;conn uuid;BEGIN
  SELECT im.target_user_id,im.source_user_id,m.organization_id INTO native,actor,org FROM tj.source_user_identity_map im JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL LIMIT 1;
  IF native IS NULL THEN RAISE EXCEPTION 'missing_native_admin_fixture';END IF;
  SELECT id INTO connector FROM tj.platform_connectors WHERE key='shopify';
- INSERT INTO tj.platform_connector_connections(organization_id,connector_id,display_name,created_by,status) VALUES(org,connector,'Rollback Shopify OAuth',actor,'pending') RETURNING id INTO conn;
+ INSERT INTO tj.platform_connector_connections(organization_id,connector_id,display_name,created_by,status,external_account_id) VALUES(org,connector,'Rollback Shopify OAuth',actor,'pending','migration-rollback.myshopify.com') RETURNING id INTO conn;
  PERFORM set_config('test.shopify.native',native::text,true);PERFORM set_config('test.shopify.actor',actor::text,true);PERFORM set_config('test.shopify.org',org::text,true);PERFORM set_config('test.shopify.conn',conn::text,true);
  PERFORM set_config('test.shopify.body',jsonb_build_object('connection_id',conn,'shop','migration-rollback.myshopify.com','state_hash',repeat('a',64),'client_id','synthetic-client-key','redirect_uri','https://jdxslqmgjsuzoisuhvlc.supabase.co/functions/v1/shopify-auth/callback','return_url','https://app.example/integrations','scopes','read_orders')::text,true);
 END $$;
