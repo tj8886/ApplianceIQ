@@ -1,0 +1,55 @@
+{
+  "verified_at": "2026-10-09T15:11:50.161Z",
+  "deployment": {
+    "id": "b5a44dcb-19d1-44eb-8893-bc5224520936",
+    "slug": "shopify-performance-bridge",
+    "name": "shopify-performance-bridge",
+    "status": "ACTIVE",
+    "version": 1,
+    "created_at": 1791558644103,
+    "updated_at": 1791558644103,
+    "verify_jwt": true,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_jdxslqmgjsuzoisuhvlc_b5a44dcb-19d1-44eb-8893-bc5224520936_1/source/supabase/functions/shopify-performance-bridge/index.ts",
+    "ezbr_sha256": "36c96c10341def1ddecc2681b885a20ab03759eec231e37417db29a5dff34a14"
+  },
+  "status": "authenticated_order_preview_only",
+  "tests": {
+    "calculation_checks": {
+      "passed": 14,
+      "tests": [
+        "decimal exactness",
+        "lossless IDs",
+        "unknown cost/margin",
+        "privacy",
+        "unsafe numeric IDs",
+        "unsupported currency",
+        "mismatched totals/discount/currency",
+        "duplicate lines",
+        "invalid quantities/money/discount"
+      ]
+    },
+    "handler_assertions": 19,
+    "runtime": "V8 in-memory; HTTP response and ASCII decoder shims; full Node/Edge/browser runtime tests pending",
+    "live_scoped_rollback_sql": "passed",
+    "persisted_fixtures": 0
+  },
+  "implemented": [
+    "Exact integer-cent arithmetic with decimal-string output for CAD/USD only.",
+    "Lossless external IDs; duplicate lines, invalid quantities/discounts, malformed amounts and currency/total mismatches rejected.",
+    "Existing native tenant-admin Shopify connection RPC authorizes every preview; foreign connections denied.",
+    "No fabricated costs/margins or raw/customer disclosure; provider_verified=false."
+  ],
+  "limitations": [
+    "Changed from legacy anonymous Shopify webhook writer to authenticated preview; not a webhook receiver.",
+    "No refunds, order/line/sales writes, watermarks or metrics refresh; atomic reconciliation and idempotency required before activation.",
+    "No real provider request or authenticated HTTP/browser session exercised.",
+    "No DDL applied; existing scoped read-only authorization reused."
+  ],
+  "paused_oauth": {
+    "commit": "ba6e4d49aab173089d67c35ae56717a097bb2d69",
+    "migration_applied": false,
+    "edge_redeployed": false,
+    "reason": "User requested moving to next endpoint."
+  }
+}
