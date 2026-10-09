@@ -1,0 +1,119 @@
+{
+  "verified_at": "2026-10-09T12:44:38.216Z",
+  "endpoint": "shopify-draft-order",
+  "deployment": {
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "sha256": "cc8501475b43d3eefb3f95c581f49759afbc9ff263e681f512d2ccbfb3870ae4"
+  },
+  "completed_operation": "preview",
+  "creation_enabled": false,
+  "authorization": "Verified activated native identity and active same-organization administrator; foreign package/child and nonadmin access denied.",
+  "pricing": "Server-owned product negotiated price, then promo price, then MSRP; services use saved amount, quantity one. Numeric prices/subtotal remain decimal strings. Missing prices rejected; dealer costs/credentials/customer fields omitted.",
+  "tests": {
+    "handler": "passed",
+    "live_database": "passed; all fixtures rolled back",
+    "unsigned_live_probe": 401
+  },
+  "source_and_destination_counts": {
+    "packages": 13,
+    "products": 31,
+    "services": 5,
+    "shopify_stores": 0
+  },
+  "provider_requests": 0,
+  "business_writes": 0,
+  "remaining": [
+    "Fresh verified connection and draft-order authorization; existing OAuth scopes omit write_draft_orders.",
+    "Verified currency and tax/discount behavior.",
+    "Connection-scoped customer/variant mappings without replacing negotiated prices.",
+    "Atomic duplicate-prevention claim, uncertain provider response recovery and persisted success reconciliation.",
+    "Real provider and authenticated browser tests."
+  ],
+  "advisors": [
+    {
+      "type": "security",
+      "findings": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 616
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "type": "performance",
+      "findings": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 916
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Deployment is a working read-only preview, not a completed draft-creation workflow.",
+    "No draft, invoice, payment, credential read or imported Shopify token adoption.",
+    "Snapshot counts match; final source delta/cutover remains separate."
+  ],
+  "documentation": [
+    "https://shopify.dev/docs/api/admin-graphql/2026-10/mutations/draftOrderCreate"
+  ]
+}

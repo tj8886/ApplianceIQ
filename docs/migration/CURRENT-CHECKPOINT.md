@@ -11,12 +11,14 @@ Completed this batch:
 - All 11 generated app bundles passed local routing/asset/auth-storage/handoff checks earlier in this session; hosted authenticated checks and cutover remain pending.
 
 Remaining work:
-- Ten archived Edge endpoints are absent; several deployed endpoints still provide readiness gates rather than complete workflows.
+- Nine archived Edge endpoints are absent; several deployed endpoints still provide readiness gates rather than complete workflows.
 - Provider credentials/registrations and real integration tests, remaining application writes and browser workflows.
 - Final frozen database/Storage delta, destination schedules, hosted cutover and source retirement. Main CI still targets Canada; migration PR must remain unmerged until cutover readiness is established.
 
-Next small batch: shopify-draft-order. Review its archived source and connection scope, implement and test the smallest complete safe operation, commit before deploying, and record any provider/credential blocker. Do not enable charges, orders or webhooks through imported configuration alone.
+Next small batch: continue shopify-draft-order with the duplicate-prevention and uncertain-result recovery contract. The deployed preview is complete; provider draft creation is not. Finish the actual creation workflow before treating the endpoint as fully migrated. A later provider verification requires new Shopify authorization including draft-order permission.
 
-Turnstile batch: deployed ACTIVE v1 with strict public challenge verification and distributed private budgets. Handler and live rollback database tests passed; unsigned live probe correctly returns verification_not_configured with no provider call. Fresh namespaced Turnstile secret and site/action configuration, followed by a real widget test, are required for activation. Evidence: turnstile-verification.json. Inventory is 76 archived endpoints deployed, one retired and ten absent; deployed presence includes gates and incomplete provider verification.
+Draft preview batch: ACTIVE v1, JWT required. Native tenant-admin preview uses stored negotiated/promo/MSRP and actual service amounts, decimal strings and an exact subtotal. Missing prices, caller-supplied financial data and foreign/unmapped/nonadmin access are rejected. Handler/live rollback database tests passed; unsigned live probe is 401; advisor counts unchanged. No provider call or business write. Evidence: shopify-draft-preview-verification.json.
+
+Turnstile batch: deployed ACTIVE v1 with strict public challenge verification and distributed private budgets. Handler and live rollback database tests passed; unsigned live probe correctly returns verification_not_configured with no provider call. Fresh namespaced Turnstile secret and site/action configuration, followed by a real widget test, are required for activation. Evidence: turnstile-verification.json. Inventory is 77 archived endpoints deployed, one retired and nine absent; deployed presence includes gates and incomplete provider verification.
 
 Evidence: oct9-append-delta-verification.json, oct9-reviewed-delta-verification.json. Work branch: migration/us-east-consolidation; draft PR #8.
