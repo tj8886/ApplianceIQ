@@ -71,7 +71,7 @@ window.savePackage=async(status)=>{
    return '<article><h1>'+esc(pkg.package_name)+'</h1><p>Draft revision '+esc(pkg.version)+' — '+esc(pkg.customer_name)+'</p><p>Prices are entered draft estimates. Final tax, approval, expiry and customer sending are pending.</p><table><thead><tr><th>Product</th><th>Model</th><th>Quantity</th><th>Entered unit price</th></tr></thead><tbody>'+products.map(p=>'<tr><td>'+esc(p.brand)+' '+esc(p.product_name)+'</td><td>'+esc(p.model_number)+'</td><td>'+esc(p.quantity)+'</td><td>$'+money(p.msrp)+'</td></tr>').join('')+'</tbody></table><p>Products: $'+money(pkg.total_msrp)+' · Services: $'+money(pkg.total_services)+' · Warranties: $'+money(pkg.warranty_total)+'</p><p>Draft subtotal before tax: $'+money(Number(pkg.total_msrp||0)+Number(pkg.total_services||0)+Number(pkg.warranty_total||0))+'</p></article>';
   }
  `);
- s=s.replace("  const canSend=pkg.approval_status===", "  const canSend=false&&pkg.approval_status===");
+ s=s.replace(/  const canSend=[^;]+;/, '  const canSend=false;');
  s=s.replace('const grandTotal=total+svcTotal;', 'const grandTotal=pkg.status===\'draft\'&&pkg.total_tax==null?Number(pkg.total_msrp||0)+Number(pkg.total_services||0)+Number(pkg.warranty_total||0):total+svcTotal;');
  s=s.replace('text-transform:uppercase">Total</span>', 'text-transform:uppercase">Draft subtotal / prior total</span>');
  s=s.replace(".from('speciq_projects').select('*').order('created_at'", ".from('speciq_projects').select('*').eq('organization_id',userOrgId).order('created_at'");
