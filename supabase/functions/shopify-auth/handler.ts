@@ -1,5 +1,6 @@
 type Env=(name:string)=>string|undefined;
 export const SCOPES='read_customers,read_orders,read_products,read_inventory,read_locations,write_customers';
+export const DRAFT_SCOPES=SCOPES+',write_draft_orders';
 const shopPattern=/^[a-z0-9][a-z0-9-]{0,62}\.myshopify\.com$/;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Content-Type':'application/json','Cache-Control':'no-store','Referrer-Policy':'no-referrer'};
@@ -38,7 +39,8 @@ export function createHandler({createClient,env,loadEnvironment=async(e:Env)=>e,
     identity=await caller.auth.getUser();if(identity.error||!identity.data?.user||identity.data.user.is_anonymous)return reply({error:'unauthorized'},401);
     let raw;try{raw=await boundedText(req,16384);}catch{return reply({error:'body_too_large'},413);}
     try{body=JSON.parse(raw);}catch{return reply({error:'invalid_json'},400);}
-    if(!body||typeof body!=='object'||Array.isArray(body)||!['authorize','complete'].includes(body.action)||!uuid.test(body.connection_id??'')||Object.keys(body).some(k=>!(body.action==='authorize'?['action','connection_id','shop','return_url']:['action','connection_id','callback_query']).includes(k)))return reply({error:'invalid_request'},400);
+    if(!body||typeof body!=='object'||Array.isArray(body)||!['authorize','complete'].includes(body.action)||!uuid.test(body.connection_id??'')||Object.keys(body).some(k=>!(body.action==='authorize'?['action','connection_id','shop','return_url','draft_orders']:['action','connection_id','callback_query']).includes(k)))return reply({error:'invalid_request'},400);
+    if(body.action==='authorize'&&Object.hasOwn(body,'draft_orders')&&typeof body.draft_orders!=='boolean')return reply({error:'invalid_request'},400);
    }
    const runtime=await loadEnvironment(env,fetchImpl),client=runtime('SHOPIFY_API_KEY'),secret=runtime('SHOPIFY_API_SECRET'),redirect=env('SUPABASE_URL')+'/functions/v1/shopify-auth/callback';
    if(!/^[A-Za-z0-9_-]{8,128}$/.test(client??'')||!secret||runtime('SHOPIFY_REDIRECT_URI')!==redirect)return reply({error:'destination_shopify_registration_required'},503);
@@ -46,16 +48,17 @@ export function createHandler({createClient,env,loadEnvironment=async(e:Env)=>e,
    if(req.method==='POST'&&body.action==='authorize'){
     const shop=typeof body.shop==='string'?body.shop.toLowerCase():'';if(!shopPattern.test(shop))return reply({error:'invalid_shop'},400);
     let returnUrl;try{returnUrl=approvedReturn(body.return_url,runtime('SHOPIFY_RETURN_ORIGINS'));}catch{return reply({error:'return_origin_not_approved'},400);}
+    const scopes=body.draft_orders===true?DRAFT_SCOPES:SCOPES;
     const state=Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
-    const begun=await service.rpc('aiq_shopify_oauth_begin',{p_native:identity.data.user.id,p_body:{connection_id:body.connection_id,shop,state_hash:await stateHash(state),client_id:client,redirect_uri:redirect,return_url:returnUrl,scopes:SCOPES}});if(begun.error)return failure(begun.error);if(begun.data?.ok!==true)return reply({error:'oauth_operation_failed'},500);
-    return reply({ok:true,authorization_url:`https://${shop}/admin/oauth/authorize?`+new URLSearchParams({client_id:client!,scope:SCOPES,redirect_uri:redirect,state})});
+    const begun=await service.rpc('aiq_shopify_oauth_begin',{p_native:identity.data.user.id,p_body:{connection_id:body.connection_id,shop,state_hash:await stateHash(state),client_id:client,redirect_uri:redirect,return_url:returnUrl,scopes,draft_orders:body.draft_orders===true}});if(begun.error)return failure(begun.error);if(begun.data?.ok!==true)return reply({error:'oauth_operation_failed'},500);
+    return reply({ok:true,requested_scopes:scopes.split(','),draft_order_permission_requested:body.draft_orders===true,draft_creation_enabled:false,authorization_url:`https://${shop}/admin/oauth/authorize?`+new URLSearchParams({client_id:client!,scope:scopes,redirect_uri:redirect,state})});
    }
    const query=req.method==='GET'?url.search.slice(1):body.callback_query;
    let signed;try{if(typeof query!=='string')throw Error();signed=await verifyCallback(query,secret);}catch{return reply({error:'invalid_shopify_callback'},403);}
    const hash=await stateHash(signed.state);
    // Load without consuming first: validate binding/configuration before a claim.
    const context=await service.rpc('aiq_shopify_oauth_context',{p_hash:hash,p_native:null,p_claim:false});if(context.error)return failure(context.error);const ctx=context.data;
-   if(!ctx||ctx.shop!==signed.shop||ctx.client_id!==client||ctx.redirect_uri!==redirect||ctx.scopes!==SCOPES)return reply({error:'oauth_configuration_or_shop_changed'},409);
+   if(!ctx||ctx.shop!==signed.shop||ctx.client_id!==client||ctx.redirect_uri!==redirect||![SCOPES,DRAFT_SCOPES].includes(ctx.scopes))return reply({error:'oauth_configuration_or_shop_changed'},409);
    let returnUrl;try{returnUrl=approvedReturn(ctx.return_url,runtime('SHOPIFY_RETURN_ORIGINS'));}catch{return reply({error:'return_origin_not_approved'},400);}
    if(req.method==='GET'){
     // No token exchange during anonymous callback. The initiating native user must complete it.
@@ -70,7 +73,7 @@ export function createHandler({createClient,env,loadEnvironment=async(e:Env)=>e,
     if(!response.ok){await response.body?.cancel();throw Error('token_exchange_failed');}
     const tokens=JSON.parse(await boundedText(response,40000));
     if(typeof tokens.access_token!=='string'||!tokens.access_token||tokens.access_token.length>16000||typeof tokens.refresh_token!=='string'||!tokens.refresh_token||tokens.refresh_token.length>16000||typeof tokens.scope!=='string'||tokens.scope.length>2000||!/^[a-z_]+(,[a-z_]+)*$/.test(tokens.scope)||!Number.isInteger(tokens.expires_in)||tokens.expires_in<1||tokens.expires_in>31536000||!Number.isInteger(tokens.refresh_token_expires_in)||tokens.refresh_token_expires_in<1||tokens.refresh_token_expires_in>31536000)throw Error('invalid_token_response');
-    const granted=new Set(tokens.scope.split(','));for(const scope of SCOPES.split(',')){if(!granted.has(scope)&&!(scope.startsWith('read_')&&granted.has('write_'+scope.slice(5))))throw Error('missing_scope');}
+    const granted=new Set(tokens.scope.split(','));for(const scope of ctx.scopes.split(',')){if(!granted.has(scope)&&!(scope.startsWith('read_')&&granted.has('write_'+scope.slice(5))))throw Error('missing_scope');}
     const credential={shop:signed.shop,access_token:tokens.access_token,refresh_token:tokens.refresh_token,scope:tokens.scope,obtained_at:new Date().toISOString(),expires_at:new Date(Date.now()+tokens.expires_in*1000).toISOString(),refresh_expires_at:new Date(Date.now()+tokens.refresh_token_expires_in*1000).toISOString()};
     const saved=await service.rpc('aiq_shopify_oauth_finish',{p_hash:hash,p_native:identity.data.user.id,p_credential:credential});if(saved.error)return failure(saved.error);if(saved.data?.ok!==true)return reply({error:'oauth_operation_failed'},500);return reply(saved.data);
    }catch{return reply({error:'shopify_token_exchange_failed'},502);}
