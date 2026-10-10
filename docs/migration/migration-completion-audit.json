@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-10T03:00:41.545Z",
+  "captured_at": "2026-10-10T03:11:32.301Z",
   "status": "not_ready_for_cutover",
   "production": "Canada",
   "source_project": "fumwwhyozeouoqscolke",
@@ -1695,6 +1695,15 @@
       "omitted_revision_fields": "inherit prior facts",
       "explicit_clear": "new revision only",
       "hosted_authenticated_tests": "pending"
+    },
+    "speciq_technical_metadata": {
+      "applied": true,
+      "evidence": "speciq-technical-verification.json",
+      "local_and_live_rollback_tests": "passed",
+      "catalog_facts": "resolved server-side",
+      "manual_facts": "user_entry_unreviewed",
+      "document_access": "existing approval/current/expiry/embargo/time/audience/code rules",
+      "hosted_file_bytes": "pending"
     }
   },
   "edge": {
@@ -1861,13 +1870,12 @@
     "Final frozen database/Storage delta and schedules, then hosted cutover and source retirement."
   ],
   "limits": [
-    "Relation/RPC checks inspect grants and existence, not every RLS path or working UI workflow.",
-    "33 restricted endpoint classifications come from recorded descriptions; they are a conservative label-based inventory, not new functional verification.",
-    "Literal references include copied/nested app files; active routes must be checked before implementing absent historical tables.",
-    "Existing synthetic invitation suite was rerun with rollback; no real invitations or messages were sent.",
-    "US manufacturer onboarding now uses a fresh native invitation API, eliminating direct mfr_invites/mfr_members queries and browser owner grants. All 63 literal native RPC routes have authenticated wrappers; table existence/grants do not establish full workflow readiness.",
-    "Three obsolete warranty cleanup calls omitted using verified existing cascade FKs; the copied old Product IQ route redirects to the current PIM. All source files retained. Manufacturer categories are generated from existing trade labels/priority lists. One active missing relation remains (mfr_assets); permission/write workflow completion is still separate from relation/RPC reference coverage.",
-    "Native asset schema and private Storage policies applied; SQL metadata fixtures and SDK-mocked client tests passed, but actual file-byte transfer and hosted browser tests remain pending. All 160 literal relation references now resolve; this does not complete remaining write/provider workflows."
+    "Literal relation/RPC grants and existence do not prove every RLS path or UI workflow.",
+    "69 literal native wrappers and 158 literal relation names were verified before this batch; this batch adds no relation/RPC names.",
+    "33 restricted endpoint classifications come from recorded descriptions, not fresh full functional verification.",
+    "Local bundle/client and rollback SQL tests are not hosted authenticated browser or actual file-byte tests.",
+    "Older evidence files retain historical counts; this audit and CURRENT-CHECKPOINT.md state current progress.",
+    "No external invitations/messages/provider transactions, publication, schedules, frozen cutover or source retirement performed in this batch."
   ],
   "speciq_draft_advisors": {
     "security": [
@@ -2378,5 +2386,96 @@
       }
     ],
     "delta": "All advisory counts unchanged; no tables or indexes added."
+  },
+  "speciq_technical_advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 624,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 926,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "All advisor counts unchanged. No tables or indexes added."
+  },
+  "provider_verification": {
+    "fresh_shopify_credentials": 0,
+    "verified_shopify_connections": 0,
+    "checked_at": "2026-10-10T03:11:32.301Z",
+    "real_provider_test": "blocked until fresh authorization"
   }
 }
