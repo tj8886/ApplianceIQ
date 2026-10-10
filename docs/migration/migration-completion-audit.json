@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-10T13:28:29.875Z",
+  "captured_at": "2026-10-10T20:23:42.570Z",
   "status": "not_ready_for_cutover",
   "production": "Canada",
   "source_project": "fumwwhyozeouoqscolke",
@@ -18,8 +18,8 @@
     "live_native_invitation_rollback_tests": "passed",
     "remaining_fixture_organizations": 0,
     "hosted_authenticated_tests": "pending",
-    "literal_rpc_names": 70,
-    "available_authenticated_native_wrappers": 70,
+    "literal_rpc_names": 71,
+    "available_authenticated_native_wrappers": 71,
     "unrouted_literal_rpc_names": [],
     "literal_relation_names": 158,
     "product_view_aliases": {
@@ -1719,6 +1719,15 @@
       "authenticated_physical_bytes": "pending: approved US test login unavailable",
       "hosted_browser": "pending",
       "repeatable_runner": "implemented and contract-tested"
+    },
+    "manufacturer_training": {
+      "applied": true,
+      "evidence": "brand-training-verification.json",
+      "local_and_live_rollback_tests": "passed",
+      "stored_brand_link": true,
+      "independent_review": true,
+      "existing_training_cards": 35,
+      "hosted_authenticated_tests": "pending"
     }
   },
   "edge": {
@@ -2564,5 +2573,90 @@
       }
     ],
     "delta": "WARN/ERROR unchanged; deliberately private journal adds one RLS-no-policy INFO (624 to 625), unused index INFO 926 to 927, no new unindexed foreign keys"
+  },
+  "brand_training_advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 626,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 928,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "Existing WARN/ERROR unchanged; new intentionally private journal increases RLS-no-policy INFO 625 to 626. Unindexed FK count unchanged at 698; unused index INFO 927 to 928."
   }
 }

@@ -1,0 +1,123 @@
+{
+  "verified_at": "2026-10-10T20:23:42.570Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "a48fe7251e88aa3a5c8091e9ef58cb13508b4db8",
+  "migration": "20261010201824_enable_native_brand_training.sql",
+  "applied": true,
+  "scope": "Organization-scoped manufacturer training drafts and independent publication review",
+  "implemented": [
+    "Stored active vendor.brand_id resolves the canonical active brand; no fuzzy name matching or caller-supplied brand ID. Current confirmed mapped source identity and active organization/vendor approvals rechecked.",
+    "Product editors and approved brand/vendor admins create/save; asset-editor role alone cannot write training. Product reviewers and brand/vendor admins review, with last editor prohibited from approving their own saved changes.",
+    "Optimistic timestamps, organization/brand locks and stable request/body replay journal. Prior source/native before/after content retained; edits reset publication/manufacturer approval/reviewer dates/confidence, with unsupported fields preserved.",
+    "US manufacturer editor uses native API, explicit organization selector, read-only permission controls, escaped field attributes, stable retries/form retention, in-flight controls and stale vendor response suppression."
+  ],
+  "tests": {
+    "live_rollback": "passed create/save/replay/body and revision conflicts, strict/approval-spoof/empty-response rejection, foreign organization/asset-editor/suspended denials, independent reviewer, edits invalidate approval/history and authenticated wrapper",
+    "client_vm": "passed full transformed manufacturer module parse, native routing/canonical identity, attribute escaping, failed-save form retention/redaction, stable retries and stale vendor load suppression",
+    "manufacturer_assets_and_invitation_regressions": "passed",
+    "eleven_bundle_checks": "passed",
+    "runtime_router": "75 configured routes passed",
+    "literal_rpc_names": 71,
+    "fixture_organizations": 0,
+    "fixture_vendors": 0,
+    "persisted_request_rows": 0,
+    "existing_training_card_count": 35,
+    "direct_client_card_insert_update": false,
+    "hosted_authenticated_browser": "pending"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 626,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 928,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "Existing WARN/ERROR unchanged; new intentionally private journal increases RLS-no-policy INFO 625 to 626. Unindexed FK count unchanged at 698; unused index INFO 927 to 928."
+  },
+  "remaining": [
+    "Signed-in file bytes and hosted browser workflows require approved US test login",
+    "Other remaining application writes and final financial/tax/discount/expiry/PDF/share/send workflows",
+    "Eight archived endpoints absent and recorded restricted provider integrations",
+    "Fresh provider registrations/credentials and real integration tests",
+    "Frozen database/Storage delta, schedules, CI/app retargeting, production cutover and source retirement"
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft/unmerged"
+}
