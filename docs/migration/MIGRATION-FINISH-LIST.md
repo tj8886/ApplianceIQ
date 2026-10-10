@@ -29,3 +29,5 @@
 `live-edge-progress.json` is the fresh endpoint-presence audit. Its deployed count does not prove functional completion. The 33 restricted classifications remain based on recorded implementation descriptions.
 
 Private logo batch: 2026-10-10T13:19:09.338Z. See speciq-logos-verification.json. Native authorization/metadata rollback tests, client tests, whole module parse, all eleven bundles and 74 configured routes passed. All 70 literal native wrapper names available. Actual Storage file bytes and hosted workflows remain pending; production remains Canada.
+
+File-transfer verification: six live unauthenticated checks passed; no probe objects persisted. Signed-in file bytes remain pending because an approved US test login is unavailable in this environment. Repeatable US/test-org runner and operating instructions are saved in NATIVE-FILE-VERIFICATION.md; mocked runner tests are not live byte proof. Continue independent remaining application implementation while this prerequisite is unresolved.
