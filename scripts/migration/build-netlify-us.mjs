@@ -1,0 +1,13 @@
+import {readFileSync,cpSync,mkdirSync} from 'node:fs';
+import {resolve,join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+const root=resolve(import.meta.dirname,'../..');
+const registry=JSON.parse(readFileSync(join(root,'config/app-registry.json'),'utf8'));
+const site=process.env.SITE_ID;
+const app=[registry.platform,...registry.apps].find(a=>a.netlify_site_id===site&&a.deploy_on_main&&a.source_path);
+if(!app)throw Error('Netlify SITE_ID must match an active deployment-registry target');
+const output=join(root,'.aiq-netlify-batch'),publish=join(root,'.aiq-netlify');
+execFileSync(process.execPath,[join(root,'scripts/migration/build-us-app-batch.mjs'),output],{cwd:root,stdio:'inherit'});
+execFileSync(process.execPath,[join(root,'scripts/migration/test-us-app-batch.mjs'),output],{cwd:root,stdio:'inherit'});
+mkdirSync(publish,{recursive:true});cpSync(join(output,app.key),publish,{recursive:true});
+console.log(JSON.stringify({app:app.key,site_id:site,destination:'jdxslqmgjsuzoisuhvlc',publish}));

@@ -1,3 +1,5 @@
+User-authorized production cutover is now in progress (October 10, 2026, 16:34 Toronto). The remaining items below are follow-up work, and no longer hold app publication. Canadian data/files are retained. See production-cutover.json for actual live deployment evidence.
+
 # ApplianceIQ migration finish list — October 10, 2026 UTC
 
 **Not ready for production cutover.** Production remains Canada; US app bundles are unpublished and PR #8 is draft/unmerged. Data-copy completion, endpoint presence and local tests are separate from working hosted applications.

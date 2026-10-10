@@ -57,7 +57,7 @@ rather than multiple Netlify projects independently deciding how the same commit
 
 ## Supabase
 
-Backend project: `fumwwhyozeouoqscolke` (`ca-central-1`).
+Production application target: `jdxslqmgjsuzoisuhvlc` (US Supabase). The Canadian project `fumwwhyozeouoqscolke` is retained for recovery and reconciliation.
 
 Database changes must be represented by versioned files under `supabase/migrations/`. Edge Function source must live under `supabase/functions/`.
 
@@ -68,3 +68,7 @@ Connector/platform production changes should be mirrored into source control bef
 For a web-app regression, use the Netlify project deploy history to restore the previous successful production deploy, then revert/fix the corresponding Git commit so the registry-driven pipeline and production state converge again.
 
 For database changes, prefer forward corrective migrations. Do not manually edit migration history to make an incident disappear.
+
+## US cutover
+
+The user authorized deployment before remaining provider, hosted-login and final reconciliation checks were complete on October 10, 2026. CI builds `scripts/migration/build-us-app-batch.mjs` and publishes each registered US bundle. Repository-linked Netlify builds use `build-netlify-us.mjs` and SITE_ID to select the same registry target; unknown/legacy sites fail rather than publishing another app. Pending migrations and provider credentials are not automatically applied or copied. The older Academy workflow is manual-only and uses the registry target/US build. Canadian data/files are retained. Actual publication is recorded separately in the cutover evidence.

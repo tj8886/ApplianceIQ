@@ -1,11 +1,6 @@
 name: Deploy Current IQ Academy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/iq-training/**'
-      - '.github/workflows/deploy-academy-current.yml'
   workflow_dispatch:
 
 jobs:
@@ -14,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build US Academy bundle
+        run: node scripts/migration/build-us-app-batch.mjs .aiq-us-deploy
       - name: Validate Academy entrypoint
         run: |
           test -f apps/iq-training/index.html
@@ -27,7 +27,8 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
           if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
-            echo '::warning::NETLIFY_AUTH_TOKEN secret not set - skipping deploy. See DEPLOYMENT.md.'
-            exit 0
+            echo '::error::NETLIFY_AUTH_TOKEN is required for production deployment.'
+            exit 1
           fi
-          npx -y netlify-cli deploy --prod --dir apps/iq-training --site 4179d04b-ca18-4551-9b18-fe434b83ebc6
+          ACADEMY_SITE=$(node -e "process.stdout.write(require('./config/app-registry.json').apps.find(a=>a.key==='academy').netlify_site_id)")
+          npx -y netlify-cli@23.11.0 deploy --no-build --prod --dir .aiq-us-deploy/academy --site "$ACADEMY_SITE"
