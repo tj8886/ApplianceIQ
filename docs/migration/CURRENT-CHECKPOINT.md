@@ -64,3 +64,6 @@ Production cutover: the user explicitly instructed “Move it stop blocking it I
 
 
 PIM website completion (2026-10-10): ApplianceIQ.ai uses the US catalog. Appliance-only fill-blanks worker is active every minute, including separate features/dimensions and dated retailer imports. Net audit: 16,218 descriptions, 51 specs, 93 dimensions, 26 spec documents and six new appliances; zero populated-field replacements, zero pending queue/errors. Misclassified new accessories hidden, source/files retained. Images await qualifying approval/rights/decoded verification; stale pricing is not promoted to current offers. See PIM-WEBSITE-COMPLETION.md and pim-website-completion-verification.json. Other migration readiness work listed above remains outstanding.
+
+
+Owner-approved PIM image publication: prior approval blocker superseded by explicit owner instruction. Live US catalog has 1,665 appliance products enriched with 36,443 gallery links and one missing hero filled; existing heroes/gallery URLs retained. Pending source-review flags are retained and do not block this image-only path. Every-minute worker enabled; queue/errors zero. Sample live page/image checks passed. Evidence: pim-owner-image-publication-verification.json.
