@@ -12,11 +12,11 @@ window.handleLogoUpload=async e=>{
  const file=e.target.files?.[0];if(!file||speciqLogoBusy||speciqSettingsSaving)return;
  if(!speciqSettingsSnapshot?.can_edit||speciqSettingsSnapshot.organization_id!==userOrgId||!speciqSettingsSnapshot.updated_at){showSettingsStatus('Save settings as an owner/admin before uploading a logo.');return;}
  if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size<1||file.size>2097152){showSettingsStatus('Choose a PNG, JPEG or WebP logo up to 2 MB.');return;}
- const pendingFields=Object.fromEntries(Object.keys(settingFields).map(id=>[id,el(id).value]));const org=userOrgId,stamp=speciqSettingsSnapshot.updated_at;speciqLogoBusy=true;el('logo-input').disabled=true;
+ const org=userOrgId,stamp=speciqSettingsSnapshot.updated_at;speciqLogoBusy=true;el('logo-input').disabled=true;
  try{if(!speciqLogoAttempt||speciqLogoAttempt.file!==file||speciqLogoAttempt.org!==org)speciqLogoAttempt={file,org,stamp,request_id:crypto.randomUUID()};
  speciqLogoAttempt.bytes=await file.arrayBuffer();const r=await speciqLogoApi({action:'reserve',organization_id:org,request_id:speciqLogoAttempt.request_id,expected_updated_at:speciqLogoAttempt.stamp,mime_type:file.type,file_size:file.size});
  if(!r.completed){const uploaded=await sb.storage.from(r.bucket).upload(r.storage_path,file,{upsert:false,contentType:file.type});if(uploaded.error){const existing=await sb.storage.from(r.bucket).download(r.storage_path);const expected=new Uint8Array(speciqLogoAttempt.bytes),actual=existing.error?null:new Uint8Array(await existing.data.arrayBuffer());if(existing.error||existing.data.size!==file.size||!actual.every((v,i)=>v===expected[i]))throw Error('Logo upload failed; retry the same selected file.');}}
- await speciqLogoApi({action:'finalize',organization_id:org,upload_id:r.upload_id});speciqLogoAttempt=null;if(org===userOrgId){await loadRetailerSettings();Object.entries(pendingFields).forEach(([id,value])=>el(id).value=value);showSettingsStatus('Logo saved. Earlier files are retained.');}
+ await speciqLogoApi({action:'finalize',organization_id:org,upload_id:r.upload_id});speciqLogoAttempt=null;if(org===userOrgId){const pendingFields=Object.fromEntries(Object.keys(settingFields).map(id=>[id,el(id).value]));await loadRetailerSettings();Object.entries(pendingFields).forEach(([id,value])=>el(id).value=value);showSettingsStatus('Logo saved. Earlier files are retained.');}
  }catch(err){if(org===userOrgId)showSettingsStatus(err.message);}finally{speciqLogoBusy=false;el('logo-input').disabled=!speciqSettingsSnapshot?.can_edit;}
 };
 `;

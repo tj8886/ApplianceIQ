@@ -25,6 +25,9 @@ BEGIN
  r:=public.tj_runtime_speciq_logos(jsonb_build_object('action','read','organization_id',org));IF r->>'error' IS DISTINCT FROM 'organization_access_required' THEN RAISE EXCEPTION 'suspended read allowed';END IF;
  UPDATE tj.organization_members SET status='active',role='owner' WHERE organization_id=org AND user_id=actor;
  PERFORM set_config('test.logo.native',n::text,true);PERFORM set_config('test.logo.org',org::text,true);PERFORM set_config('test.logo.path',path,true);
+ SELECT updated_at INTO stamp FROM tj.speciq_retailer_settings WHERE organization_id=org;
+ r:=public.tj_runtime_speciq_logos(jsonb_build_object('action','reserve','organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',stamp,'mime_type','image/png','file_size',8));IF r->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'second reservation failed';END IF;
+ PERFORM set_config('test.logo.pending_path',r->>'storage_path',true);
  IF has_function_privilege('anon','public.tj_runtime_speciq_logos(jsonb)','EXECUTE') THEN RAISE EXCEPTION 'anonymous access';END IF;
 END $$;
 SET LOCAL ROLE authenticated;
@@ -32,6 +35,12 @@ DO $$DECLARE r jsonb;c bigint;BEGIN
  PERFORM set_config('request.jwt.claim.sub',current_setting('test.logo.native'),true);
  r:=public.tj_runtime_speciq_logos(jsonb_build_object('action','read','organization_id',current_setting('test.logo.org')));IF r->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'native wrapper failed';END IF;
  SELECT count(*) INTO c FROM storage.objects WHERE bucket_id='tj-speciq-logos' AND name=current_setting('test.logo.path');IF c<>1 THEN RAISE EXCEPTION 'authenticated storage read denied';END IF;
+ INSERT INTO storage.objects(bucket_id,name,owner_id,metadata) VALUES('tj-speciq-logos',current_setting('test.logo.pending_path'),current_setting('test.logo.native'),jsonb_build_object('size',8,'mimetype','image/png'));
+ BEGIN
+  INSERT INTO storage.objects(bucket_id,name,owner_id,metadata) VALUES('tj-speciq-logos',current_setting('test.logo.pending_path')||'.foreign',current_setting('test.logo.native'),jsonb_build_object('size',8,'mimetype','image/png'));
+  RAISE EXCEPTION 'unreserved upload allowed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ UPDATE storage.objects SET metadata='{}'::jsonb WHERE bucket_id='tj-speciq-logos' AND name=current_setting('test.logo.path');GET DIAGNOSTICS c=ROW_COUNT;IF c<>0 THEN RAISE EXCEPTION 'logo overwrite allowed';END IF;
 END $$;
 ROLLBACK;
-SELECT 'PASS: logo reserve/replay/metadata-finalize/read, owner/viewer/suspended gates, retained before/after and actual authenticated storage SELECT; fixtures rolled back; file bytes not exercised' result;
+SELECT 'PASS: logo reserve/replay/metadata-finalize/read, owner/viewer/suspended gates, retained before/after and actual authenticated storage SELECT/INSERT, unreserved upload and UPDATE denied and delete policy absent (catalog check); fixtures rolled back; file bytes not exercised' result;

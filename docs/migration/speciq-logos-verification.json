@@ -1,0 +1,108 @@
+{
+  "verified_at": "2026-10-10T13:19:09.338Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "c2723eb850e801ec247feeaf0f124650caecf808",
+  "migration": "20261010130713_enable_native_speciq_logos.sql",
+  "applied": true,
+  "scope": "Private organization logo reservation, native storage authorization, metadata finalization and client Blob preview; physical byte transfer not verified",
+  "implemented": [
+    "Private PNG/JPEG/WebP bucket with 2 MB limit; confirmed mapped identity and fresh organization role checks.",
+    "Owner/admin-only reserve/finalize with stable request IDs, replay/body conflict checks, optimistic settings timestamp and storage owner/size/MIME checks.",
+    "Active member read; no client overwrite/delete policy. Clearing/replacing a logo retains physical files and private before/after history.",
+    "Unpublished US client upload/download with exact-byte comparison on ambiguous SDK upload errors, Blob preview, input guard and preservation of edits made during upload."
+  ],
+  "tests": {
+    "live_rollback": "passed: reserve/replay/body conflict, missing/wrong size metadata rejected, finalize/replay, retained before/after, owner/viewer/suspended gates and actual authenticated storage SELECT/INSERT; unreserved INSERT and UPDATE denied",
+    "storage_policy_catalog": "verified: logo INSERT/SELECT only; no broad policy allows logo UPDATE/DELETE",
+    "client_vm": "passed mocked SDK error/retry byte comparison, unsaved edits during upload retained, invalid file type blocked, input guard reset and private Blob preview",
+    "generated_module_parse": "passed",
+    "eleven_bundle_checks": "passed",
+    "runtime_router": "74 configured routes passed",
+    "literal_rpc_wrappers": "70 names present and executable by authenticated",
+    "persisted_fixture_organizations": 0,
+    "persisted_registry_rows": 0,
+    "actual_hosted_file_byte_transfer": "pending"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 625
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 927
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "WARN/ERROR unchanged; deliberately private journal adds one RLS-no-policy INFO (624 to 625), unused index INFO 926 to 927, no new unindexed foreign keys"
+  },
+  "remaining": [
+    "Actual native authenticated logo/manufacturer asset upload/download byte tests and browser login/handoff",
+    "Remaining application writes and final financial/tax/discount/expiry/PDF/share/send workflows",
+    "Eight absent archived endpoints and recorded restricted provider workflows",
+    "Fresh provider registrations/credentials and real integration tests",
+    "Frozen database/Storage delta, schedules, CI/app retargeting, production cutover and source retirement"
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft/unmerged"
+}
