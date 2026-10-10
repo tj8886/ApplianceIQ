@@ -1,0 +1,53 @@
+BEGIN;
+SET LOCAL statement_timeout='25s';
+DO $$
+DECLARE actor uuid;native uuid;other_actor uuid;other_native uuid;org uuid;foreign_org uuid;body jsonb;d jsonb;r jsonb;stamp timestamptz;setting_id uuid;
+BEGIN
+ SELECT im.source_user_id,im.target_user_id INTO actor,native FROM tj.source_user_identity_map im JOIN auth.users u ON u.id=im.target_user_id WHERE tj_private.microsoft_actor(u.id)=im.source_user_id AND u.email_confirmed_at IS NOT NULL AND NOT EXISTS(SELECT 1 FROM tj.platform_admins p WHERE p.user_id=im.source_user_id) LIMIT 1;
+ SELECT im.source_user_id,im.target_user_id INTO other_actor,other_native FROM tj.source_user_identity_map im JOIN auth.users u ON u.id=im.target_user_id WHERE tj_private.microsoft_actor(u.id)=im.source_user_id AND u.email_confirmed_at IS NOT NULL AND im.source_user_id<>actor LIMIT 1;
+ IF native IS NULL OR other_native IS NULL THEN RAISE EXCEPTION 'mapped identities missing';END IF;
+ INSERT INTO tj.organizations(name,slug) VALUES('Spec settings rollback fixture','spec-settings-rollback-'||gen_random_uuid()) RETURNING id INTO org;
+ INSERT INTO tj.organizations(name,slug) VALUES('Spec settings rollback fixture','spec-settings-rollback-'||gen_random_uuid()) RETURNING id INTO foreign_org;
+ INSERT INTO tj.organization_members(organization_id,user_id,role,status) VALUES(org,actor,'owner','active'),(org,other_actor,'member','active');
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);
+ r:=public.tj_runtime_speciq_settings(jsonb_build_object('action','get','organization_id',org));IF r->>'ok' IS DISTINCT FROM 'true' OR r->>'stored' IS DISTINCT FROM 'false' OR EXISTS(SELECT 1 FROM tj.speciq_retailer_settings WHERE organization_id=org) THEN RAISE EXCEPTION 'get seeded settings %',r;END IF;
+ d:=jsonb_build_object('store_name','Fixture Store','store_email','fixture@example.invalid','store_website','https://example.invalid','primary_color','#abcdef','secondary_color','#123456','default_validity_days',14,'max_rep_validity_days',14,'max_manager_validity_days',30,'max_store_manager_validity_days',60,'default_disclaimer','Fixture disclaimer');
+ body:=jsonb_build_object('action','save','organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',NULL,'settings',d);
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'save failed %',r;END IF;setting_id:=(r#>>'{settings,id}')::uuid;
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'replayed' IS DISTINCT FROM 'true' OR (SELECT count(*) FROM tj.speciq_retailer_settings WHERE organization_id=org)<>1 THEN RAISE EXCEPTION 'replay duplicated settings';END IF;
+ r:=public.tj_runtime_speciq_settings(body||jsonb_build_object('settings',d||jsonb_build_object('store_name','Different')));IF r->>'error' IS DISTINCT FROM 'request_conflict' THEN RAISE EXCEPTION 'replay conflict allowed';END IF;
+ r:=public.tj_runtime_speciq_settings(body||jsonb_build_object('request_id',gen_random_uuid()));IF r->>'error' IS DISTINCT FROM 'revision_conflict' THEN RAISE EXCEPTION 'stale create overwrote settings';END IF;
+ UPDATE tj.speciq_retailer_settings SET logo_url='https://example.invalid/retained-logo.png',require_approval_for_discount=true,require_approval_above_amount=123.45,min_margin_percent=25,approval_notification_email='approver@example.invalid' WHERE id=setting_id;
+ SELECT updated_at INTO stamp FROM tj.speciq_retailer_settings WHERE id=setting_id;
+ body:=body||jsonb_build_object('request_id',gen_random_uuid(),'expected_updated_at',stamp);
+ FOR d IN SELECT value FROM jsonb_array_elements(jsonb_build_array(body->'settings'||jsonb_build_object('primary_color','red; display:none'),body->'settings'||jsonb_build_object('store_website','javascript:alert(1)'),body->'settings'||jsonb_build_object('store_email','invalid'),body->'settings'||jsonb_build_object('default_validity_days',0),body->'settings'||jsonb_build_object('default_validity_days',1.5),body->'settings'||jsonb_build_object('max_rep_validity_days',366),body->'settings'||jsonb_build_object('max_manager_validity_days',10),body->'settings'||jsonb_build_object('require_approval_for_discount',false),body->'settings'||jsonb_build_object('logo_url','https://evil.invalid'))) LOOP
+ r:=public.tj_runtime_speciq_settings(body||jsonb_build_object('request_id',gen_random_uuid(),'settings',d));IF r->>'error' IS DISTINCT FROM 'invalid_request' THEN RAISE EXCEPTION 'invalid field allowed %',r;END IF;
+ END LOOP;
+ body:=body||jsonb_build_object('settings',body->'settings'||jsonb_build_object('store_name','Updated Store'));
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'ok' IS DISTINCT FROM 'true' OR r#>>'{settings,logo_url}'<>'https://example.invalid/retained-logo.png' OR (r#>>'{settings,require_approval_above_amount}')::numeric<>123.45 OR (r#>>'{settings,min_margin_percent}')::numeric<>25 OR r#>>'{settings,approval_notification_email}'<>'approver@example.invalid' THEN RAISE EXCEPTION 'update changed protected fields %',r;END IF;
+ r:=public.tj_runtime_speciq_settings(body||jsonb_build_object('request_id',gen_random_uuid()));IF r->>'error' IS DISTINCT FROM 'revision_conflict' THEN RAISE EXCEPTION 'stale update allowed';END IF;
+ r:=public.tj_runtime_speciq_settings(body||jsonb_build_object('organization_id',foreign_org));IF r->>'error' IS DISTINCT FROM 'organization_access_required' THEN RAISE EXCEPTION 'foreign settings allowed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',other_native::text,true);
+ r:=public.tj_runtime_speciq_settings(jsonb_build_object('action','get','organization_id',org));IF r->>'ok' IS DISTINCT FROM 'true' OR r->>'can_edit' IS DISTINCT FROM 'false' THEN RAISE EXCEPTION 'member read failed';END IF;
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'error' IS DISTINCT FROM 'organization_admin_required' THEN RAISE EXCEPTION 'member save allowed';END IF;
+ UPDATE tj.organization_members SET role='manager' WHERE organization_id=org AND user_id=other_actor;
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'error' IS DISTINCT FROM 'organization_admin_required' THEN RAISE EXCEPTION 'manager save allowed';END IF;
+ UPDATE tj.organization_members SET role='viewer' WHERE organization_id=org AND user_id=other_actor;
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'error' IS DISTINCT FROM 'organization_admin_required' THEN RAISE EXCEPTION 'viewer save allowed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);
+ SELECT updated_at INTO stamp FROM tj.speciq_retailer_settings WHERE id=setting_id;
+ r:=public.tj_runtime_speciq_settings(jsonb_build_object('action','clear_logo','organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',stamp));IF r->>'ok' IS DISTINCT FROM 'true' OR r#>>'{settings,logo_url}' IS NOT NULL THEN RAISE EXCEPTION 'clear logo failed %',r;END IF;
+ IF (SELECT count(*) FROM tj_private.speciq_settings_requests WHERE organization_id=org)<>3 OR NOT EXISTS(SELECT 1 FROM tj_private.speciq_settings_requests WHERE organization_id=org AND source_actor=actor AND before_image->>'logo_url'='https://example.invalid/retained-logo.png' AND speciq_settings_requests.body->>'action'='clear_logo') THEN RAISE EXCEPTION 'source/audit history lost';END IF;
+ UPDATE tj.organization_members SET status='suspended' WHERE organization_id=org AND user_id=actor;
+ r:=public.tj_runtime_speciq_settings(body);IF r->>'error' IS DISTINCT FROM 'organization_access_required' THEN RAISE EXCEPTION 'suspended replay allowed';END IF;
+ UPDATE tj.organization_members SET status='active',role='admin' WHERE organization_id=org AND user_id=actor;
+ IF has_function_privilege('anon','public.tj_runtime_speciq_settings(jsonb)','EXECUTE') OR has_table_privilege('authenticated','tj_private.speciq_settings_requests','SELECT') THEN RAISE EXCEPTION 'private exposure';END IF;
+ PERFORM set_config('test.settings.native',native::text,true);PERFORM set_config('test.settings.org',org::text,true);PERFORM set_config('test.settings.body',(body||jsonb_build_object('request_id',gen_random_uuid(),'expected_updated_at',(SELECT updated_at FROM tj.speciq_retailer_settings WHERE id=setting_id)))::text,true);
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$DECLARE r jsonb;BEGIN
+ PERFORM set_config('request.jwt.claim.sub',current_setting('test.settings.native'),true);
+ r:=public.tj_runtime_speciq_settings(current_setting('test.settings.body')::jsonb);IF r->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'authenticated admin save failed %',r;END IF;
+END $$;
+ROLLBACK;
+SELECT 'PASS: native settings owner/admin get/save/replay/conflict, no auto seed, protected logo/approval fields, validation, foreign/member/manager/viewer/suspended denial, retained logo audit and authenticated save; fixtures rolled back' result;
