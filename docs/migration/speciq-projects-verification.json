@@ -1,0 +1,125 @@
+{
+  "verified_at": "2026-10-10T02:42:43.151Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "0744b3a69f6145bde2da8745477820c3df231e41",
+  "migration": "20261010023440_enable_native_speciq_projects.sql",
+  "applied": true,
+  "scope": "Native US standalone Spec IQ projects; metadata archive retains all history",
+  "implemented": [
+    "Verified mapped confirmed identity and fresh active organization role; source creator stored server-side, own project or manager writes only.",
+    "Standalone create/edit saves customer name/email/phone, address, room, builder, designer, purchase/delivery dates and notes with strict fields, lengths and exact date validation.",
+    "Private organization/native/request journal with source actor, before/after images, indexed foreign keys, RLS and no client table grants; stable replay keys, body conflicts, serialized requests and optimistic row locks.",
+    "Projects attached to any package cannot be edited; package revisions preserve frozen project facts. Archive requires every attached package already archived. Imported history is read only; archived project/package rows and audit records retained.",
+    "US client uses native API, text-only project labels, edit form, stable retries, archived filter, stale list suppression and visible errors; browser project mutation/deletion handlers omitted.",
+    "Build draft copy carries project/customer/email/phone/address/room into a separate draft. Builder/designer/dates/notes and CRM associations are not copied into package drafts in this batch."
+  ],
+  "tests": {
+    "client_vm": "passed: complete transformed script parses, native create retry/body/form retention, edit snapshot, archive routing, text labels, save guard",
+    "live_project_rollback": "passed: create/edit/archive/replay, strict dates, source actor/metadata, foreign/viewer/other owner/suspended/stale denial, historical read-only, attached package freeze, retained audit/package/project, actual authenticated wrapper",
+    "live_draft_workflow_crm_regressions": "passed with rollback",
+    "eleven_bundle_checks": "passed",
+    "direct_project_insert_update_delete": "all denied to authenticated",
+    "persisted_fixture_organizations": 0,
+    "persisted_project_journal_rows": 0,
+    "hosted_authenticated_browser": "pending"
+  },
+  "catalog": {
+    "literal_rpc_names": 68,
+    "authenticated_native_wrappers": 68,
+    "missing_or_denied_wrappers": []
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 623,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 928,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "Existing WARN/ERROR counts unchanged. Private RLS journal adds one expected RLS-without-policy INFO; no new unindexed FK or unused-index counts."
+  },
+  "remaining": [
+    "Additional package project/product technical fields and settings writes",
+    "Final financial review/expiry/PDF/share/send",
+    "Hosted authenticated app/file tests and real provider workflows",
+    "Final frozen database/Storage delta, destination schedules and production cutover"
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft/unmerged"
+}
