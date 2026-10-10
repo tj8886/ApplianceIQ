@@ -1,0 +1,108 @@
+{
+  "captured_at": "2026-10-06T02:09:16.547Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "microsoft-dynamics-auth",
+  "version": 1,
+  "verify_jwt": false,
+  "authentication": "Gateway JWT verification is disabled for Microsoft's public GET callback transport. All POST operations independently verify a native non-anonymous session. GET needs a random state bound to an active reviewed tenant/admin and only relays the short-lived code to a currently allowlisted HTTPS origin; it cannot exchange or save tokens. Completion requires the initiating native user, single-use state, PKCE and a signed tenant/issuer/audience/nonce-validated ID token.",
+  "migration_versions": [
+    "20261006020622"
+  ],
+  "checks": {
+    "handler": "passed",
+    "real_jose_rsa_signature_nonce_tenant_and_audience": "passed",
+    "live_state_scope_vault_provenance_replay_and_configuration_rollback": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_integrations_script_parse": "passed",
+    "live_unauthenticated_post": 401,
+    "remaining_fixture_connections": 0,
+    "remaining_review_sessions_and_credentials": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 606
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 923
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "Existing WARN/ERROR and other performance counts unchanged. RLS-no-policy INFO rises from 603 to 606 for private revoked-access tables; unused-index INFO rises from 917 to 923.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "No real Microsoft sign-in, code exchange, company/API discovery or signed-in browser test occurred.",
+    "Destination MICROSOFT_REDIRECT_URI must exactly equal the US function URL and be registered as a confidential Web callback in Entra. MICROSOFT_RETURN_ORIGINS must approve actual HTTPS app origins; private active-admin tenant review is required. Source callback settings cannot be reused.",
+    "Only Business Central is supported; other Dynamics variants fail closed.",
+    "Successful authorization stores tokens with connection/org Vault provenance but leaves status pending and destination_connection_verified=false. Company/environment/API consent and sync readiness remain separate.",
+    "Native session must survive the return to the initiating app. The prepared page removes callback code/state from the address before exchanging them; the page is not hosted yet.",
+    "Sessions expire after ten minutes, beginning again invalidates old sessions, and starts are capped at ten per connection per ten minutes. No cleanup schedule was activated; expired encrypted PKCE artifacts need retention review.",
+    "Existing source Vault references are not adopted or overwritten. Final data/Storage deltas, hosted cutover and source retirement remain pending."
+  ],
+  "references": [
+    "https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow",
+    "https://learn.microsoft.com/en-us/entra/identity-platform/id-tokens",
+    "https://github.com/panva/jose"
+  ]
+}

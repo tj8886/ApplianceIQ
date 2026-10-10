@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {createHandler,briefText} from '../../supabase/functions/brief-email-sender/handler.ts';
+let authorized=true,key='synthetic-key',calls=0,commits=0,reject=false,commitFail=false;
+const brief={id:'fixture',brief_type:'morning',brief_date:'2026-10-05',headline:'Synthetic',executive_summary:'Synthetic fixture',financial_exposure_cad:null,workload:{},priorities:[{title:'Synthetic',severity:'low'}]};
+const createClient=(url,clientKey)=>({auth:{getUser:async()=>({data:{user:{id:'native'}}})},rpc:async(name,args)=>{if(name==='tj_brief_delivery_context')return {data:{brief,recipients:['manager@example.invalid']},error:authorized?null:{code:'42501'}};assert.equal(clientKey,'service');assert.equal(args.p_native,'native');assert.equal(args.p_brief,'fixture');assert.equal(args.p_sent,reject?0:1);commits++;return {error:commitFail?{}:null};}});
+const env=n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',RESEND_API_KEY:key}[n]);
+const handler=createHandler({createClient,env,fetchImpl:async(url,opts)=>{calls++;assert.equal(url,'https://api.resend.com/emails');assert.equal(opts.headers.Authorization,'Bearer synthetic-key');assert.match(opts.headers['Idempotency-Key'],/^aiq-brief\/[a-f0-9]{64}$/);const body=JSON.parse(opts.body);assert.deepEqual(body.to,['manager@example.invalid']);assert.match(body.text,/FINANCIAL EXPOSURE \(CAD\): unknown/);return new Response('{}',{status:reject?422:200});}});
+const req=body=>new Request('https://edge.test',{method:'POST',headers:{Authorization:'Bearer native'},body:JSON.stringify(body)});
+assert.equal((await handler(new Request('https://edge.test',{method:'POST'}))).status,401);
+authorized=false;assert.equal((await handler(req({organization_id:'org'}))).status,403);assert.equal(calls,0);authorized=true;
+key='';assert.equal((await handler(req({organization_id:'org'}))).status,503);assert.equal(calls,0);key='synthetic-key';
+assert.equal((await handler(req({organization_id:'org',recipients:'invalid'}))).status,400);
+let r=await handler(req({organization_id:'org'}));assert.equal(r.status,200);assert.equal((await r.json()).provider_accepted,1);assert.equal(commits,1);
+reject=true;r=await handler(req({organization_id:'org'}));let data=await r.json();assert.equal(data.sent,0);assert.equal(data.failed,1);assert.deepEqual(data.errors,['provider_rejected']);
+reject=false;commitFail=true;r=await handler(req({organization_id:'org'}));assert.equal(r.status,500);assert.equal((await r.json()).sent,1);
+assert.match(briefText(brief),/unknown active/);
+console.log('Brief email handler checks passed: authorization before provider access, recipient routing, absent configuration, bounded requests, unknown figures, idempotency, acceptance/rejection counts and commit failure. No real email sent.');

@@ -1,0 +1,120 @@
+{
+  "verified_at": "2026-10-10T03:00:41.545Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "93d6b2cdd58c4dbce5400d7c32eb4ad16f6aedc9",
+  "migration": "20261010025624_enable_speciq_draft_project_details.sql",
+  "applied": true,
+  "scope": "Extended project facts in atomic Spec IQ draft snapshots and revisions",
+  "implemented": [
+    "Builder/designer names, expected purchase/delivery dates and internal notes saved atomically on each new package project and complete version snapshot.",
+    "Fresh native source identity/current organization roles, existing catalog/warranty/CRM checks, request replay and revision locking retained unchanged.",
+    "Strict string/null types, lengths and exact YYYY-MM-DD calendar dates; invalid metadata rejects the whole transaction.",
+    "Older clients that omit these five fields on revisions inherit stored prior project values; explicit null/empty clears the new revision. Prior project rows and version snapshots remain unchanged.",
+    "US builder includes five fields, resets them, restores them during edit, and copies them from standalone projects. Basic and extended project facts now travel together when building a separate draft copy; CRM associations still require explicit selection.",
+    "Draft preview escapes metadata values; internal manager review shows actual snapshot project details and escaped notes. Customer send/share remains closed."
+  ],
+  "tests": {
+    "client_vm": "passed: full module parses, new fields in payload/reset/edit/copy/read paths, escaped metadata and manager snapshot display",
+    "live_details_rollback": "passed: atomic metadata snapshot, strict dates/types/lengths, replay, invalid metadata leaves no rows, old-client inheritance, explicit clear/change, historical retention and authenticated save",
+    "live_native_draft_crm_regressions": "passed with rollback",
+    "all_speciq_client_regressions": "passed",
+    "eleven_bundle_checks": "passed",
+    "persisted_fixture_organizations": 0,
+    "persisted_fixture_journal_rows": 0,
+    "hosted_authenticated_browser": "pending"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 624,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 926,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "All advisory counts unchanged; no tables or indexes added."
+  },
+  "remaining": [
+    "Package product technical specifications, dimensions and document metadata",
+    "Native logo upload and hosted file-byte tests",
+    "Final quote validity/tax/discount financial enforcement and PDF/share/send",
+    "Other application/provider workflows, hosted native browser tests, final frozen database/Storage delta and cutover"
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft/unmerged"
+}

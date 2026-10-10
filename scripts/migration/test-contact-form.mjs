@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createHandler,escapeHtml} from '../../supabase/functions/contact-form/handler.ts';
+let error=null,duplicate=false,key='synthetic-key',reject=false,calls=0;
+const env=n=>({SUPABASE_URL:'https://us.test',SUPABASE_SERVICE_ROLE_KEY:'service',RESEND_API_KEY:key}[n]);
+const createClient=(url,clientKey)=>{assert.equal(clientKey,'service');return {rpc:async(name,args)=>{assert.equal(name,'aiq_submit_contact');return {data:{id:'fixture',duplicate},error};}};};
+const handler=createHandler({createClient,env,fetchImpl:async(url,opts)=>{calls++;assert.equal(url,'https://api.resend.com/emails');assert.equal(opts.headers['Idempotency-Key'],'aiq-contact/fixture');const b=JSON.parse(opts.body);assert.deepEqual(b.to,['tjrobar5@gmail.com']);assert.ok(!b.html.includes('<img'));assert.ok(!b.subject.includes('\n'));return new Response('{}',{status:reject?422:200});}});
+const req=body=>new Request('https://edge.test',{method:'POST',body:JSON.stringify(body)});
+assert.equal((await handler(req({}))).status,400);
+error={code:'P0001'};assert.equal((await handler(req({name:'Name',email:'contact@example.invalid'}))).status,429);assert.equal(calls,0);error=null;
+let r=await handler(req({name:'Name\n',email:'contact@example.invalid',message:'<img src=x onerror="script">'}));assert.equal(r.status,200);let data=await r.json();assert.equal(data.success,true);assert.equal(data.notification,'accepted');
+duplicate=true;r=await handler(req({name:'Name',email:'contact@example.invalid'}));assert.equal((await r.json()).notification,'duplicate_not_resent');assert.equal(calls,1);duplicate=false;
+reject=true;r=await handler(req({name:'Name',email:'contact@example.invalid'}));data=await r.json();assert.equal(data.success,true);assert.equal(data.notification,'failed');
+key='';r=await handler(req({name:'Name',email:'contact@example.invalid'}));assert.equal((await r.json()).notification,'not_configured');
+assert.equal(escapeHtml('<a>"&'), '&lt;a&gt;&quot;&amp;');
+console.log('Contact form checks passed: public intake shape, bounded validation, throttling before notification, duplicate suppression, HTML escaping, fixed source recipient and saved intake despite provider failure. No real email sent.');

@@ -1,0 +1,42 @@
+BEGIN; SET LOCAL statement_timeout='30s';
+DO $$ DECLARE native uuid;source_actor uuid;org uuid;connector uuid;conn uuid;second uuid;key text;BEGIN
+ SELECT im.target_user_id,im.source_user_id,m.organization_id INTO native,source_actor,org FROM tj.source_user_identity_map im JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL LIMIT 1;
+ IF native IS NULL THEN RAISE EXCEPTION 'fixture_missing';END IF;
+ key:='rollback-ingest-'||gen_random_uuid()::text;
+ INSERT INTO tj.platform_connectors(key,name,vendor_name) VALUES(key,'Rollback ingestion','Synthetic') RETURNING id INTO connector;
+ INSERT INTO tj.platform_connector_connections(organization_id,connector_id,created_by) VALUES(org,connector,source_actor) RETURNING id INTO conn;
+ INSERT INTO tj.platform_connector_connections(organization_id,connector_id,created_by,external_account_id) VALUES(org,connector,source_actor,'second-fixture') RETURNING id INTO second;
+ INSERT INTO tj.platform_connector_canonical_rules(connector_id,external_entity_type,canonical_entity_type,canonical_event_type) VALUES(connector,'customer','customer','customer.updated'),(connector,'location','store','store.updated'),(connector,'bad','learning',NULL);
+ INSERT INTO tj.platform_connector_validation_rules(connector_key,external_entity_type,required_all) VALUES(key,'customer','["name"]');
+ INSERT INTO tj.platform_connector_entity_map(connection_id,external_entity_type,external_id,local_entity_type,local_id) VALUES(conn,'location','reviewed','org_location',gen_random_uuid());
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);PERFORM set_config('test.ingest.native',native::text,true);PERFORM set_config('test.ingest.actor',source_actor::text,true);PERFORM set_config('test.ingest.connection',conn::text,true);PERFORM set_config('test.ingest.second',second::text,true);PERFORM set_config('test.ingest.org',org::text,true);
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE body jsonb:=jsonb_build_object('connection_id',current_setting('test.ingest.connection'),'external_entity_type','customer','external_id','one','payload',jsonb_build_object('name','Synthetic','code',1));r jsonb;first_event text;BEGIN
+ r:=public.tj_connector_ingest(body);IF r->>'ok'<>'true' OR r->>'deduped'<>'false' THEN RAISE EXCEPTION 'insert_failed: %',r;END IF;first_event:=r->>'intelligence_event_id';PERFORM set_config('test.ingest.event',first_event,true);
+ r:=public.tj_connector_ingest(body||jsonb_build_object('payload','{"code":1,"name":"Synthetic"}'::jsonb));IF r->>'deduped'<>'true' OR r->>'intelligence_event_id'<>first_event THEN RAISE EXCEPTION 'canonical_json_dedupe_failed';END IF;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('connection_id',current_setting('test.ingest.second')));IF r->>'intelligence_event_id'=first_event OR r->>'deduped'<>'false' THEN RAISE EXCEPTION 'connection_collision';END IF;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('payload',jsonb_build_object('name','Updated','code',2)));IF r->>'deduped'<>'false' THEN RAISE EXCEPTION 'revision_dedupe';END IF;
+ BEGIN PERFORM public.tj_connector_ingest(body||jsonb_build_object('canonical_entity_type','employee'));RAISE EXCEPTION 'override_accepted';EXCEPTION WHEN invalid_parameter_value THEN NULL;END;
+ BEGIN PERFORM public.tj_connector_ingest(body||jsonb_build_object('connection_id',gen_random_uuid()));RAISE EXCEPTION 'foreign_connection_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN PERFORM public.tj_connector_ingest(body||jsonb_build_object('sync_job_id',gen_random_uuid()));RAISE EXCEPTION 'foreign_job_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('external_id','invalid','payload','{}'::jsonb));IF r->>'error'<>'record_validation_failed' THEN RAISE EXCEPTION 'invalid_payload_accepted';END IF;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('external_id','invalid'));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'quarantine_recovery_failed';END IF;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('external_entity_type','unmapped'));IF r->>'error'<>'canonical_mapping_not_found' THEN RAISE EXCEPTION 'mapping_quarantine_missing';END IF;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('external_entity_type','bad','external_id','failed'));IF r->>'error'<>'ingestion_failed' THEN RAISE EXCEPTION 'failure_quarantine_missing';END IF;
+ r:=public.tj_connector_ingest(body||jsonb_build_object('external_entity_type','location','external_id','reviewed'));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'reviewed_map_import_failed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);BEGIN PERFORM public.tj_connector_ingest(body);RAISE EXCEPTION 'unmapped_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;PERFORM set_config('request.jwt.claim.sub',current_setting('test.ingest.native'),true);
+END $$;
+RESET ROLE;
+DO $$ DECLARE c uuid:=current_setting('test.ingest.connection')::uuid;BEGIN
+ IF NOT EXISTS(SELECT 1 FROM tj.intelligence_events WHERE id=current_setting('test.ingest.event')::uuid AND organization_id=current_setting('test.ingest.org')::uuid AND actor_id=current_setting('test.ingest.actor')::uuid) THEN RAISE EXCEPTION 'actor_or_scope_mismatch';END IF;
+ IF EXISTS(SELECT 1 FROM tj.intelligence_entities WHERE metadata->>'external_id'='failed' AND metadata->>'connector_connection_id'=c::text) THEN RAISE EXCEPTION 'partial_failure_entity';END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.platform_connector_entity_map WHERE connection_id=c AND external_id='reviewed' AND local_entity_type='org_location') THEN RAISE EXCEPTION 'reviewed_map_overwritten';END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.platform_connector_quarantine WHERE connection_id=c AND external_id='invalid' AND status='resolved') THEN RAISE EXCEPTION 'nonretryable_quarantine_unresolved';END IF;
+ UPDATE tj.organization_members SET role='member' WHERE organization_id=current_setting('test.ingest.org')::uuid AND user_id=current_setting('test.ingest.actor')::uuid;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN BEGIN PERFORM public.tj_connector_ingest(jsonb_build_object('connection_id',current_setting('test.ingest.connection')));RAISE EXCEPTION 'nonadmin_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;END $$;
+RESET ROLE;
+DO $$ BEGIN IF has_function_privilege('anon','public.tj_connector_ingest(jsonb)','EXECUTE') OR has_function_privilege('service_role','public.tj_connector_ingest(jsonb)','EXECUTE') THEN RAISE EXCEPTION 'unsafe_grants';END IF;END $$;
+ROLLBACK;

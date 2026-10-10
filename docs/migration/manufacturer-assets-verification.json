@@ -1,0 +1,131 @@
+{
+  "verified_at": "2026-10-09T16:37:15.754Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "51520645b54ae56dc38dc3eadf34cb9e71cf930c",
+  "migration": "20261009162427_enable_native_manufacturer_assets.sql",
+  "applied": true,
+  "scope": "Native manufacturer and trade asset library; unpublished US Academy bundles",
+  "implemented": [
+    "New tj.mfr_assets native table with organization/vendor, verified source and native upload identities, category/audience constraints, draft/ready/review/archival state and indexed foreign keys. No historical source asset table exists to copy.",
+    "Private tj-mfr-assets bucket, 20 MB cap and constrained file types; server issues unique organization/vendor/asset upload paths. Upload policy binds reservation, native owner and current vendor/org editor authority; no overwrite/delete policy.",
+    "Metadata finalization checks reserved path, owner, exact declared size and MIME against Storage; new links/files remain unpublished until authorized reviewer action.",
+    "Current confirmed approved identity, active organization/vendor membership and approved role rechecked for every action. Trade audience derives from approved source flags; editable signup metadata does not grant access.",
+    "Manufacturer org selector, drafts, file/link creation, review publication, private authenticated Blob downloads and archive actions wired to native RPC. Trade portal reads approved scoped resources via the same API; browser role/table/public-URL writes removed.",
+    "Archival retains both record and file, unpublishes and closes future downloads. External links constrained to HTTPS without embedded credentials."
+  ],
+  "tests": {
+    "full_portal_client_vm": "passed; reserve/upload/finalize order, link drafts, errors, permission UI, scoped selection, HTML escaping, Blob downloads, confirmed trade signup; generated full scripts parse",
+    "eleven_bundle_checks": "passed",
+    "manufacturer_invitation_crm_analytics_reference_regressions": "passed",
+    "live_sql_lifecycle": "passed with rollback; editor/reviewer/trade isolation, wrong organization/vendor, unsafe links/oversize/missing object/wrong owner, draft publication and archive retention, suspended/deleted/unmapped denial",
+    "live_authenticated_storage_rls": "passed with rollback; authorized reserved INSERT/SELECT/finalize, unreserved path denied for editor/trade, unpublished file denied to trade, reviewed file visible, archived file denied",
+    "persisted_assets": 0,
+    "persisted_object_metadata": 0,
+    "persisted_fixture_organizations": 0,
+    "persisted_fixture_vendors": 0,
+    "actual_file_bytes_and_hosted_browser": "pending; SQL simulates object metadata, client tests mock SDK transfer"
+  },
+  "catalog": {
+    "literal_rpc_names": 64,
+    "authenticated_native_wrappers": 64,
+    "literal_relation_names": 160,
+    "remaining_absent_literal_relations": [],
+    "denied_literal_table_reads": []
+  },
+  "advisors": {
+    "counts": {
+      "security": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 621,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+        }
+      ],
+      "performance": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 930,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8,
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1,
+          "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+        }
+      ]
+    },
+    "delta": "WARN/ERROR counts unchanged; no new RLS-no-policy or unindexed-FK notice. Three unused-index INFO entries added for new indexes awaiting traffic.",
+    "unused_index_remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+  },
+  "published": false,
+  "production": "Canada",
+  "remaining": [
+    "Hosted authenticated file-byte upload/download and review tests pending; bundles remain unpublished.",
+    "Existing new/unmapped account identity and organization/role approval required; no automatic activation.",
+    "Brand training-card edits and Spec IQ package create/edit/review/archive still need native write-contract review.",
+    "Restricted/missing Edge workflows and real provider credentials/tests, final frozen database/Storage delta and schedules pending."
+  ]
+}

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {migrateSpeciqDrafts} from './us-speciq-drafts.mjs';
+import {migrateSpeciqWorkflow,workflowHelpers} from './us-speciq-workflow.mjs';
+const source=readFileSync(new URL('../../apps/spec-iq/index.html',import.meta.url),'utf8');
+const transformed=migrateSpeciqWorkflow(migrateSpeciqDrafts(source));
+const module=transformed.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import[^;]+;/m,'');new vm.Script('(async()=>{'+module+'})()');
+assert.ok(!transformed.includes(".from('speciq_packages').update(updateData)"));
+const archive=transformed.slice(transformed.indexOf('async function deletePackage('),transformed.indexOf('window.deletePackage='));assert.ok(!archive.includes('.delete('));assert.ok(archive.includes('retained'));
+assert.ok(transformed.includes('Submit draft for review'));assert.ok(transformed.includes('Draft content review'));assert.ok(transformed.includes('const canSend=false;'));assert.ok(!transformed.includes('This will permanently remove the package'));
+const calls=[];let attempt=0,fail=true;
+const c={window:{},crypto:{randomUUID:()=>String(++attempt)},userOrgId:'org',sb:{rpc:async(name,{p_body})=>{calls.push({name,p_body});if(fail)throw Error('private');return {data:{ok:true}};}},alert:()=>{}};vm.createContext(c);vm.runInContext(workflowHelpers+';globalThis.mutate=speciqWorkflowMutation;globalThis.api=speciqWorkflowApi;',c);
+const pkg={id:'pkg',version:1,updated_at:'stamp'};
+await assert.rejects(c.mutate('submit',pkg),/Retry/);const first=calls.at(-1).p_body.request_id;fail=false;await c.mutate('submit',pkg);assert.equal(calls.at(-1).p_body.request_id,first);assert.equal(calls.at(-1).name,'speciq_workflow');
+c.sb.rpc=async()=>({data:{ok:false,error:'independent_manager_required'}});await assert.rejects(c.api({}),/different authorized manager/);
+console.log('PASS: transformed module parses; native submit/decision/archive routes; no browser decision or package/project deletion writes; draft scope explicit; stable retry IDs; manager errors; customer send remains closed');

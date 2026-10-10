@@ -1,0 +1,123 @@
+{
+  "verified_at": "2026-10-09T13:19:08.350Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migration": "20261009130705_verify_fresh_shopify_connection.sql",
+  "deployment": {
+    "id": "46d6b062-1064-4f22-aca1-a05f510e3d3b",
+    "slug": "shopify-verify-connection",
+    "name": "shopify-verify-connection",
+    "status": "ACTIVE",
+    "version": 1,
+    "created_at": 1791551871248,
+    "updated_at": 1791551871248,
+    "verify_jwt": true,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_jdxslqmgjsuzoisuhvlc_46d6b062-1064-4f22-aca1-a05f510e3d3b_1/source/supabase/functions/shopify-verify-connection/index.ts",
+    "ezbr_sha256": "9fdeba20d5aa8bd6458908cde644c33ca29a6d1b0f014b83b1b2eab245078a7b"
+  },
+  "implemented": [
+    "Read-only Shopify GraphQL shop identity, currency and granted-scope verification using fresh destination OAuth credentials only.",
+    "Verified native tenant administrator and same-organization connection; bounded provider request/response and exact myshopify.com origin.",
+    "Service-only Vault access, short-lived one-use verification sessions and identity/currency proof bound to connection and credential versions.",
+    "Replay, expiry, credential rotation and changed-context denial; no connection activation or draft creation."
+  ],
+  "tests": {
+    "handler": "passed with synthetic provider responses",
+    "live_rollback_sql": "passed",
+    "credential_rotation_fixture": "Supported Vault update API used; captured session version moved backward to model a later API transaction because transaction now() remains fixed.",
+    "unsigned_live_probe_http": 401,
+    "fresh_credentials": 0,
+    "persisted_sessions": 0,
+    "persisted_proofs": 0,
+    "persisted_fixture_connections": 0,
+    "real_shopify_requests": 0,
+    "business_marker_writes": 0
+  },
+  "advisors": [
+    {
+      "type": "security",
+      "findings": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 620
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "type": "performance",
+      "findings": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 923
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "advisor_notes": [
+    "Existing WARN/ERROR counts unchanged; no new unindexed foreign keys.",
+    "Two deliberate private RLS-without-policy INFO findings; direct table grants revoked.",
+    "Four additional unused-index INFO findings retained to support private verification lookups."
+  ],
+  "limitations": [
+    "No fresh live Shopify credentials configured; no real provider identity/currency/scopes verified in this batch.",
+    "Draft-order OAuth scope opt-in, financial contract, provider creation/reconciliation and business completion remain pending.",
+    "Proof is not business activation; the existing draft endpoint remains preview-only."
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "captured_at": "2026-10-06T01:18:38.991Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "connector-ingest",
+  "version": 1,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006011529",
+    "20261006011656"
+  ],
+  "checks": {
+    "handler": "passed",
+    "live_rollback_tenant_actor_dedupe_revisions_quarantine_and_reviewed_maps": "passed",
+    "onboarding_epass_handler_regressions": "passed",
+    "remaining_rollback_connectors": 0,
+    "live_unauthenticated_http": 401
+  },
+  "behavior": "Native caller broker requires active mapped tenant administrator, valid connection/store and same-connection running sync job if supplied. Server inbound rule controls canonical event/type. Canonical JSON dedupe, connection-separated identity, atomic entity/map/event/key writes, protected reviewed maps and scoped quarantine recovery. No service client or external calls.",
+  "advisors": {
+    "security": [
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 600
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      }
+    ],
+    "performance": [
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 916
+      }
+    ],
+    "delta": "Security counts unchanged from ePASS baseline; unused-index INFO decreased from 917 to 916; other performance counts unchanged.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "ePASS performance bridge is not migrated; the ePASS polling/sync loop remains explicitly gated.",
+    "No real provider import, signed-in browser execution or concurrent-request load test was performed.",
+    "Each request is one bounded record and serializes on its connection; upstream workers must page/retry.",
+    "Unsupported catalog entity mappings fail atomically into quarantine; source validation/mapping definitions still require provider evidence.",
+    "Existing imported payload hashes use source serialization; new ingestion uses canonical JSON hashes and connection-specific identity, requiring final delta/duplicate reconciliation before cutover.",
+    "No hosted cutover, external schedules or source retirement was performed."
+  ]
+}

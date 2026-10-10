@@ -1,0 +1,117 @@
+{
+  "captured_at": "2026-10-06T12:29:01.982Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "stripe-billing",
+  "version": 1,
+  "status": "ACTIVE",
+  "verify_jwt": true,
+  "migration_version": "20261006122731",
+  "capability": "Same-organization active-admin billing status and entitlement preview only.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback_billing_preview_totals_scope_and_write_denial": "passed",
+    "active_uncanceled_entitlements_and_free_plans": "passed",
+    "negative_pricing_missing_currency_and_integer_overflow": "passed",
+    "unmapped_foreign_nonadmin_and_inactive_org_denial": "passed",
+    "no_stripe_ids_email_metadata_redirects_or_mutation": "passed",
+    "billing_ui_guard_parse_and_no_automatic_subscription_changes": "passed",
+    "prepared_app_bundles": 11,
+    "prepared_app_routing": "passed",
+    "live_unauthenticated_post": 401,
+    "remaining_fixture_orgs": 0,
+    "recorded_customers": 0,
+    "recorded_subscriptions": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 926
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All security and performance advisor counts are unchanged from the STORIS setup checkpoint. Existing findings remain documented; no new findings.",
+  "limits": [
+    "No Stripe key read, provider request, customer/session/subscription creation, proration, charge, invoice, portal redirect or webhook change.",
+    "status/preview require strict activated verified mapped native identity plus active same-org admin. Public status/configuration probing and unverified JWT decoding were removed.",
+    "Preview uses active uncanceled recorded entitlements before tax; it is not a Stripe invoice or verified current charge. Negative prices and missing/unsupported currency return pricing_valid=false with no monthly total; bigint sums prevent 32-bit overflow.",
+    "create_checkout, create_portal and sync_subscription return HTTP 409 after tenant checks; configured and billing_enabled remain false.",
+    "Prepared admin UI previews recorded totals and disables automatic Stripe changes after entitlement edits. Canada endpoint calls are blocked.",
+    "Account/mode, destination webhook, approved prices/subscription adapter and idempotency verification remain pending; stripe-billing remains a pending complete-workflow dependency.",
+    "No hosted update, main merge, final source delta or source retirement."
+  ],
+  "docs_reviewed": [
+    "https://docs.stripe.com/api/authentication",
+    "https://docs.stripe.com/api/webhook_endpoints",
+    "https://docs.stripe.com/api/versioning"
+  ],
+  "inventory": {
+    "deployed_snapshots": 47,
+    "absent_snapshots": 39,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "activity-analyzer"
+}

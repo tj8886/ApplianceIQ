@@ -1,0 +1,110 @@
+{
+  "verified_at": "2026-10-09T12:55:58.874Z",
+  "migration": "add_shopify_draft_claim_recovery",
+  "provider_execution_enabled": false,
+  "implemented": [
+    "One active/uncertain/succeeded package slot enforced by database uniqueness and package row locks.",
+    "Idempotent native-user request keys with immutable connection/package/payload-hash binding.",
+    "Worker fencing and one dispatch transition; package/product/service SHA-256 snapshot checked before dispatch.",
+    "Predispatch expiry/cancellation; dispatched/unknown cannot be cancelled or blindly retried.",
+    "Trusted-worker confirmation retains provider IDs as strings and records append-only state events.",
+    "No duplicate success event on identical completion replay; conflicting completion rejected."
+  ],
+  "tests": {
+    "live_rollback_sql": "passed",
+    "preview_regression": "passed",
+    "persisted_fixture_attempts": 0,
+    "persisted_fixture_events": 0,
+    "provider_requests": 0,
+    "business_marker_writes": 0
+  },
+  "advisors": [
+    {
+      "type": "security",
+      "findings": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 618
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "type": "performance",
+      "findings": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 919
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "advisor_notes": [
+    "Existing WARN/ERROR counts unchanged and no new unindexed foreign keys.",
+    "Two intentional private RLS-without-policy informational findings; all direct client/service table grants revoked.",
+    "Three new unused-index informational findings retained; these protect and index the future lifecycle."
+  ],
+  "limitations": [
+    "Internal broker is service-only and requires a verified native organization administrator. No live Edge/provider path calls it yet.",
+    "State tests use synthetic provider evidence, not actual Shopify responses; real same-connection response validation/reconciliation remains pending.",
+    "No automatic release of unknown requests; administrative recovery and real provider matching must be implemented before activation.",
+    "Payload-hash/source-snapshot binding does not replace currency, tax/discount, variant/customer mapping or credential/scope verification.",
+    "No simultaneous multi-session stress test performed; sequential retries and database uniqueness guards were verified."
+  ]
+}

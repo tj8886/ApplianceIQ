@@ -1,0 +1,126 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migrations": [
+    "20261005012137_enable_product_pricing_read_batch",
+    "20261005012536_cache_product_read_scope_per_query"
+  ],
+  "new_logical_read_relations": 15,
+  "new_table_select_grants": 14,
+  "product_projection": "tj.aiq_products_app",
+  "hidden_column": "dealer_cost",
+  "policies": {
+    "aiq_products": "id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[])",
+    "pim_price_history": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[])",
+    "pim_product_certifications": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[])",
+    "pim_product_features": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[])",
+    "pim_retailer_prices": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[])",
+    "pim_product_documents": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[]) AND approved IS TRUE AND tj_private.catalog_asset_allowed(available_from,available_until,embargoed,audience_tiers,exclusive_codes) AND is_current IS TRUE AND (expiry_date IS NULL OR expiry_date>=current_date)",
+    "pim_product_images": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[]) AND approved IS TRUE AND tj_private.catalog_asset_allowed(available_from,available_until,embargoed,audience_tiers,exclusive_codes)",
+    "pim_product_videos": "product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[]) AND approved IS TRUE AND tj_private.catalog_asset_allowed(available_from,available_until,embargoed,audience_tiers,exclusive_codes) AND is_current IS TRUE AND archived_at IS NULL",
+    "pim_price_changes": "EXISTS(SELECT 1 FROM tj.pim_retailer_prices r WHERE r.id=retailer_price_id)",
+    "product_relationships": "source_product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[]) AND related_product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[])",
+    "retailer_discovered_products": "aiq_product_id = ANY ((SELECT tj_private.allowed_catalog_products())::uuid[]) OR (SELECT tj_private.is_product_governance_admin())",
+    "pim_brand_content": "(SELECT tj_private.is_product_governance_admin())",
+    "pim_scrape_runs": "(SELECT tj_private.is_product_governance_admin())",
+    "retailer_brand_pages": "(SELECT tj_private.is_product_governance_admin())",
+    "retailer_crawl_runs": "(SELECT tj_private.is_product_governance_admin())"
+  },
+  "verification": {
+    "status": "passed",
+    "fixture": "scripts/migration/test-product-pricing-read-batch.sql",
+    "checks": [
+      "All 15 read paths execute",
+      "Own organization draft product and price visibility",
+      "Foreign organization draft products/prices/assets blocked",
+      "Dealer cost absent from view and direct column SELECT denied",
+      "Unapproved/embargoed/future/exclusive image rows blocked",
+      "Expired asset windows denied",
+      "Unmapped identity has no readable rows",
+      "No anonymous reads or native writes",
+      "All 11 app bundle routing tests, including product projection routing"
+    ],
+    "fixture_writes": "rolled back",
+    "browser_verification": "pending",
+    "performance_correction": "Initial per-row permission check timed out; final policy computes an allowed ID array once per query, and the complete rollback fixture passed"
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "count": 609,
+        "level": "INFO"
+      },
+      {
+        "name": "security_definer_view",
+        "count": 8,
+        "level": "ERROR"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "count": 27,
+        "level": "WARN"
+      },
+      {
+        "name": "extension_in_public",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "count": 5,
+        "level": "WARN"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "count": 3,
+        "level": "WARN"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "count": 698,
+        "level": "INFO"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "count": 53,
+        "level": "WARN"
+      },
+      {
+        "name": "no_primary_key",
+        "count": 55,
+        "level": "INFO"
+      },
+      {
+        "name": "unused_index",
+        "count": 929,
+        "level": "INFO"
+      },
+      {
+        "name": "duplicate_index",
+        "count": 8,
+        "level": "WARN"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "count": 1,
+        "level": "INFO"
+      }
+    ]
+  },
+  "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+  "limits": [
+    "Manufacturer and retailer scope requires a catalog brand_id; unresolved brand references remain private",
+    "Unlinked/brand-only product assets remain private",
+    "Global scraper operational records require active Product IQ governance roles",
+    "Dealer-cost import/edit/export workflows remain gated",
+    "Private asset file delivery and actual app browser workflows remain pending",
+    "No hosted app cutover or source job shutdown"
+  ]
+}

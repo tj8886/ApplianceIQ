@@ -1,0 +1,103 @@
+{
+  "captured_at": "2026-10-06T01:51:46.212Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": "epass-sync",
+  "version": 2,
+  "verify_jwt": true,
+  "migration_versions": [
+    "20261006014811"
+  ],
+  "checks": {
+    "handler_and_runner": "passed",
+    "live_setup_resume_lease_configuration_cancellation_and_limits_rollback": "passed",
+    "ingest_and_bridge_handler_regressions": "passed",
+    "prepared_app_bundles": 11,
+    "live_unauthenticated_http": 401,
+    "remaining_fixture_connections": 0,
+    "remaining_sync_runs": 0,
+    "persisted_provider_contract_approvals": 0
+  },
+  "behavior": "One bounded provider page or invoice-bridge page per request, saved job/resource/URL/cursor progress, actor-bound expiring leases, exact version/configuration-digest review, repeated native tenant-admin validation, scoped Vault credentials, strict response shapes and same-endpoint HTTPS pagination. Ingestion replays dedupe after interruption. Completion preserves partial failures, requires separate reviewed metrics, and never activates connections. Prepared setup UI loops requests, saves the job ID and supports cancellation.",
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 603
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ],
+    "delta": "Existing WARN/ERROR and other performance counts unchanged. RLS-no-policy INFO rises from 601 to 603 for private tables with all direct API role privileges revoked. Five new indexed private-table relationships increase unused-index INFO from 912 to 917.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "Real destination credentials, server-approved origin and private unexpired active-admin provider-contract review are required; no approval or real sync run is persisted.",
+    "No real provider call, signed-in browser run or large-provider-load test was performed.",
+    "Supported source-derived response arrays: array/value/items/data/results; continuation: @odata.nextLink/nextLink/next/links.next. Shape and pagination must be verified against the actual provider before approval; alternate endpoint paths are rejected.",
+    "Per request: 100 records, 1 MiB JSON, 10-second provider timeout, 45-second ingestion work budget. Per job: 1000 total fetch/bridge pages, five consecutive failed steps; leases expire after 120 seconds. Exceeding limits terminates the job instead of claiming complete coverage.",
+    "User-initiated automatic continuation runs while the prepared setup page is open; no server schedule or unattended worker was activated. Configuration review is database-operator maintained.",
+    "Employee/store mapping and metric reconciliation remain separate. Legacy identities, real refunds/line/header evidence and final data/Storage deltas remain pending.",
+    "Prepared app changes are not hosted; PR #8 stays draft and source retirement/cutover remain pending."
+  ]
+}

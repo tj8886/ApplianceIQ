@@ -1,0 +1,36 @@
+BEGIN;SET LOCAL statement_timeout='45s';
+DO $$ DECLARE u uuid;src uuid;org uuid;foreign_org uuid;c uuid:=gen_random_uuid();fc uuid:=gen_random_uuid();co uuid:=gen_random_uuid();BEGIN
+ SELECT im.target_user_id,im.source_user_id,m.organization_id INTO u,src,org FROM tj.source_user_identity_map im JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM tj.platform_admins p WHERE p.user_id=im.source_user_id) LIMIT 1;
+ SELECT id INTO foreign_org FROM tj.organizations o WHERE o.status='active' AND o.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM tj.organization_members m WHERE m.organization_id=o.id AND m.user_id=src AND m.status='active') LIMIT 1;
+ IF u IS NULL OR foreign_org IS NULL THEN RAISE EXCEPTION 'Fixture unavailable';END IF;
+ PERFORM set_config('request.jwt.claim.sub',u::text,true);PERFORM set_config('test.org',org::text,true);PERFORM set_config('test.source',src::text,true);PERFORM set_config('test.contact',c::text,true);PERFORM set_config('test.foreign_contact',fc::text,true);PERFORM set_config('test.foreign_company',co::text,true);PERFORM set_config('test.foreign',foreign_org::text,true);
+ INSERT INTO tj.contacts(id,organization_id,first_name) VALUES(c,org,'Rollback fixture'),(fc,foreign_org,'Foreign fixture');
+ INSERT INTO tj.companies(id,organization_id,name) VALUES(co,foreign_org,'Foreign fixture');
+ UPDATE tj.organization_members SET role='member',visibility_scope='own' WHERE organization_id=org AND user_id=src;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE co uuid;g uuid;d uuid;link uuid;org uuid:=current_setting('test.org')::uuid;c uuid:=current_setting('test.contact')::uuid;BEGIN
+ INSERT INTO tj.companies(organization_id,name,display_name,source) VALUES(org,'Rollback company','Rollback company','crm') RETURNING id INTO co;
+ UPDATE tj.companies SET notes='Rollback note' WHERE id=co;
+ INSERT INTO tj.crm_buying_groups(organization_id,name,company_id,primary_contact_id) VALUES(org,'Rollback household',co,c) RETURNING id INTO g;
+ UPDATE tj.crm_buying_groups SET notes='Rollback note' WHERE id=g;
+ INSERT INTO tj.crm_buying_group_members(buying_group_id,contact_id,buying_role,is_primary) VALUES(g,c,'co_buyer',true) RETURNING id INTO link;
+ UPDATE tj.crm_buying_group_members SET notes='Rollback note' WHERE id=link;
+ INSERT INTO tj.crm_deals(organization_id,owner_user_id,title,company_id,buying_group_id,contact_id) VALUES(org,current_setting('test.source')::uuid,'Rollback deal',co,g,c) RETURNING id INTO d;
+ INSERT INTO tj.crm_deal_participants(deal_id,contact_id,buying_role) VALUES(d,c,'co_buyer');
+ IF NOT EXISTS(SELECT 1 FROM tj.crm_buying_groups WHERE id=g) OR NOT EXISTS(SELECT 1 FROM tj.crm_buying_group_members WHERE buying_group_id=g) OR NOT EXISTS(SELECT 1 FROM tj.crm_deal_participants WHERE deal_id=d) THEN RAISE EXCEPTION 'Related record read-back failed';END IF;
+ DELETE FROM tj.crm_buying_group_members WHERE id=link;
+ IF EXISTS(SELECT 1 FROM tj.crm_buying_group_members WHERE id=link) THEN RAISE EXCEPTION 'Owned unlink failed';END IF;
+ PERFORM set_config('test.company',co::text,true);PERFORM set_config('test.group',g::text,true);
+ BEGIN UPDATE tj.companies SET organization_id=current_setting('test.foreign')::uuid WHERE id=co;RAISE EXCEPTION 'Container tenant move permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN UPDATE tj.companies SET credit_status='approved' WHERE id=co;RAISE EXCEPTION 'Credit approval permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN INSERT INTO tj.crm_buying_groups(organization_id,name,company_id) VALUES(org,'Foreign parent',current_setting('test.foreign_company')::uuid);RAISE EXCEPTION 'Foreign company link permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN INSERT INTO tj.crm_buying_group_members(buying_group_id,contact_id) VALUES(g,current_setting('test.foreign_contact')::uuid);RAISE EXCEPTION 'Foreign member link permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN INSERT INTO tj.crm_deal_participants(deal_id,contact_id) VALUES(d,current_setting('test.foreign_contact')::uuid);RAISE EXCEPTION 'Foreign participant link permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN DELETE FROM tj.crm_buying_groups WHERE id=g;RAISE EXCEPTION 'Group deletion permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ BEGIN INSERT INTO tj.companies(organization_id,name) VALUES(org,'Unmapped fixture');RAISE EXCEPTION 'Unmapped creation permitted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+END $$;
+RESET ROLE;
+DO $$ BEGIN IF (SELECT count(*) FROM tj_private.crm_container_creators WHERE record_id IN(current_setting('test.company')::uuid,current_setting('test.group')::uuid))<>2 THEN RAISE EXCEPTION 'Creator ownership not recorded';END IF;END $$;
+ROLLBACK;

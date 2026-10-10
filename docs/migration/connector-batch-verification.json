@@ -1,0 +1,55 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    "connector-runtime",
+    "connector-diagnostics"
+  ],
+  "jwt_verification": true,
+  "identity": "native getUser and strictly activated source mapping; active organization membership derived inside private broker",
+  "runtime_actions": [
+    "catalog",
+    "connections",
+    "prepare_connection",
+    "queue_sync"
+  ],
+  "diagnostic_actions": [
+    "org_summary",
+    "org_reliability",
+    "summary",
+    "retry",
+    "resolve",
+    "ignore",
+    "acknowledge_alert",
+    "reopen_alert",
+    "recalculate_health"
+  ],
+  "writes": "atomic caller-scoped private routines; source actor stamped server-side; connection row locks and stale alert/duplicate sync checks",
+  "raw_data": "credential references, settings, sync cursors, raw provider errors, payloads, alert details and reconciliation discrepancies excluded from operator responses",
+  "settings": "only source, market, timezone, entity_types and sync_interval accepted during prepare; credentials use separate setup",
+  "store_contract": "non-null store must be an active org_locations ID in the same organization",
+  "tests": "mocked handler contracts and live rollback organization/actor/store/credential/concurrency/operator/privacy fixtures passed; 11 app bundles passed",
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 595,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 917,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_remediation": "https://supabase.com/docs/guides/database/database-linter",
+  "browser_workflows": "pending",
+  "external_workers": "not activated",
+  "source_shutdown": "not performed",
+  "app_cutover": "not performed"
+}

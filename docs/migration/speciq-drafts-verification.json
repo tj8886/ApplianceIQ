@@ -1,0 +1,132 @@
+{
+  "verified_at": "2026-10-09T18:38:18.190Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "b41724f959fa35349b9ad46f13ddf3fc4e6c6268",
+  "scope": "Native standalone Spec IQ draft create/revise; US app bundles unpublished",
+  "applied_migrations": [
+    "20261009164126_enable_native_speciq_draft_saves.sql",
+    "20261009183206_fix_speciq_generated_draft_subtotals.sql",
+    "20261009183257_fix_speciq_warranty_snapshot_columns.sql",
+    "20261009183413_fix_speciq_draft_event_contract.sql",
+    "20261009183702_fix_speciq_catalog_model_field.sql"
+  ],
+  "implemented": [
+    "Confirmed activated mapped native identity and active organization role resolved server-side. Browser self-owner/demo organization fallback removed. Organization selector and scoped draft/package/warranty/tax/project reads.",
+    "Atomic project, package, product, warranty, service, complete snapshot/event and private idempotency journal commit; source actor resolved on server. Authenticated direct writes remain closed.",
+    "Same native actor/org/request ID and same body replays original package; altered retries conflict. Advisory request lock and prior package row lock serialize writes.",
+    "Fresh draft revisions retain prior project/product/warranty/service rows and snapshots; prior package is archived and linked via supersedes/superseded_by. Stale/locked/sent/approved/deleted/superseded edits rejected.",
+    "Visible catalog entries use stored names/brand/model/category; manual entries and entered prices marked user/unreviewed provenance. Warranty price/coverage/category/org/active status resolve from stored catalog. Exact numeric prices and quantity used for subtotals.",
+    "Final tax/total left NULL; no sharing tokens, sending, approval, invented costs/margins or CRM stage/value updates. Preview shows escaped draft quantities and subtotal before tax."
+  ],
+  "tests": {
+    "client_vm": "passed: whole transformed module parses, stable retry IDs, validation/network failure guard reset, success-only clearing, conflict and redacted errors, escaped quantity/warranty preview",
+    "native_live_sql": "passed: atomic writes, source actor, complete snapshot, quantities, warranty totals, retries/conflicts, child failure rollback, foreign org/catalog/viewer/other owner/stale/suspended/unmapped denial, actual authenticated invoker wrapper and closed direct-write grants",
+    "catalog_live_sql": "passed: allowed existing catalog product facts override supplied names/brand; user entered price labelled unreviewed",
+    "eleven_bundle_checks": "passed",
+    "manufacturer_asset_invitation_crm_analytics_reference_runtime_regressions": "passed",
+    "persisted_fixture_organizations": 0,
+    "persisted_draft_requests": 0,
+    "hosted_authenticated_browser": "pending"
+  },
+  "catalog": {
+    "literal_rpc_names": 65,
+    "available_authenticated_native_wrappers": 65,
+    "literal_relation_names": 159,
+    "missing_or_denied_wrappers": [],
+    "missing_or_denied_table_reads": []
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 622,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 932,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "comparison": "WARN/ERROR and unindexed FK counts unchanged. New private journal adds one intentional RLS-no-policy INFO and two unused-index INFO; all new FKs indexed. No direct journal client privileges."
+  },
+  "remaining": [
+    "Manager submission/approval/return, metadata archive, customer send/PDF/share and reviewed final tax/expiry.",
+    "CRM-linked and standalone project writes, retailer/warranty/tax/team settings workflows.",
+    "Additional product technical metadata/documents, salesperson/project/validity fields in new draft revisions; original historical records retained.",
+    "Hosted native login/handoff and app/storage testing; remaining provider/Edge workflows and final frozen data/files delta."
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft and unmerged"
+}

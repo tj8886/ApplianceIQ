@@ -1,0 +1,41 @@
+begin;set local statement_timeout='30s';
+do $$declare native uuid;actor uuid;org uuid;other uuid;begin
+ select im.target_user_id,im.source_user_id into native,actor from tj.source_user_identity_map im join tj.organization_members m on m.user_id=im.source_user_id join tj.organizations o on o.id=m.organization_id where im.activation_status='activated' and m.status='active' and m.role in ('owner','admin') and o.status='active' and o.deleted_at is null limit 1;
+ if native is null then raise exception 'missing_fixture';end if;
+ insert into tj.organizations(name,slug) values('Rollback PIM enrichment gate','rollback-pim-batch-gate-'||gen_random_uuid()) returning id into org;
+ insert into tj.organizations(name,slug) values('Rollback foreign PIM enrichment gate','rollback-pim-batch-gate-foreign-'||gen_random_uuid()) returning id into other;
+ insert into tj.organization_members(organization_id,user_id,role,status) values(org,actor,'admin','active');
+ perform set_config('request.jwt.claim.sub',native::text,true);perform set_config('test.pim.native',native::text,true);perform set_config('test.pim.actor',actor::text,true);perform set_config('test.pim.org',org::text,true);perform set_config('test.pim.other',other::text,true);
+ perform set_config('test.pim.counts',(select (select md5(string_agg(md5(jsonb_build_array(id,organization_id,short_description,msrp,updated_at,version_number,approval_status,public_visible)::text),'' order by id)) from tj.aiq_products)::text),true);
+end $$;
+set local role authenticated;
+do $$declare r jsonb;a text;begin
+ r:=public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org'),'action','status'));
+ if r->>'ok'<>'true' or r->>'enrichment_enabled'<>'false' or r->>'global_publishing_enabled'<>'false' or r->>'provider_verified'<>'false' then raise exception 'unsafe_status';end if;
+ r:=public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org')));
+ if r->>'ok'<>'false' or r->>'products_updated'<>'0' then raise exception 'default_enrich_executed';end if;
+ foreach a in array array['enrich'] loop
+  r:=public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org'),'action',a));
+  if r->>'error'<>'pim_enrichment_verification_required' or r->>'executed'<>'false' or r->>'provider_requests'<>'0' or r->>'products_updated'<>'0' or r::text like '%PRIVATE%' then raise exception 'payment_execution_or_leak';end if;
+ end loop;
+ begin perform public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.other')));raise exception 'foreign_accepted';exception when insufficient_privilege then null;end;
+ begin perform public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org'),'action','enrich','data',jsonb_build_object('brand','LG','url','https://PRIVATE.invalid')));raise exception 'client_price_accepted';exception when invalid_parameter_value then null;end;
+ foreach a in array array['brand','limit','url','product_id','model','msrp'] loop
+  begin perform public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org'),a,'PRIVATE UNVERIFIED'));raise exception 'legacy_payment_input_accepted';exception when invalid_parameter_value then null;end;
+ end loop;
+ begin perform public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org'),'action','unknown'));raise exception 'unknown_action_accepted';exception when invalid_parameter_value then null;end;
+ perform set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ begin perform public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org')));raise exception 'unmapped_accepted';exception when insufficient_privilege then null;end;
+ perform set_config('request.jwt.claim.sub',current_setting('test.pim.native'),true);
+end $$;
+reset role;
+update tj.organization_members set role='member' where organization_id=current_setting('test.pim.org')::uuid and user_id=current_setting('test.pim.actor')::uuid;
+set local role authenticated;
+do $$begin begin perform public.tj_pim_batch_preflight(jsonb_build_object('organization_id',current_setting('test.pim.org')));raise exception 'nonadmin_accepted';exception when insufficient_privilege then null;end;end $$;
+reset role;
+do $$declare f text;r text;begin
+ foreach f in array array['public.tj_pim_batch_preflight(jsonb)','tj_private.pim_batch_preflight(jsonb)'] loop foreach r in array array['anon','service_role'] loop if has_function_privilege(r,f,'EXECUTE') then raise exception 'unsafe_grants';end if;end loop;end loop;
+ if (select (select md5(string_agg(md5(jsonb_build_array(id,organization_id,short_description,msrp,updated_at,version_number,approval_status,public_visible)::text),'' order by id)) from tj.aiq_products)::text)<>current_setting('test.pim.counts') then raise exception 'pim_products_mutated';end if;
+end $$;
+rollback;
+select jsonb_build_object('passed',true,'fixture','PIM enrichment gate','persisted_rows',0) verification;

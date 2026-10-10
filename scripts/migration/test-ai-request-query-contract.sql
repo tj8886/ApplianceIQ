@@ -1,0 +1,7 @@
+BEGIN;
+SET LOCAL ROLE authenticated;
+SELECT brand_name FROM tj.brand_catalog WHERE false;
+SELECT country,customer_service_phone,customer_service_phone_label,customer_service_hours,service_repair_phone,warranty_phone,trade_distributor_phone,support_email,service_portal_url,owner_account_portal_url,confidence_level,notes FROM tj.aiq_vendor_contacts WHERE false;
+SELECT title,hazard,recall_date,units_affected,injury_count,remedy,url,model_numbers FROM tj.aiq_recalls WHERE false;
+SELECT category,full_coverage_years,full_coverage_notes,component_warranties,certified_install_bonus_notes,key_exclusions,last_verified_date FROM tj.aiq_warranty_policies WHERE false;
+ROLLBACK;

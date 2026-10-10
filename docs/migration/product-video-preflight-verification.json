@@ -1,0 +1,115 @@
+{
+  "captured_at": "2026-10-06T19:05:41.259Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "product-video-discovery",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "61014763a24d384a1f54604c86eebe0e273cc0b5be8703562757c3f1a2643dca"
+  },
+  "migration_version": "20261006190439",
+  "capability": "Native tenant-admin readiness only; discovery, job claims and video writes blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "caller_source_job_product_run_key_video_embed_payload_rejection": "passed",
+    "default_and_explicit_run_blocked": "passed",
+    "restricted_grants": "passed",
+    "all_job_and_video_row_fingerprints_unchanged": "passed",
+    "unauthenticated_legacy_header_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "jobs": 103,
+    "videos": 815
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "WARN/ERROR counts unchanged; INFO counts recorded. No index removed, existing policy/grant changed or new table/index.",
+  "limits": [
+    "Status readiness requires native activated identity and active tenant-admin membership; fixed legacy run keys confer no authority.",
+    "Default/run HTTP 409 with executed=false and zero jobs processed/claimed, provider requests or videos created. No Bing/source fetch, parser, job status/attempt mutation or video insert.",
+    "No queue preview or ownership assertion. Existing jobs lack organization_id; future scope must join verified owned products and related videos.",
+    "Execution requires reviewed least-privilege worker authority, exact model/variant/region provenance, approved bounded fetch/redirect origins, strict platform hostname/ID/embed validation, atomic claims and retries, deduplication and truthful partial-failure finalization.",
+    "Source hostname substring tests, global job scans, unchecked claim/finalization and completed markers after video insert failures are not enabled.",
+    "No customer-data copy, hosted cutover, main merge, schedules, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 70,
+    "absent_snapshots": 16,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "retailvantage-performance-bridge"
+}

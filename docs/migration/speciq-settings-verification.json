@@ -1,0 +1,127 @@
+{
+  "verified_at": "2026-10-10T02:54:46.834Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "453469b59f9fe97e02f65104e944c977062f10c9",
+  "migration": "20261010024852_enable_native_speciq_settings.sql",
+  "applied": true,
+  "scope": "Native organization Spec IQ branding and quote default configuration",
+  "implemented": [
+    "Fresh confirmed mapped native identity and active organization membership; all organization members can read, owner/admin alone can save or clear logo reference.",
+    "Native get shows unsaved defaults without seeding any row. Organization lock plus expected updated timestamp serializes creation/update; native request journal provides stable replay and rejects conflicting bodies before any changes.",
+    "Strict field allowlist/types/lengths, email, HTTPS website, six-digit hex colors and ordered integer validity defaults/authority limits between 1 and 365 days.",
+    "Settings saves preserve logo URL and all existing approval/financial configuration fields. Logo clear updates only the reference and retains its before image; no file operation or deletion.",
+    "Private organization/native/source actor journal, before/after images, RLS without client grants and indexed FKs; native invoker wrapper limited to authenticated.",
+    "Generated US page uses native get/save, role-based read-only controls, visible errors, no automatic seed/direct settings/logo upload writes, stable retry IDs, in-flight guards and stale-org response suppression. Clearing logo preserves unsaved form text."
+  ],
+  "tests": {
+    "client_vm": "passed: complete module parses, removed direct settings/storage mutations, retry retains request/form, clear-logo keeps unsaved text, integer day validation, save guard, stale-org suppression",
+    "live_settings_rollback": "passed: owner create/update, admin authenticated save, defaults no seed, replay/conflict/stale, invalid colors/URL/email/ranges/fractional days/authority order/unknown protected fields, foreign/member/manager/viewer/suspended denial, protected approval/logo fields and source audit history",
+    "live_project_regression": "passed with rollback",
+    "draft_review_crm_project_client_regressions": "passed",
+    "eleven_bundle_checks": "passed",
+    "runtime_router": "73 configured routes passed",
+    "direct_settings_insert_update_delete": "all denied to authenticated",
+    "persisted_fixture_organizations": 0,
+    "persisted_settings_journal_rows": 0,
+    "hosted_authenticated_browser": "pending"
+  },
+  "catalog": {
+    "literal_rpc_names": 69,
+    "authenticated_native_wrappers": 69,
+    "missing_or_denied_wrappers": []
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 624,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 926,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "Existing WARN/ERROR counts unchanged. Intentionally private journal adds one RLS-without-policy INFO. Unindexed FK count unchanged; unused-index INFO 928 to 926."
+  },
+  "remaining": [
+    "Native logo upload with verified storage ownership/file transfers",
+    "Additional package project/product technical fields",
+    "Final quote validity/tax/discount financial enforcement and PDF/share/send",
+    "Other application writes, hosted native browser/provider tests and final frozen database/Storage delta/cutover"
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft/unmerged"
+}

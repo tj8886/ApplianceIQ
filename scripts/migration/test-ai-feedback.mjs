@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {createHandler} from '../../supabase/functions/ai-feedback/handler.ts';
+let rpcArgs,headers;
+const handler=createHandler({env:n=>n==='SUPABASE_URL'?'https://us.test':'native-anon',createClient:(url,key,opts)=>{assert.equal(key,'native-anon');headers=opts.global.headers;return {auth:{getUser:async()=>({data:{user:{id:'verified'}}})},rpc:async(name,args)=>{assert.equal(name,'tj_submit_ai_feedback');rpcArgs=args;return {data:{ok:true,signals_processed:1}}}};}});
+const request=body=>new Request('https://edge.test',{method:'POST',headers:{Authorization:'Bearer caller'},body:JSON.stringify(body)});
+assert.equal((await handler(new Request('https://edge.test',{method:'POST'}))).status,401);
+assert.equal((await handler(request({signals:[]}))).status,400);
+assert.equal((await handler(request({signals:Array(21).fill({})}))).status,400);
+assert.equal((await handler(request({signal_type:'thumbs_up'}))).status,200);assert.deepEqual(rpcArgs,{p_signals:[{signal_type:'thumbs_up'}]});assert.equal(headers.Authorization,'Bearer caller');
+const denied=createHandler({env:()=>'',createClient:()=>({auth:{getUser:async()=>({data:{user:{id:'verified'}}})},rpc:async()=>({error:{code:'42501',message:'private detail'}})})});const r=await denied(request({signal_type:'thumbs_up'}));assert.equal(r.status,403);assert.equal((await r.text()).includes('private detail'),false);
+console.log('Feedback handler checks passed: caller JWT, bounded batch, guarded RPC, permission errors without record details.');

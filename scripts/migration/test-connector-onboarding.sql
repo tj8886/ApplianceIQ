@@ -1,0 +1,76 @@
+BEGIN;SET LOCAL statement_timeout='60s';
+DO $$DECLARE u uuid;src uuid;org uuid;foreign_org uuid;connector uuid:=gen_random_uuid();conn uuid:=gen_random_uuid();foreign_conn uuid:=gen_random_uuid();loc uuid:=gen_random_uuid();foreign_loc uuid:=gen_random_uuid();event uuid;key text:='rollback-'||gen_random_uuid();BEGIN
+ SELECT im.target_user_id,im.source_user_id,m.organization_id INTO u,src,org FROM tj.source_user_identity_map im JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL LIMIT 1;
+ SELECT o.id INTO foreign_org FROM tj.organizations o WHERE o.status='active' AND o.deleted_at IS NULL AND NOT EXISTS(SELECT 1 FROM tj.organization_members WHERE user_id=src AND organization_id=o.id AND status='active') LIMIT 1;
+ IF u IS NULL OR foreign_org IS NULL THEN RAISE EXCEPTION 'Fixture unavailable';END IF;
+ UPDATE tj.profiles SET full_name='Rollback Employee',email=key||'@example.invalid' WHERE user_id=src;
+ INSERT INTO tj.platform_connectors(id,key,name,vendor_name) VALUES(connector,key,'Rollback','Rollback');
+ INSERT INTO tj.platform_connector_onboarding_profiles(connector_id,pos_system_key,source_label) VALUES(connector,key,'Rollback');
+ INSERT INTO tj.org_locations(id,organization_id,location_type,name,code,city) VALUES(loc,org,'store','Rollback Store','ROLLBACK','Ottawa'),(foreign_loc,foreign_org,'store','Foreign Store','FOREIGN','Ottawa');
+ INSERT INTO tj.platform_connector_connections(id,organization_id,connector_id,display_name,status,auth_status,settings,created_by) VALUES(conn,org,connector,'Rollback','pending','not_configured','{"secret_setting":"must_not_return"}',src),(foreign_conn,foreign_org,connector,'Foreign','pending','not_configured','{}',src);
+ INSERT INTO tj.intelligence_events(organization_id,event_type,source_system,payload) VALUES(org,'employee.updated',key,jsonb_build_object('id','employee-1','code','EMP1','name','Rollback Employee','email',key||'@example.invalid','api_key','must_not_return')) RETURNING id INTO event;
+ INSERT INTO tj.platform_connector_ingestion_keys(connection_id,external_entity_type,external_id,intelligence_event_id) VALUES(conn,'employee','employee-1',event);
+ INSERT INTO tj.intelligence_events(organization_id,event_type,source_system,payload) VALUES(org,'employee.updated',key,'{"id":"employee-2","code":"EMP2","name":"Unknown employee"}') RETURNING id INTO event;
+ INSERT INTO tj.platform_connector_ingestion_keys(connection_id,external_entity_type,external_id,intelligence_event_id) VALUES(conn,'employee','employee-2',event);
+ INSERT INTO tj.intelligence_events(organization_id,event_type,source_system,payload) VALUES(org,'location.updated',key,'{"id":"location-1","code":"ROLLBACK","name":"Rollback Store","city":"Ottawa","password":"must_not_return"}') RETURNING id INTO event;
+ INSERT INTO tj.platform_connector_ingestion_keys(connection_id,external_entity_type,external_id,intelligence_event_id) VALUES(conn,'location','location-1',event);
+ INSERT INTO tj.intelligence_events(organization_id,event_type,source_system,payload) VALUES(org,'location.updated',key,'{"id":"location-2","code":"NEW","name":"New Rollback Store","city":"Ottawa","address":"Synthetic address"}') RETURNING id INTO event;
+ INSERT INTO tj.platform_connector_ingestion_keys(connection_id,external_entity_type,external_id,intelligence_event_id) VALUES(conn,'location','location-2',event);
+ INSERT INTO tj.intelligence_events(organization_id,event_type,source_system,payload) VALUES(foreign_org,'employee.updated',key,'{"id":"foreign-event","name":"Foreign employee"}') RETURNING id INTO event;
+ INSERT INTO tj.platform_connector_ingestion_keys(connection_id,external_entity_type,external_id,intelligence_event_id) VALUES(conn,'employee','foreign-event',event);
+ INSERT INTO tj.platform_connector_match_queue(connection_id,organization_id,external_entity_type,external_id,status,candidate_type,candidate_id,metadata) VALUES(conn,org,'employee','historical','confirmed','user',src,'{"payload":{"credential":"must_not_return"}}');
+ PERFORM set_config('request.jwt.claim.sub',u::text,true);PERFORM set_config('test.ob_conn',conn::text,true);PERFORM set_config('test.ob_foreign',foreign_conn::text,true);PERFORM set_config('test.ob_source',src::text,true);PERFORM set_config('test.ob_location',loc::text,true);PERFORM set_config('test.ob_foreign_loc',foreign_loc::text,true);PERFORM set_config('test.ob_org',org::text,true);PERFORM set_config('test.ob_pos',key,true);
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$DECLARE r jsonb;cid uuid:=current_setting('test.ob_conn')::uuid;body jsonb;rejected uuid;created uuid;BEGIN
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','status'));
+ IF r::text LIKE '%must_not_return%' OR r::text LIKE '%credential_ref%' OR r::text LIKE '%"payload"%' THEN RAISE EXCEPTION 'Raw data leak';END IF;
+ IF (r->'summary'->>'employees_review')::int<>1 THEN RAISE EXCEPTION 'Historical confirmation accepted';END IF;
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','auto_match'));
+ IF jsonb_array_length(r->'queue')<>5 OR EXISTS(SELECT 1 FROM jsonb_array_elements(r->'queue') x WHERE x->>'external_id'='foreign-event') THEN RAISE EXCEPTION 'Event scope or queue count failed';END IF;
+ IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r->'queue') x WHERE x->>'external_id'='employee-1' AND x->>'status'='suggested' AND x->>'match_method'='email_exact') THEN RAISE EXCEPTION 'Email suggestion missing';END IF;
+ IF r::text LIKE '%must_not_return%' THEN RAISE EXCEPTION 'Imported payload leaked';END IF;
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','auto_match'));IF jsonb_array_length(r->'queue')<>5 THEN RAISE EXCEPTION 'Repeat queue duplicate';END IF;
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',current_setting('test.ob_foreign'),'action','status'));RAISE EXCEPTION 'Foreign connection accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_employee','external_id','employee-1','user_id',current_setting('test.ob_source'),'store_id',current_setting('test.ob_foreign_loc')));RAISE EXCEPTION 'Foreign store accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_employee','external_id','employee-1','user_id',gen_random_uuid()));RAISE EXCEPTION 'Foreign employee accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_location','external_id','location-1','location_id',current_setting('test.ob_foreign_loc')));RAISE EXCEPTION 'Foreign location accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_employee','external_id','employee-1','user_id',current_setting('test.ob_source'),'store_id',current_setting('test.ob_location')));
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_location','external_id','location-1','location_id',current_setting('test.ob_location')));
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_location','external_id','location-2','create',true));
+ SELECT (x->>'candidate_id')::uuid INTO created FROM jsonb_array_elements(r->'queue')x WHERE x->>'external_id'='location-2';PERFORM set_config('test.ob_created',created::text,true);
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','resolve_location','external_id','location-2','create',true));IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r->'queue')x WHERE x->>'external_id'='location-2' AND x->>'candidate_id'=created::text) THEN RAISE EXCEPTION 'Create not idempotent';END IF;
+ FOR rejected IN SELECT (x->>'id')::uuid FROM jsonb_array_elements(r->'queue')x WHERE x->>'external_id' IN('employee-2','historical') LOOP r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','reject','match_id',rejected));END LOOP;
+ IF NOT(r->'summary'->>'mapping_ready')::boolean OR (r->'summary'->>'ready')::boolean THEN RAISE EXCEPTION 'Destination verification gate';END IF;
+ SELECT (x->>'id')::uuid INTO rejected FROM jsonb_array_elements(r->'queue')x WHERE x->>'external_id'='employee-1';
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','reject','match_id',rejected));RAISE EXCEPTION 'Confirmed match ignored';EXCEPTION WHEN serialization_failure THEN NULL;END;
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',cid,'action','activate'));IF r->>'error'<>'onboarding_review_incomplete' THEN RAISE EXCEPTION 'Unverified activation accepted';END IF;
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',cid));RAISE EXCEPTION 'Unmapped access accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+END $$;
+RESET ROLE;
+DO $$DECLARE cid uuid:=current_setting('test.ob_conn')::uuid;src uuid:=current_setting('test.ob_source')::uuid;BEGIN
+ IF NOT EXISTS(SELECT 1 FROM tj.iq_pos_employee_map WHERE organization_id=current_setting('test.ob_org')::uuid AND pos_system=current_setting('test.ob_pos') AND pos_employee_id='EMP1' AND salesperson_user_id=src AND created_by=src) THEN RAISE EXCEPTION 'Map actor attribution';END IF;
+ IF (SELECT count(*) FROM tj.org_locations WHERE metadata->>'source_connection_id'=cid::text AND metadata->>'external_location_id'='location-2')<>1 THEN RAISE EXCEPTION 'Duplicate created location';END IF;
+ IF EXISTS(SELECT 1 FROM tj.platform_connector_match_queue WHERE connection_id=cid AND external_id='employee-2' AND status<>'rejected') THEN RAISE EXCEPTION 'Reject not persisted';END IF;
+ UPDATE tj.platform_connector_connections SET settings=settings||'{"destination_connection_verified":true}' WHERE id=cid;
+ PERFORM set_config('request.jwt.claim.sub',(SELECT target_user_id::text FROM tj.source_user_identity_map WHERE source_user_id=src AND activation_status='activated'),true);
+ PERFORM set_config('test.ob_role',(SELECT role FROM tj.organization_members WHERE user_id=src AND organization_id=current_setting('test.ob_org')::uuid),true);
+ UPDATE tj.organization_members SET role='member' WHERE user_id=src AND organization_id=current_setting('test.ob_org')::uuid;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$BEGIN
+ BEGIN PERFORM public.tj_connector_onboarding(jsonb_build_object('connection_id',current_setting('test.ob_conn')));RAISE EXCEPTION 'Nonadmin accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+END $$;
+RESET ROLE;
+UPDATE tj.organization_members SET role=current_setting('test.ob_role') WHERE user_id=current_setting('test.ob_source')::uuid AND organization_id=current_setting('test.ob_org')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$DECLARE r jsonb;BEGIN
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',current_setting('test.ob_conn'),'action','activate'));IF r->'connection'->>'status'<>'active' THEN RAISE EXCEPTION 'Reviewed activation failed';END IF;
+ r:=public.tj_connector_onboarding(jsonb_build_object('connection_id',current_setting('test.ob_conn'),'action','auto_match'));IF (r->'summary'->>'employees_confirmed')::int<>1 OR (r->'summary'->>'locations_confirmed')::int<>2 THEN RAISE EXCEPTION 'Review overwritten by automatch';END IF;
+END $$;
+RESET ROLE;
+DO $$BEGIN
+ IF has_function_privilege('anon','public.tj_connector_onboarding(jsonb)','EXECUTE') OR has_table_privilege('authenticated','tj.platform_connector_match_queue','INSERT,UPDATE,DELETE') THEN RAISE EXCEPTION 'Direct mutation/anonymous access';END IF;
+END $$;
+ROLLBACK;

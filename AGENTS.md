@@ -1,7 +1,7 @@
 # AGENTS.md — rules for AI agents working on ApplianceIQ
 
 ## Identity
-- GitHub `tj8886/ApplianceIQ` is the source of truth. Supabase project: `fumwwhyozeouoqscolke` (ApplianceIQ, ca-central-1). Canonical Netlify sites: `crmaiiq` (38f8f64f-c674-4e14-8639-37ebb40ac939) and `applianceiq-aiacademy` (4179d04b-ca18-4551-9b18-fe434b83ebc6). `trainingiq-academy` (840dd2f5-21c6-410c-9491-e4887fa9be38) is abandoned infrastructure: never deploy to, restore, or reuse it.
+- GitHub `tj8886/ApplianceIQ` is the source of truth. Supabase production application target: `jdxslqmgjsuzoisuhvlc` (US). Canadian source `fumwwhyozeouoqscolke` is retained for reconciliation and recovery; do not delete its data/files. The user authorized cutover before remaining verification on October 10, 2026. Canonical Netlify sites: `crmaiiq` (38f8f64f-c674-4e14-8639-37ebb40ac939) and `applianceiq-aiacademy` (4179d04b-ca18-4551-9b18-fe434b83ebc6). `trainingiq-academy` (840dd2f5-21c6-410c-9491-e4887fa9be38) is abandoned infrastructure: never deploy to, restore, or reuse it.
 
 ## Hard rules
 1. Never commit secrets. The Supabase publishable key in the apps is public by design; everything else lives in Supabase edge secrets or GitHub Actions secrets.

@@ -1,0 +1,127 @@
+{
+  "verified_at": "2026-10-09T18:56:14.248Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "fa9fce8e80adccb9138818ea1195c13e64160db9",
+  "migration": "20261009185013_enable_native_speciq_crm_links.sql",
+  "applied": true,
+  "scope": "Native Spec IQ CRM-linked draft create/revise/clear and salesperson/project customer fields; US bundles unpublished",
+  "implemented": [
+    "Confirmed mapped source identity, email and active organization write role checked by existing native helper. Contact search limited to ten nondeleted same-organization contacts; query is a literal substring, avoiding browser filter interpolation.",
+    "Selected contact facts resolve from stored CRM. Eligible open deals limited to 25, same organization/contact, nondeleted/unclosed/unarchived, with existing salesperson/team/store visibility predicates. User explicitly chooses a deal or contact-only link.",
+    "Draft save/replay rechecks contact and deal access, row-locks selected contact/deal through the atomic save, rejects foreign/mismatched/unavailable links and deal-without-contact. Canonical customer name/email/phone stored on project; IDs stored on package/project and full version snapshot.",
+    "Entered salesperson label saved; customer phone restored on edit. Revisions preserve original linked records and snapshots; explicit null links clear a new revision, omitted link fields on older clients cannot silently drop an existing association.",
+    "Native picker uses text-only labels and current organization/request sequence checks; reset clears links, edited linked drafts expose clear-link control. Native router allows reviewed CRM picker RPC.",
+    "No CRM contact/deal mutations, quote-send/stage/value or stage-history writes. Source actors still resolved server-side; existing financial approval/tax/send gates remain."
+  ],
+  "tests": {
+    "client_vm": "passed: whole transformed script parses, canonical contact selection, explicit multiple deal choice, text-only labels, clearing, stale-org response suppression, payload fields and filter-interpolation removal",
+    "live_crm_link_rollback": "passed: search/literal punctuation, own scoped deal, canonical linked snapshot/source/salesperson, save/replay/revise/explicit clear, old-client omission denial, mismatch/foreign/other-owner/closed/archive/deleted/suspended checks, actual authenticated picker wrapper, unchanged CRM value/stage/quote-send",
+    "live_draft_workflow_regressions": "passed with rollback",
+    "eleven_bundle_checks": "passed",
+    "asset_invitation_crm_analytics_reference_runtime_regressions": "passed",
+    "persisted_fixture_organizations": 0,
+    "persisted_requests": 0,
+    "hosted_authenticated_browser": "pending",
+    "store_scope": "existing aiq_store_allows predicate reused; store-specific end-to-end fixture not included in this batch"
+  },
+  "catalog": {
+    "literal_rpc_names": 67,
+    "authenticated_native_wrappers": 67,
+    "literal_relation_names": 158,
+    "missing_or_denied_wrappers": [],
+    "missing_or_denied_reads": []
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 622,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 928,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "comparison": "WARN/ERROR, RLS-no-policy and unindexed FK counts unchanged. Unused-index INFO falls 930 to 928 as existing CRM indexes exercised. No new tables, indexes, policies or direct grants."
+  },
+  "remaining": [
+    "Standalone project create/edit/archive and builder/designer/date/notes fields, additional product technical metadata and retailer/warranty/tax/team settings.",
+    "Final tax/pricing/expiry review, customer PDF/share/send, hosted authenticated native app/store-scope tests.",
+    "Remaining brand training writes and provider/Edge workflows, final frozen data/files delta and cutover."
+  ],
+  "published": false,
+  "production": "Canada",
+  "pr_status": "draft and unmerged"
+}

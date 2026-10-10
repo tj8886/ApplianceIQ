@@ -1,0 +1,165 @@
+{
+  "captured_at": "2026-10-09T12:28:13.784Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "run_id": "35f0872d-9cc9-4967-b0b8-47c0c37a44c1",
+  "inserted": 156,
+  "updated": 114,
+  "verification": [
+    {
+      "table_name": "decision_cases",
+      "inserted": 5,
+      "updated": 6,
+      "unverified": 0
+    },
+    {
+      "table_name": "decision_predictions",
+      "inserted": 11,
+      "updated": 1,
+      "unverified": 0
+    },
+    {
+      "table_name": "field_floor_snapshots",
+      "inserted": 10,
+      "updated": 0,
+      "unverified": 0
+    },
+    {
+      "table_name": "iq_staffing_predictions",
+      "inserted": 130,
+      "updated": 0,
+      "unverified": 0
+    },
+    {
+      "table_name": "phase6_revenue_opportunities",
+      "inserted": 0,
+      "updated": 54,
+      "unverified": 0
+    },
+    {
+      "table_name": "phase7_action_runs",
+      "inserted": 0,
+      "updated": 51,
+      "unverified": 0
+    },
+    {
+      "table_name": "platform_connector_alerts",
+      "inserted": 0,
+      "updated": 1,
+      "unverified": 0
+    },
+    {
+      "table_name": "platform_connector_incident_metrics",
+      "inserted": 0,
+      "updated": 1,
+      "unverified": 0
+    }
+  ],
+  "destination_only_records_preserved": {
+    "decision_predictions": 12,
+    "iq_staffing_predictions": 148
+  },
+  "staffing_provenance": {
+    "new_source_ids_approved": 130,
+    "original_us_only_ids_still_withheld": 74
+  },
+  "regression_tests": [
+    {
+      "path": "scripts/migration/test-remaining-read-views.sql",
+      "passed": true,
+      "fixtures": "rolled back"
+    },
+    {
+      "path": "scripts/migration/test-business-dashboard-runtime.sql",
+      "passed": true,
+      "fixtures": "rolled back"
+    },
+    {
+      "path": "scripts/migration/test-floor-edge-adapter.sql",
+      "passed": true,
+      "fixtures": "rolled back"
+    }
+  ],
+  "advisors": [
+    {
+      "type": "security",
+      "findings": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 615
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "type": "performance",
+      "findings": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 698
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 916
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "decision_cases_touch retained: destination updated_at reflects the copy; all other copied fields match source.",
+    "Source remains active. This is a reviewed checkpoint, not a frozen final cutover snapshot.",
+    "Before images retained privately; no US-only records deleted; existing advisor WARN/ERROR counts unchanged."
+  ]
+}

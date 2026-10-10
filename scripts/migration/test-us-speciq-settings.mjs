@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {migrateSpeciqDrafts} from './us-speciq-drafts.mjs';
+import {migrateSpeciqWorkflow} from './us-speciq-workflow.mjs';
+import {migrateSpeciqCrmLinks} from './us-speciq-crm-links.mjs';
+import {migrateSpeciqProjects} from './us-speciq-projects.mjs';
+import {migrateSpeciqSettings,settingsHelpers} from './us-speciq-settings.mjs';
+const out=migrateSpeciqSettings(migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(readFileSync(new URL('../../apps/spec-iq/index.html',import.meta.url),'utf8'))))));
+new vm.Script('(async()=>{'+out.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import[^;]+;/m,'')+'})()');
+assert.ok(!out.includes("sb.from('speciq_retailer_settings').upsert("));assert.ok(!out.includes("sb.from('speciq_retailer_settings').update("));assert.ok(!out.includes("sb.storage.from('retailer-logos').upload("));assert.ok(out.includes('id="logo-input" disabled'));assert.ok(out.includes('Final quote enforcement remains pending.'));
+function node(){return {value:'',disabled:false,textContent:'',src:'',classList:{add(){},remove(){}}};}
+const fields={},calls=[];let failed=false,pendingGet=null,delayGet=false;let state={organization_id:'org',updated_at:null,store_name:'Store',primary_color:'#abcdef',secondary_color:'#123456',default_validity_days:14,max_rep_validity_days:14,max_manager_validity_days:30,max_store_manager_validity_days:60,logo_url:'https://example.invalid/logo.png'};
+const c={window:{},userOrgId:'org',retailerSettings:null,crypto:{randomUUID:()=>String(calls.length)},el:id=>fields[id]??=node(),sb:{rpc:async(name,{p_body})=>{calls.push({name,p_body});if(p_body.action==='get'){if(delayGet)return new Promise(resolve=>pendingGet=resolve);return {data:{ok:true,stored:false,can_edit:true,settings:{...state}}};}if(!failed){failed=true;throw Error('network');}state={...state,...p_body.settings,updated_at:'new-stamp',...(p_body.action==='clear_logo'?{logo_url:null}:{})};return {data:{ok:true,settings:{...state}}};}}};vm.createContext(c);vm.runInContext(settingsHelpers+';globalThis.load=loadRetailerSettings;',c);
+await c.load();assert.equal(c.retailerSettings.store_name,'Store');assert.equal(calls.length,1);assert.equal(fields['save-settings-btn'].disabled,false);
+fields['s-name'].value='Entered Store';await c.window.saveRetailerSettings();assert.equal(fields['s-name'].value,'Entered Store');assert.equal(fields['save-settings-btn'].disabled,false);await c.window.saveRetailerSettings();const saves=calls.filter(x=>x.p_body.action==='save');assert.equal(saves[0].p_body.request_id,saves[1].p_body.request_id);assert.equal(c.retailerSettings.store_name,'Entered Store');assert.equal(saves[1].p_body.expected_updated_at,null);
+fields['s-name'].value='Unsaved local name';await c.window.removeLogo();assert.equal(fields['s-name'].value,'Unsaved local name');assert.equal(fields['logo-preview'].src,'');assert.equal(calls.at(-1).p_body.action,'clear_logo');assert.equal(calls.at(-1).p_body.expected_updated_at,'new-stamp');
+fields['s-validity-days'].value='1.5';const count=calls.length;await c.window.saveRetailerSettings();assert.equal(calls.length,count);assert.equal(fields['s-validity-days'].value,'1.5');assert.equal(fields['save-settings-btn'].disabled,false);
+delayGet=true;const stale=c.load();c.userOrgId='different';pendingGet({data:{ok:true,can_edit:true,stored:true,settings:{...state,store_name:'Wrong Org'}}});await stale;assert.equal(c.retailerSettings,null);assert.notEqual(fields['s-name'].value,'Wrong Org');assert.equal(fields['save-settings-btn'].disabled,true);
+console.log('PASS: full transformed module parses; no browser settings/logo mutations or automatic seed; native save retry preserves form/request, logo clear retains unsaved text, strict whole days, guard reset and stale org response suppression.');

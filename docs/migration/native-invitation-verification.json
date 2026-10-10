@@ -1,0 +1,62 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "workflow": "Organization invitation preview, create, revoke and accept",
+  "runtime_functions": [
+    "get_invite_preview",
+    "create_org_invite",
+    "revoke_org_invite",
+    "accept_org_invite"
+  ],
+  "reviewed_runtime_total": 66,
+  "authorization": {
+    "preview": "Only pending unexpired 128-bit invitation capability; active organization and currently authorized inviter; no anonymous table reads or private schema usage granted",
+    "creation": "Verified mapped owner/admin or platform administrator; owners/platform admins required for owner invites; validated same-organization active position, manager and location",
+    "acceptance": "Confirmed active non-anonymous native account with exact stored invitation email; invitation locked and current inviter authority rechecked",
+    "enrollment": "Creates a new source identity mapping only without a historical email/UUID/mapping collision; confirmed native email and authorized invite approve the membership",
+    "existing_members": "Active memberships retain role/position/manager/store. Suspended or removed memberships require review.",
+    "manager_assignment": "Invite manager source-user ID converted to organization membership ID"
+  },
+  "tests": [
+    "Live transaction with synthetic users, organizations, positions and stores fully rolled back",
+    "Anonymous positive/invalid/revoked preview without tj_private schema usage",
+    "Confirmed native new identity enrollment and membership/store assignment",
+    "Cross-organization invitation, position and location rejected",
+    "Manager foreign-key conversion verified",
+    "Wrong recipient, unconfirmed account, expired/replayed invite rejected",
+    "Existing owner preserved; organization admin cannot invite owner",
+    "Suspended membership not reactivated",
+    "Historical source email not automatically linked",
+    "Revoked inviter authority rejects acceptance and preview",
+    "11 app bundles rebuilt and routing/auth/storage checks passed"
+  ],
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 598,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 915,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_note": "Existing baseline unchanged. No broad table grants, exposed SECURITY DEFINER wrapper or anonymous private-schema usage introduced.",
+  "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+  "implementation_reference": "https://www.postgresql.org/docs/17/sql-createfunction.html (SQL-standard body binds the private capability function at definition time)",
+  "edge_migration_count": 30,
+  "pending_literal_edge_dependencies": 12,
+  "remaining": [
+    "Hosted app cutover not performed",
+    "Browser sign-up/confirmation/login/acceptance and SMTP confirmation delivery still require end-to-end validation",
+    "Other administration table write workflows remain separate",
+    "No real invitations sent or permanent accounts created"
+  ]
+}

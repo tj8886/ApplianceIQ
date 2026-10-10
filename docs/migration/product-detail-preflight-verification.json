@@ -1,0 +1,119 @@
+{
+  "captured_at": "2026-10-06T18:56:19.716Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "product-detail-enrich",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "3701777442618c8f7ad1430d9b6802a3d1ca4aae2de142da402269e05b6be537"
+  },
+  "migration_version": "20261006185507",
+  "capability": "Native tenant-admin readiness only; extraction and all product/media writes blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "caller_url_product_batch_specs_media_payload_rejection": "passed",
+    "default_and_explicit_enrich_blocked": "passed",
+    "restricted_grants": "passed",
+    "all_product_row_fingerprints_unchanged": "passed",
+    "related_media_and_feature_counts_unchanged": "passed",
+    "unauthenticated_url_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "products": 43527,
+    "images": 70641,
+    "documents": 14981,
+    "videos": 815,
+    "features": 9218
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Security and performance WARN/ERROR counts unchanged; unused_index INFO decreased 919 to 917 after verification access. No indexes removed; no existing policy/grant changes or new table/index.",
+  "limits": [
+    "JWT verification enabled in destination despite source verify_jwt=false; native activated identity and active tenant-admin authorization required.",
+    "Status readiness only; default/enrich HTTP 409 with no product lookup, source fetch, free-extract invocation, parser or product/image/document/video/feature write.",
+    "Legacy URL, product_id, batch_size, extracted/specs/media inputs are rejected. Single-record and batch enrichment remain unavailable pending verified scope and source contracts.",
+    "Execution requires tenant product/related-record scope, publishing authority, approved bounded extraction, exact model/variant/region/evidence match, typed specs and safe media URLs, full existing-field reads and verified-value preservation, atomic version-guarded updates and truthful idempotent results.",
+    "Source incomplete field reads can overwrite known dimensions/descriptions, and unchecked multi-table inserts can overstate success; these paths were not enabled.",
+    "No customer-data copy, external provider request, hosted cutover, main merge, schedules, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 68,
+    "absent_snapshots": 18,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "product-iq-governance"
+}

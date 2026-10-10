@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {migrateSpeciqDrafts} from './us-speciq-drafts.mjs';
+import {migrateSpeciqWorkflow} from './us-speciq-workflow.mjs';
+import {migrateSpeciqCrmLinks} from './us-speciq-crm-links.mjs';
+import {migrateSpeciqProjects} from './us-speciq-projects.mjs';
+import {migrateSpeciqSettings} from './us-speciq-settings.mjs';
+import {migrateSpeciqProjectDetails,projectDetailHelpers} from './us-speciq-project-details.mjs';
+const out=migrateSpeciqProjectDetails(migrateSpeciqSettings(migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(readFileSync(new URL('../../apps/spec-iq/index.html',import.meta.url),'utf8')))))));
+new vm.Script('(async()=>{'+out.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import[^;]+;/m,'')+'})()');
+assert.ok(out.includes('populateDraftProjectDetails(pkg.speciq_projects)'));assert.ok(out.includes("navigate('builder');populateDraftProjectDetails(p)"));assert.ok(out.includes('speciq_projects:project'));assert.ok(out.includes('preview+draftProjectDetailsPreview(project)+decisions'));assert.ok(out.includes('room_name, builder_name, designer_name, expected_purchase_date, delivery_date, notes)'));
+const fields={},calls=[];const c={window:{},_savingPackage:false,allPackages:[],userOrgId:'org',selectedCrmContactId:null,selectedCrmDealId:null,builderProducts:[{product_name:'Test',msrp:'10.00',quantity:1}],builderServices:[],el:id=>fields[id]??={value:'',checked:false},esc:v=>String(v??'').replaceAll('<','&lt;'),draftPrice:x=>String(x),speciqDraftRequest:x=>x,speciqDraftApi:async x=>{calls.push(x);return {package_id:'package'};},alert:()=>{},loadPackages:async()=>{},navigate:()=>{},loadDashboardStats:()=>{}};vm.createContext(c);vm.runInContext(projectDetailHelpers+';globalThis.populate=populateDraftProjectDetails;globalThis.preview=draftProjectDetailsPreview;',c);
+c.populate({builder_name:'<script>',designer_name:'Designer',expected_purchase_date:'2027-01-02',delivery_date:'2027-01-03',notes:'Private'});assert.ok(c.preview({notes:'<script>'}).includes('&lt;script>'));fields['b-cust-name']={value:'Customer'};
+const a=out.indexOf('window.savePackage=async(status)=>{'),b=out.indexOf('/* ==================== PACKAGES LIST',a);vm.runInContext(out.slice(a,b),c);await c.window.savePackage('draft');assert.equal(calls[0].customer.builder_name,'<script>');assert.equal(calls[0].customer.delivery_date,'2027-01-03');assert.equal(calls[0].customer.notes,'Private');c.populate();assert.equal(fields['b-project-notes'].value,'');assert.equal(fields['b-purchase-date'].value,'');
+console.log('PASS: full transformed module parses; builder payload saves details, clear resets state, edit/copy/read paths include details and manager preview uses snapshot with escaped notes.');

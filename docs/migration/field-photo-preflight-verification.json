@@ -1,0 +1,122 @@
+{
+  "captured_at": "2026-10-06T15:42:32.432Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "field-photo-analyzer",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "1d9b9ef6fa11f2aff88343ce2f9412a3b64d3c01dd9c2206c3927016a5a20a3f"
+  },
+  "migration_version": "20261006154133",
+  "capability": "Native scoped visit/media access and recorded photo metadata preflight only; analysis and mock writes blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "visit_media_exact_match": "passed",
+    "foreign_client_org_and_mismatched_media_denial": "passed",
+    "existing_client_store_scope_and_paused_client_denial": "passed",
+    "nonowner_nonadmin_and_unmapped_denial": "passed",
+    "image_url_and_base64_spoof_rejection": "passed",
+    "metadata_oversize_denial": "passed",
+    "no_path_caption_gps_or_private_metadata_returned": "passed",
+    "no_detection_or_processed_marker_write": "passed",
+    "restricted_grants": "passed",
+    "unauthenticated_post": 401,
+    "remaining_fixture_clients": 0,
+    "remaining_fixture_stores": 0
+  },
+  "source_and_destination_counts": {
+    "visits": 19,
+    "media": 0,
+    "detections": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No existing policy/grant changed; no new table/index.",
+  "limits": [
+    "Identity requires verified activated native mapping. Visit inherits existing field client/store/organization/location/visibility scope; caller must also be active org member and the visit rep or same-org admin.",
+    "media_id and visit_id must match exactly. Raw URL/base64 payloads are rejected; no service-role Storage download or image path lookup occurs.",
+    "Status returns IDs and recorded booleans only. Metadata eligibility requires photo type, JPEG/PNG/WebP MIME and recorded size 1 byte through 10 MiB; it is not actual image validation or Storage provenance.",
+    "Default analyze returns 409 after authorization; zero detections, no provider request or processed marker. Missing provider configuration never creates synthetic detections.",
+    "Both projects have 19 visits, zero media and zero detections. No field/customer-data copy occurred; existing data unchanged.",
+    "Full execution remains pending destination Storage object ownership/scanning, actual file/pixel validation, processing privacy/authority, tier/provider and cost governance, evidence/output validation and atomic idempotent result finalization.",
+    "No hosted cutover, main merge, schedule activation, final data/storage delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 61,
+    "absent_snapshots": 25,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "file-scanner"
+}

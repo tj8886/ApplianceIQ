@@ -1,0 +1,24 @@
+import {previewOrder} from '../../supabase/functions/shopify-performance-bridge/normalize.js';
+import {createHandler} from '../../supabase/functions/shopify-performance-bridge/handler.js';
+const checked=await (async()=>{
+const connection='33333333-3333-4333-8333-333333333333';
+const values={SUPABASE_URL:'https://jdxslqmgjsuzoisuhvlc.supabase.co',SUPABASE_ANON_KEY:'public'};
+let anonymous=false,valid=true,rpcError=null,rpcCalls=0;let checked=0;
+const assert=(v,m)=>{if(!v)throw Error(m);checked++;};
+const handler=createHandler({env:n=>values[n],createClient:()=>({auth:{getUser:async()=>({data:{user:valid?{id:'native',is_anonymous:anonymous}:null}})},rpc:async(name,args)=>{rpcCalls++;assert(name==='tj_shopify_initial_sync'&&args.p_body.action==='status'&&args.p_body.connection_id===connection&&Object.keys(args.p_body).length===2,'readonly_scoped_rpc');return {error:rpcError,data:{ok:true,preflight_only:true,connection_id:connection}};}})});
+const request=(body,auth='Bearer native',method='POST')=>{let sent=false;const bytes=Uint8Array.from(JSON.stringify(body??null),c=>c.charCodeAt(0));return {method,headers:{get:n=>n==='Authorization'?auth:null},body:{getReader:()=>({read:async()=>sent?{done:true}:(sent=true,{done:false,value:bytes}),cancel:async()=>{},releaseLock:()=>{}})}};};
+const order={id:'999999999999999999999',currency:'CAD',line_items:[{id:'123',quantity:3,price:'0.10',total_discount:'0.01'}],subtotal_price:'0.29',total_discounts:'0.01',total_tax:'0.04',total_price:'1.33',total_shipping_price_set:{shop_money:{amount:'1.00',currency_code:'CAD'}},customer:{email:'PRIVATE'}};
+const body={action:'preview',connection_id:connection,order};
+assert((await handler(request(body,''))).status===401,'no_auth');
+valid=false;assert((await handler(request(body))).status===401,'invalid_auth');valid=true;
+anonymous=true;assert((await handler(request(body))).status===401,'anonymous_auth');anonymous=false;assert(rpcCalls===0,'no_rpc_before_auth');
+for(const b of [[],null,{...body,organization_id:'foreign'},{...body,connection_id:'bad'}])assert((await handler(request(b))).status===400,'forged_body');
+rpcError={code:'42501'};assert((await handler(request(body))).status===403,'foreign_connection');rpcError=null;
+let response=await handler(request(body));assert(response.status===200,'preview_status');let output=await response.json();assert(output.preview.total==='1.33'&&output.preview.gross_margin_amount===null&&output.records_written===0&&!JSON.stringify(output).includes('PRIVATE'),'exact_private_preview');
+assert((await handler(request({...body,action:'import'}))).status===409,'writes_blocked');
+assert((await handler(request({...body,order:{...order,total_price:'9.99'}}))).status===422,'bad_totals');
+assert((await handler(request(body,'Bearer native','GET'))).status===405,'method');
+values.SUPABASE_URL='https://canada.invalid';assert((await handler(request(body))).status===503,'destination');
+return checked;
+})();
+console.log(`PASS: ${checked} auth, tenant, privacy, decimal and write-gate assertions`);

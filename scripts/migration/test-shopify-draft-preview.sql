@@ -1,0 +1,44 @@
+BEGIN; SET LOCAL statement_timeout='30s';
+DO $$ DECLARE native uuid; actor uuid; org uuid; foreign_org uuid; project uuid:=gen_random_uuid(); package uuid:=gen_random_uuid(); product uuid:=gen_random_uuid(); BEGIN
+  SELECT im.target_user_id,im.source_user_id,m.organization_id INTO native,actor,org FROM tj.source_user_identity_map im JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL LIMIT 1;
+  SELECT id INTO foreign_org FROM tj.organizations WHERE id<>org LIMIT 1;
+  IF native IS NULL OR foreign_org IS NULL THEN RAISE EXCEPTION 'missing_fixture'; END IF;
+  INSERT INTO tj.speciq_projects(id,organization_id,customer_name,project_name) VALUES(project,org,'PRIVATE-ROLLBACK-CUSTOMER','Rollback draft preview');
+  INSERT INTO tj.speciq_packages(id,organization_id,project_id,package_name,created_by,volume_discount) VALUES(package,org,project,'Rollback quote',actor,7.50);
+  INSERT INTO tj.speciq_package_products(id,package_id,organization_id,product_name,quantity,negotiated_price,promo_price,msrp) VALUES(product,package,org,'Rollback product',2,119.95,150.00,200.00);
+  INSERT INTO tj.speciq_package_services(package_id,organization_id,service_type,description,amount,cost) VALUES(package,org,'delivery','Delivery',25.50,12.00);
+  PERFORM set_config('request.jwt.claim.sub',native::text,true);PERFORM set_config('test.draft.native',native::text,true);PERFORM set_config('test.draft.actor',actor::text,true);PERFORM set_config('test.draft.org',org::text,true);PERFORM set_config('test.draft.foreign',foreign_org::text,true);PERFORM set_config('test.draft.package',package::text,true);PERFORM set_config('test.draft.product',product::text,true);
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$ DECLARE r jsonb; body jsonb:=jsonb_build_object('package_id',current_setting('test.draft.package'),'organization_id',current_setting('test.draft.org'),'action','preview'); BEGIN
+  r:=public.tj_shopify_draft_order(body);
+  IF r->>'ok'<>'true' OR (r->>'line_subtotal')::numeric<>265.40 OR jsonb_array_length(r->'lines')<>2 OR r#>>'{lines,0,price_basis}'<>'negotiated_price' OR r#>>'{lines,1,price_basis}'<>'amount' OR r->>'draft_created'<>'false' OR r->>'create_ready'<>'false' OR r->>'discount_applied'<>'false' OR r->'currency'<>'null'::jsonb THEN RAISE EXCEPTION 'preview_pricing_or_false_success'; END IF;
+  IF r::text LIKE '%PRIVATE%' OR r::text LIKE '%dealer_cost%' OR r::text LIKE '%access_token%' OR r::text LIKE '%12.00%' THEN RAISE EXCEPTION 'private_fields_exposed'; END IF;
+  r:=public.tj_shopify_draft_order(body-'action');IF r->>'ok'<>'false' OR r->>'executed'<>'false' OR r->>'draft_created'<>'false' THEN RAISE EXCEPTION 'create_not_blocked'; END IF;
+  BEGIN PERFORM public.tj_shopify_draft_order(body||jsonb_build_object('organization_id',current_setting('test.draft.foreign')));RAISE EXCEPTION 'foreign_org_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+  BEGIN PERFORM public.tj_shopify_draft_order(body||jsonb_build_object('package_id',gen_random_uuid()));RAISE EXCEPTION 'foreign_package_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+  BEGIN PERFORM public.tj_shopify_draft_order(body||jsonb_build_object('line_items','[]'::jsonb));RAISE EXCEPTION 'caller_prices_accepted';EXCEPTION WHEN invalid_parameter_value THEN NULL;END;
+  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+  BEGIN PERFORM public.tj_shopify_draft_order(body);RAISE EXCEPTION 'unmapped_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;
+  PERFORM set_config('request.jwt.claim.sub',current_setting('test.draft.native'),true);
+END $$;
+RESET ROLE;
+UPDATE tj.speciq_package_products SET negotiated_price=NULL,promo_price=NULL,msrp=NULL WHERE id=current_setting('test.draft.product')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN BEGIN PERFORM public.tj_shopify_draft_order(jsonb_build_object('package_id',current_setting('test.draft.package'),'organization_id',current_setting('test.draft.org'),'action','preview'));RAISE EXCEPTION 'missing_price_became_zero';EXCEPTION WHEN invalid_parameter_value THEN NULL;END; END $$;
+RESET ROLE;
+UPDATE tj.speciq_package_products SET negotiated_price=119.95,organization_id=current_setting('test.draft.foreign')::uuid WHERE id=current_setting('test.draft.product')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN BEGIN PERFORM public.tj_shopify_draft_order(jsonb_build_object('package_id',current_setting('test.draft.package'),'organization_id',current_setting('test.draft.org'),'action','preview'));RAISE EXCEPTION 'foreign_child_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END; END $$;
+RESET ROLE;
+UPDATE tj.speciq_package_products SET organization_id=current_setting('test.draft.org')::uuid WHERE id=current_setting('test.draft.product')::uuid;
+UPDATE tj.organization_members SET role='member' WHERE organization_id=current_setting('test.draft.org')::uuid AND user_id=current_setting('test.draft.actor')::uuid;
+SET LOCAL ROLE authenticated;
+DO $$ BEGIN BEGIN PERFORM public.tj_shopify_draft_order(jsonb_build_object('package_id',current_setting('test.draft.package'),'organization_id',current_setting('test.draft.org'),'action','preview'));RAISE EXCEPTION 'nonadmin_accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END; END $$;
+RESET ROLE;
+DO $$ DECLARE f text;role_name text;BEGIN
+  FOREACH f IN ARRAY ARRAY['public.tj_shopify_draft_order(jsonb)','tj_private.shopify_draft_order(jsonb)'] LOOP FOREACH role_name IN ARRAY ARRAY['anon','service_role'] LOOP IF has_function_privilege(role_name,f,'EXECUTE') THEN RAISE EXCEPTION 'unsafe_grants';END IF;END LOOP;END LOOP;
+  IF EXISTS(SELECT 1 FROM tj.speciq_packages WHERE id=current_setting('test.draft.package')::uuid AND (shopify_draft_order_id IS NOT NULL OR shopify_pushed_at IS NOT NULL)) THEN RAISE EXCEPTION 'premature_draft_marker';END IF;
+END $$;
+ROLLBACK;
+SELECT 'PASS: exact saved pricing/services, scoped admin, foreign/unmapped/nonadmin denial, spoof rejection, missing-price denial, private fields, no draft writes; fixtures rolled back' result;

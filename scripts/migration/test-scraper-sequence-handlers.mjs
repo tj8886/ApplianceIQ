@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {createHandler as scraper} from '../../supabase/functions/scraper-write/handler.ts';
+import {createHandler as sequence} from '../../supabase/functions/sequence-executor/handler.ts';
+import {createHandler as shopify} from '../../supabase/functions/shopify-initial-sync/handler.ts';
+import {createHandler as storis} from '../../supabase/functions/storis-sync/handler.ts';
+import {createHandler as billing} from '../../supabase/functions/stripe-billing/handler.ts';
+import {createHandler as activity} from '../../supabase/functions/activity-analyzer/handler.ts';
+import {createHandler as analytics} from '../../supabase/functions/ai-analytics-daily/handler.ts';
+import {createHandler as enrichment} from '../../supabase/functions/aicrm-ai-enrichment-runner/handler.ts';
+import {createHandler as businessCentral} from '../../supabase/functions/business-central-sync/handler.ts';
+import {createHandler as chqBooking} from '../../supabase/functions/chq-notify-booking/handler.ts';
+import {createHandler as chqContractor} from '../../supabase/functions/chq-notify-contractor/handler.ts';
+import {createHandler as chqReminders} from '../../supabase/functions/chq-send-reminders/handler.ts';
+import {createHandler as chqPayment} from '../../supabase/functions/chq-stripe/handler.ts';
+import {createHandler as connectorAlerts} from '../../supabase/functions/connector-alert-dispatcher/handler.ts';
+import {createHandler as connectorRecovery} from '../../supabase/functions/connector-recovery-dispatcher/handler.ts';
+import {createHandler as knowledgeEmbedding} from '../../supabase/functions/embed-knowledge/handler.ts';
+import {createHandler as embeddingWorker} from '../../supabase/functions/embedding-worker/handler.ts';
+import {createHandler as fieldPhoto} from '../../supabase/functions/field-photo-analyzer/handler.ts';
+import {createHandler as fileScanner} from '../../supabase/functions/file-scanner/handler.ts';
+import {createHandler as fileUrl} from '../../supabase/functions/file-url-mint/handler.ts';
+import {createHandler as mdfBilling} from '../../supabase/functions/mdf-billing/handler.ts';
+import {createHandler as mdfEmail} from '../../supabase/functions/mdf-send-email/handler.ts';
+import {createHandler as recordingReview} from '../../supabase/functions/performance-recording-review/handler.ts';
+import {createHandler as pimBatch} from '../../supabase/functions/pim-batch-enrich/handler.ts';
+import {createHandler as productDetail} from '../../supabase/functions/product-detail-enrich/handler.ts';
+import {createHandler as productGovernance} from '../../supabase/functions/product-iq-governance/handler.ts';
+import {createHandler as productVideo} from '../../supabase/functions/product-video-discovery/handler.ts';
+import {createHandler as retailvantageBridge} from '../../supabase/functions/retailvantage-performance-bridge/handler.ts';
+import {createHandler as retailvantageSync} from '../../supabase/functions/retailvantage-sync/handler.ts';
+import {createHandler as schemaExport} from '../../supabase/functions/schema-dump/handler.ts';
+import {createHandler as pushDelivery} from '../../supabase/functions/send-push-notification/handler.ts';
+for(const [factory,rpc,limit] of [[pushDelivery,'tj_push_delivery_preflight',8192],[schemaExport,'tj_schema_export_preflight',8192],[retailvantageSync,'tj_retailvantage_sync_preflight',8192],[retailvantageBridge,'tj_retailvantage_bridge_preflight',8192],[productVideo,'tj_product_video_preflight',8192],[productGovernance,'tj_product_governance_preflight',8192],[productDetail,'tj_product_detail_preflight',8192],[pimBatch,'tj_pim_batch_preflight',8192],[recordingReview,'tj_recording_review_preflight',8192],[mdfEmail,'tj_mdf_email_preflight',8192],[mdfBilling,'tj_mdf_billing_preflight',8192],[scraper,'tj_scraper_write',1048576],[sequence,'tj_sequence_preview',8192],[shopify,'tj_shopify_initial_sync',8192],[storis,'tj_storis_setup',16384],[billing,'tj_billing_preview',8192],[activity,'tj_activity_preflight',8192],[analytics,'tj_daily_analytics',8192],[enrichment,'tj_crm_enrichment_preflight',8192],[chqBooking,'tj_chq_booking_preflight',8192],[chqContractor,'tj_chq_contractor_preflight',8192],[chqReminders,'tj_chq_reminders_preflight',8192],[chqPayment,'tj_chq_payment_preflight',8192],[connectorAlerts,'tj_connector_alert_preview',8192],[connectorRecovery,'tj_connector_recovery_preview',8192],[knowledgeEmbedding,'tj_knowledge_embedding_preview',8192],[embeddingWorker,'tj_embedding_worker_preview',8192],[fieldPhoto,'tj_field_photo_preflight',8192],[fileScanner,'tj_file_scan_preflight',8192],[fileUrl,'tj_file_url_preflight',8192],[businessCentral,'tj_business_central_preflight',8192]]){
+ let valid=true,anonymous=false,calls=0,mode='success';
+ const handler=factory({env:n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'public'}[n]),createClient:(u,k,opts)=>{
+  assert.equal(k,'public');assert.equal(opts.global.headers.Authorization,'Bearer caller');
+  return {auth:{getUser:async()=>({data:{user:valid?{id:'native',is_anonymous:anonymous}:null}})},rpc:async(name,args)=>{
+   calls++;assert.equal(name,rpc);assert.equal(args.p_body.table,'synthetic');
+   return mode==='success'?{data:{ok:true,count:1,data:[]}}:mode==='blocked'?{data:{ok:false,error:'verification_required'}}:mode==='missing'?{data:null}:{error:{code:mode,message:'private SQL details',hint:'private hint'}};
+  }};
+ }});
+ const req=(body='{"table":"synthetic"}',headers={Authorization:'Bearer caller'})=>new Request('https://edge.test',{method:'POST',headers,body});
+ assert.equal((await handler(new Request('https://edge.test',{method:'OPTIONS'}))).status,204);
+ assert.equal((await handler(new Request('https://edge.test'))).status,405);
+ assert.equal((await handler(req('{}',{'x-proxy-key':'legacy'}))).status,401);
+ valid=false;assert.equal((await handler(req())).status,401);valid=true;anonymous=true;assert.equal((await handler(req())).status,401);anonymous=false;
+ for(const body of ['null','[]','invalid'])assert.equal((await handler(req(body))).status,400);
+ assert.equal((await handler(req('x'.repeat(limit+1)))).status,413);
+ assert.equal(calls,0);assert.equal((await handler(req())).status,200);
+ for(const [code,status] of [['42501',403],['22023',400],['22P02',400],['54000',400],['23505',422],['XX000',500],['blocked',409],['missing',500]]){
+  mode=code;const r=await handler(req());assert.equal(r.status,status,code);assert(!JSON.stringify(await r.json()).includes('private'));
+ }
+}
+console.log('Governed runtime and billing handlers passed: native identity, legacy-key rejection, bounded streaming bodies, caller RPC only, safe errors and blocked sends.');

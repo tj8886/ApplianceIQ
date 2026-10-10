@@ -759,7 +759,7 @@ function copyInvite(code,btn){
 }
 async function revokeInvite(id){
   try{
-    await api("/rest/v1/org_invites?id=eq."+id,{method:"PATCH",body:JSON.stringify({status:"revoked"})});
+    await rpc("revoke_org_invite",{p_id:id});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
   }catch(e){alert("Failed: "+e.message)}
@@ -872,8 +872,8 @@ function appsTab(d){
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
   <div><b style="font-size:14px;color:var(--navy)">App Entitlements</b><div style="font-size:12px;color:#94a3b8">Monthly total: $${(monthly/100).toLocaleString()}/mo${S.org.subscription_status?` · billing: ${esc(S.org.subscription_status)}`:""}</div></div>
   <div style="display:flex;gap:8px">
-    <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="openBilling('portal')">💳 Billing Portal</button>
-    <button class="btn btn-primary" style="padding:8px 14px;font-size:12px" onclick="openBilling('checkout')">Start Subscription</button>
+    <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" disabled>Billing portal pending</button>
+    <button class="btn btn-primary" style="padding:8px 14px;font-size:12px" onclick="openBilling('preview')">Preview recorded billing</button>
     ${avail.length?'<button class="btn btn-green" style="padding:8px 14px;font-size:12px" onclick="openAddApp()">+ Add App</button>':""}
   </div>
 </div>
@@ -905,41 +905,18 @@ async function patchEnt(id,body){
 }
 
 async function syncStripe(){
-  if(!S.org||!S.org.stripe_subscription_id)return;
-  try{
-    const r=await fetch(SB_URL+"/functions/v1/stripe-billing",{
-      method:"POST",headers:{apikey:SB_KEY,Authorization:"Bearer "+tok(),"Content-Type":"application/json"},
-      body:JSON.stringify({action:"sync_subscription",organization_id:S.org.id})});
-    const res=await r.json();
-    if(res.ok&&res.synced){
-      const tb=document.getElementById("tab-body");
-      if(tb)tb.insertAdjacentHTML("afterbegin",
-        '<div class="result-ok" style="margin-bottom:12px">✓ Stripe subscription updated — new total $'+((res.monthly_cents||0)/100).toLocaleString()+'/mo (prorated)</div>');
-    }
-  }catch(e){}
+  const tb=document.getElementById("tab-body");
+  if(tb)tb.insertAdjacentHTML("afterbegin",'<div class="note" style="margin-bottom:12px">Entitlements updated. Stripe billing changes remain disabled pending verification.</div>');
 }
 
 async function openBilling(kind){
   try{
-    const r=await fetch(SB_URL+"/functions/v1/stripe-billing",{
-      method:"POST",
-      headers:{apikey:SB_KEY,Authorization:"Bearer "+tok(),"Content-Type":"application/json"},
-      body:JSON.stringify({
-        action:kind==="portal"?"create_portal":"create_checkout",
-        organization_id:S.org.id,
-        success_url:location.origin+"/admin.html?billing=success",
-        cancel_url:location.origin+"/admin.html?billing=canceled",
-        return_url:location.origin+"/admin.html"})});
-    const res=await r.json();
-    if(res.ok&&res.url){window.open(res.url,"_blank");return}
-    if(res.error==="stripe_not_configured"){
-      alert("Stripe isn't connected yet.\n\nAdd STRIPE_SECRET_KEY in Supabase Edge Function Secrets to enable checkout and the billing portal. Pricing and monthly totals are already tracked — this button goes live the moment the key is set.");
-    }else if(res.error==="no_active_entitlements"){
-      alert("Add at least one active app to this organization before starting a subscription.");
-    }else{
-      alert("Billing error: "+(res.error||"unknown"));
-    }
-  }catch(e){alert("Billing request failed: "+e.message.slice(0,140))}
+    if(SB_URL!=="https://jdxslqmgjsuzoisuhvlc.supabase.co")throw Error("Billing previews require the migrated US workspace.");
+    if(!S.org)throw Error("Select an organization first.");
+    const r=await fetch(SB_URL+"/functions/v1/stripe-billing",{method:"POST",headers:{apikey:SB_KEY,Authorization:"Bearer "+tok(),"Content-Type":"application/json"},body:JSON.stringify({action:"preview",organization_id:S.org.id})});
+    const res=await r.json();if(!r.ok||res.ok!==true)throw Error(res.error||"Preview failed");
+    alert(res.pricing_valid?"Recorded entitlement total: "+res.currency.toUpperCase()+" "+(res.monthly_cents/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+" per month before tax.\n\nThis is a preview. Stripe checkout and subscription changes remain disabled.":"Recorded pricing or currency needs review. Stripe billing remains disabled.");
+  }catch(e){alert("Billing preview failed: "+e.message.slice(0,140))}
 }
 
 function openAddApp(){
@@ -1100,8 +1077,7 @@ async function sendInvites(){
   btn.disabled=true;btn.innerHTML='<span class="spin"></span> Sending…';
   let ok=0,fail=0,emailed=0,created=[];
   const send=async(em,rl)=>{
-    const rows=await api("/rest/v1/org_invites",{method:"POST",headers:{Prefer:"return=representation"},
-      body:JSON.stringify({organization_id:S.org.id,invited_email:em.trim().toLowerCase(),role:rl,org_role_id:pos,location_id:store,invited_by:S.user.id,status:"pending"})});
+    const rows=await rpc("create_org_invite",{p_org:S.org.id,p_email:em.trim().toLowerCase(),p_role:rl,p_position:pos,p_location:store});
     const inv=Array.isArray(rows)?rows[0]:rows;
     if(inv){created.push(inv);const er=await sendInviteEmail(inv);if(er&&er.sent)emailed++}
     return inv;

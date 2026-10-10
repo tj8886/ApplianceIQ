@@ -89,3 +89,31 @@ and their source is verified complete.
 
 4. For **aicrm-ai-enrichment-runner**: Write the full ~1100-line source from conversation
    history, add `packages/elev8-ai-service/index.ts`, then move to deployable.
+
+US East CRM enrichment checkpoint (2026-10-06): `aicrm-ai-enrichment-runner` now has a deployable native tenant-admin preflight. The historical full runner remains unsuitable for direct deployment: provider errors and invalid output can silently become mock facts, prompts can cross tenant scope, and result writes are not atomic. Run/retry stays blocked; the historical placeholder is superseded.
+
+US East email-webhook checkpoint (2026-10-06): deployable `email-webhook` now verifies bounded raw-body Svix signatures with a fresh destination-only `RESEND_US_WEBHOOK_SECRET`. Every recognized signed event remains retryably blocked with HTTP 503, without acknowledgement, database writes, global contact matching or message/thread fallback. The historical full source remains non-deployable pending reviewed provider-account/tenant routing and atomic replay-safe finalization.
+
+US East file governance checkpoint (2026-10-06): file-scanner and file-url-mint now deploy native tenant-admin readiness only. Source and destination both lack file_assets/file_access_events/signed_url_nonces/v_files_pending_scan and nonce functions. Scanning, clean classifications, legacy nonce adoption and Storage URL issuance remain blocked; the historical implementations are not deployable as live workflows.
+
+MDF billing source is superseded by native tenant-admin readiness in `mdf-billing`. Checkout, billing portal and unsigned subscription-webhook writes remain blocked pending explicit MDF/core identity mapping and verified provider contracts.
+
+MDF email source is superseded by native tenant-admin readiness in `mdf-send-email`. Arbitrary recipient/body submissions, global queue processing and global expiry writes remain blocked pending verified tenant ownership, delivery controls and worker authority.
+
+Performance recording review is superseded by native scoped metadata preflight in `performance-recording-review`. Consent and transcript organization/recording/status links are enforced. No transcript text, provider request, score or review write is enabled.
+
+PIM batch enrichment source is superseded by native tenant-admin readiness in `pim-batch-enrich`. Cross-tenant selection, unverified manufacturer scraping and offer-price-as-MSRP writes remain blocked pending evidence, region/currency/model validation and atomic scoped publishing controls.
+
+Product detail enrichment is superseded by native tenant-admin readiness in `product-detail-enrich`, with JWT verification enabled. Caller URLs, global candidate selection, partial extraction, unchecked multi-table writes and existing-spec overwrites remain blocked pending scoped evidence validation and atomic updates.
+
+Product IQ governance is superseded by native tenant-admin readiness in `product-iq-governance`. Search, edits, validation and related-record writes remain blocked pending destination authority verification, missing tenant-owned schema and atomic audited version checks.
+
+Product video discovery is superseded by native tenant-admin readiness in `product-video-discovery`. Legacy run-key authority, global job claims, unverified source/embed URLs and non-atomic completion are not enabled.
+
+RetailVantage performance bridge is superseded by native scoped connection readiness. Request financial payloads, fallback transaction IDs/dates, unreviewed mappings, cost double counting and partial multi-table writes remain blocked.
+
+RetailVantage sync is superseded by scoped native tenant-admin readiness in `retailvantage-sync`. Credential adoption, arbitrary authenticated endpoint requests, unbounded pagination URLs, 100-page truncation and premature completion markers remain blocked pending verified resumable provider controls.
+
+Schema dump is superseded by native tenant-admin readiness in `schema-dump`. Fixed URL-key export, absent historical snapshot-table reads and incomplete 200-response backups remain blocked pending verified operator authority, export integrity and restore validation.
+
+Push sending is superseded by native tenant-admin readiness in `send-push-notification`. Missing tenant-owned subscription/notification/attempt schema, recipient matching, destination registration and atomic truthful delivery controls keep sending blocked.

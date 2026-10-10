@@ -1,0 +1,119 @@
+{
+  "captured_at": "2026-10-06T15:53:50.578Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "mdf-billing",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "2f74f98f686957d217a65e8930a480f207fdf1743583c900afafe7a9227d09c7"
+  },
+  "migration_version": "20261006155249",
+  "capability": "Native active core-tenant admin readiness only. MDF facts and payment operations remain unavailable pending verified mapping/provider controls.",
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "legacy_nested_payload_email_org_tier_cycle_signature_rejection": "passed",
+    "get_status_no_org_usage_limits_leak": "passed",
+    "checkout_portal_webhook_blocked": "passed",
+    "webhook_processed_and_recorded_false": "passed",
+    "restricted_grants": "passed",
+    "existing_mdf_org_and_tier_hashes_unchanged": "passed",
+    "unauthenticated_webhook_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "organizations": 1,
+    "tiers": 3,
+    "users": 1,
+    "brands": 12
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Advisor counts unchanged; no new tables/indexes or existing policy/grant changes.",
+  "limits": [
+    "Readiness requires verified activated native mapping and active core-tenant admin. No email/org-ID inference or MDF table lookup establishes identity.",
+    "MDF organization/user tables lack a verified core tenant/native identity mapping; brands lack org ownership. No global usage, imported prices or Stripe references are trusted as billing readiness.",
+    "Default status/get_status returns blockers only; create_checkout, billing_portal and webhook return HTTP 409 with executed=false, processed=false, recorded=false and zero provider requests/payment records.",
+    "No Stripe key access, customer/product/price/checkout/portal request, unsigned webhook subscription update or URL issuance occurred.",
+    "Full execution requires explicit reviewed MDF/core tenant and native membership mapping, scoped usage/entitlements, provider account/mode/customer ownership, approved server prices/currency/tax/trial, raw signed webhooks, replay/order reconciliation and idempotent operations.",
+    "No customer-data copy, hosted cutover, main merge, schedule activation, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 64,
+    "absent_snapshots": 22,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "mdf-send-email"
+}

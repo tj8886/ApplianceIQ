@@ -1,0 +1,119 @@
+{
+  "captured_at": "2026-10-06T12:56:22.037Z",
+  "function": {
+    "slug": "business-central-sync",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "d14e27670cfd432c2dd8361da97ec89ead720fa7c28a2764109f21da0cb06531"
+  },
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "migration_version": "20261006125523",
+  "capability": "Native active tenant-admin Business Central connection readiness only; discover/sync blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_and_explicit_org_denial": "passed",
+    "private_credential_same_org_reference_provenance": "passed",
+    "imported_credential_and_mutable_settings_not_approval": "passed",
+    "expired_review_and_foreign_credential_not_trusted": "passed",
+    "recorded_review_and_credential_never_provider_verified": "passed",
+    "environment_company_selection_and_secret_redaction": "passed",
+    "no_sync_job_cursor_status_or_success_marker_mutation": "passed",
+    "unauthenticated_post": 401,
+    "remaining_fixture_orgs": 0
+  },
+  "counts": {
+    "source_business_central_connections": 0,
+    "destination_business_central_connections": 0,
+    "destination_microsoft_reviews": 0,
+    "destination_microsoft_credentials": 0
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 921
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Security and performance advisor counts unchanged from the CRM checkpoint. Existing unrelated WARN/ERROR findings remain documented; no new table/index introduced.",
+  "limits": [
+    "No Business Central connection exists in Canada or US East; no provider records were copied in this checkpoint.",
+    "Review metadata must be unexpired and approved by an active tenant admin. Credentials must be in the private destination ledger, same organization and match the connection reference and existing Vault secret. No decrypted token or imported credential is read.",
+    "Ledger/reference presence is recorded provenance only, not verified token scope, validity or provider connectivity.",
+    "status returns bounded redacted blocker flags only; discover/sync return 409 with executed=false and zero imports. No company discovery, token refresh, provider request, ingest/bridge call, job or connection update occurs.",
+    "Importer remains pending API/company validation, allowlisted pagination URLs, bounded resumable pages, nested line pagination, atomic per-resource checkpoints and partial-failure recovery. Source silently caps pages and advances success markers after partial errors; that behavior was not enabled.",
+    "No hosted app cutover, main merge, schedule activation, final data/storage delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 51,
+    "absent_snapshots": 35,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "chq-notify-booking"
+}

@@ -1,0 +1,50 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": {
+    "org-invite": "ACTIVE v1, JWT required",
+    "admin-provision": "ACTIVE v1, JWT required"
+  },
+  "invites": {
+    "authorization": "Verified native session, strict source identity mapping, active organization and organization owner/admin or platform administrator",
+    "recipient": "Pending unexpired stored invite only; payload recipient, organization, inviter, role and origin ignored",
+    "destination": "Registered intelligence-group admin URL",
+    "delivery": "Five-minute reservation plus deterministic provider idempotency key; missing/rejected provider preserves copy-link fallback",
+    "tests": "Stored context, reservation deduplication, expired invite and unmapped caller rejection in rollback; handler and provider mocks passed"
+  },
+  "provisioning": {
+    "authorization": "Verified native session and mapped super_admin; caller-scoped preparation precedes service access",
+    "completion": "Five-minute intent bound to actor, email and native target; rechecks actor privilege and target state, uses one transaction for source identity/profile/admin grant",
+    "identity": "Existing targets must have one approved active mapping; historical email collisions and ambiguous/revoked mappings require identity review; new accounts receive explicit administrator approval",
+    "password": "24 random bytes generated with Web Crypto, no-store response, no logging; source temporary-password handoff maintained",
+    "partial_failure": "Auth account creation and SQL grants cannot share a transaction. If grant fails, the account is retained for identity review; no automatic deletion or blind remapping.",
+    "tests": "New temporary Auth row, source mapping/profile/admin grant, repeat completion, wrong target, ordinary platform-admin denial and existing mapped account path tested in rolled-back transaction; Auth Admin API mocked"
+  },
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 598,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 915,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_note": "Two new private ledgers intentionally enable RLS with no direct policies/grants; all access goes through checked functions. Other findings remain existing baseline.",
+  "remediation_url": "https://supabase.com/docs/guides/database/database-linter",
+  "app_bundles": "11 prepared bundles rebuilt and passed routing/auth/storage checks; not published",
+  "remaining": [
+    "Hosted app cutover and browser testing",
+    "Real email provider delivery and real Auth Admin API creation not exercised",
+    "No real invitations sent or accounts retained by tests"
+  ],
+  "invitation_runtime_followup": "Preview/create/revoke/accept now applied and tested; see native-invitation-verification.json. Browser validation and app cutover remain."
+}

@@ -1,0 +1,135 @@
+{
+  "captured_at": "2026-10-06T15:49:19.614Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "file-scanner",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "f6f1d9f40d9250506834df030c4d84eaa104052c241b129fd1f363e1b7a70b18"
+    },
+    {
+      "slug": "file-url-mint",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "cea0dda9efced3ae58508c0e6118df6b27a1ab33d8a81ed9d9eb6f1d17e74d82"
+    }
+  ],
+  "migration_version": "20261006154545",
+  "capability": "Native active tenant-admin readiness only; scanning and URL issuance are blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "nonce_bucket_path_file_id_rejection": "passed",
+    "restricted_grants": "passed",
+    "no_storage_download_clean_marker_nonce_consumption_or_url": "passed",
+    "unauthenticated_posts": {
+      "file-scanner": 401,
+      "file-url-mint": 401
+    },
+    "persisted_fixture_rows": 0
+  },
+  "missing_in_both_projects": {
+    "tables": [
+      "file_assets",
+      "file_access_events",
+      "signed_url_nonces",
+      "v_files_pending_scan"
+    ],
+    "functions": [
+      "consume_signed_url_nonce",
+      "request_signed_url",
+      "issue_signed_url_nonce"
+    ]
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No new table/index or existing policy/grant changes.",
+  "limits": [
+    "Status returns prerequisites only; default scan/mint returns HTTP 409 with executed=false, files_processed=0, nonces_consumed=0 and urls_issued=0.",
+    "The missing registry/access/nonce schema exists in neither source nor destination; this is an existing schema gap, not an omitted transfer. No customer/file data or Storage operation occurred.",
+    "Execution requires tenant-owned registry/access schema, verified destination object ownership, trusted malware scanning and quarantine provenance, immutable file versions and atomic finalization.",
+    "URL issuance additionally requires actor/org/file-version scoped one-use nonces, fresh clean-state revalidation and purpose/TTL/audit rules. Scanner requires bounded least-privilege claims and retries.",
+    "Source filename/MIME/header checks are not malware clearance and were not enabled.",
+    "No hosted cutover, main merge, schedule activation, final data/storage delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 63,
+    "absent_snapshots": 23,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "mdf-billing"
+}

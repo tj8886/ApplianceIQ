@@ -1,0 +1,137 @@
+{
+  "captured_at": "2026-10-06T15:03:17.301Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "functions": [
+    {
+      "slug": "embed-knowledge",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "d011b5274f39240fd77289ee53baf458e32bb9818957141e6ccbe03279ad7780"
+    },
+    {
+      "slug": "embedding-worker",
+      "version": 1,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "hash": "fc0dea7aa2223adcaf055bbf1268e9ccc675c844e97efa55b89c7cff76851095"
+    }
+  ],
+  "migration_version": "20261006150202",
+  "capability": "Native active tenant-admin missing-vector metadata preview only, 25 items/page; query/batch/run blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "knowledge_and_product_pagination_25_then_1": "passed",
+    "global_foreign_mismatched_and_inactive_source_exclusion": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "query_batch_run_no_provider_vectors_or_runs": "passed",
+    "existing_vector_and_model_preserved": "passed",
+    "source_text_title_model_metadata_redaction": "passed",
+    "restricted_grants": "passed",
+    "unauthenticated_post": {
+      "embed-knowledge": 401,
+      "embedding-worker": 401
+    },
+    "remaining_fixture_orgs": 0,
+    "remaining_global_fixture_sources": 0
+  },
+  "destination_before_and_after": {
+    "knowledge_total": 13615,
+    "knowledge_global": 13610,
+    "knowledge_tenant": 5,
+    "knowledge_vectors": 8317,
+    "products": 3300,
+    "product_vectors": 0,
+    "worker_runs": 0
+  },
+  "vector_column_contract": "Both knowledge chunks and products are vector(1024); this is a storage dimension check, not embedding-space compatibility.",
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged; no new table/index introduced, existing policies/grants unchanged.",
+  "limits": [
+    "Explicit active mapped native tenant admin and one organization required. Null/global chunks are never scanned as tenant-owned; knowledge source and chunk organization must agree and both must be active.",
+    "Worker preview permits products or knowledge chunks; knowledge endpoint permits chunks only. IDs/updated_at only; no source text, title, model, citation, hash or vector returned.",
+    "Missing-vector preview does not detect stale embeddings or validate historical model provenance. UUID keyset pagination is a live view, not a frozen snapshot or atomic worker claim.",
+    "query/batch/run return 409 with zero vectors/provider requests and no worker run; no provider API secret, service-role claim decoding or worker credential path is used.",
+    "Existing 8317 knowledge vectors and all source content remain untouched. No provider execution or customer-data transfer occurred.",
+    "Full workflow needs approved provider/tier routing, query/document embedding-space compatibility, reviewed global corpus authority, scoped worker identity, atomic source hash guards/claims, finite dimension/order validation and rate/cost governance.",
+    "No schedule, hosted app cutover, main merge, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 60,
+    "absent_snapshots": 26,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "field-photo-analyzer"
+}

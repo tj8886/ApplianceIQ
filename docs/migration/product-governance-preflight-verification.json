@@ -1,0 +1,142 @@
+{
+  "captured_at": "2026-10-06T19:01:16.758Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "product-iq-governance",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "eb2d18fa810e210c90d8e0f54b4fe72e1f9e736cce25628586462dd5df423090"
+  },
+  "migration_version": "20261006185959",
+  "capability": "Native tenant-admin readiness only; all 17 legacy search/edit/validation/relationship/document/image actions blocked.",
+  "blocked_actions": [
+    "search_relationship_products",
+    "create_product",
+    "update_product",
+    "validate_product",
+    "update_specifications",
+    "create_product_relationship",
+    "archive_product_relationship",
+    "restore_product_relationship",
+    "update_document_metadata",
+    "archive_document",
+    "restore_document",
+    "update_image_metadata",
+    "set_primary_image",
+    "archive_image",
+    "restore_image",
+    "reorder_images",
+    "update_product_relationship"
+  ],
+  "checks": {
+    "handler_tests": "passed",
+    "post_deployment_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "product_version_changes_role_decision_asset_relationship_query_spoof_rejection": "passed",
+    "all_17_legacy_actions_blocked": "passed",
+    "restricted_grants": "passed",
+    "all_product_and_platform_role_fingerprints_unchanged": "passed",
+    "scope_and_audit_counts_unchanged": "passed",
+    "unauthenticated_update_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_counts": {
+    "products": 43527,
+    "platform_roles": 2
+  },
+  "missing_in_both_projects": [
+    "aiq_documents",
+    "mfr_assets",
+    "aiq_product_relationships",
+    "aiq_product_specifications",
+    "product_iq_data_quality_results"
+  ],
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 917
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Security and performance WARN/ERROR counts unchanged. INFO counts recorded; no index removed or existing policy/grant changed.",
+  "limits": [
+    "Status/default is readiness only; active native mapped tenant admin required. Imported platform roles/brand scopes are not adopted as destination governance authority.",
+    "All 17 legacy actions return HTTP 409 after authorization. No product search/lookup, edit, validation, relationship/media mutation, review/publish transition or audit write occurs.",
+    "Five source-required tables are absent in both projects; this is an existing source schema gap, not an omitted data transfer. No replacement schema is guessed.",
+    "Execution requires verified destination platform role and brand/tenant scope, strict typed unit/evidence validation, explicit edit/review/publish authority, atomic version-guarded product/related-record transaction and immutable audit/idempotency.",
+    "Source cross-org service-role lookups and manual rollback after multi-step mutations are not enabled.",
+    "No customer-data copy, hosted cutover, main merge, schedules, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 69,
+    "absent_snapshots": 17,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "product-video-discovery"
+}

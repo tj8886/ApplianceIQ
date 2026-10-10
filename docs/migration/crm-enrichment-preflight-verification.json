@@ -1,0 +1,126 @@
+{
+  "captured_at": "2026-10-06T12:50:51.200Z",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "source_project": "fumwwhyozeouoqscolke",
+  "function": {
+    "slug": "aicrm-ai-enrichment-runner",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "700bde821ea48fb97e4c5def6548f501ba937da416217027689cf9dd484ab48b"
+  },
+  "migration_version": "20261006124936",
+  "capability": "Native tenant-admin account/job metadata and readiness only; run/retry HTTP 409, no provider or mock writes.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "same_org_job_account_join": "passed",
+    "foreign_unmapped_nonadmin_and_mismatched_context_denial": "passed",
+    "unknown_provider_rejection_no_mock_default": "passed",
+    "failed_only_retry_metadata": "passed",
+    "no_private_company_payload_error_or_prompt_output": "passed",
+    "no_jobs_runs_or_research_written": "passed",
+    "unauthenticated_post": 401,
+    "remaining_fixture_orgs": 0
+  },
+  "counts": {
+    "source": {
+      "accounts": 0,
+      "jobs": 0,
+      "runs": 0,
+      "research": 0
+    },
+    "destination": {
+      "accounts": 0,
+      "jobs": 0,
+      "runs": 0,
+      "research": 0
+    }
+  },
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 921
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "Security and performance WARN/ERROR counts unchanged. Unused-index INFO count fell from 925 to 921 following fixture access; no index dropped.",
+  "limits": [
+    "No CRM customer records existed in either project at this checkpoint; no customer-data import occurred.",
+    "Admin-only readiness is deliberately narrower than the source crm.manage role model; CRM role integration remains pending.",
+    "Source provider/mock fallback, cross-organization prompt choice and non-atomic finalization have not been migrated into the governed runtime.",
+    "No model/provider call, account/product-fit/research mutation, job creation/status update, cost record, prompt-content read or schedule activation.",
+    "Workflow remains pending provider verification, tier routing, tenant-scoped prompt selection, evidence/schema validation, atomic idempotent finalization, rate limits and cost governance.",
+    "No app cutover, main merge, final data/storage delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 50,
+    "absent_snapshots": 36,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "business-central-sync"
+}

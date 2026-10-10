@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {migrateSpeciqDrafts} from './us-speciq-drafts.mjs';
+import {migrateSpeciqWorkflow} from './us-speciq-workflow.mjs';
+import {migrateSpeciqCrmLinks} from './us-speciq-crm-links.mjs';
+import {migrateSpeciqProjects} from './us-speciq-projects.mjs';
+import {migrateSpeciqSettings} from './us-speciq-settings.mjs';
+import {migrateSpeciqProjectDetails} from './us-speciq-project-details.mjs';
+import {migrateSpeciqTechnical,technicalHelpers} from './us-speciq-technical.mjs';
+const out=migrateSpeciqTechnical(migrateSpeciqProjectDetails(migrateSpeciqSettings(migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(readFileSync(new URL('../../apps/spec-iq/index.html',import.meta.url),'utf8'))))))));
+new vm.Script('(async()=>{'+out.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import[^;]+;/m,'')+'})()');
+assert.ok(out.includes('previous_product_id:p.previous_product_id||null,technical:speciqTechnicalPayload(p)'));assert.ok(out.includes('docs:p.spec_snapshot?.technical?.docs||[]'));assert.ok(out.includes('speciqTechnicalPreview(snapshot.products||[])'));
+const c={esc:v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;')};vm.createContext(c);vm.runInContext(technicalHelpers+';globalThis.payload=speciqTechnicalPayload;globalThis.preview=speciqTechnicalPreview;',c);
+const payload=c.payload({finish:'Steel',width_inches:30.125,height_inches:70,docs:[{doc_type:'spec_sheet',title:'Spec',file_url:'https://example.invalid/spec.pdf'}],spec_sheet_url:'https://example.invalid/spec.pdf',install_guide_url:'https://example.invalid/install.pdf',specifications:{capacity:'20 entered'}});assert.equal(payload.width_inches,'30.125');assert.equal(payload.depth_inches,null);assert.equal(payload.docs.length,2);assert.equal(c.payload({aiq_product_id:'catalog',width_inches:-1}).width_inches,undefined);assert.throws(()=>c.payload({width_inches:-1}));assert.throws(()=>c.payload({height_inches:30.1234}));
+const preview=c.preview([{product_name:'<script>',width_inches:30.125,specifications:{capacity:'<script>'},spec_snapshot:{technical_state:'user_entry_unreviewed',technical:{docs:[{file_url:'javascript:alert(1)',title:'Hidden'},{file_url:'https://example.invalid/spec.pdf',title:'<script>'}]}}}]);assert.ok(!preview.includes('<script>'));assert.ok(!preview.includes('javascript:'));assert.ok(preview.includes('Width: 30.125 in'));assert.ok(preview.includes('noopener noreferrer'));
+console.log('PASS: full transformed module parses; dimensions/metadata/doc dedupe, prior product IDs and snapshot restore paths; catalog payload cannot spoof facts; invalid dimensions rejected; technical preview escapes values and filters unsafe document links.');

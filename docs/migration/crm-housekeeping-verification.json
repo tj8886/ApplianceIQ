@@ -1,0 +1,43 @@
+{
+  "function": "crm-scheduled-tasks",
+  "destination": "jdxslqmgjsuzoisuhvlc",
+  "status": "ACTIVE",
+  "version": 1,
+  "verify_jwt": true,
+  "checks": [
+    "Native identity and selected organization forwarded with caller JWT",
+    "Active mapped organization management required",
+    "Anniversary task and overdue notification creation tested live inside rolled-back transaction",
+    "Second invocation deduplicated",
+    "Deleted tasks excluded",
+    "Foreign organization and unmapped identities rejected",
+    "Anonymous and service-role execute grants denied",
+    "Handler authentication, body bounds and safe errors passed",
+    "11 prepared app bundles verified"
+  ],
+  "source_bug_fixed": "Unsupported anniversary notification category replaced with existing contact category",
+  "security_advisors": {
+    "rls_enabled_no_policy": 596,
+    "security_definer_view": 8,
+    "function_search_path_mutable": 27,
+    "extension_in_public": 3,
+    "materialized_view_in_api": 5,
+    "anon_security_definer_function_executable": 3,
+    "authenticated_security_definer_function_executable": 3
+  },
+  "performance_advisors": {
+    "unindexed_foreign_keys": 698,
+    "auth_rls_initplan": 53,
+    "no_primary_key": 55,
+    "unused_index": 915,
+    "duplicate_index": 8,
+    "auth_db_connections_absolute": 1
+  },
+  "advisor_note": "Existing baseline findings remain; no new CRM findings. Remediation: https://supabase.com/docs/guides/database/database-linter",
+  "limitations": [
+    "Hosted apps not published",
+    "Browser end-to-end request not tested",
+    "No email delivery or background schedule activated",
+    "Campaign window branch not exercised on today's date"
+  ]
+}

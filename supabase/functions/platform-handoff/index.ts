@@ -1,10 +1,39 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json'};
-const url=Deno.env.get('SUPABASE_URL')!; const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
-const json=(status:number,body:unknown)=>new Response(JSON.stringify(body),{status,headers:cors});
-const sha=async(s:string)=>{const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')};
-Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response('ok',{headers:cors});if(req.method!=='POST')return json(405,{error:'method_not_allowed'});let body:any={};try{body=await req.json()}catch{return json(400,{error:'invalid_json'})}
-if(body.action==='issue'){const auth=req.headers.get('authorization')||'';if(!auth.toLowerCase().startsWith('bearer '))return json(401,{error:'missing_authorization'});const {data:{user},error}=await admin.auth.getUser(auth.slice(7));if(error||!user)return json(401,{error:'invalid_session'});const ticket=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-','');const {error:ins}=await admin.from('platform_handoff_tickets').insert({ticket_hash:await sha(ticket),user_id:user.id,organization_id:body.organization_id||null,location_id:body.location_id||null,entity_type:body.entity_type||null,entity_id:body.entity_id||null,entity_label:body.entity_label||null,source_module_key:body.source_module_key||'platform',target_module_key:body.target_module_key||null,expires_at:new Date(Date.now()+120000).toISOString()});if(ins)return json(500,{error:'ticket_create_failed'});return json(200,{ticket,expires_in:120});}
-if(body.action==='redeem'){const ticket=String(body.ticket||'');if(ticket.length<40)return json(400,{error:'invalid_ticket'});const {data:rows,error}=await admin.rpc('consume_platform_handoff_ticket',{p_ticket_hash:await sha(ticket),p_target_module_key:body.target_module_key||null});if(error||!rows)return json(401,{error:'ticket_invalid_or_expired'});const row=Array.isArray(rows)?rows[0]:rows;if(!row?.user_id)return json(401,{error:'ticket_invalid_or_expired'});const {data:{user},error:userErr}=await admin.auth.admin.getUserById(row.user_id);if(userErr||!user?.email)return json(401,{error:'user_not_found'});const {data:link,error:linkErr}=await admin.auth.admin.generateLink({type:'magiclink',email:user.email});if(linkErr||!link?.properties?.hashed_token)return json(500,{error:'session_handoff_failed'});return json(200,{token_hash:link.properties.hashed_token,type:'magiclink',context:{organization_id:row.organization_id,location_id:row.location_id,entity_type:row.entity_type,entity_id:row.entity_id,entity_label:row.entity_label,source_module_key:row.source_module_key}})}
-return json(400,{error:'unknown_action'});});
+import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
+import { createHandoffHandler } from './handler.ts';
+
+const admin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  { auth: { persistSession: false, autoRefreshToken: false } },
+);
+
+// Redeem requires a module-bound single-use ticket; issue also requires a user JWT.
+Deno.serve(createHandoffHandler({
+  async authenticatedUser(token) {
+    const { data, error } = await admin.auth.getUser(token);
+    return error ? null : data.user?.id ?? null;
+  },
+  async issue(userId, ticketHash, targetModule, context) {
+    const { data, error } = await admin.rpc('issue_tj_platform_handoff', {
+      p_user_id: userId, p_ticket_hash: ticketHash,
+      p_target_module_key: targetModule, p_context: context,
+    });
+    return !error && data === true;
+  },
+  async consume(ticketHash, targetModule) {
+    const { data, error } = await admin.rpc('consume_tj_platform_handoff', {
+      p_ticket_hash: ticketHash, p_target_module_key: targetModule,
+    });
+    return error ? null : data;
+  },
+  async sessionLink(userId) {
+    const { data: account, error } = await admin.auth.admin.getUserById(userId);
+    if (error || !account.user?.email || !account.user.email_confirmed_at) return null;
+    const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+      type: 'magiclink', email: account.user.email,
+    });
+    // generateLink creates a token; it does not send an email.
+    if (linkError || link.user?.id !== userId) return null;
+    return link.properties?.hashed_token ?? null;
+  },
+}));

@@ -1,0 +1,114 @@
+{
+  "captured_at": "2026-10-06T16:04:43.819Z",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "mdf-send-email",
+    "version": 1,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "hash": "bf0eabeef9d7e600b62090ecb3e6796aa3a11f5b58534c8daa83d8a025c6ef0b"
+  },
+  "migration_version": "20261006160344",
+  "capability": "Native core-tenant admin readiness only; all email, queue and expiry execution blocked.",
+  "checks": {
+    "handler_tests": "passed",
+    "live_sql_rollback": "passed",
+    "foreign_unmapped_nonadmin_denial": "passed",
+    "arbitrary_recipient_subject_html_related_record_and_queue_id_rejection": "passed",
+    "default_send_and_all_four_execution_actions_blocked": "passed",
+    "status_test_no_sender_or_secret_config_leak": "passed",
+    "restricted_grants": "passed",
+    "queue_alert_fund_and_contract_hashes_unchanged": "passed",
+    "unauthenticated_queue_post": 401,
+    "persisted_fixture_rows": 0
+  },
+  "source_and_destination_queue_count": 2,
+  "queue_organization_id_column": false,
+  "advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 611
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 919
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1
+      }
+    ]
+  },
+  "advisor_assessment": "All advisor counts unchanged. No new tables/indexes or existing policy/grant changes.",
+  "limits": [
+    "Status/test is readiness only, not provider or delivery verification. No sender/key/config facts returned.",
+    "Default/send, send_test, process_queue and check_expiry return HTTP 409 after native core-tenant administration with executed=false and zero sent/queued/processed/attempts/expiry writes.",
+    "Queue lacks tenant ownership. Neither arbitrary payload recipients/bodies nor related IDs or MDF user email infer ownership; no recipient/body lookup occurs.",
+    "No Resend request, secret access, queue insert/claim/status change, global expiry RPC, alert insert, fund expiry or schedule occurred. Existing two queue records remain unchanged; no customer data copied.",
+    "Execution requires reviewed MDF/core identity mapping, tenant-owned queue/related records, authorized events and recipients, verified sender/provider, escaped templates/approved links, atomic claims/provider idempotency and truthful reconciliation, bounded retries/privacy, scoped atomic expiry rules and reviewed worker authority.",
+    "No hosted cutover, main merge, schedule activation, final source delta or source retirement."
+  ],
+  "inventory": {
+    "deployed_snapshots": 65,
+    "absent_snapshots": 21,
+    "retired_snapshots": 1
+  },
+  "next_absent_snapshot": "performance-recording-review"
+}

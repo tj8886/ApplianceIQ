@@ -1,0 +1,50 @@
+{
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "function": {
+    "slug": "conversation-memory-engine",
+    "status": "ACTIVE",
+    "version": 1,
+    "verify_jwt": true
+  },
+  "tests": {
+    "live_database": "passed; all fixtures rolled back",
+    "handler_contracts": "passed",
+    "recommendation_comparison_regression": "passed",
+    "app_bundles": "11 passed",
+    "unauthenticated_http": "401"
+  },
+  "properties": [
+    "Mapped source actor derived server-side",
+    "Owned active-organization conversation state",
+    "Atomic user turn, memory, completeness and stage commit",
+    "Row lock plus expected version rejects stale writes",
+    "No service-role client or native table write grants"
+  ],
+  "remaining_source_snapshots": 81,
+  "limitations": [
+    "Full authenticated browser/HTTP workflow pending",
+    "Optional AI extraction requires provider and tier-model configuration",
+    "CRM linking remains gated",
+    "Hosted app cutover pending"
+  ],
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy": 601,
+      "security_definer_view": 8,
+      "function_search_path_mutable": 27,
+      "extension_in_public": 3,
+      "materialized_view_in_api": 5,
+      "anon_security_definer_function_executable": 3,
+      "authenticated_security_definer_function_executable": 3
+    },
+    "performance": {
+      "unindexed_foreign_keys": 698,
+      "auth_rls_initplan": 53,
+      "no_primary_key": 55,
+      "unused_index": 924,
+      "duplicate_index": 8,
+      "auth_db_connections_absolute": 1
+    }
+  },
+  "advisor_remediation": "https://supabase.com/docs/guides/database/database-linter"
+}
