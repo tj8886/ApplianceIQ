@@ -1,3 +1,4 @@
+import {migrateSpeciqTechnical} from './us-speciq-technical.mjs';
 import {migrateSpeciqProjectDetails} from './us-speciq-project-details.mjs';
 import {migrateSpeciqSettings} from './us-speciq-settings.mjs';
 import {migrateSpeciqProjects} from './us-speciq-projects.mjs';
@@ -34,7 +35,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerAssets(s);
   if(app.key==='academy'&&p===join(target,'trade.html'))s=migrateTradeAssets(s);
-  if(app.key==='spec-iq'&&p===join(target,'index.html'))s=migrateSpeciqProjectDetails(migrateSpeciqSettings(migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(omitObsoleteWarrantyCleanup(s)))))));
+  if(app.key==='spec-iq'&&p===join(target,'index.html'))s=migrateSpeciqTechnical(migrateSpeciqProjectDetails(migrateSpeciqSettings(migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(omitObsoleteWarrantyCleanup(s))))))));
   if(app.key==='product-iq'&&p===join(target,'apps/product-iq/index.html'))s=routeLegacyProductIq(s);
   s=omitDemoJoin(s);
   for(const m of s.matchAll(/\/rest\/v1\/rpc\/([a-z0-9_]+)/g))counts.rpcs.add(m[1]);
