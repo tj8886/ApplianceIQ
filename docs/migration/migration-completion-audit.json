@@ -1,5 +1,5 @@
 {
-  "captured_at": "2026-10-10T02:42:43.151Z",
+  "captured_at": "2026-10-10T02:54:46.834Z",
   "status": "not_ready_for_cutover",
   "production": "Canada",
   "source_project": "fumwwhyozeouoqscolke",
@@ -18,8 +18,8 @@
     "live_native_invitation_rollback_tests": "passed",
     "remaining_fixture_organizations": 0,
     "hosted_authenticated_tests": "pending",
-    "literal_rpc_names": 68,
-    "available_authenticated_native_wrappers": 68,
+    "literal_rpc_names": 69,
+    "available_authenticated_native_wrappers": 69,
     "unrouted_literal_rpc_names": [],
     "literal_relation_names": 158,
     "product_view_aliases": {
@@ -1679,6 +1679,14 @@
       "local_and_live_rollback_tests": "passed",
       "archive_retains_history": true,
       "hosted_authenticated_tests": "pending"
+    },
+    "speciq_settings": {
+      "applied": true,
+      "evidence": "speciq-settings-verification.json",
+      "local_and_live_rollback_tests": "passed",
+      "logo_upload": "pending",
+      "financial_enforcement": "pending",
+      "hosted_authenticated_tests": "pending"
     }
   },
   "edge": {
@@ -1839,7 +1847,7 @@
     "edge_redeployed": false
   },
   "cutover_gates": [
-    "Resolve remaining app routes/read/write contracts and references to relations absent in both projects.",
+    "Complete remaining application writes, technical fields and final financial/send workflows.",
     "Complete restricted/missing Edge workflows and provider credential/configuration tests.",
     "Hosted native login, invitation, identity filtering and ticket handoff tests for all apps.",
     "Final frozen database/Storage delta and schedules, then hosted cutover and source retirement."
@@ -2192,5 +2200,90 @@
       }
     ],
     "delta": "Existing WARN/ERROR counts unchanged. Private RLS journal adds one expected RLS-without-policy INFO; no new unindexed FK or unused-index counts."
+  },
+  "speciq_settings_advisors": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "count": 624,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "security_definer_view",
+        "level": "ERROR",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "count": 27,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "extension_in_public",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+      },
+      {
+        "name": "materialized_view_in_api",
+        "level": "WARN",
+        "count": 5,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0016_materialized_view_in_api"
+      },
+      {
+        "name": "anon_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "count": 3,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "count": 698,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "auth_rls_initplan",
+        "level": "WARN",
+        "count": 53,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan"
+      },
+      {
+        "name": "no_primary_key",
+        "level": "INFO",
+        "count": 55,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0004_no_primary_key"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "count": 926,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "duplicate_index",
+        "level": "WARN",
+        "count": 8,
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0009_duplicate_index"
+      },
+      {
+        "name": "auth_db_connections_absolute",
+        "level": "INFO",
+        "count": 1,
+        "remediation": "https://supabase.com/docs/guides/deployment/going-into-prod"
+      }
+    ],
+    "delta": "Existing WARN/ERROR counts unchanged. Intentionally private journal adds one RLS-without-policy INFO. Unindexed FK count unchanged; unused-index INFO 928 to 926."
   }
 }
