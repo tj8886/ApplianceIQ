@@ -1,21 +1,22 @@
 # Current migration checkpoint — October 10, 2026
 
-Status: production cutover authorized by the user on October 10, 2026 at 16:34 Toronto; deployment in progress and live publication pending verification. Canadian data/files retained. Remaining workflow tests, provider setup and final reconciliation are post-cutover follow-ups.
+Status: production app cutover completed on October 10, 2026 under the user's instruction to move now and fix remaining work afterward. PR #8 is merged. All 11 registered production Netlify sites have ready deploys of merge commit `d8b74b91443bb17104e9fefa79a746bb58da82eb`. Live entry pages and runtime files return HTTP 200 and target US Supabase `jdxslqmgjsuzoisuhvlc`; entry pages no longer reference Canada. Canadian project `fumwwhyozeouoqscolke`, its data and files are retained.
+
+Publication used repository-linked Netlify Git builds. GitHub Actions workflow 316376339 remains disabled manually; no successful GitHub Actions production deployment is claimed. Root/per-app Netlify builds now select the registered site and generate/test the US bundle before publishing. Evidence: production-cutover.json.
 
 Completed so far:
-- Shopify OAuth implementation deployed and tested; live provider verification requires fresh Shopify registration/secrets.
-- All 542 source tables compared: 532 initially identical, ten reviewed differences.
-- Copied 45,753 append rows with exact source checksums and unchanged original prefixes. Temporary relay endpoints closed and service RPC execution revoked.
-- Copied 156 smaller missing records and updated 114 stale records; retained private before images, all destination-only rows and existing decision-case trigger behavior.
-- Dashboard, floor adapter and reviewed read/privacy regression tests passed with fixtures rolled back. Advisor WARN/ERROR counts unchanged from baseline; two deliberately private journal tables add RLS-without-policy informational notices.
-- All 11 generated app bundles passed local routing/asset/auth-storage/handoff checks earlier in this session; hosted authenticated checks and cutover remain pending.
+- Last full database comparison covered 542 source tables; 45,909 inserted rows and 114 reviewed updates, with retained before images and destination-only records.
+- All eleven app bundles passed local routing/asset/auth-storage/handoff tests and are now published.
+- Native Spec IQ and manufacturer invitation/asset/training contracts have implementation and rollback test evidence in this directory.
+- Source retention is unchanged. No source data or files were deleted for this cutover.
 
-Remaining work:
-- Eight archived Edge endpoints are absent; several deployed endpoints still provide readiness gates rather than complete workflows.
-- Provider credentials/registrations and real integration tests, remaining application writes and browser workflows.
-- Final frozen database/Storage delta, destination schedules, hosted cutover and source retirement. Main CI still targets Canada; migration PR must remain unmerged until cutover readiness is established.
+Remaining follow-up work:
+- Actual signed-in browser, logo/manufacturer upload/download and role/organization tests.
+- Remaining application financial/PDF/share/send workflows, missing/restricted Edge workflows, and fresh provider configuration and integration tests.
+- Final database/Storage reconciliation and reviewed destination schedules. No final source write freeze, new data delta or schedule activation was performed in the publication step.
+- Source retirement remains deferred until follow-up verification and rollback requirements pass.
 
-Next small batch: actual native authenticated logo/manufacturer file-byte tests, then remaining brand training writes and final financial/send workflows. See MIGRATION-FINISH-LIST.md for all launch requirements. Then hosted authenticated file/app testing and final frozen data/files delta, alongside remaining provider/Edge workflows.
+Next work: test hosted native login and file workflows, then address the remaining active application/provider contracts. See MIGRATION-FINISH-LIST.md. Historical batch notes below describe the evidence available at each earlier step.
 
 Shopify connection verification batch: ACTIVE v1, JWT required. Read-only shop identity, currency and actual granted scopes use fresh destination OAuth Vault credentials through service-only calls. One-use short sessions and short proof lifetime bind connection/credential versions; replay/expiry/rotation are rejected. Handler and live rollback SQL tests passed; unsigned live probe is 401. Zero credentials, sessions, proofs and fixture connections persisted; no real provider request or activation occurred. Existing advisor WARN/ERROR counts unchanged; two private RLS-without-policy and four unused-index INFO findings added. Edge totals: 108 destination helpers/endpoints, with archived coverage unchanged at 77 deployed, one retired, nine absent and no source metadata drift. Evidence: shopify-connection-verification.json.
 
