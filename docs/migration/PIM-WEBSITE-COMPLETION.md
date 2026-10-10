@@ -9,3 +9,13 @@ PIM product, image, document and retailer-price changes enqueue the product. The
 The 60,955 prior PIM retailer-price rows already existed in the website import ledger. The worker adds missing rows and fills missing exact product links while retaining original observation dates and existing prices. No row was checked in the last 48 hours at inspection. Undated MSRP and stale prices are not current offers. Live selling-price activation remains governed by the website's existing listing/evidence workflow.
 
 Audit before/after images and source dates are stored in private RLS tables. Anonymous and authenticated clients cannot execute the worker. Canada is unchanged. Queue processing and measured backfill results are recorded in pim-website-completion-verification.json.
+
+## Live completion and ongoing updates
+
+The private cron job runs every minute. Product, image, document, retailer-price, separate feature, physical-dimension and pricing-history edits enqueue their product. Feature updates carry their actual edit timestamp; historical creation dates are retained. Latest eligible dated source facts fill blanks without refreshing populated website fields. Future-dated source values are held. New model admission also requires a description that passes native appliance identity checks.
+
+Final net audit: 16,218 descriptions filled; 51 products gained specs, 93 gained dimensions, 26 gained spec-sheet URLs, and six new active appliances were added. No new images qualified. The queue is empty with zero worker errors; all three recent minute runs succeeded. Populated scalar and JSON preservation audits both found zero changes. The repeat/queue and latest-dated-feature rollback tests pass against the final implementation.
+
+During initial rollout, four additive measurement conflicts were repaired from retained audit values, and 26 newly inserted misclassified accessories were hidden without deletion. Stronger parts descriptions and existing-measurement guards are applied. Existing accessory rows affected by the worker were restored with guarded before/after comparisons.
+
+Existing WARN/ERROR advisor counts remain unchanged; the two intentionally private queue/audit tables add RLS-without-policy INFO findings. Applied migration versions are server-assigned and are recorded alongside names in the verification JSON; do not reapply historical SQL or infer unapplied status solely from filename timestamps.
