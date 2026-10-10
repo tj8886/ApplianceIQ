@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {migrateSpeciqDrafts} from './us-speciq-drafts.mjs';
+import {migrateSpeciqWorkflow} from './us-speciq-workflow.mjs';
+import {migrateSpeciqCrmLinks} from './us-speciq-crm-links.mjs';
+import {migrateSpeciqProjects,projectHelpers} from './us-speciq-projects.mjs';
+const out=migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(readFileSync(new URL('../../apps/spec-iq/index.html',import.meta.url),'utf8')))));
+new vm.Script('(async()=>{'+out.match(/<script type="module">([\s\S]*?)<\/script>/)[1].replace(/^import[^;]+;/m,'')+'})()');
+assert.ok(!out.includes("sb.from('speciq_projects').insert("));assert.ok(!out.includes("sb.from('speciq_projects').delete("));assert.ok(out.includes('id="pj-notes"'));assert.ok(out.includes('Include archived projects'));
+function node(){return {value:'',textContent:'',checked:false,children:[],classList:{add(){},remove(){},toggle(){}},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}};}
+const fields={},calls=[],alerts=[];const c={window:{},projects:[],userOrgId:'org',crypto:{randomUUID:()=>String(calls.length)},el:id=>fields[id]??=node(),document:{createElement:node},alert:x=>alerts.push(x),loadDashboardStats:async()=>{},navigate:()=>{},sb:{rpc:async(name,{p_body})=>{calls.push({name,p_body});if(p_body.action==='list')return {data:{ok:true,projects:[{id:'p',project_name:'<script>',customer_name:'Client',status:'active',can_edit:true,can_archive:true,updated_at:'stamp'}]}};if(calls.filter(x=>x.p_body.action==='create').length===1)throw Error('network');return {data:{ok:true}};}}};vm.createContext(c);vm.runInContext(projectHelpers,c);
+fields['pj-name']=node();fields['pj-name'].value='Project';fields['pj-customer']=node();fields['pj-customer'].value='Client';await c.window.createProject({preventDefault(){}});assert.equal(alerts.length,1);assert.equal(fields['pj-name'].value,'Project');await c.window.createProject({preventDefault(){}});const creates=calls.filter(x=>x.p_body.action==='create');assert.equal(creates.length,2);assert.equal(creates[0].p_body.request_id,creates[1].p_body.request_id);assert.equal(fields['pj-name'].value,'');assert.equal(fields['project-save-button'].disabled,false);const row=fields['projects-list'].children[1];assert.equal(row.children[0].textContent,'<script>');row.children[3].onclick();fields['pj-name'].value='Edit';await c.window.createProject({preventDefault(){}});assert.equal(calls.find(x=>x.p_body.action==='update').p_body.expected_updated_at,'stamp');await c.window.deleteProject('p');assert.equal(calls.find(x=>x.p_body.action==='archive').p_body.project_id,'p');
+console.log('PASS: full script parses; direct project writes removed; native create retry preserves request/body/form, edit uses snapshot, archive routes correctly, labels use textContent and save guard resets.');
