@@ -1,3 +1,4 @@
+import {migrateBrandTraining} from './us-brand-training.mjs';
 import {migrateSpeciqLogos} from './us-speciq-logos.mjs';
 import {migrateSpeciqTechnical} from './us-speciq-technical.mjs';
 import {migrateSpeciqProjectDetails} from './us-speciq-project-details.mjs';
@@ -35,6 +36,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerAssets(s);
+  if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateBrandTraining(s);
   if(app.key==='academy'&&p===join(target,'trade.html'))s=migrateTradeAssets(s);
   if(app.key==='spec-iq'&&p===join(target,'index.html'))s=migrateSpeciqLogos(migrateSpeciqTechnical(migrateSpeciqProjectDetails(migrateSpeciqSettings(migrateSpeciqProjects(migrateSpeciqCrmLinks(migrateSpeciqWorkflow(migrateSpeciqDrafts(omitObsoleteWarrantyCleanup(s)))))))));
   if(app.key==='product-iq'&&p===join(target,'apps/product-iq/index.html'))s=routeLegacyProductIq(s);

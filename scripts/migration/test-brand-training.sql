@@ -1,0 +1,48 @@
+BEGIN;
+DO $$
+DECLARE actor uuid;n uuid;reviewer uuid;rn uuid;org uuid;foreign_org uuid;brand uuid;vendor uuid;r jsonb;b jsonb;stamp timestamptz;card_id uuid;
+BEGIN
+ SELECT im.source_user_id,im.target_user_id INTO actor,n FROM tj.source_user_identity_map im JOIN auth.users u ON u.id=im.target_user_id WHERE tj_private.microsoft_actor(u.id)=im.source_user_id AND u.email_confirmed_at IS NOT NULL LIMIT 1;
+ SELECT im.source_user_id,im.target_user_id INTO reviewer,rn FROM tj.source_user_identity_map im JOIN auth.users u ON u.id=im.target_user_id WHERE tj_private.microsoft_actor(u.id)=im.source_user_id AND u.email_confirmed_at IS NOT NULL AND im.source_user_id<>actor LIMIT 1;
+ IF rn IS NULL THEN RAISE EXCEPTION 'confirmed identities missing';END IF;
+ UPDATE tj.product_iq_platform_roles SET status='revoked' WHERE user_id IN(actor,reviewer) AND organization_id IS NULL AND role IN('super_admin','product_iq_super_admin');
+ INSERT INTO tj.organizations(name,slug) VALUES('Training rollback','training-rollback-'||gen_random_uuid()) RETURNING id INTO org;
+ INSERT INTO tj.organizations(name,slug) VALUES('Foreign training rollback','training-rollback-'||gen_random_uuid()) RETURNING id INTO foreign_org;
+ INSERT INTO tj.organization_members(organization_id,user_id,role,status) VALUES(org,actor,'member','active'),(org,reviewer,'member','active');
+ INSERT INTO tj.brand_catalog(organization_id,brand_name,brand_tier) VALUES(org,'Training fixture','luxury') RETURNING id INTO brand;
+ INSERT INTO tj.mfr_vendors(slug,name,status,brand_id) VALUES('training-rollback-'||gen_random_uuid(),'Different vendor name','active',brand) RETURNING id INTO vendor;
+ INSERT INTO tj.mfr_members(user_id,vendor_id,role,member_role,status,approved_by,approved_at,activated_at) VALUES(actor,vendor,'product_editor','editor','active',reviewer,now(),now()),(reviewer,vendor,'product_reviewer','editor','active',actor,now(),now());
+ PERFORM set_config('request.jwt.claim.sub',n::text,true);
+ r:=public.tj_runtime_brand_training(jsonb_build_object('action','get','vendor_id',vendor,'organization_id',org));IF r->>'can_write'<>'true' OR r->>'can_review'<>'false' OR r->'brand'->>'id'<>brand::text THEN RAISE EXCEPTION 'scope/link failed %',r;END IF;
+ b:=jsonb_build_object('action','create','vendor_id',vendor,'organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',NULL);r:=public.tj_runtime_brand_training(b);IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'create failed %',r;END IF;card_id:=(r->'card'->>'id')::uuid;stamp:=(r->'card'->>'updated_at')::timestamptz;
+ r:=public.tj_runtime_brand_training(b);IF r->>'replayed'<>'true' THEN RAISE EXCEPTION 'create replay failed';END IF;
+ r:=public.tj_runtime_brand_training(b||jsonb_build_object('action','save','fields',jsonb_build_object('heritage','Changed')));IF r->>'error'<>'request_conflict' THEN RAISE EXCEPTION 'body conflict allowed';END IF;
+ b:=jsonb_build_object('action','save','vendor_id',vendor,'organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',stamp,'fields',jsonb_build_object('heritage','Verified fixture text','floor_talking_points',jsonb_build_array('Fixture point'),'common_objections',jsonb_build_array(jsonb_build_object('objection','Question','response','Reviewed response'))));
+ r:=public.tj_runtime_brand_training(b||jsonb_build_object('fields',jsonb_build_object('manufacturer_approved',true)));IF r->>'error'<>'invalid_request' THEN RAISE EXCEPTION 'approval spoof allowed';END IF;
+ r:=public.tj_runtime_brand_training(b||jsonb_build_object('fields',jsonb_build_object('common_objections',jsonb_build_array(jsonb_build_object('objection','Question','response','')))));IF r->>'error'<>'invalid_request' THEN RAISE EXCEPTION 'empty response allowed';END IF;
+ r:=public.tj_runtime_brand_training(b);IF r->>'ok'<>'true' OR r->'card'->>'version'<>'2' OR r->'card'->>'manufacturer_approved'<>'false' THEN RAISE EXCEPTION 'save failed %',r;END IF;stamp:=(r->'card'->>'updated_at')::timestamptz;
+ r:=public.tj_runtime_brand_training(b||jsonb_build_object('request_id',gen_random_uuid()));IF r->>'error'<>'revision_conflict' THEN RAISE EXCEPTION 'stale save allowed';END IF;
+ r:=public.tj_runtime_brand_training(jsonb_build_object('action','approve','vendor_id',vendor,'organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',stamp));IF r->>'error'<>'forbidden' THEN RAISE EXCEPTION 'editor published';END IF;
+ UPDATE tj.mfr_members SET role='vendor_owner' WHERE user_id=actor AND vendor_id=vendor;
+ r:=public.tj_runtime_brand_training(jsonb_build_object('action','approve','vendor_id',vendor,'organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',stamp));IF r->>'error'<>'independent_saved_review_required' THEN RAISE EXCEPTION 'self review allowed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',rn::text,true);
+ r:=public.tj_runtime_brand_training(jsonb_build_object('action','approve','vendor_id',vendor,'organization_id',org,'request_id',gen_random_uuid(),'expected_updated_at',stamp));IF r->>'ok'<>'true' OR r->'card'->>'status'<>'published' OR r->'card'->>'reviewed_by'<>reviewer::text THEN RAISE EXCEPTION 'independent review failed %',r;END IF;stamp:=(r->'card'->>'updated_at')::timestamptz;
+ PERFORM set_config('request.jwt.claim.sub',n::text,true);
+ r:=public.tj_runtime_brand_training(b||jsonb_build_object('request_id',gen_random_uuid(),'expected_updated_at',stamp,'fields',jsonb_build_object('heritage','Revised')));IF r->>'ok'<>'true' OR r->'card'->>'status'<>'draft' OR r->'card'->>'manufacturer_approved'<>'false' OR r->'card'->>'reviewed_by' IS NOT NULL THEN RAISE EXCEPTION 'editing did not invalidate review';END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj_private.brand_training_requests WHERE organization_id=org AND before_image->>'status'='published' AND after_image->>'status'='draft') THEN RAISE EXCEPTION 'before image missing';END IF;
+ r:=public.tj_runtime_brand_training(jsonb_build_object('action','get','vendor_id',vendor,'organization_id',foreign_org));IF r->>'error'<>'forbidden' THEN RAISE EXCEPTION 'foreign org allowed';END IF;
+ UPDATE tj.mfr_members SET role='asset_editor' WHERE user_id=actor AND vendor_id=vendor;
+ r:=public.tj_runtime_brand_training(b);IF r->>'error'<>'forbidden' THEN RAISE EXCEPTION 'asset editor altered training';END IF;
+ UPDATE tj.mfr_members SET role='product_editor',status='suspended' WHERE user_id=actor AND vendor_id=vendor;
+ r:=public.tj_runtime_brand_training(b);IF r->>'error'<>'forbidden' THEN RAISE EXCEPTION 'suspended access';END IF;
+ UPDATE tj.mfr_members SET status='active' WHERE user_id=actor AND vendor_id=vendor;
+ PERFORM set_config('test.training.org',org::text,true);PERFORM set_config('test.training.vendor',vendor::text,true);PERFORM set_config('test.training.native',n::text,true);
+ IF has_function_privilege('anon','public.tj_runtime_brand_training(jsonb)','execute') OR has_table_privilege('authenticated','tj_private.brand_training_requests','select') THEN RAISE EXCEPTION 'private grants wrong';END IF;
+END $$;
+SET LOCAL ROLE authenticated;
+DO $$DECLARE r jsonb;BEGIN
+ PERFORM set_config('request.jwt.claim.sub',current_setting('test.training.native'),true);
+ r:=public.tj_runtime_brand_training(jsonb_build_object('action','get','vendor_id',current_setting('test.training.vendor'),'organization_id',current_setting('test.training.org')));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'authenticated wrapper failed';END IF;
+END $$;
+ROLLBACK;
+SELECT 'PASS: stored brand/org scope, create/save/replay/conflicts, strict fields, independent approval, edit resets approval/history, foreign/asset-editor/suspended denial and authenticated wrapper; fixtures rolled back' result;
