@@ -41,6 +41,14 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  if(app.key==='academy')copyFileSync(join(root,'scripts/migration/us-manufacturer-categories.json'),join(target,'mfr_categories.json'));
  for(const header of files(target).filter(p=>p.endsWith('/_headers')))writeFileSync(header,readFileSync(header,'utf8').replaceAll('https://fumwwhyozeouoqscolke.supabase.co',config.url));
  mkdirSync(join(target,'_aiq'),{recursive:true});copyFileSync(join(root,'apps/platform/aiq-module-adapter.js'),join(target,'_aiq/aiq-module-adapter.js'));
+ if(['applianceiq-platform','iq-build'].includes(app.key)){
+  copyFileSync(join(root,'apps/_shared/password-recovery.mjs'),join(target,'_aiq/password-recovery.mjs'));
+  const reset=readFileSync(join(root,'apps/_shared/password-reset.html'),'utf8').replaceAll('__AIQ_US_URL__',config.url).replaceAll('__AIQ_US_KEY__',config.publishable_key);
+  writeFileSync(join(target,'password-reset.html'),reset);
+  // Handle recovery redirects to a site's default root as well as the dedicated callback.
+  const index=join(target,'index.html');let html=readFileSync(index,'utf8');
+  html=html.replace(/<head([^>]*)>/i,`<head$1><script>(()=>{if(new URLSearchParams(location.hash.slice(1)).get('type')==='recovery'){const callback=location.hash;history.replaceState(null,'',location.pathname);location.replace('/password-reset.html'+callback);}})();</script>`);writeFileSync(index,html);
+ }
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
   if(p===join(target,'index.html')&&app.key==='iq-build')s=migrateIqBuild(s);
