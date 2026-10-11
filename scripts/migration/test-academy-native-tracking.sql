@@ -1,0 +1,27 @@
+BEGIN;SET LOCAL statement_timeout='20s';
+DO $$ DECLARE native uuid;actor uuid;org uuid:=gen_random_uuid();chapter int;r jsonb;date1 timestamptz;n int; BEGIN
+ SELECT i.target_user_id,i.source_user_id INTO native,actor FROM tj.source_user_identity_map i WHERE i.activation_status='activated' AND NOT EXISTS(SELECT 1 FROM tj.platform_admins a WHERE a.user_id=i.source_user_id) AND NOT EXISTS(SELECT 1 FROM tj.academy_progress p WHERE p.user_id=i.source_user_id) LIMIT 1;
+ SELECT id INTO chapter FROM tj.academy_chapters ORDER BY id LIMIT 1;
+ IF native IS NULL THEN RAISE EXCEPTION 'Native fixture unavailable';END IF;
+ INSERT INTO tj.organizations(id,name,slug) VALUES(org,'Rollback tracking',org::text);
+ INSERT INTO tj.organization_members(organization_id,user_id,role,status) VALUES(org,actor,'owner','active');
+ INSERT INTO tj.org_app_entitlements(organization_id,app_key,status) VALUES(org,'iq_academy','active');
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);
+ EXECUTE 'SET LOCAL ROLE authenticated';
+ r:=public.tj_runtime_academy_activity(jsonb_build_object('action','set_lesson','chapter_id',chapter,'completed',true));date1:=(r->>'completed_at')::timestamptz;
+ IF r->>'changed'<>'true' OR date1 IS NULL THEN RAISE EXCEPTION 'Native completion not recorded';END IF;
+ r:=public.tj_runtime_academy_activity(jsonb_build_object('action','set_lesson','chapter_id',chapter,'completed',true));IF r->>'changed'<>'false' OR (r->>'completed_at')::timestamptz<>date1 THEN RAISE EXCEPTION 'Idempotent completion source date changed';END IF;
+ r:=public.tj_runtime_academy_activity('{}');IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r->'progress') p WHERE (p->>'chapter_id')::int=chapter AND p->>'completed_at' IS NOT NULL) THEN RAISE EXCEPTION 'Own mapped progress unreadable';END IF;
+ BEGIN PERFORM public.tj_runtime_academy_activity(jsonb_build_object('action','set_lesson','chapter_id',chapter,'completed',true,'user_id',gen_random_uuid()));RAISE EXCEPTION 'Spoofed actor accepted';EXCEPTION WHEN invalid_parameter_value THEN NULL;END;
+ r:=public.tj_runtime_academy_activity(jsonb_build_object('action','set_lesson','chapter_id',chapter,'completed',false));IF r->>'completed_at' IS NOT NULL THEN RAISE EXCEPTION 'Unmark failed';END IF;
+ EXECUTE 'RESET ROLE';
+ IF NOT EXISTS(SELECT 1 FROM tj.academy_progress WHERE user_id=actor AND chapter_id=chapter AND completed_at IS NULL) OR (native<>actor AND EXISTS(SELECT 1 FROM tj.academy_progress WHERE user_id=native AND chapter_id=chapter)) THEN RAISE EXCEPTION 'Source row removed or native identity written';END IF;
+ IF (SELECT count(*) FROM tj_private.academy_lesson_events WHERE source_user_id=actor AND chapter_id=chapter)<>2 OR NOT EXISTS(SELECT 1 FROM tj_private.academy_lesson_events WHERE source_user_id=actor AND chapter_id=chapter AND previous_completed_at=date1 AND completed_at IS NULL) THEN RAISE EXCEPTION 'Historical completion evidence lost';END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj_private.command_centre_refresh_queue WHERE organization_id=org) THEN RAISE EXCEPTION 'Completion did not feed reporting';END IF;
+ UPDATE tj.organization_members SET status='suspended' WHERE user_id=actor;
+ EXECUTE 'SET LOCAL ROLE authenticated';BEGIN PERFORM public.tj_runtime_academy_activity('{}');RAISE EXCEPTION 'Suspended user accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;EXECUTE 'RESET ROLE';
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);EXECUTE 'SET LOCAL ROLE authenticated';BEGIN PERFORM public.tj_runtime_academy_activity('{}');RAISE EXCEPTION 'Unmapped user accepted';EXCEPTION WHEN insufficient_privilege THEN NULL;END;EXECUTE 'RESET ROLE';
+ IF has_function_privilege('anon','public.tj_runtime_academy_activity(jsonb)','EXECUTE') OR has_table_privilege('authenticated','tj_private.academy_lesson_events','SELECT') THEN RAISE EXCEPTION 'History/anonymous access exposed';END IF;
+END $$;
+SELECT jsonb_build_object('passed',true,'fixtures_persisted',0,'checks',jsonb_build_array('native identity mapping','confirmed completion','idempotent date preservation','own progress read','actor spoof denial','unmark retains source row and history','automatic report enqueue','suspended/unmapped/anonymous denial')) verification;
+ROLLBACK;

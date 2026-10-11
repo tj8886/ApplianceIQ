@@ -1,0 +1,34 @@
+CREATE TABLE tj_private.academy_lesson_events(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,organization_id uuid NOT NULL REFERENCES tj.organizations(id),source_user_id uuid NOT NULL REFERENCES tj.source_auth_users(id),chapter_id integer NOT NULL REFERENCES tj.academy_chapters(id),previous_completed_at timestamptz,completed_at timestamptz,changed_at timestamptz NOT NULL DEFAULT clock_timestamp());
+ALTER TABLE tj_private.academy_lesson_events ENABLE ROW LEVEL SECURITY;
+CREATE INDEX academy_lesson_events_org_idx ON tj_private.academy_lesson_events(organization_id);
+CREATE INDEX academy_lesson_events_user_idx ON tj_private.academy_lesson_events(source_user_id);
+CREATE INDEX academy_lesson_events_chapter_idx ON tj_private.academy_lesson_events(chapter_id);
+REVOKE ALL ON tj_private.academy_lesson_events FROM PUBLIC,anon,authenticated,service_role;
+CREATE FUNCTION tj_private.academy_activity(p_payload jsonb DEFAULT '{}'::jsonb) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE actor uuid:=tj_private.current_source_user_id(); access jsonb;org uuid;action text:=coalesce(p_payload->>'action','load'); chapter int;complete boolean;before_date timestamptz;after_date timestamptz;found_row boolean;
+BEGIN
+ IF actor IS NULL THEN RAISE EXCEPTION 'access_denied' USING ERRCODE='42501';END IF;
+ IF EXISTS(SELECT 1 FROM jsonb_object_keys(p_payload) k WHERE k NOT IN('action','chapter_id','completed')) THEN RAISE EXCEPTION 'invalid_payload' USING ERRCODE='22023';END IF;
+ access:=tj_private.check_app_access('iq_academy');
+ IF access->>'allowed' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'academy_access_denied' USING ERRCODE='42501';END IF;
+ org:=(access->>'organization_id')::uuid;
+ IF org IS NULL THEN SELECT m.organization_id INTO org FROM tj.organization_members m JOIN tj.organizations o ON o.id=m.organization_id AND o.status='active' AND o.deleted_at IS NULL WHERE m.user_id=actor AND m.status='active' ORDER BY m.organization_id LIMIT 1;END IF;
+ IF org IS NULL THEN RAISE EXCEPTION 'active_membership_required' USING ERRCODE='42501';END IF;
+ IF action='load' THEN RETURN jsonb_build_object('progress',coalesce((SELECT jsonb_agg(jsonb_build_object('chapter_id',chapter_id,'completed_at',completed_at) ORDER BY chapter_id) FROM tj.academy_progress WHERE user_id=actor),'[]'::jsonb),'quiz_scores',coalesce((SELECT jsonb_agg(to_jsonb(q)-'user_id' ORDER BY vol) FROM tj.academy_quiz_scores q WHERE user_id=actor),'[]'::jsonb),'tracks',coalesce((SELECT jsonb_agg(to_jsonb(t)-'user_id' ORDER BY track_key) FROM tj.academy_track_progress t WHERE user_id=actor),'[]'::jsonb));END IF;
+ IF action<>'set_lesson' OR coalesce(p_payload->>'chapter_id','') !~ '^[0-9]{1,9}$' OR jsonb_typeof(p_payload->'completed') IS DISTINCT FROM 'boolean' THEN RAISE EXCEPTION 'invalid_lesson_request' USING ERRCODE='22023';END IF;
+ chapter:=(p_payload->>'chapter_id')::int;complete:=(p_payload->>'completed')::boolean;
+ IF NOT EXISTS(SELECT 1 FROM tj.academy_chapters WHERE id=chapter) THEN RAISE EXCEPTION 'chapter_unavailable' USING ERRCODE='22023';END IF;
+ PERFORM pg_advisory_xact_lock(hashtextextended('academy_lesson:'||actor::text||':'||chapter::text,0));
+ SELECT completed_at INTO before_date FROM tj.academy_progress WHERE user_id=actor AND chapter_id=chapter FOR UPDATE;found_row:=FOUND;
+ IF (complete AND before_date IS NOT NULL) OR (NOT complete AND (NOT found_row OR before_date IS NULL)) THEN RETURN jsonb_build_object('changed',false,'chapter_id',chapter,'completed_at',before_date);END IF;
+ after_date:=CASE WHEN complete THEN clock_timestamp() END;
+ INSERT INTO tj.academy_progress(user_id,chapter_id,completed_at) VALUES(actor,chapter,after_date) ON CONFLICT(user_id,chapter_id) DO UPDATE SET completed_at=excluded.completed_at;
+ INSERT INTO tj_private.academy_lesson_events(organization_id,source_user_id,chapter_id,previous_completed_at,completed_at) VALUES(org,actor,chapter,before_date,after_date);
+ RETURN jsonb_build_object('changed',true,'chapter_id',chapter,'completed_at',after_date);
+END $$;
+REVOKE ALL ON FUNCTION tj_private.academy_activity(jsonb) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION tj_private.academy_activity(jsonb) TO authenticated;
+CREATE FUNCTION public.tj_runtime_academy_activity(p_payload jsonb DEFAULT '{}'::jsonb) RETURNS jsonb LANGUAGE sql SECURITY INVOKER SET search_path='' AS $$SELECT tj_private.academy_activity(p_payload);$$;
+REVOKE ALL ON FUNCTION public.tj_runtime_academy_activity(jsonb) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.tj_runtime_academy_activity(jsonb) TO authenticated;
+NOTIFY pgrst,'reload schema';
