@@ -1,3 +1,4 @@
+import {fetchLiveProducts,productEvidenceText} from '../_shared/live-pim-products.ts';
 interface LivePimContext {
   matchedBrands: string[];
   text: string;
@@ -19,11 +20,8 @@ export async function fetchLivePimContext(admin: any, prompt: string): Promise<L
     .sort((a, b) => b.length - a.length)
     .slice(0, 3);
 
-  if (matched.length === 0) {
-    return { matchedBrands: [], text: "" };
-  }
-
-  const sections: string[] = [];
+  const products = await fetchLiveProducts(admin,prompt,matched);
+  const sections: string[] = ["LIVE APPLIANCE MODEL EVIDENCE (source dates are observation dates; updated_at is an edit date):\n"+productEvidenceText(products)];
 
   for (const brand of matched) {
     const brandSections: string[] = [];
@@ -122,7 +120,8 @@ export function buildSystemPrompt(args: {
       ? "- Consequential recommendations are routed to the human approval queue. State clearly that they await human approval."
       : "- This assistant is configured for advisory analysis only.",
     "- Ground answers in the provided tenant context and knowledge base. Never fabricate prices, specs, stock positions, review scores, or records — if the context does not contain it, say so plainly.",
-    "- For warranty terms, vendor contact numbers, and recall status specifically: the LIVE PRODUCT IQ PIM DATA section below is the current stored evidence — it is fetched fresh from the PIM on every request. If it conflicts with anything in the static knowledge base, the live PIM data wins. If a brand isn't covered in the live data, say so plainly and suggest checking Product IQ PIM directly rather than guessing.",
+    "- For appliance model descriptions, dimensions, specs, warranty terms, vendor contacts and recalls: the LIVE PRODUCT IQ PIM DATA section below is the current stored evidence — it is fetched fresh from the PIM on every request. If it conflicts with anything in the static knowledge base, the live PIM data wins. If a brand isn't covered in the live data, say so plainly and suggest checking Product IQ PIM directly rather than guessing.",
+    "- Stored evidence is not proof of a fresh external check. Never describe old or undated pricing as current, and never use historical chat or static course text to override live model evidence. Preserve market boundaries; ask which market when model records differ.",
     "- Respect tenant scope: never reference or infer data from other organizations.",
     "- Brand voice: verified over hyped. The price is real — we checked. Evidence before claims; honest trade-offs build trust.",
     methodology
@@ -140,7 +139,7 @@ export function buildSystemPrompt(args: {
   if (sc && Object.keys(sc as object).length > 0) parts.push(`SAFETY CONTROLS IN EFFECT:\n${JSON.stringify(sc)}`);
 
   if (args.livePimData.text) {
-    parts.push(`LIVE PRODUCT IQ PIM DATA (fetched fresh this request — stored evidence for contacts/warranty/recalls):\n${args.livePimData.text}`);
+    parts.push(`LIVE PRODUCT IQ PIM DATA (fetched fresh this request — stored appliance evidence with source dates):\n${args.livePimData.text}`);
   }
 
   const relevant = args.knowledge.filter((c) => c.score > 0);

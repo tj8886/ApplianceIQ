@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHandler} from '../../supabase/functions/ai-proxy/handler.ts';
 const env=n=>({SUPABASE_URL:'https://us.test',SUPABASE_ANON_KEY:'anon',SUPABASE_SERVICE_ROLE_KEY:'service',AI_MODEL_STANDARD:'claude-configured-test',ANTHROPIC_API_KEY:'synthetic'}[n]);let calls=0,finished=[];
-const client=(url,key,opts)=>key==='service'?{rpc:async(name,args)=>{finished.push(args);return{data:{}};}}:{auth:{getUser:async()=>({data:{user:{id:'native'}}})},rpc:async(name,args)=>name==='tj_runtime_my_platform_context'?{data:{organization_id:'tenant'}}:{data:{request_id:'request'}}};
+const client=(url,key,opts)=>key==='service'?{rpc:async(name,args)=>{finished.push(args);return{data:{}};}}:{auth:{getUser:async()=>({data:{user:{id:'native'}}})},schema:()=>({from:()=>({select:()=>({eq:()=>({limit:async()=>({data:[]})})})})}),rpc:async(name,args)=>name==='tj_runtime_my_platform_context'?{data:{organization_id:'tenant'}}:{data:{request_id:'request'}}};
 const handler=createHandler({env,createClient:client,fetchImpl:async(url,opts)=>{calls++;assert.equal(opts.headers.Authorization,undefined);assert.equal(opts.headers['x-api-key'],'synthetic');const body=JSON.parse(opts.body);assert.equal(body.model,'claude-configured-test');return new Response(JSON.stringify({content:[{type:'text',text:'Advisory response'}],usage:{input_tokens:2,output_tokens:3}}));}});
 const req=body=>new Request('https://edge.test',{method:'POST',headers:{Authorization:'Bearer caller'},body:JSON.stringify(body)});
 assert.equal((await handler(new Request('https://edge.test',{method:'POST'}))).status,401);

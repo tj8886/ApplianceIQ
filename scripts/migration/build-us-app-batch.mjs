@@ -1,3 +1,4 @@
+import {migratePimConsumers} from './us-pim-consumers.mjs';
 import {migrateBrandTraining} from './us-brand-training.mjs';
 import {migrateSpeciqLogos} from './us-speciq-logos.mjs';
 import {migrateSpeciqTechnical} from './us-speciq-technical.mjs';
@@ -33,6 +34,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  mkdirSync(join(target,'_aiq'),{recursive:true});copyFileSync(join(root,'apps/platform/aiq-module-adapter.js'),join(target,'_aiq/aiq-module-adapter.js'));
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
+  if(p===join(target,'index.html')&&['spec-iq','academy'].includes(app.key))s=migratePimConsumers(s,app.key);
   if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
