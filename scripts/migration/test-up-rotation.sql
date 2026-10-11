@@ -1,0 +1,55 @@
+-- Caller wraps this fixture in BEGIN/ROLLBACK; no source data is retained or removed.
+DO $$
+DECLARE native uuid;actor uuid;prof uuid;rep2 uuid;org uuid;sid uuid:=gen_random_uuid();wid uuid:=gen_random_uuid();sh uuid;sh2 uuid;entry uuid;r jsonb;r2 jsonb;payload jsonb;offered timestamptz;before_n int;
+BEGIN
+ SELECT im.target_user_id,im.source_user_id,p.id,m.organization_id INTO native,actor,prof,org FROM tj.source_user_identity_map im JOIN tj.profiles p ON p.user_id=im.source_user_id JOIN tj.organization_members m ON m.user_id=im.source_user_id JOIN tj.organizations o ON o.id=m.organization_id WHERE im.activation_status='activated' AND m.status='active' AND m.role IN('owner','admin') AND o.status='active' AND o.deleted_at IS NULL LIMIT 1;
+ SELECT p.id INTO rep2 FROM tj.profiles p JOIN tj.organization_members m ON m.user_id=p.user_id WHERE m.organization_id=org AND m.status='active' AND m.role IN('owner','admin','manager','member') AND p.id<>prof LIMIT 1;
+ IF rep2 IS NULL THEN RAISE EXCEPTION 'fixture_unavailable';END IF;
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);
+ INSERT INTO tj.org_locations(id,organization_id,location_type,name) VALUES(sid,org,'store','Rollback UP Rotation Store');
+ -- Isolate both reps from retained floor shifts inside this rollback transaction.
+ UPDATE tj.iq_shift_records SET is_active=false WHERE organization_id=org AND user_id IN(prof,rep2) AND is_active;
+ payload:=jsonb_build_object('organization_id',org,'store_id',sid);
+ EXECUTE 'SET LOCAL ROLE authenticated';
+ IF NOT EXISTS(SELECT 1 FROM tj.profiles WHERE user_id=actor AND id=prof) THEN RAISE EXCEPTION 'boot identity inaccessible';END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_in','rep_profile_id',prof,'role','salesperson'));
+ EXECUTE 'RESET ROLE';
+ IF r->>'ok' IS DISTINCT FROM 'true' THEN RAISE EXCEPTION 'clock in: %',r;END IF;sh:=(r->>'shift_id')::uuid;
+ r2:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_in','rep_profile_id',prof));IF r2->>'shift_id'<>sh::text OR r2->>'changed'<>'false' THEN RAISE EXCEPTION 'duplicate shift';END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_in','rep_profile_id',rep2));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'second shift: %',r;END IF;sh2:=(r->>'shift_id')::uuid;
+ IF (SELECT count(*) FROM tj.iq_up_queue_entries WHERE store_id=sid AND is_current_up)<>1 OR (SELECT count(*) FROM tj.iq_up_queue_entries WHERE store_id=sid AND is_next_in_line)<>1 THEN RAISE EXCEPTION 'queue flag failure';END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','status','rep_profile_id',prof,'status','break'));
+ IF r->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE store_id=sid AND user_id=rep2 AND is_current_up) THEN RAISE EXCEPTION 'unavailable rep not skipped: %',r;END IF;
+ SELECT id INTO entry FROM tj.iq_up_queue_entries WHERE store_id=sid AND is_current_up;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','accept_up','entry_id',entry));r2:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','recalc'));
+ IF EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE id=entry AND up_offered_at IS NOT NULL) THEN RAISE EXCEPTION 'accepted offer reset';END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','status','rep_profile_id',prof,'status','available'));
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','bump','rep_profile_id',prof));
+ SELECT id,up_offered_at INTO entry,offered FROM tj.iq_up_queue_entries WHERE store_id=sid AND is_current_up;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','timeout','entry_id',entry,'expected_offered_at',offered));IF r->>'changed'<>'false' THEN RAISE EXCEPTION 'early timeout';END IF;
+ offered:=now()-interval '2 minutes';UPDATE tj.iq_up_queue_entries SET up_offered_at=offered WHERE id=entry;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','timeout','entry_id',entry,'expected_offered_at',offered));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'timeout: %',r;END IF;
+ r2:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','timeout','entry_id',entry,'expected_offered_at',offered));
+ IF (SELECT ups_missed FROM tj.iq_shift_records WHERE id=sh)<>1 OR (SELECT count(*) FROM tj.iq_missed_and_potential_missed_ups WHERE store_id=sid)<>1 THEN RAISE EXCEPTION 'duplicate timeout metrics';END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','profiles'));IF r->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(r->'profiles') p WHERE p->>'id'=prof::text) THEN RAISE EXCEPTION 'profile picker mapping';END IF;
+ payload:=payload||jsonb_build_object('waiting_id',wid,'action','log','waiting',jsonb_build_object('store_id',sid,'customer_display_name','Rollback Rotation Customer'),'products','[]'::jsonb);
+ r:=public.tj_runtime_up_crm_handoff(payload);IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'log: %',r;END IF;
+ r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','assign','rep_profile_id',prof));IF r2->>'ok'<>'true' THEN RAISE EXCEPTION 'assign: %',r2;END IF;
+ IF EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE store_id=sid AND user_id=prof AND is_current_up) THEN RAISE EXCEPTION 'busy rep offered UP';END IF;
+ r2:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_out','rep_profile_id',prof));IF r2->>'error'<>'end_or_reassign_visit_first' THEN RAISE EXCEPTION 'clocked out active visit';END IF;
+ r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','assign','rep_profile_id',rep2,'counts_as_up',false,'reason','Specialist handoff'));IF r2->>'ok'<>'true' THEN RAISE EXCEPTION 'reassign: %',r2;END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE store_id=sid AND user_id=prof AND status_code='available' AND is_available_for_assignment) OR NOT EXISTS(SELECT 1 FROM tj.crm_deals d JOIN tj.profiles p ON p.user_id=d.owner_user_id WHERE d.id=(r->>'deal_id')::uuid AND p.id=rep2) THEN RAISE EXCEPTION 'reassignment floor / CRM ownership';END IF;
+ r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','after_sale','closed',true));IF r2->>'ok'<>'true' THEN RAISE EXCEPTION 'end visit: %',r2;END IF;
+ r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','after_sale','closed',true));
+ IF (SELECT closed_sales FROM tj.iq_shift_records WHERE id=sh2)<>1 OR EXISTS(SELECT 1 FROM tj.iq_customer_interactions WHERE customer_waiting_id=wid AND ended_at IS NULL) OR NOT EXISTS(SELECT 1 FROM tj.iq_customer_waiting_queue WHERE id=wid AND status='completed') THEN RAISE EXCEPTION 'end visit not terminal / idempotent';END IF;
+ IF NOT EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE store_id=sid AND user_id=rep2 AND status_code='available') THEN RAISE EXCEPTION 'completed rep not released';END IF;
+ payload:=jsonb_build_object('organization_id',org,'store_id',sid);
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','greeter_start','rep_profile_id',prof));r2:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','greeter_end','rep_profile_id',prof));IF r->>'ok'<>'true' OR r2->>'ok'<>'true' THEN RAISE EXCEPTION 'greeter: % %',r,r2;END IF;
+ UPDATE tj.organization_members SET role='member',visibility_scope='all' WHERE organization_id=org AND user_id=actor;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_out','rep_profile_id',rep2));IF r->>'error'<>'own_shift_required' THEN RAISE EXCEPTION 'member changed another shift: %',r;END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','bump','rep_profile_id',prof));IF r->>'error'<>'manager_required' THEN RAISE EXCEPTION 'member bumped queue';END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_out','rep_profile_id',prof));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'own clock out: %',r;END IF;
+ r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','recalc','organization_id',gen_random_uuid()));IF r->>'ok'='true' THEN RAISE EXCEPTION 'foreign organization allowed';END IF;
+ PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','recalc'));IF r->>'ok'='true' THEN RAISE EXCEPTION 'unmapped identity allowed';END IF;
+END $$;
+SELECT jsonb_build_object('passed',true,'persisted_fixture_rows',0,'tests','Authenticated identity, shifts, unavailable queue skip, accept retention, server timeout and retry, CRM reassignment, terminal visit release, sale metrics, greeter and member/scope denials') verification;
