@@ -1,9 +1,10 @@
 // Generated US clients keep the existing workflows but read appliance facts live.
+const eligiblePimAppliance=p=>/^(refrigerators?|freezers?|dishwashers?|ranges?|cooktops?|wallovens?|ovens?|hoods?|rangehoods?|ventilation|microwaves?|washers?|dryers?|laundry|winestorage|winecoolers?|beveragecenters?|compactappliances)$/.test(String(p.category||'').toLowerCase().replace(/[\s_-]+/g,''))&&!/^\s*(this\s+|replacement\s+|genuine\s+|universal\s+|the\s+)?(water filter|filter cartridge|trim kit|stacking kit|pedestal|hose|accessory)\b/i.test(p.short_description||p.long_description||'')&&![p.source_extracted_at,p.updated_at].some(d=>d&&new Date(d).getTime()>Date.now()+300000);
 export function migratePimConsumers(source,app){
  if(app==='spec-iq'){
   source=source.replace("var cols='id,brand_name,model,short_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage';", "var cols='id,brand_name,model,short_description,long_description,category,finish,msrp,width_inches,height_inches,depth_inches,voltage,amperage,source_extracted_at,updated_at';");
   source=source.replace("var params='select='+cols+'&limit=12';", "var params='select='+cols+'&status=eq.active&approval_status=eq.approved&is_parts_accessory=eq.false&source_review_status=in.(accepted,not_required,approved,pending,pending_review)&order=source_extracted_at.desc.nullslast,updated_at.desc&limit=12';");
-  source=source.replace("_searchResults=data||[];", "_searchResults=(data||[]).filter(p=>!/parts|accessor|filter|pedestal|kit/i.test(p.category||''));");
+  source=source.replace("_searchResults=data||[];", "_searchResults=(data||[]).filter("+eligiblePimAppliance.toString()+");");
   source=source.replace("el('ap-name').value=p.short_description||'';", "el('ap-name').value=p.short_description||p.long_description||p.brand_name+' '+p.model;");
   source=source.replace(".eq('product_id',p.id).order('is_primary'", ".eq('product_id',p.id).eq('approved',true).eq('embargoed',false).contains('audience_tiers',['public']).order('is_primary'");
   source=source.replace(".eq('product_id',p.id),", ".eq('product_id',p.id).eq('approved',true).eq('is_current',true).eq('embargoed',false).eq('requires_auth',false),");
@@ -17,7 +18,7 @@ export function migratePimConsumers(source,app){
   if(brand.error||!brand.data)throw Error('brand_context_unavailable');
   var result=await sb.from('aiq_products').select('id,model,category,short_description,long_description,finish,width_inches,height_inches,depth_inches,capacity_cu_ft,fuel_type,specs_json,source_extracted_at,updated_at,market').ilike('brand_name',brand.data.brand_name).eq('status','active').eq('approval_status','approved').eq('is_parts_accessory',false).in('source_review_status',['accepted','not_required','approved','pending','pending_review']).order('source_extracted_at',{ascending:false,nullsFirst:false}).order('updated_at',{ascending:false}).limit(60);
   if(result.error)throw Error('pim_products_unavailable');
-  var products=(result.data||[]).filter(p=>!/parts|accessor|filter|pedestal|kit/i.test(p.category||'')).filter(p=>![p.source_extracted_at,p.updated_at].some(d=>d&&new Date(d).getTime()>Date.now()+300000));
+  var products=(result.data||[]).filter(${eligiblePimAppliance.toString()});
   var assets=products.length?await sb.from('pim_product_images').select('product_id,file_url,cdn_url,is_primary').in('product_id',products.map(p=>p.id)).eq('approved',true).eq('embargoed',false).contains('audience_tiers',['public']).order('is_primary',{ascending:false}).limit(300):{data:[]};
   return (cards.data||[]).concat(products.map(p=>{var image=(assets.data||[]).find(x=>x.product_id===p.id&&/^https:\\/\\//i.test(x.cdn_url||x.file_url||''));return {product_id:p.id,card_type:'product_spotlight',title:p.model,content:{...p,image_url:image?(image.cdn_url||image.file_url).replaceAll('&amp;','&'):null}};}));
 }
