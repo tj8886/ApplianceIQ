@@ -1,3 +1,4 @@
+import {migrateAcademyRecords} from './us-academy-records.mjs';
 import {migrateAcademyActivity} from './us-academy-activity.mjs';
 import {migrateUpAdministration} from './us-up-administration.mjs';
 import {migrateCommandCentre} from './us-command-centre.mjs';
@@ -43,7 +44,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
   if(p===join(target,'index.html')&&app.key==='up-system')s=migrateUpAdministration(migrateUpOperations(migrateUpRotation(migrateUpCrmHandoff(s))));
   if(app.key==='command-center'&&['index.html','executive.html'].includes(relative(target,p)))s=migrateCommandCentre(s,relative(target,p));
   if(p===join(target,'index.html')&&['spec-iq','academy'].includes(app.key))s=migratePimConsumers(s,app.key);
-  if(p===join(target,'index.html')&&app.key==='academy')s=migrateAcademyActivity(s);
+  if(p===join(target,'index.html')&&app.key==='academy')s=migrateAcademyRecords(migrateAcademyActivity(s));
   if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
   if(app.key==='academy'&&p===join(target,'manufacturer.html'))s=migrateManufacturerInvitations(s);
