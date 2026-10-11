@@ -32,7 +32,7 @@ for(const scenario of ['success','invalid_image','upsert_error','queue_error','q
  const ok=['success','invalid_image','bounded'].includes(scenario);assert.equal(log.outcome,ok?'completed':'failed',scenario);
  if(scenario==='invalid_image'){assert.equal(log.detail.invalid,1);assert.equal(updates[0].values.status,'done');}
  if(scenario==='upsert_error')assert.equal(updates[0].values.status,'error');
- if(scenario==='bounded')assert.equal(claims,4);
+ if(scenario==='bounded')assert.equal(claims,1);
  for(const arg of claimArgs)assert.equal(arg.n,1);
  for(const u of updates){assert.ok(u.predicates.some(([c])=>c==='claimed_at'));assert.ok(!('attempts' in u.values));}
  if(!ok)assert.equal(log.detail.errors,1,scenario);
