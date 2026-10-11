@@ -66,6 +66,10 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
   if(p.endsWith('gate.js'))s=s.replace(/    \/\/ 1\. Token relay hash[\s\S]*?    \/\/ 2\./,'    // 2.').replace('or #aiq_relay= token relay hash, or igcc_token from Admin Dashboard','or igcc_token from Admin Dashboard');
   s=s.replaceAll('sb-fumwwhyozeouoqscolke-auth-token','sb-jdxslqmgjsuzoisuhvlc-auth-token');
   s=s.replaceAll('https://fumwwhyozeouoqscolke.supabase.co',config.url).replaceAll('sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV',config.publishable_key);
+  // Some apps still carry the Canadian legacy anon JWT rather than its publishable key.
+  s=s.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,(key)=>{
+   try{const claims=JSON.parse(Buffer.from(key.split('.')[1],'base64url').toString('utf8'));return claims.ref==='fumwwhyozeouoqscolke'&&claims.role==='anon'?config.publishable_key:key;}catch{return key;}
+  });
   s=s.replaceAll('https://appliance-iq-platform.netlify.app/aiq-module-adapter.js','/_aiq/aiq-module-adapter.js');
   s=s.replace(/\b(supabase\.)?createClient\(/g,(_m,namespace)=>{counts.clients_routed++;return `window.AIQ_US.createClient(${namespace??''}createClient,`;});
   if(p.endsWith('aiq-module-adapter.js')){s=s.replace(/  if\(!h\.relay\)[\s\S]*?  return \{session:data\.session,context:null\};/, '  return {session:null,context:null};');if(s.includes('sb.auth.setSession'))throw Error('Legacy adapter relay remains');}

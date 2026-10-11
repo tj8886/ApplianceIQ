@@ -4,12 +4,15 @@ import {join} from 'node:path';
 import vm from 'node:vm';
 const out=process.argv[2];if(!out)throw Error('Pass bulk build output directory');
 const report=JSON.parse(readFileSync(join(out,'batch-readiness.json'),'utf8'));
+const config=JSON.parse(readFileSync(new URL('../../config/us-east-client.json',import.meta.url),'utf8'));
 assert.equal(report.apps.length,12);assert.equal(report.published,false);
 function files(d){return readdirSync(d).flatMap(n=>{const p=join(d,n);return statSync(p).isDirectory()?files(p):[p]});}
 for(const app of report.apps){
  const dir=join(out,app.key);let routed=0;
  for(const p of files(dir).filter(p=>/\.(html|js|mjs)$/.test(p))){const s=readFileSync(p,'utf8');assert.ok(!s.includes('fumwwhyozeouoqscolke.supabase.co'),p);assert.ok(!s.includes('https://appliance-iq-platform.netlify.app/aiq-module-adapter.js'),p);if(p.endsWith('.html'))assert.ok(s.includes('src="/_aiq/us-client.js"'),p);routed+=(s.match(/window\.AIQ_US\.createClient\(/g)||[]).length;}
  assert.equal(routed,app.clients_routed);
+ for(const p of files(dir).filter(p=>/\.(html|js|mjs)$/.test(p))){for(const [key] of readFileSync(p,'utf8').matchAll(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g)){let claims;try{claims=JSON.parse(Buffer.from(key.split('.')[1],'base64url').toString('utf8'));}catch{continue;}assert.ok(!(claims.ref==='fumwwhyozeouoqscolke'&&claims.role==='anon'),`Canadian anon key remains: ${p}`);}}
+ if(app.key==='iq-build')assert.ok(readFileSync(join(dir,'index.html'),'utf8').includes(`const SB_KEY = '${config.publishable_key}'`),'IQ Build must use the US publishable key');
  const network=[];const context={window:{fetch:async(request)=>{network.push(request);return new Response('{}');}},Request,Response,URL,Headers};vm.createContext(context);vm.runInContext(readFileSync(join(dir,'_aiq/us-client.js'),'utf8'),context);
  const auth={},storage={},calls=[];const factory=(url,key,options)=>({supabaseUrl:url,auth,storage,schema:(schema)=>({from:(table)=>({schema,table})}),rpc:async(...args)=>{calls.push(args);return {data:true,error:null}}});
  const client=context.window.AIQ_US.createClient(factory,'https://jdxslqmgjsuzoisuhvlc.supabase.co','public-key');assert.equal(client.from('products').schema,'tj');assert.equal(client.from('products').table,'products');assert.equal(client.from('aiq_products').table,'aiq_products_app');assert.equal(client.from('aiq_product_versions').table,'aiq_product_versions_app');assert.equal(client.auth,auth);assert.equal(client.storage,storage);
