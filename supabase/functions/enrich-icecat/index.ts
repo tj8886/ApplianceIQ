@@ -51,7 +51,8 @@ async function enrichProduct(p: { id: string; brand_name: string; model_number: 
   const result = await fetchIcecat(username, p.brand_name, p.model_number)
 
   if (result.status !== "ok") {
-    await supabase.from("products").update({ icecat_status: result.status, icecat_enriched_at: new Date().toISOString() }).eq("id", p.id)
+    const { error } = await supabase.from("products").update({ icecat_status: result.status, icecat_enriched_at: new Date().toISOString() }).eq("id", p.id)
+    if (error) return { model: p.model_number, status: "db_error", reason: error.message }
     return { model: p.model_number, brand: p.brand_name, status: result.status, reason: result.reason }
   }
 
@@ -99,13 +100,21 @@ const handler = async (req: Request, inv: Invocation): Promise<Response> => {
   // Targeted mode: enrich one specific product (re-attempts regardless of status)
   if (body.product_id) {
     const { data: p } = await supabase.from("products").select("id, brand_name, model_number").eq("id", body.product_id).single()
-    if (!p) return new Response(JSON.stringify({ error: "product not found" }), { status: 404 })
+    if (!p) {
+      await finishInvocation(supabase, inv, "failed", { processed: 0, reason: "product_not_found_or_unreadable" })
+      return Response.json({ error: "product not found" }, { status: 404 })
+    }
     const result = await enrichProduct(p, username)
+    const failed = result.status === "error" || result.status === "db_error"
+    await finishInvocation(supabase, inv, failed ? "failed" : "completed", {
+      targeted: true, processed: 1, enriched: Number(result.status === "enriched"),
+      not_found: Number(result.status === "not_found"), errors: Number(failed), result_status: result.status,
+    })
     return new Response(JSON.stringify(result, null, 2), { headers: { "Content-Type": "application/json" } })
   }
 
   const batchSize = Math.min(body.batch_size ?? 25, 50)
-  const { data: pending } = await supabase
+  const { data: pending, error: pendingError } = await supabase
     .from("products")
     .select("id, brand_name, model_number")
     .eq("status", "active")
@@ -113,6 +122,10 @@ const handler = async (req: Request, inv: Invocation): Promise<Response> => {
     .order("icecat_enriched_at", { ascending: true, nullsFirst: true })
     .limit(batchSize)
 
+  if (pendingError) {
+    await finishInvocation(supabase, inv, "failed", { processed: 0, errors: 1, reason: "pending_query_failed" })
+    return Response.json({ error: "pending query failed" }, { status: 503 })
+  }
   if (!pending || pending.length === 0) {
     // Completed with nothing to do. "Ran and found no work" and "never ran" are
     // different facts and only this row can tell them apart.
@@ -129,9 +142,13 @@ const handler = async (req: Request, inv: Invocation): Promise<Response> => {
 
   const enriched = results.filter(r => r.status === "enriched").length
   const notFound = results.filter(r => r.status === "not_found").length
-  console.log(`[enrich-icecat] ${enriched} enriched, ${notFound} not found, of ${results.length}`)
-  await finishInvocation(supabase, inv, "completed", { processed: results.length, enriched, not_found: notFound })
-  return new Response(JSON.stringify({ processed: results.length, enriched, not_found: notFound, results }, null, 2), { headers: { "Content-Type": "application/json" } })
+  const errors = results.filter(r => r.status === "error" || r.status === "db_error").length
+  const databaseErrors = results.filter(r => r.status === "db_error").length
+  console.log(`[enrich-icecat] ${enriched} enriched, ${notFound} not found, ${errors} errors, of ${results.length}`)
+  await finishInvocation(supabase, inv, errors > 0 ? "failed" : "completed", {
+    processed: results.length, enriched, not_found: notFound, errors, database_errors: databaseErrors,
+  })
+  return new Response(JSON.stringify({ processed: results.length, enriched, not_found: notFound, errors, results }, null, 2), { headers: { "Content-Type": "application/json" } })
 }
 
 Deno.serve(async (req: Request) => {
