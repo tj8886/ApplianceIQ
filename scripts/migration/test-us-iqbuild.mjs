@@ -1,0 +1,7 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';import {migrateIqBuild} from './us-iqbuild.mjs';
+const s=migrateIqBuild(fs.readFileSync('apps/iq-build/index.html','utf8'));for(const m of s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g))new vm.Script('(async()=>{'+m[1].replace(/^import .*$/gm,'')+'})()');
+assert.ok(s.includes('created_by: iqbuildContext.source_user_id'));assert.ok(s.includes("eq('organization_id',iqbuildContext.organization_id)"));assert.ok(s.includes('aiq:intelligence-ready'));
+const events=[];const ctx=vm.createContext({Proxy,Promise,Error,window:{addEventListener:(name,fn)=>events.push([name,fn])},supabase:{from(){}},toast(){}});const a=s.indexOf('function iqbuildQuery('),b=s.indexOf('let iqbuildContext=',a);new vm.Script(s.slice(a,b)).runInContext(ctx);
+function builder(error){return{select(){return this},eq(){return this},then(resolve,reject){return Promise.resolve({data:error?null:[{id:'saved'}],error:error?{message:'denied'}:null}).then(resolve,reject);}};}
+ctx.q=builder(true);await assert.rejects(new vm.Script("(async()=>await iqbuildQuery(q).select('*').eq('id','x'))()").runInContext(ctx),/could not be loaded or saved/);
+ctx.q=builder(false);const r=await new vm.Script("(async()=>await iqbuildQuery(q).select('*'))()").runInContext(ctx);assert.equal(r.data[0].id,'saved');console.log('IQ Build UI: generated syntax, mapped creator/context, query failure propagation, successful result and secure handoff boot passed');

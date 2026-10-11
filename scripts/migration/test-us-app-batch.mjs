@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import vm from 'node:vm';
 const out=process.argv[2];if(!out)throw Error('Pass bulk build output directory');
 const report=JSON.parse(readFileSync(join(out,'batch-readiness.json'),'utf8'));
-assert.equal(report.apps.length,11);assert.equal(report.published,false);
+assert.equal(report.apps.length,12);assert.equal(report.published,false);
 function files(d){return readdirSync(d).flatMap(n=>{const p=join(d,n);return statSync(p).isDirectory()?files(p):[p]});}
 for(const app of report.apps){
  const dir=join(out,app.key);let routed=0;
@@ -23,4 +23,4 @@ for(const app of report.apps){
  await context.window.fetch('https://jdxslqmgjsuzoisuhvlc.supabase.co/rest/v1/rpc/get_invite_preview',{method:'POST',body:'{}'});assert.ok(network.at(-1).url.endsWith('/rpc/tj_runtime_get_invite_preview'));assert.equal(network.at(-1).headers.get('Authorization'),null);
  const adapter=readFileSync(join(dir,'_aiq/aiq-module-adapter.js'),'utf8');assert.ok(!adapter.includes('sb.auth.setSession'));assert.ok(adapter.includes('sb.auth.verifyOtp'));
 }
-console.log('11 app bundles passed routing, source-endpoint removal, local assets, auth/storage preservation and ticket-only shared handoff checks');
+console.log('12 app bundles passed routing, source-endpoint removal, local assets, auth/storage preservation and ticket-only shared handoff checks');

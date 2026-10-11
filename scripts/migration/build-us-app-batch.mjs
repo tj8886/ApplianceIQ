@@ -1,3 +1,4 @@
+import {migrateIqBuild} from './us-iqbuild.mjs';
 import {migrateAcademyLearning} from './us-academy-learning.mjs';
 import {migrateAcademyRecords} from './us-academy-records.mjs';
 import {migrateAcademyActivity} from './us-academy-activity.mjs';
@@ -42,6 +43,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  mkdirSync(join(target,'_aiq'),{recursive:true});copyFileSync(join(root,'apps/platform/aiq-module-adapter.js'),join(target,'_aiq/aiq-module-adapter.js'));
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
+  if(p===join(target,'index.html')&&app.key==='iq-build')s=migrateIqBuild(s);
   if(p===join(target,'index.html')&&app.key==='up-system')s=migrateUpAdministration(migrateUpOperations(migrateUpRotation(migrateUpCrmHandoff(s))));
   if(app.key==='command-center'&&['index.html','executive.html'].includes(relative(target,p)))s=migrateCommandCentre(s,relative(target,p));
   if(p===join(target,'index.html')&&['spec-iq','academy'].includes(app.key))s=migratePimConsumers(s,app.key);
