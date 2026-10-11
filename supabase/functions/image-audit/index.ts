@@ -16,7 +16,7 @@ const sb = createClient(
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 const WALL_BUDGET_MS = 70_000;
-const MAX_PRODUCTS = 4;
+const MAX_PRODUCTS = 1;
 
 function downscaleUrl(url: string): string {
   try {
@@ -107,31 +107,27 @@ async function auditUrl(productId: string, url: string, kind: string, galleryInd
     decode_ok: false, error: null, audited_at: new Date().toISOString(),
   };
   try {
-    const small = downscaleUrl(url);
-    let res = await fetchBytes(small, deadline);
-    if ((res.status !== 200 || !res.buf) && small !== url) res = await fetchBytes(url, deadline);
+    // Decode only a bounded rendition. Original multi-megapixel images can
+    // exhaust edge CPU before the runtime can write a terminal result.
+    const prox = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=jpg&w=420&h=420&fit=inside`;
+    const res = await fetchBytes(prox, deadline);
     row.fetch_status = res.status;
     row.content_type = res.ct;
 
     let img: Image | null = null;
-    if (res.buf) {
+    if (res.buf && res.buf.byteLength <= 1_000_000) {
       row.bytes = res.buf.byteLength;
       img = await tryDecode(res.buf);
     }
-    // Fallback: WebP/AVIF or blocked CDN -> re-encode to JPEG via images.weserv.nl
+    // On rendition failure, retain direct HTTP evidence without decoding an
+    // unbounded original. A proxy failure does not prove the source is broken.
     if (!img) {
       try {
-        const prox = `https://images.weserv.nl/?url=${encodeURIComponent(url)}&output=jpg&w=420&fit=inside`;
-        const pres = await fetchBytes(prox, deadline);
-        if (pres.status === 200 && pres.buf) {
-          img = await tryDecode(pres.buf);
-          if (img) {
-            row.fetch_status = 200;
-            row.content_type = (res.ct ?? "") + " -> jpeg(weserv)";
-            row.bytes = pres.buf.byteLength;
-            row.error = null;
-          }
-        }
+        const direct = await fetch(url,{headers:{"User-Agent":UA},signal:AbortSignal.timeout(Math.max(1,Math.min(8_000,deadline-Date.now()-3_000))),redirect:"follow"});
+        row.fetch_status = direct.status;
+        row.content_type = direct.headers.get("content-type");
+        await direct.body?.cancel();
+        row.error = direct.ok ? "rendition unavailable; original not decoded" : `source HTTP ${direct.status}; rendition unavailable`;
       } catch { /* keep original failure info */ }
     }
     if (img) {
@@ -140,7 +136,7 @@ async function auditUrl(productId: string, url: string, kind: string, galleryInd
       Object.assign(row, metricsFrom(img));
       row.decode_ok = true;
     } else if (res.buf && !row.error) {
-      row.error = "decode: unsupported image type (weserv fallback failed too)";
+      row.error = "rendition decode failed; source validity unconfirmed";
     }
   } catch (e) {
     row.error = `fetch: ${String(e).slice(0, 180)}`;
