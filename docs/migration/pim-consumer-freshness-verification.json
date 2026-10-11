@@ -1,0 +1,152 @@
+{
+  "captured_at": "2026-10-11T00:45:38.574Z",
+  "project": "jdxslqmgjsuzoisuhvlc",
+  "consumer_ui_commit": "c7baea40a9434a803d07631708c8207eafc8aab7",
+  "roleplay_commit": "0576f2a7cd7d42266bd38c21709b069ee5922f14",
+  "deployments": [
+    {
+      "id": "6acada8b2cbb26000832b335",
+      "site_id": "87c2bbe6-c0d0-4bad-a483-4336423c490a",
+      "state": "ready",
+      "commit_ref": "c7baea40a9434a803d07631708c8207eafc8aab7",
+      "published_at": "2026-10-11T00:39:05.230Z",
+      "url": "https://iqacademy-appliance-training.netlify.app"
+    },
+    {
+      "id": "6acada8a77979b000890dc39",
+      "site_id": "8dffa62c-7429-43eb-90dc-069308e4c3b3",
+      "state": "ready",
+      "commit_ref": "c7baea40a9434a803d07631708c8207eafc8aab7",
+      "published_at": "2026-10-11T00:38:54.075Z",
+      "url": "https://appliance-spec-iq.netlify.app"
+    }
+  ],
+  "edges": [
+    {
+      "name": "ai-proxy",
+      "version": 4,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "changed_source_matches_main": true
+    },
+    {
+      "name": "ai-team-coach",
+      "version": 3,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "changed_source_matches_main": true
+    },
+    {
+      "name": "ai-request-processor",
+      "version": 4,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "changed_source_matches_main": true
+    },
+    {
+      "name": "ai-roleplay",
+      "version": 2,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "changed_source_matches_main": true
+    },
+    {
+      "name": "performance-roleplay",
+      "version": 2,
+      "status": "ACTIVE",
+      "verify_jwt": true,
+      "changed_source_matches_main": true
+    }
+  ],
+  "http_checks": [
+    {
+      "app": "academy",
+      "status": 200,
+      "new_pim_code": true,
+      "us": true,
+      "canada": false
+    },
+    {
+      "app": "spec-iq",
+      "status": 200,
+      "new_pim_code": true,
+      "us": true,
+      "canada": false
+    },
+    {
+      "edge": "ai-proxy",
+      "unsigned_status": 401
+    },
+    {
+      "edge": "ai-team-coach",
+      "unsigned_status": 401
+    },
+    {
+      "edge": "ai-request-processor",
+      "unsigned_status": 401
+    }
+  ],
+  "queue": {
+    "checked_at": "2026-10-11 00:44:56.531014+00",
+    "incoming_pending": 0,
+    "incoming_errors": 0,
+    "outgoing_pending": 0,
+    "outgoing_errors": 0,
+    "deferred": 0
+  },
+  "original_academy_spotlights": {
+    "count": 10762,
+    "latest_pim_synced_at": "2026-08-13T11:59:09.421585Z",
+    "source_rows_retained": true
+  },
+  "daily_monitor_includes_consumers": true,
+  "tests": [
+    "live PIM model-only/repeated fresh reads/source dates/market/private fields/parts/future dates",
+    "Academy repeated live PIM reads and full generated scripts",
+    "AI proxy/processor/team coach regressions",
+    "customer roleplay and performance roleplay regressions",
+    "11 US bundles",
+    "Spec IQ draft/technical regressions",
+    "live mapped authenticated selected-column read",
+    "source byte matching against GitHub and all five deployed edge functions",
+    "service-role identity-index status update rollback; worker execution still denied"
+  ],
+  "partial_enrichment": {
+    "prior_error": "SQLSTATE 42501 permission denied for function pim_web_key in identity index",
+    "fix": "Pure immutable text-only normalizer execute granted to authenticated/service_role; worker authority unchanged",
+    "latest_run": {
+      "function_name": "enrich-partial",
+      "started_at": "2026-10-11 00:44:38.162+00",
+      "completed_at": "2026-10-11 00:44:38.356+00",
+      "outcome": "completed",
+      "detail": {
+        "filled": 0,
+        "reason": "no_pending",
+        "processed": 0
+      }
+    },
+    "new_provider_facts_from_retry": 0
+  },
+  "advisors": {
+    "security_counts": {
+      "INFO": 631,
+      "ERROR": 8,
+      "WARN": 41
+    },
+    "performance_counts": {
+      "INFO": 1680,
+      "WARN": 61
+    },
+    "existing_findings_retained": true,
+    "intentionally_private_rls_no_policy": true,
+    "remediation": "https://supabase.com/docs/guides/database/database-linter"
+  },
+  "limits": [
+    "Signed-in consumer UI and paid model invocations have not all been exercised; handler tests use mocks plus live authenticated SQL and deployment checks",
+    "Live PIM retrieval means latest stored evidence, not a daily external recheck of every model",
+    "Existing package snapshots and pricing remain historical records",
+    "Complete sourced fields remain protected; incoming conflicts retained for review",
+    "No claim of globally largest coverage without comparative measurement"
+  ],
+  "deleted_files": 0
+}

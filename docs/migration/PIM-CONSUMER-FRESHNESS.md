@@ -26,3 +26,9 @@ Repository saves precede Edge deployment. Deployment evidence is recorded separa
 ## Coverage goal
 
 The ambition is the broadest, most current appliance PIM. Track appliance counts by brand/market/category, missing descriptions/specs/assets, actual provider observation dates, held identity/source conflicts, intake/publication latency and consumer retrieval health. Global leadership cannot be claimed without coverage benchmarks. Daily source reception and automatic distribution do not mean every model is externally rechecked every day. Complete existing sourced fields remain protected; conflicting incoming evidence is retained for review rather than silently changing facts.
+
+## Completion evidence
+
+Production Academy and Spec IQ builds published the consumer change. All five bot/roleplay endpoints are active with changed sources matching the repository. At the final check, incoming/outgoing queues, worker errors and deferred receipts were all zero. The daily freshness monitor includes consumer code/source drift. Detailed verification: pim-consumer-freshness-verification.json.
+
+A partial-enrichment retry identified an index-expression permission failure in the immutable text-only model normalizer. A fresh corrective migration grants only normalizer execution to authenticated/service roles; worker execution stays revoked. The service-role status-update rollback test passes. The subsequent provider invocation completed with no pending work, and supplied no new specs. Existing security/performance advisor findings are documented rather than declared resolved; remediation reference: https://supabase.com/docs/guides/database/database-linter.
