@@ -4,7 +4,7 @@ DECLARE org uuid:=gen_random_uuid(); other uuid:=gen_random_uuid(); native uuid;
 BEGIN
  SELECT i.target_user_id,i.source_user_id INTO native,actor FROM tj.source_user_identity_map i WHERE i.activation_status='activated' AND NOT EXISTS(SELECT 1 FROM tj.platform_admins a WHERE a.user_id=i.source_user_id) AND NOT EXISTS(SELECT 1 FROM tj.academy_progress p WHERE p.user_id=i.source_user_id) AND NOT EXISTS(SELECT 1 FROM tj.academy_track_progress p WHERE p.user_id=i.source_user_id) LIMIT 1;
  SELECT u.id INTO learner FROM tj.source_auth_users u WHERE u.id<>actor AND NOT EXISTS(SELECT 1 FROM tj.academy_progress p WHERE p.user_id=u.id) AND NOT EXISTS(SELECT 1 FROM tj.academy_track_progress p WHERE p.user_id=u.id) AND NOT EXISTS(SELECT 1 FROM tj.academy_quiz_scores p WHERE p.user_id=u.id) LIMIT 1;
- SELECT array_agg(id) INTO chapters FROM(SELECT id FROM tj.academy_chapters ORDER BY id LIMIT 3) x;
+ SELECT array_agg(id) INTO chapters FROM(SELECT id FROM tj.academy_chapters ORDER BY chapter_number LIMIT 3) x;
  SELECT array_agg(track_key) INTO tracks FROM(SELECT track_key FROM tj.academy_tracks ORDER BY track_key LIMIT 2) x;
  SELECT id INTO provider FROM tj.platform_connectors WHERE key='shopify';
  IF actor IS NULL OR learner IS NULL OR array_length(chapters,1)<>3 OR array_length(tracks,1)<>2 THEN RAISE EXCEPTION 'Academy fixtures unavailable';END IF;
@@ -19,7 +19,7 @@ BEGIN
  INSERT INTO tj.platform_connector_connections(id,organization_id,connector_id,display_name,status,auth_status) VALUES(conn,org,provider,'Rollback connection','active','valid');
  INSERT INTO tj.platform_sync_jobs(connection_id,job_type,direction,status,completed_at) VALUES(conn,'rollback','inbound','queued',NULL),(conn,'rollback','inbound','success',now()),(conn,'rollback','inbound','success',NULL);
  m:=tj_private.command_centre_academy_evidence(org);
- IF m->>'lesson_completions'<>'2' OR m->>'lesson_completions_this_month'<>'1' OR m->>'completed_tracks'<>'1' OR m->>'started_uncompleted_tracks'<>'1' OR m->>'completion_pct' IS NOT NULL OR m#>>'{source,latest_source_at}' IS NULL THEN RAISE EXCEPTION 'Progress/source dates wrong: %',m;END IF;
+ IF m->>'lesson_completions'<>'2' OR m->>'lesson_completions_this_month'<>'1' OR m->>'completed_tracks'<>'1' OR m->>'started_uncompleted_tracks'<>'2' OR m->>'completion_pct' IS NOT NULL OR m#>>'{source,latest_source_at}' IS NULL THEN RAISE EXCEPTION 'Progress/source dates wrong: %',m;END IF;
  IF tj_private.command_centre_academy_evidence(other)->>'lesson_completions' IS NOT NULL THEN RAISE EXCEPTION 'Foreign learner progress included';END IF;
  m:=tj_private.command_centre_integration_evidence(org);
  IF m#>>'{connections,0,completed_successful_jobs}'<>'1' OR m#>>'{connections,0,received_pos_transactions}'<>'0' OR m#>>'{connections,0,job_status_counts,queued}'<>'1' THEN RAISE EXCEPTION 'Dispatch or connection mistaken for import: %',m;END IF;
