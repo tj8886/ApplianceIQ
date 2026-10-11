@@ -6,7 +6,7 @@ BEGIN
  SELECT p.id INTO rep2 FROM tj.profiles p JOIN tj.organization_members m ON m.user_id=p.user_id WHERE m.organization_id=org AND m.status='active' AND m.role IN('owner','admin','manager','member') AND p.id<>prof LIMIT 1;
  IF rep2 IS NULL THEN RAISE EXCEPTION 'fixture_unavailable';END IF;
  PERFORM set_config('request.jwt.claim.sub',native::text,true);
- INSERT INTO tj.org_locations(id,organization_id,location_type,name) VALUES(sid,org,'store','Rollback UP Rotation Store');
+ INSERT INTO tj.org_locations(id,organization_id,location_type,name,timezone) VALUES(sid,org,'store','Rollback UP Rotation Store','America/Toronto');
  -- Isolate both reps from retained floor shifts inside this rollback transaction.
  UPDATE tj.iq_shift_records SET is_active=false WHERE organization_id=org AND user_id IN(prof,rep2) AND is_active;
  payload:=jsonb_build_object('organization_id',org,'store_id',sid);
@@ -53,8 +53,12 @@ BEGIN
  r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','after_sale','waiting_id',wid,'closed',false,'reason','comparing_options','follow_up_date','2026-10-12','no_follow_up',false));
  IF r2->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM tj.crm_deals WHERE id=(r->>'deal_id')::uuid AND closed_at IS NULL AND value_amount IS NULL AND next_action_date='2026-10-12'::date AND follow_up_status='scheduled') OR NOT EXISTS(SELECT 1 FROM tj.iq_customer_interactions WHERE customer_waiting_id=wid AND outcome='no_sale' AND ended_at IS NOT NULL AND follow_up_date='2026-10-12'::date AND sale_amount IS NULL) OR (SELECT closed_sales FROM tj.iq_shift_records WHERE id=sh)<>0 THEN RAISE EXCEPTION 'non-sale follow-up / pricing evidence failed: %',r2;END IF;
 
+ IF NOT EXISTS(SELECT 1 FROM tj.metric_snapshots WHERE location_id=sid AND metric_key='floor_conversion' AND actual_value=50) THEN RAISE EXCEPTION 'automatic reporting trigger did not publish';END IF;
+ UPDATE tj.metric_snapshots SET target_value=10 WHERE location_id=sid AND metric_key='floor_conversion';
+ UPDATE tj.iq_hourly_traffic_summaries SET adjusted_traffic=9 WHERE store_id=sid AND raw_traffic=2;
  r:=public.tj_runtime_up_operations(payload||jsonb_build_object('action','refresh_reports'));
  IF r->>'ok'<>'true' OR (r->>'walk_ins')::int<>2 OR (r->>'closed_visits')::int<>1 OR NOT EXISTS(SELECT 1 FROM tj.metric_snapshots WHERE location_id=sid AND metric_key='floor_conversion' AND actual_value=50) THEN RAISE EXCEPTION 'distinct visit report failed: %',r;END IF;
+ IF r->>'period_key'<>((now() AT TIME ZONE 'America/Toronto')::date)::text OR NOT EXISTS(SELECT 1 FROM tj.metric_snapshots WHERE location_id=sid AND metric_key='floor_conversion' AND target_value=10 AND variance_value=40) OR NOT EXISTS(SELECT 1 FROM tj.iq_hourly_traffic_summaries WHERE store_id=sid AND raw_traffic=2 AND adjusted_traffic=9) THEN RAISE EXCEPTION 'local date, target or traffic adjustment preservation';END IF;
  r:=public.tj_runtime_up_operations(payload||jsonb_build_object('action','save_settings','settings',jsonb_build_object('queue_name','Fixture Floor','missed_up_queue_rule','back_of_queue','break_max_per_shift',2,'paid_break_minutes',15,'lunch_minutes',30,'is_open_rotation_enabled',false,'accept_up_timeout_seconds',45,'accept_up_action','back_of_queue','greeter_enabled',true,'greeter_user_id',prof)));
  IF r->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM tj.iq_store_settings WHERE store_id=sid AND accept_up_timeout_seconds=45 AND greeter_user_id=prof) OR EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE store_id=sid AND user_id=prof AND is_in_queue) THEN RAISE EXCEPTION 'settings greeter save failed: %',r;END IF;
  r:=public.tj_runtime_up_operations(payload||jsonb_build_object('action','save_settings','settings',jsonb_build_object('queue_name','Fixture Floor','missed_up_queue_rule','skip_once','break_max_per_shift',2,'paid_break_minutes',15,'lunch_minutes',30,'is_open_rotation_enabled',true,'accept_up_timeout_seconds',30,'accept_up_action','next_in_line','greeter_enabled',false)));
@@ -77,6 +81,7 @@ BEGIN
  r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','bump','rep_profile_id',prof));IF r->>'error'<>'manager_required' THEN RAISE EXCEPTION 'member bumped queue';END IF;
  r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_out','rep_profile_id',prof));IF r->>'ok'<>'true' THEN RAISE EXCEPTION 'own clock out: %',r;END IF;
  r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','recalc','organization_id',gen_random_uuid()));IF r->>'ok'='true' THEN RAISE EXCEPTION 'foreign organization allowed';END IF;
+ r:=public.tj_runtime_up_operations(payload||jsonb_build_object('action','refresh_reports','store_id',gen_random_uuid()));IF r->>'ok'='true' THEN RAISE EXCEPTION 'foreign store operations allowed';END IF;
  PERFORM set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','recalc'));IF r->>'ok'='true' THEN RAISE EXCEPTION 'unmapped identity allowed';END IF;
 END $$;
 SELECT jsonb_build_object('passed',true,'persisted_fixture_rows',0,'tests','Rotation regression, settings bounds and greeter release, authenticated dispute filing and retry, manager correction and denial, distinct local-day reporting') verification;
