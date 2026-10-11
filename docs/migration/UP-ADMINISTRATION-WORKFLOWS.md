@@ -1,0 +1,17 @@
+# US UP team, stores and missed-UP review
+
+`up_administration` checks activated identity, active organization membership and organization/store scope. Team and store changes require an owner or administrator. Only owners can modify owner/admin members or grant owner/admin roles. Organization-level locking protects the last active owner. A member with an active shift cannot be suspended until clock-out.
+
+Suspension uses the existing `suspended` membership state, preserves the membership/profile/assignment records, and can be explicitly reversed. Removed/invited memberships cannot be silently reactivated. Store deactivation updates `is_active` and `closed_at`, preserving floor history, settings, assignments and linked records. The last active store and stores with active shifts or visits are protected. Archived stores remain visible in settings for reactivation but disappear from active selectors; UP write APIs reject inactive stores.
+
+Store assignment writes the source user ID from the scoped membership, not the floor profile ID. The roster displays existing store assignments. Assigning another store retains prior store access; marking it primary updates primary flags. Revoking individual store access is outside this patch and requires a wider platform permission change because the retained assignment schema has no inactive flag.
+
+The UP client uses the existing reviewed invitation creation/revocation/acceptance APIs. Creation specifies the current store and produces a link for manual sharing. No email or other message is sent automatically. Acceptance requires the invited confirmed email and retains existing active membership roles/access. The legacy direct membership, invite and store writes are removed from the generated settings bundle; imported source is retained.
+
+Manual missed-UP reports have stable IDs, verified filed-by profiles, active-shift evidence and no KPI impact while pending. Managers may confirm, excuse or retain a potential report. Confirmation applies the configured back-of-queue, hold-position or skip-once rule; repeated confirmation cannot add another missed-UP count. Excusing a counted report restores the counter. Stored queue consequences include before/after positions. This changes only the expressly reviewed record and its evidenced shift.
+
+Rollback SQL tests cover invitations and existing-owner preservation, stable store creation, source-ID assignment, suspension/reactivation, active-shift and last-owner guards, inactive-store rejection, pending reports, confirmation retries, excuse reversal and member denial. Existing rotation/settings/dispute/reporting regressions run in the same fixture. Generated script syntax and the eleven-app build/runtime route checks pass. No fixture customers, shifts, stores, memberships, invitations or missed-UP reports are retained.
+
+Historical audit: 28 unlinked waiting records, dated June 2–July 25, 2026; 25 have completed interaction evidence and 16 have a reported sale outcome. There are no matching waiting-ID tags in contacts/deals and no unique email or normalized-phone contact matches within the same organization. No historical CRM link was invented and no source rows were changed. Those records need an explicitly evidenced mapping or a separately labelled historical import, rather than recreating them as present-day floor visits.
+
+The signed-in browser walkthrough remains pending as agreed.
