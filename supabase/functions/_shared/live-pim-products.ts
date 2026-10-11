@@ -19,7 +19,19 @@ export async function fetchLiveProducts(catalog:any,prompt:string,brands:string[
   else return [];
   const {data,error}=await query.order('source_extracted_at',{ascending:false,nullsFirst:false}).order('updated_at',{ascending:false}).limit(24);
   if(error)throw Error('scoped_catalog_context_failed');
-  return (data??[]).filter(applianceRecord).filter((p:any)=>![p.source_extracted_at,p.updated_at].some(d=>d&&new Date(d).getTime()>Date.now()+300000)).slice(0,12).map((p:any)=>({...p,specs_json:publicSpecs(p.specs_json)}));
+  const products=(data??[]).filter(applianceRecord).filter((p:any)=>![p.source_extracted_at,p.updated_at].some(d=>d&&new Date(d).getTime()>Date.now()+300000)).slice(0,12).map((p:any)=>({...p,specs_json:publicSpecs(p.specs_json)}));
+  if(!products.length)return products;
+  const ids=products.map((p:any)=>p.id);
+  const [features,dimensions]=await Promise.all([
+    catalog.from('pim_product_features').select('product_id,feature_name,feature_value,feature_description,created_at,updated_at').in('product_id',ids).order('updated_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).limit(400),
+    catalog.from('pim_product_dimensions').select('product_id,dimension_type,width_inches,height_inches,depth_inches,created_at,updated_at').in('product_id',ids).eq('dimension_type','product').order('updated_at',{ascending:false,nullsFirst:false}).order('created_at',{ascending:false}).limit(100),
+  ]);
+  if(features.error||dimensions.error)throw Error('scoped_catalog_context_failed');
+  const dated=(r:any)=>![r.updated_at,r.created_at].some(d=>d&&new Date(d).getTime()>Date.now()+300000);
+  return products.map((p:any)=>({...p,
+    feature_evidence:(features.data??[]).filter((f:any)=>f.product_id===p.id&&dated(f)&&!/(cost|margin|dealer|wholesale|token|secret|password|price)/i.test(f.feature_name??'')).slice(0,40),
+    dimension_evidence:(dimensions.data??[]).filter((d:any)=>d.product_id===p.id&&dated(d)).slice(0,3),
+  }));
 }
 export function productEvidenceText(products:any[]):string {
   if(!products.length)return 'No eligible appliance model evidence matched. Do not infer missing model facts from a brand or old conversation.';
