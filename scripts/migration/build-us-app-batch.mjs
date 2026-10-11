@@ -1,4 +1,5 @@
 import {migrateUpAdministration} from './us-up-administration.mjs';
+import {migrateCommandCentre} from './us-command-centre.mjs';
 import {migrateUpOperations} from './us-up-operations.mjs';
 import {migrateUpRotation} from './us-up-rotation.mjs';
 import {migrateUpCrmHandoff} from './us-up-crm-handoff.mjs';
@@ -39,6 +40,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
   if(p===join(target,'index.html')&&app.key==='up-system')s=migrateUpAdministration(migrateUpOperations(migrateUpRotation(migrateUpCrmHandoff(s))));
+  if(app.key==='command-center'&&['index.html','executive.html'].includes(relative(target,p)))s=migrateCommandCentre(s,relative(target,p));
   if(p===join(target,'index.html')&&['spec-iq','academy'].includes(app.key))s=migratePimConsumers(s,app.key);
   if(app.key==='crm'&&p===join(target,'index.html'))s=migrateCrmInvitations(s);
   if(app.key==='ai-coach'&&p===join(target,'analytics.html'))s=migrateAnalyticsAccess(s);
