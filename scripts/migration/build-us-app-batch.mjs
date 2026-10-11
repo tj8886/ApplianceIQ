@@ -1,3 +1,4 @@
+import {migrateMdfTracker} from './us-mdf-tracker.mjs';
 import {migrateIqBuild} from './us-iqbuild.mjs';
 import {migrateAcademyLearning} from './us-academy-learning.mjs';
 import {migrateAcademyRecords} from './us-academy-records.mjs';
@@ -41,7 +42,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  if(app.key==='academy')copyFileSync(join(root,'scripts/migration/us-manufacturer-categories.json'),join(target,'mfr_categories.json'));
  for(const header of files(target).filter(p=>p.endsWith('/_headers')))writeFileSync(header,readFileSync(header,'utf8').replaceAll('https://fumwwhyozeouoqscolke.supabase.co',config.url));
  mkdirSync(join(target,'_aiq'),{recursive:true});copyFileSync(join(root,'apps/platform/aiq-module-adapter.js'),join(target,'_aiq/aiq-module-adapter.js'));
- if(['applianceiq-platform','iq-build'].includes(app.key)){
+ if(['applianceiq-platform','iq-build','mdf-coop'].includes(app.key)){
   copyFileSync(join(root,'apps/_shared/password-recovery.mjs'),join(target,'_aiq/password-recovery.mjs'));
   const reset=readFileSync(join(root,'apps/_shared/password-reset.html'),'utf8').replaceAll('__AIQ_US_URL__',config.url).replaceAll('__AIQ_US_KEY__',config.publishable_key);
   writeFileSync(join(target,'password-reset.html'),reset);
@@ -51,6 +52,7 @@ for(const app of [reg.platform,...reg.apps].filter(a=>a.deploy_on_main&&a.source
  }
  const counts={key:app.key,site_id:app.netlify_site_id,files_changed:0,clients_routed:0,rpcs:new Set(),tables:new Set(),edges:new Set(),legacy_relay_files:[]};
  for(const p of files(target).filter(p=>/\.(html|js|mjs)$/.test(p))){let s=readFileSync(p,'utf8'),before=s;
+  if(p===join(target,'index.html')&&app.key==='mdf-coop')s=migrateMdfTracker(s);
   if(p===join(target,'index.html')&&app.key==='iq-build')s=migrateIqBuild(s);
   if(p===join(target,'index.html')&&app.key==='up-system')s=migrateUpAdministration(migrateUpOperations(migrateUpRotation(migrateUpCrmHandoff(s))));
   if(app.key==='command-center'&&['index.html','executive.html'].includes(relative(target,p)))s=migrateCommandCentre(s,relative(target,p));

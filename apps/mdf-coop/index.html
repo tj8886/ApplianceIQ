@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VendorXQ — Vendor Funding Management</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111827'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='9' font-weight='bold' font-family='system-ui'>VXQ</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0/dist/umd/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>body { margin: 0; font-family: 'Inter', system-ui, -apple-system, sans-serif; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState, useEffect, useCallback, useMemo } = React;
+
+const SUPABASE_URL = "https://fumwwhyozeouoqscolke.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bXd3aHlvemVvdW9xc2NvbGtlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzMzMTAsImV4cCI6MjA5OTk0OTMxMH0.p18JS7NYRO3XuHElMGcM_KqIHdrVKcIEwCNTIBSkDhk";
+const AUTH_URL = `${SUPABASE_URL}/auth/v1`;
+
+const sb = {
+  headers(token) { return { apikey: SUPABASE_KEY, Authorization: `Bearer ${token || SUPABASE_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" }; },
+  async get(table, params = "", token) { const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, { headers: this.headers(token) }); return r.ok ? r.json() : []; },
+  async post(table, data, token) { const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, { method: "POST", headers: this.headers(token), body: JSON.stringify(data) }); return r.ok ? r.json() : null; },
+  async patch(table, id, data, token) { const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "PATCH", headers: this.headers(token), body: JSON.stringify(data) }); return r.ok ? r.json() : null; },
+  async del(table, id, token) { return (await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, { method: "DELETE", headers: this.headers(token) })).ok; }
+};
+
+const authApi = {
+  async signIn(email, password) { return (await fetch(`${AUTH_URL}/token?grant_type=password`, { method: "POST", headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) })).json(); },
+  async getUser(token) { const r = await fetch(`${AUTH_URL}/user`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` } }); return r.ok ? r.json() : null; },
+  async resetPassword(email) { return (await fetch(`${AUTH_URL}/recover`, { method: "POST", headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ email }) })).ok; }
+};
+
+const fmt = (n) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD" }).format(n || 0);
+
+// ─── EMAIL HELPER ──────────────────────────────
+const sendNotification = async (token, to, subject, html, entity, entityId) => {
+  try {
+    await fetch(`${SUPABASE_URL}/functions/v1/mdf-send-email`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send', data: { to, subject, html, related_entity: entity, related_id: entityId } })
+    });
+  } catch (e) { console.warn('Email send failed:', e); }
+};
+
+const emailTemplates = {
+  requestSubmitted: (req, brands) => ({
+    subject: `[VendorXQ] New co-op request: ${req.title}`,
+    html: `<div style="font-family:Inter,system-ui,sans-serif;max-width:600px"><h2 style="color:#0f172a">New Co-op Request Submitted</h2><p><strong>${req.submitted_by}</strong> submitted a ${req.request_type?.replace(/_/g,' ')} request:</p><table style="width:100%;border-collapse:collapse"><tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600">Title</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${req.title}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600">Est. Cost</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${fmt(req.estimated_cost)}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600">Brands</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${brands}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #e2e8f0;font-weight:600">Event Date</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${req.event_date||'TBD'}</td></tr></table>${req.description?`<p style="margin-top:16px;color:#64748b">${req.description}</p>`:''}<p style="margin-top:24px"><a href="https://applianceiq-mdf-coop-vr.netlify.app" style="background:#0f172a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">Review in Platform</a></p></div>`
+  }),
+  requestApproved: (req, stage, reviewer) => ({
+    subject: `[VendorXQ] ✅ Request approved: ${req.title}`,
+    html: `<div style="font-family:Inter,system-ui,sans-serif;max-width:600px"><h2 style="color:#059669">Request Approved</h2><p>Your co-op request <strong>"${req.title}"</strong> (${fmt(req.estimated_cost)}) was approved by ${reviewer} at the ${stage} level.</p>${stage==='marketing'?'<p style="color:#059669;font-weight:600">✅ Final approval — you\'re cleared to proceed.</p>':'<p>It has been forwarded to marketing for final review.</p>'}<p style="margin-top:24px"><a href="https://applianceiq-mdf-coop-vr.netlify.app" style="background:#059669;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">View Details</a></p></div>`
+  }),
+  requestDenied: (req, stage, reviewer, note) => ({
+    subject: `[VendorXQ] ❌ Request denied: ${req.title}`,
+    html: `<div style="font-family:Inter,system-ui,sans-serif;max-width:600px"><h2 style="color:#dc2626">Request Denied</h2><p>Your co-op request <strong>"${req.title}"</strong> (${fmt(req.estimated_cost)}) was denied by ${reviewer} at the ${stage} level.</p>${note?`<p style="background:#fef2f2;padding:12px;border-radius:8px;color:#991b1b"><strong>Reason:</strong> ${note}</p>`:''}<p style="margin-top:24px"><a href="https://applianceiq-mdf-coop-vr.netlify.app" style="background:#0f172a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600">View Details</a></p></div>`
+  }),
+};
+
+// ─── PDF REPORT GENERATOR ──────────────────────
+const generateBrandReport = (brand, contract, salesData, coopBalance, vrCalcs, mdfFunds) => {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const w = doc.internal.pageSize.width;
+
+  // Header
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, w, 35, 'F');
+  doc.setTextColor(255); doc.setFontSize(18); doc.setFont(undefined, 'bold');
+  doc.text('VendorXQ — Vendor Funding Report', 14, 18);
+  doc.setFontSize(10); doc.setFont(undefined, 'normal');
+  doc.text(`${brand.brand_name} — Generated ${new Date().toLocaleDateString('en-CA')}`, 14, 28);
+  doc.text('VendorXQ by RetailxQ', w - 14, 28, { align: 'right' });
+
+  let y = 45;
+  doc.setTextColor(0); doc.setFontSize(12); doc.setFont(undefined, 'bold');
+  doc.text('Contract Terms', 14, y);
+  y += 8;
+
+  if (contract) {
+    const terms = [
+      ['VR Base %', contract.vr_enabled ? `${contract.vr_base_pct}%` : 'Disabled'],
+      ['Co-op %', contract.coop_enabled ? `${contract.coop_pct}%` : 'Disabled'],
+      ['Sell-Through Target', contract.sellthru_target_pct ? `${contract.sellthru_target_pct}%` : 'N/A'],
+      ['VR Incl. Accessories', contract.vr_includes_accessories ? 'Yes' : 'No'],
+      ['Co-op Incl. Accessories', contract.coop_includes_accessories ? 'Yes' : 'No'],
+      ['MDF Budget', contract.mdf_enabled ? fmt(contract.mdf_annual_budget) : 'None'],
+      ['Effective', contract.effective_date || ''],
+      ['Expires', contract.contract_expiry_date || ''],
+    ];
+    doc.autoTable({ startY: y, head: [['Term', 'Value']], body: terms, theme: 'grid', headStyles: { fillColor: [99, 102, 241] }, styles: { fontSize: 9 }, margin: { left: 14, right: 14 } });
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  // Sales summary
+  doc.setFontSize(12); doc.setFont(undefined, 'bold');
+  doc.text('Sales Summary', 14, y); y += 8;
+  if (salesData.length > 0) {
+    const salesRows = salesData.map(s => [s.period_label || s.period_start, fmt(s.gross_sales), fmt(s.returns_allowances), fmt(s.net_sales), s.units_sold || 0, s.store_name || '']);
+    const totalGross = salesData.reduce((a, s) => a + (s.gross_sales || 0), 0);
+    const totalNet = salesData.reduce((a, s) => a + (s.net_sales || 0), 0);
+    const totalReturns = salesData.reduce((a, s) => a + (s.returns_allowances || 0), 0);
+    salesRows.push(['TOTAL', fmt(totalGross), fmt(totalReturns), fmt(totalNet), '', '']);
+    doc.autoTable({ startY: y, head: [['Period', 'Gross', 'Returns', 'Net', 'Units', 'Store']], body: salesRows, theme: 'grid', headStyles: { fillColor: [59, 130, 246] }, styles: { fontSize: 8 }, margin: { left: 14, right: 14 }, didParseCell: (data) => { if (data.row.index === salesRows.length - 1) data.cell.styles.fontStyle = 'bold'; } });
+    y = doc.lastAutoTable.finalY + 12;
+  } else { doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.text('No sales data for this brand.', 14, y); y += 10; }
+
+  // Co-op balance
+  if (y > 240) { doc.addPage(); y = 20; }
+  doc.setFontSize(12); doc.setFont(undefined, 'bold');
+  doc.text(`Co-op Balance: ${fmt(coopBalance)}`, 14, y); y += 12;
+
+  // VR calculations
+  if (vrCalcs.length > 0) {
+    doc.text('VR Calculations', 14, y); y += 8;
+    const vrRows = vrCalcs.map(v => [v.period_start + ' – ' + v.period_end, fmt(v.eligible_sales), `${v.rebate_pct}%`, v.tier_reached || '', fmt(v.rebate_amount), v.status || '']);
+    doc.autoTable({ startY: y, head: [['Period', 'Eligible', 'Rate', 'Tier', 'Rebate', 'Status']], body: vrRows, theme: 'grid', headStyles: { fillColor: [139, 92, 246] }, styles: { fontSize: 8 }, margin: { left: 14, right: 14 } });
+    y = doc.lastAutoTable.finalY + 12;
+  }
+
+  // Footer
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setTextColor(150);
+    doc.text(`VendorXQ by RetailxQ — Page ${i} of ${pages}`, w / 2, doc.internal.pageSize.height - 8, { align: 'center' });
+  }
+
+  doc.save(`${brand.brand_name.replace(/\s+/g, '-')}-vendor-report-${new Date().toISOString().split('T')[0]}.pdf`);
+};
+const fmtPct = (n) => `${(n || 0).toFixed(1)}%`;
+const fmtDate = (d) => d ? new Date(d + (d.includes("T") ? "" : "T00:00:00")).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" }) : "—";
+const fmtTime = (d) => d ? new Date(d).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+const ROLE_LABELS = { super_admin: "Super Admin", admin: "Admin", marketing: "Marketing", manager: "Manager", sales_rep: "Sales Rep", viewer: "Viewer" };
+const ROLE_COLORS = { super_admin: "bg-red-100 text-red-800", admin: "bg-violet-100 text-violet-800", marketing: "bg-pink-100 text-pink-800", manager: "bg-blue-100 text-blue-800", sales_rep: "bg-emerald-100 text-emerald-800", viewer: "bg-slate-100 text-slate-600" };
+const STATUS_COLORS = { submitted: "bg-yellow-100 text-yellow-800", manager_review: "bg-blue-100 text-blue-800", marketing_review: "bg-purple-100 text-purple-800", approved: "bg-green-100 text-green-800", denied: "bg-red-100 text-red-800", needs_info: "bg-orange-100 text-orange-800", calculated: "bg-gray-100 text-gray-700", received: "bg-green-100 text-green-800", disputed: "bg-red-100 text-red-800", pending: "bg-yellow-100 text-yellow-800", paid: "bg-green-100 text-green-800", active: "bg-green-100 text-green-800", exhausted: "bg-gray-100 text-gray-700", expired: "bg-red-100 text-red-800", accrual: "bg-emerald-100 text-emerald-800", spend: "bg-red-100 text-red-800", mdf_credit: "bg-amber-100 text-amber-800", adjustment: "bg-blue-100 text-blue-800", expiry: "bg-gray-100 text-gray-600", manual: "bg-slate-100 text-slate-600", csv: "bg-blue-100 text-blue-700", api: "bg-violet-100 text-violet-700", pos: "bg-emerald-100 text-emerald-700", applianceiq: "bg-amber-100 text-amber-700" };
+
+const PERMS = {
+  canManageUsers: (r) => ["super_admin","admin"].includes(r),
+  canManageBrands: (r) => ["super_admin","admin"].includes(r),
+  canEditContracts: (r) => ["super_admin","admin"].includes(r),
+  canEnterSales: (r) => ["super_admin","admin","manager","sales_rep"].includes(r),
+  canCalculateVR: (r) => ["super_admin","admin","marketing"].includes(r),
+  canManageLedger: (r) => ["super_admin","admin","marketing"].includes(r),
+  canSubmitRequests: (r) => ["super_admin","admin","marketing","manager","sales_rep"].includes(r),
+  canApproveManager: (r) => ["super_admin","admin","manager"].includes(r),
+  canApproveMarketing: (r) => ["super_admin","admin","marketing"].includes(r),
+  canManageMDF: (r) => ["super_admin","admin","marketing"].includes(r),
+  canViewAudit: (r) => ["super_admin","admin"].includes(r),
+};
+
+const Badge = ({ status, className="" }) => <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[status]||ROLE_COLORS[status]||"bg-gray-100 text-gray-600"} ${className}`}>{ROLE_LABELS[status]||(status||"").replace(/_/g," ")}</span>;
+const Card = ({ title, value, sub, accent="border-slate-200" }) => <div className={`bg-white rounded-xl border-l-4 ${accent} p-5 shadow-sm`}><p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p><p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>{sub&&<p className="text-xs text-slate-400 mt-1">{sub}</p>}</div>;
+const Btn = ({ children, onClick, variant="primary", size="md", disabled, className="" }) => { const base="inline-flex items-center justify-center font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-1"; const sizes={sm:"px-3 py-1.5 text-xs",md:"px-4 py-2 text-sm",lg:"px-5 py-2.5 text-sm"}; const vars={primary:"bg-slate-900 text-white hover:bg-slate-700",secondary:"bg-white text-slate-700 border border-slate-300 hover:bg-slate-50",danger:"bg-red-600 text-white hover:bg-red-700",success:"bg-emerald-600 text-white hover:bg-emerald-700",ghost:"text-slate-600 hover:bg-slate-100"}; return <button type="button" onClick={onClick} disabled={disabled} className={`${base} ${sizes[size]} ${vars[variant]} ${disabled?"opacity-50 cursor-not-allowed":""} ${className}`}>{children}</button>; };
+const Input = ({ label, ...props }) => <div>{label&&<label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>}<input {...props} className={`w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 ${props.className||""}`}/></div>;
+const Select = ({ label, options, ...props }) => <div>{label&&<label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>}<select {...props} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400">{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>;
+const Toggle = ({ label, checked, onChange }) => <label className="flex items-center gap-2 cursor-pointer"><div className={`w-9 h-5 rounded-full transition-colors ${checked?"bg-emerald-500":"bg-slate-300"} relative`} onClick={()=>onChange(!checked)}><div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${checked?"translate-x-4":"translate-x-0.5"} shadow-sm`}/></div><span className="text-sm text-slate-700">{label}</span></label>;
+const Modal = ({ open, onClose, title, children, width="max-w-2xl" }) => { if(!open)return null; return <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4" onClick={onClose}><div className="fixed inset-0 bg-black/40"/><div className={`relative bg-white rounded-2xl shadow-2xl w-full ${width} max-h-[85vh] overflow-y-auto`} onClick={e=>e.stopPropagation()}><div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between rounded-t-2xl z-10"><h2 className="text-lg font-semibold text-slate-900">{title}</h2><button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">&times;</button></div><div className="p-6">{children}</div></div></div>; };
+const EmptyState = ({ icon, title, sub, action }) => <div className="text-center py-16"><div className="text-4xl mb-3">{icon}</div><p className="text-sm font-medium text-slate-700">{title}</p><p className="text-xs text-slate-400 mt-1 mb-4">{sub}</p>{action}</div>;
+const Toast = ({ message, type="success", onClose }) => { useEffect(()=>{const t=setTimeout(onClose,4000);return()=>clearTimeout(t);},[onClose]); const c={success:"bg-emerald-600",error:"bg-red-600",info:"bg-blue-600"}; return <div className={`fixed bottom-6 right-6 z-[60] ${c[type]} text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-3`}><span>{type==="success"?"✓":"✕"}</span>{message}<button onClick={onClose} className="text-white/70 hover:text-white ml-2">&times;</button></div>; };
+
+// ─── ERROR BOUNDARY ────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('App error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return React.createElement('div', { className: 'min-h-screen bg-slate-50 flex items-center justify-center px-4' },
+        React.createElement('div', { className: 'text-center max-w-sm' },
+          React.createElement('div', { className: 'text-4xl mb-4' }, '⚠️'),
+          React.createElement('h2', { className: 'text-lg font-semibold text-slate-900 mb-2' }, 'Something went wrong'),
+          React.createElement('p', { className: 'text-sm text-slate-500 mb-6' }, this.state.error?.message || 'An unexpected error occurred'),
+          React.createElement('button', {
+            onClick: () => { this.setState({ hasError: false, error: null }); window.location.reload(); },
+            className: 'px-5 py-2.5 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-700'
+          }, 'Reload')
+        )
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function LoginPage({ onLogin }) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const startSignup = urlParams.get('signup') === 'true' || urlParams.get('plan');
+  const planFromUrl = urlParams.get('plan') || 'professional';
+  const cycleFromUrl = urlParams.get('cycle') || 'monthly';
+
+  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState(startSignup ? "signup" : "login"); const [resetSent, setResetSent] = useState(false);
+  const [companyName, setCompanyName] = useState(""); const [fullName, setFullName] = useState("");
+  const [selectedPlan, setSelectedPlan] = useState(planFromUrl); const [billingCycle, setBillingCycle] = useState(cycleFromUrl);
+  const [signupStep, setSignupStep] = useState(1); // 1=info, 2=plan, 3=creating
+
+  const PLANS = [
+    { id: "starter", name: "Starter", price: 149, annual: 119, brands: "5 brands", users: "3 users" },
+    { id: "professional", name: "Professional", price: 349, annual: 279, brands: "15 brands", users: "10 users", popular: true },
+    { id: "enterprise", name: "Enterprise", price: 699, annual: 559, brands: "Unlimited", users: "Unlimited" },
+  ];
+
+  const handleLogin = async (e) => { e?.preventDefault(); setError(""); setLoading(true);
+    const res = await authApi.signIn(email, password);
+    if(res.error){setError(res.error_description||res.error?.message||"Login failed");setLoading(false);return;}
+    const users = await sb.get("mdf_platform_users",`email=eq.${encodeURIComponent(res.user.email)}&is_active=eq.true`,res.access_token);
+    if(!users.length){setError("No account found. Sign up first or contact your admin.");setLoading(false);return;}
+    await sb.patch("mdf_platform_users",users[0].id,{last_login:new Date().toISOString()},res.access_token);
+    await sb.post("mdf_audit_log",{user_email:res.user.email,user_role:users[0].role,action:"login",entity_type:"session",details:{}},res.access_token);
+    onLogin({...res,platformUser:users[0]});
+  };
+
+  const handleSignup = async () => {
+    setError(""); setLoading(true); setSignupStep(3);
+    // 1. Create Supabase Auth account
+    const signupRes = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: "POST", headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const signupData = await signupRes.json();
+    if (signupData.error || !signupData.access_token) {
+      setError(signupData.error?.message || signupData.msg || "Signup failed — email may already be registered");
+      setLoading(false); setSignupStep(2); return;
+    }
+    const token = signupData.access_token;
+
+    // 2. Create organization
+    const orgRes = await sb.post("mdf_organizations", {
+      name: companyName, owner_email: email, tier_id: selectedPlan,
+      subscription_status: "trialing", billing_cycle: billingCycle,
+      trial_ends_at: new Date(Date.now() + 14 * 86400000).toISOString()
+    }, token);
+    if (!orgRes?.[0]) { setError("Could not create organization"); setLoading(false); setSignupStep(2); return; }
+    const orgId = orgRes[0].id;
+
+    // 3. Create platform user as super_admin
+    const userRes = await sb.post("mdf_platform_users", {
+      email, display_name: fullName, role: "super_admin", org_id: orgId
+    }, token);
+    if (!userRes?.[0]) { setError("Could not create user profile"); setLoading(false); setSignupStep(2); return; }
+
+    // 4. Log it
+    await sb.post("mdf_audit_log", {
+      user_email: email, user_role: "super_admin", action: "create",
+      entity_type: "signup", details: { company: companyName, plan: selectedPlan, cycle: billingCycle }
+    }, token);
+
+    // 5. Auto-login
+    setLoading(false);
+    window.history.replaceState({}, '', window.location.pathname);
+    onLogin({ ...signupData, platformUser: userRes[0] });
+  };
+
+  const handleReset = async (e) => { e?.preventDefault(); setError(""); setLoading(true); const ok=await authApi.resetPassword(email); setLoading(false); if(ok)setResetSent(true); else setError("Could not send reset."); };
+
+  return <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4"><div className="w-full max-w-sm">
+    <div className="text-center mb-8"><div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4"><span className="text-white text-sm font-black tracking-tight">VXQ</span></div><h1 className="text-xl font-bold text-slate-900">VendorXQ</h1><p className="text-xs text-slate-400 mt-1">Vendor Funding Management by RetailxQ</p></div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+
+      {mode==="login"&&<form onSubmit={handleLogin} className="space-y-4"><h2 className="text-sm font-semibold text-slate-900 mb-4">Sign In</h2>
+        <Input label="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com" autoComplete="email"/>
+        <Input label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password"/>
+        {error&&<p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <Btn onClick={handleLogin} disabled={!email||!password||loading} className="w-full">{loading?"Signing in...":"Sign In"}</Btn>
+        <div className="flex items-center justify-between mt-3">
+          <button type="button" onClick={()=>setMode("reset")} className="text-xs text-slate-500 hover:text-slate-700">Forgot password?</button>
+          <button type="button" onClick={()=>{setMode("signup");setError("");}} className="text-xs text-violet-600 hover:text-violet-800 font-medium">Create account →</button>
+        </div>
+      </form>}
+
+      {mode==="signup"&&signupStep===1&&<div className="space-y-4"><h2 className="text-sm font-semibold text-slate-900 mb-1">Start Your Free Trial</h2><p className="text-xs text-slate-400 mb-4">14 days free. No credit card required.</p>
+        <Input label="Your Name" value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Jane Smith"/>
+        <Input label="Company Name" value={companyName} onChange={e=>setCompanyName(e.target.value)} placeholder="Acme Appliances"/>
+        <Input label="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@company.com" autoComplete="email"/>
+        <Input label="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Min 6 characters" autoComplete="new-password"/>
+        {error&&<p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <Btn onClick={()=>{if(!fullName||!companyName||!email||!password){setError("All fields required");return;}if(password.length<6){setError("Password must be at least 6 characters");return;}setError("");setSignupStep(2);}} className="w-full">Choose Plan →</Btn>
+        <button type="button" onClick={()=>{setMode("login");setError("");}} className="text-xs text-slate-500 hover:text-slate-700 w-full text-center mt-2">Already have an account? Sign in</button>
+      </div>}
+
+      {mode==="signup"&&signupStep===2&&<div className="space-y-4"><h2 className="text-sm font-semibold text-slate-900 mb-1">Choose Your Plan</h2><p className="text-xs text-slate-400 mb-2">All plans include a 14-day free trial.</p>
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5 mb-3">
+          <button onClick={()=>setBillingCycle("monthly")} className={`flex-1 py-1.5 text-xs font-medium rounded-md ${billingCycle==="monthly"?"bg-white shadow text-slate-900":"text-slate-500"}`}>Monthly</button>
+          <button onClick={()=>setBillingCycle("annual")} className={`flex-1 py-1.5 text-xs font-medium rounded-md ${billingCycle==="annual"?"bg-white shadow text-slate-900":"text-slate-500"}`}>Annual <span className="text-emerald-600">-20%</span></button>
+        </div>
+        <div className="space-y-2">{PLANS.map(p=><button key={p.id} onClick={()=>setSelectedPlan(p.id)} className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${selectedPlan===p.id?"border-violet-400 bg-violet-50 ring-2 ring-violet-100":"border-slate-200 hover:border-slate-300"}`}>
+          <div className="flex items-center justify-between">
+            <div><p className="text-sm font-semibold text-slate-900">{p.name}{p.popular&&<span className="ml-2 text-[10px] bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">Popular</span>}</p><p className="text-[10px] text-slate-400">{p.brands} · {p.users}</p></div>
+            <div className="text-right"><p className="text-lg font-black text-slate-900">${billingCycle==="annual"?p.annual:p.price}</p><p className="text-[10px] text-slate-400">/month</p></div>
+          </div>
+        </button>)}</div>
+        {error&&<p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <div className="flex gap-2 pt-2"><Btn variant="secondary" onClick={()=>setSignupStep(1)} className="flex-1">← Back</Btn><Btn onClick={handleSignup} disabled={loading} className="flex-1">{loading?"Creating...":"Start Free Trial"}</Btn></div>
+      </div>}
+
+      {mode==="signup"&&signupStep===3&&<div className="text-center py-8">
+        <div className="animate-spin w-8 h-8 border-2 border-slate-300 border-t-violet-600 rounded-full mx-auto mb-4"/>
+        <p className="text-sm font-medium text-slate-700">Setting up your account...</p>
+        <p className="text-xs text-slate-400 mt-1">Creating org, setting permissions</p>
+      </div>}
+
+      {mode==="reset"&&<div className="space-y-4"><h2 className="text-sm font-semibold text-slate-900">Reset Password</h2>
+        {resetSent?<div className="text-center py-4"><p className="text-2xl mb-2">📧</p><p className="text-sm text-slate-700">Check your email.</p><button onClick={()=>{setMode("login");setResetSent(false)}} className="text-xs text-slate-500 mt-3">Back to sign in</button></div>
+        :<form onSubmit={handleReset}><Input label="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)}/>
+          {error&&<p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-3">{error}</p>}
+          <div className="flex gap-2 mt-4"><Btn variant="secondary" onClick={()=>setMode("login")} className="flex-1">Back</Btn><Btn onClick={handleReset} disabled={!email||loading} className="flex-1">{loading?"Sending...":"Send Reset"}</Btn></div></form>}
+      </div>}
+
+    </div>
+    <p className="text-[10px] text-slate-400 text-center mt-6">{mode==="signup"?"14-day free trial · No credit card required":"Authorized users only · Access is logged"}</p>
+  </div></div>;
+}
+
+const TABS=[{id:"dashboard",label:"Dashboard",icon:"📊",roles:["super_admin","admin","marketing","manager","sales_rep","viewer"]},{id:"brands",label:"Brands",icon:"🏷",roles:["super_admin","admin","marketing","manager","sales_rep","viewer"]},{id:"sales",label:"Sales",icon:"💰",roles:["super_admin","admin","marketing","manager","sales_rep"]},{id:"vr",label:"VR Calc",icon:"🧮",roles:["super_admin","admin","marketing"]},{id:"coop",label:"Co-op",icon:"📒",roles:["super_admin","admin","marketing","manager"]},{id:"requests",label:"Requests",icon:"📋",roles:["super_admin","admin","marketing","manager","sales_rep"]},{id:"mdf",label:"MDF",icon:"💎",roles:["super_admin","admin","marketing"]},{id:"users",label:"Users",icon:"👤",roles:["super_admin","admin"]},{id:"audit",label:"Audit",icon:"📜",roles:["super_admin","admin"]},{id:"billing",label:"Billing",icon:"💳",roles:["super_admin","admin"]}];
+
+function App() {
+  const [session, setSession] = useState(null);
+  const [tab, setTab] = useState("dashboard");
+  const [brands, setBrands] = useState([]); const [contracts, setContracts] = useState([]); const [sales, setSales] = useState([]); const [vrCalcs, setVrCalcs] = useState([]); const [ledger, setLedger] = useState([]); const [requests, setRequests] = useState([]); const [spends, setSpends] = useState([]); const [mdfFunds, setMdfFunds] = useState([]); const [platformUsers, setPlatformUsers] = useState([]); const [auditLog, setAuditLog] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [org, setOrg] = useState(null); const [billingStatus, setBillingStatus] = useState(null);
+  const [loading, setLoading] = useState(true); const [toast, setToast] = useState(null); const [mobileMenu, setMobileMenu] = useState(false);
+
+  useEffect(()=>{try{const s=JSON.parse(localStorage.getItem("mdf_session"));if(s?.access_token&&s?.platformUser){authApi.getUser(s.access_token).then(u=>{if(u?.email)setSession(s);else{localStorage.removeItem("mdf_session");setLoading(false);}}).catch(()=>{localStorage.removeItem("mdf_session");setLoading(false);});}}catch{setLoading(false);}},[]);
+
+  // Auto-refresh: check token validity every 10min
+  useEffect(()=>{if(!session)return;const iv=setInterval(async()=>{const u=await authApi.getUser(session.access_token);if(!u?.email){setToast({message:"Session expired — please sign in again",type:"error"});handleLogout();}},600000);return()=>clearInterval(iv);},[session]);
+
+  const currentUser=session?.platformUser; const role=currentUser?.role||"viewer"; const token=session?.access_token;
+  const handleLogin=(s)=>{setSession(s);try{localStorage.setItem("mdf_session",JSON.stringify(s));}catch{}};
+  const handleLogout=()=>{setSession(null);try{localStorage.removeItem("mdf_session");}catch{};setTab("dashboard");};
+  const showToast=(m,t="success")=>setToast({message:m,type:t});
+  const logAction=useCallback(async(action,entityType,entityId,details)=>{if(!token)return;await sb.post("mdf_audit_log",{user_email:currentUser?.email,user_role:role,action,entity_type:entityType,entity_id:entityId,details:details||{}},token);},[token,currentUser,role]);
+
+  const loadAll=useCallback(async()=>{if(!token)return;setLoading(true);
+    const[b,c,s,v,l,r,sp,m,u,a,al]=await Promise.all([sb.get("mdf_brands","order=brand_name",token),sb.get("mdf_brand_contracts","order=effective_date.desc",token),sb.get("mdf_sales_data","order=period_start.desc&limit=500",token),sb.get("mdf_vr_calculations","order=period_start.desc",token),sb.get("mdf_coop_ledger","order=transaction_date.desc&limit=500",token),sb.get("mdf_coop_requests","order=submitted_at.desc",token),sb.get("mdf_coop_spend","order=spend_date.desc",token),sb.get("mdf_mdf_funds","order=effective_date.desc",token),PERMS.canManageUsers(role)?sb.get("mdf_platform_users","order=display_name",token):Promise.resolve([]),PERMS.canViewAudit(role)?sb.get("mdf_audit_log","order=created_at.desc&limit=200",token):Promise.resolve([]),sb.get("mdf_alerts","is_dismissed=eq.false&order=created_at.desc&limit=50",token)]);
+    setBrands(b);setContracts(c);setSales(s);setVrCalcs(v);setLedger(l);setRequests(r);setSpends(sp);setMdfFunds(m);setPlatformUsers(u);setAuditLog(a);setAlerts(al||[]);setLoading(false);
+    // Load org/billing
+    if(PERMS.canManageUsers(role)){const orgs=await sb.get("mdf_organizations",`owner_email=eq.${encodeURIComponent(currentUser?.email)}`,token);if(orgs?.[0]){setOrg(orgs[0]);try{const br=await fetch(`${SUPABASE_URL}/functions/v1/mdf-billing`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({action:'get_status',data:{org_id:orgs[0].id}})});const bd=await br.json();if(bd.ok)setBillingStatus(bd);}catch{}}}
+    // Auto-run expiry checks
+    fetch(`${SUPABASE_URL}/functions/v1/mdf-send-email`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({action:'check_expiry'})}).catch(()=>{});
+  },[token,role]);
+
+  useEffect(()=>{if(session)loadAll();},[session,loadAll]);
+
+  const activeBrands=brands.filter(b=>b.is_active);
+  const brandMap=useMemo(()=>Object.fromEntries(brands.map(b=>[b.id,b])),[brands]);
+  const activeContracts=useMemo(()=>{const m={};contracts.filter(c=>!c.end_date).forEach(c=>{m[c.brand_id]=c;});return m;},[contracts]);
+  const coopByBrand=useMemo(()=>{const m={};ledger.forEach(l=>{m[l.brand_id]=(m[l.brand_id]||0)+(l.amount||0);});return m;},[ledger]);
+  const salesByBrand=useMemo(()=>{const m={};sales.forEach(s=>{m[s.brand_id]=(m[s.brand_id]||0)+(s.net_sales||s.gross_sales||0);});return m;},[sales]);
+  const totalCoopBalance=useMemo(()=>Object.values(coopByBrand).reduce((a,b)=>a+b,0),[coopByBrand]);
+  const totalVrEarned=useMemo(()=>vrCalcs.reduce((a,v)=>a+(v.rebate_amount||0),0),[vrCalcs]);
+  const totalMdfRemaining=useMemo(()=>mdfFunds.filter(m=>m.status==="active").reduce((a,m)=>a+(m.remaining_amount||0),0),[mdfFunds]);
+  const pendingRequests=requests.filter(r=>!["approved","denied"].includes(r.status));
+  const visibleTabs=TABS.filter(t=>t.roles.includes(role));
+  const ctx={brands,activeBrands,contracts,activeContracts,brandMap,sales,vrCalcs,ledger,requests,spends,mdfFunds,platformUsers,auditLog,alerts,loadAll,coopByBrand,salesByBrand,totalCoopBalance,totalVrEarned,totalMdfRemaining,pendingRequests,role,currentUser,token,logAction,showToast,org,billingStatus};
+
+  if(!session)return <LoginPage onLogin={handleLogin}/>;
+  return <div className="min-h-screen bg-slate-50">
+    <header className="bg-white border-b border-slate-200 sticky top-0 z-40"><div className="max-w-7xl mx-auto px-4 sm:px-6"><div className="flex items-center justify-between h-14">
+      <div className="flex items-center gap-3"><div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center"><span className="text-white text-[9px] font-black tracking-tight">VXQ</span></div><div className="hidden sm:block"><h1 className="text-sm font-bold text-slate-900 leading-tight">VendorXQ</h1><p className="text-[10px] text-slate-400 leading-tight">RetailxQ</p></div></div>
+      <div className="flex items-center gap-3"><div className="text-right hidden sm:block"><p className="text-xs font-medium text-slate-700">{currentUser?.display_name}</p><p className="text-[10px] text-slate-400">{ROLE_LABELS[role]}</p></div><Badge status={role}/><button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">↪ Out</button>
+        <button className="sm:hidden text-slate-600 ml-1" onClick={()=>setMobileMenu(!mobileMenu)}><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div></div></div></header>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+      <nav className={`${mobileMenu?"block":"hidden"} sm:block mb-6`}><div className="flex flex-wrap gap-1 bg-white rounded-xl p-1 border border-slate-200 shadow-sm">
+        {visibleTabs.map(t=><button key={t.id} onClick={()=>{setTab(t.id);setMobileMenu(false);}} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${tab===t.id?"bg-slate-900 text-white shadow":"text-slate-600 hover:bg-slate-100"}`}><span>{t.icon}</span>{t.label}{t.id==="requests"&&pendingRequests.length>0&&<span className="bg-red-500 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">{pendingRequests.length}</span>}</button>)}
+      </div></nav>
+      {loading?<div className="flex items-center justify-center py-32"><div className="animate-spin w-8 h-8 border-2 border-slate-300 border-t-slate-900 rounded-full"/></div>:<>
+        {tab==="dashboard"&&<Dashboard {...ctx}/>}
+        {tab==="brands"&&<BrandManager {...ctx}/>}
+        {tab==="sales"&&<SalesTracker {...ctx}/>}
+        {tab==="vr"&&<VRCalculator {...ctx}/>}
+        {tab==="coop"&&<CoopLedger {...ctx}/>}
+        {tab==="requests"&&<CoopRequests {...ctx}/>}
+        {tab==="mdf"&&<MdfTracker {...ctx}/>}
+        {tab==="users"&&<UserManager {...ctx}/>}
+        {tab==="audit"&&<AuditLogView {...ctx}/>}
+        {tab==="billing"&&<BillingPage {...ctx}/>}
+      </>}
+    </div>
+    {toast&&<Toast message={toast.message} type={toast.type} onClose={()=>setToast(null)}/>}
+  </div>;
+}
+
+function MiniChart({type,labels,datasets,height="h-48"}) {
+  const canvasRef=React.useRef(null);const chartRef=React.useRef(null);
+  useEffect(()=>{if(!canvasRef.current||!window.Chart)return;if(chartRef.current)chartRef.current.destroy();
+    chartRef.current=new window.Chart(canvasRef.current,{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:datasets.length>1,position:'bottom',labels:{boxWidth:8,font:{size:10,family:'Inter'}}}},scales:{x:{grid:{display:false},ticks:{font:{size:9,family:'Inter'}}},y:{grid:{color:'#f1f5f9'},ticks:{font:{size:9,family:'Inter'},callback:v=>v>=1000?`$${(v/1000).toFixed(0)}k`:`$${v}`}}}}});
+    return()=>{if(chartRef.current)chartRef.current.destroy();};
+  },[type,labels,datasets]);
+  return <div className={height}><canvas ref={canvasRef}/></div>;
+}
+
+function Dashboard({activeBrands,activeContracts,brandMap,sales,mdfFunds,coopByBrand,salesByBrand,totalCoopBalance,totalVrEarned,totalMdfRemaining,pendingRequests,requests,alerts,token,loadAll,ledger,vrCalcs}) {
+  const totalNetSales=sales.reduce((a,s)=>a+(s.net_sales||s.gross_sales||0),0);
+  const expiringMdf=mdfFunds.filter(m=>{if(!m.expiry_date||m.status!=="active")return false;const d=(new Date(m.expiry_date)-new Date())/86400000;return d<=60&&d>0;});
+
+  // Sales by month chart data
+  const monthlyData=useMemo(()=>{const m={};sales.forEach(s=>{const k=s.period_label||(s.period_start?s.period_start.substring(0,7):"");if(k)m[k]=(m[k]||0)+(s.net_sales||s.gross_sales||0);});const sorted=Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0]));return{labels:sorted.map(([k])=>k),values:sorted.map(([,v])=>v)};},[sales]);
+
+  // Sales by brand chart data
+  const brandData=useMemo(()=>{const sorted=activeBrands.filter(b=>salesByBrand[b.id]).sort((a,b)=>(salesByBrand[b.id]||0)-(salesByBrand[a.id]||0));return{labels:sorted.map(b=>b.brand_name),values:sorted.map(b=>salesByBrand[b.id]||0)};},[activeBrands,salesByBrand]);
+
+  // Co-op balance by brand
+  const coopData=useMemo(()=>{const sorted=activeBrands.filter(b=>coopByBrand[b.id]!==undefined).sort((a,b)=>(coopByBrand[b.id]||0)-(coopByBrand[a.id]||0));return{labels:sorted.map(b=>b.brand_name),values:sorted.map(b=>coopByBrand[b.id]||0)};},[activeBrands,coopByBrand]);
+
+  const BRAND_COLORS=['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16','#f97316','#14b8a6','#a855f7','#64748b'];
+
+  return <div className="space-y-6">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <Card title="Total Net Sales" value={fmt(totalNetSales)} sub="All brands" accent="border-blue-500"/>
+      <Card title="Co-op Balance" value={fmt(totalCoopBalance)} sub="All brands" accent="border-emerald-500"/>
+      <Card title="VR Earned" value={fmt(totalVrEarned)} sub="YTD" accent="border-violet-500"/>
+      <Card title="MDF Available" value={fmt(totalMdfRemaining)} sub={`${mdfFunds.filter(m=>m.status==="active").length} funds`} accent="border-amber-500"/>
+      <Card title="Pending" value={pendingRequests.length} sub="Awaiting approval" accent="border-red-400"/>
+    </div>
+
+    {monthlyData.labels.length>1&&<div className="grid lg:grid-cols-2 gap-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">Sales Trend</h3>
+        <p className="text-[10px] text-slate-400 mb-3">Net sales by period</p>
+        <MiniChart type="line" labels={monthlyData.labels} datasets={[{label:'Net Sales',data:monthlyData.values,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,0.1)',fill:true,tension:0.3,pointRadius:3,pointBackgroundColor:'#6366f1',borderWidth:2}]}/>
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">Sales by Brand</h3>
+        <p className="text-[10px] text-slate-400 mb-3">Total net sales per brand</p>
+        <MiniChart type="bar" labels={brandData.labels} datasets={[{label:'Net Sales',data:brandData.values,backgroundColor:BRAND_COLORS.slice(0,brandData.labels.length),borderRadius:4,barThickness:24}]}/>
+      </div>
+    </div>}
+
+    {coopData.labels.length>0&&<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <h3 className="text-sm font-semibold text-slate-900 mb-1">Co-op Balances by Brand</h3>
+      <p className="text-[10px] text-slate-400 mb-3">Running balance — accruals minus spends</p>
+      <MiniChart type="bar" labels={coopData.labels} datasets={[{label:'Balance',data:coopData.values,backgroundColor:coopData.values.map(v=>v>=0?'#10b981':'#ef4444'),borderRadius:4,barThickness:24}]}/>
+    </div>}
+
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-slate-100"><h2 className="text-sm font-semibold text-slate-900">Brand Overview</h2><p className="text-xs text-slate-400 mt-0.5">Live — sales, terms, balances</p></div>
+      {activeBrands.length===0?<EmptyState icon="🏷" title="No brands" sub="Add brands to get started"/>:
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase tracking-wider">
+        <th className="text-left px-4 py-3 font-medium">Brand</th><th className="text-right px-4 py-3 font-medium">Net Sales</th><th className="text-right px-4 py-3 font-medium">VR%</th><th className="text-right px-4 py-3 font-medium">Co-op%</th><th className="text-right px-4 py-3 font-medium">Co-op Bal</th><th className="text-right px-4 py-3 font-medium">Sell-Thru</th><th className="text-center px-4 py-3 font-medium">Accs</th><th className="text-center px-4 py-3 font-medium">MDF</th>
+      </tr></thead><tbody className="divide-y divide-slate-100">
+        {activeBrands.map(b=>{const c=activeContracts[b.id];return <tr key={b.id} className="hover:bg-slate-50">
+          <td className="px-4 py-3 font-medium text-slate-900">{b.brand_name}</td>
+          <td className="px-4 py-3 text-right text-slate-700">{fmt(salesByBrand[b.id])}</td>
+          <td className="px-4 py-3 text-right"><span className="bg-violet-50 text-violet-700 px-2 py-0.5 rounded font-medium">{c?fmtPct(c.vr_base_pct):"—"}</span></td>
+          <td className="px-4 py-3 text-right"><span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">{c?fmtPct(c.coop_pct):"—"}</span></td>
+          <td className="px-4 py-3 text-right font-medium">{fmt(coopByBrand[b.id])}</td>
+          <td className="px-4 py-3 text-right text-slate-600">{c?.sellthru_target_pct?fmtPct(c.sellthru_target_pct):"—"}</td>
+          <td className="px-4 py-3 text-center">{c?<span className={`text-[10px] px-1.5 py-0.5 rounded ${c.vr_includes_accessories||c.coop_includes_accessories?"bg-green-50 text-green-700":"bg-slate-100 text-slate-500"}`}>{c.vr_includes_accessories||c.coop_includes_accessories?"Yes":"No"}</span>:"—"}</td>
+          <td className="px-4 py-3 text-center">{c?.mdf_enabled?<span className="bg-amber-50 text-amber-700 text-[10px] px-1.5 py-0.5 rounded">Active</span>:<span className="text-slate-300">—</span>}</td>
+        </tr>;})}
+        <tr className="bg-slate-50 font-semibold"><td className="px-4 py-3">Total</td><td className="px-4 py-3 text-right">{fmt(totalNetSales)}</td><td className="px-4 py-3" colSpan={2}></td><td className="px-4 py-3 text-right">{fmt(totalCoopBalance)}</td><td className="px-4 py-3" colSpan={3}></td></tr>
+      </tbody></table></div>}
+    </div>
+
+    <div className="grid lg:grid-cols-2 gap-6">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm"><div className="px-5 py-4 border-b border-slate-100"><h2 className="text-sm font-semibold text-slate-900">Pending Requests</h2></div>
+        <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">{pendingRequests.length===0?<p className="text-xs text-slate-400 p-5 text-center">None</p>:pendingRequests.slice(0,8).map(r=><div key={r.id} className="px-5 py-3 flex items-center justify-between"><div><p className="text-xs font-medium text-slate-800">{r.title}</p><p className="text-[10px] text-slate-400">{r.submitted_by}</p></div><div className="flex items-center gap-2"><span className="text-xs font-medium">{fmt(r.estimated_cost)}</span><Badge status={r.status}/></div></div>)}</div>
+      </div>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm"><div className="px-5 py-4 border-b border-slate-100"><h2 className="text-sm font-semibold text-slate-900">Alerts & Notifications</h2></div>
+        <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+          {(alerts||[]).filter(a=>!a.is_dismissed).map(a=><div key={a.id} className="px-5 py-3 flex items-center gap-3"><span>{a.severity==="critical"?"🔴":a.severity==="warning"?"⚠️":"🔔"}</span><div className="flex-1"><p className="text-xs font-medium text-slate-800">{a.title}</p>{a.message&&<p className="text-[10px] text-slate-400">{a.message}</p>}</div><button onClick={async()=>{await sb.patch("mdf_alerts",a.id,{is_dismissed:true},token);await loadAll();}} className="text-slate-300 hover:text-slate-500 text-xs">✕</button></div>)}
+          {expiringMdf.map(m=><div key={m.id} className="px-5 py-3 flex items-center gap-3"><span>⚠️</span><div><p className="text-xs font-medium text-slate-800">MDF Expiring: {m.fund_label}</p><p className="text-[10px] text-slate-400">{brandMap[m.brand_id]?.brand_name} · {fmt(m.remaining_amount)} · {fmtDate(m.expiry_date)}</p></div></div>)}
+          {activeBrands.filter(b=>!activeContracts[b.id]).map(b=><div key={b.id} className="px-5 py-3 flex items-center gap-3"><span>🔴</span><div><p className="text-xs font-medium text-slate-800">No Contract: {b.brand_name}</p></div></div>)}
+          {(alerts||[]).filter(a=>!a.is_dismissed).length===0&&expiringMdf.length===0&&activeBrands.filter(b=>!activeContracts[b.id]).length===0&&<p className="text-xs text-slate-400 p-5 text-center">All clear</p>}
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+function BrandManager({brands,contracts,activeContracts,loadAll,role,token,logAction,showToast,sales,vrCalcs,mdfFunds,coopByBrand,billingStatus,activeBrands}) {
+  const [showBrand,setShowBrand]=useState(false);const [showContract,setShowContract]=useState(false);const [editBrand,setEditBrand]=useState(null);const [editContract,setEditContract]=useState(null);const [selectedBrand,setSelectedBrand]=useState(null);const [saving,setSaving]=useState(false);
+  const [bf,setBf]=useState({brand_name:"",vendor_contact_name:"",vendor_contact_email:"",vendor_contact_phone:"",notes:""});
+  const [cf,setCf]=useState({effective_date:"",contract_expiry_date:"",contract_label:"",vr_enabled:true,vr_base_pct:0,vr_includes_accessories:false,vr_tiers:"[]",coop_enabled:true,coop_pct:0,coop_includes_accessories:false,coop_sellthru_required:false,coop_sellthru_pct:0,mdf_enabled:false,mdf_annual_budget:0,mdf_notes:"",sellthru_target_pct:0,sellthru_calculation:"units",notes:""});
+  const canEdit=PERMS.canManageBrands(role);const canEditTerms=PERMS.canEditContracts(role);
+  const openBrand=(b=null)=>{if(b){setBf({brand_name:b.brand_name,vendor_contact_name:b.vendor_contact_name||"",vendor_contact_email:b.vendor_contact_email||"",vendor_contact_phone:b.vendor_contact_phone||"",notes:b.notes||""});setEditBrand(b);}else{setBf({brand_name:"",vendor_contact_name:"",vendor_contact_email:"",vendor_contact_phone:"",notes:""});setEditBrand(null);}setShowBrand(true);};
+  const openContract=(brandId,existing=null)=>{setSelectedBrand(brandId);if(existing){setCf({effective_date:existing.effective_date,contract_expiry_date:existing.contract_expiry_date||"",contract_label:existing.contract_label||"",vr_enabled:existing.vr_enabled,vr_base_pct:existing.vr_base_pct||0,vr_includes_accessories:existing.vr_includes_accessories,vr_tiers:JSON.stringify(existing.vr_tiers||[]),coop_enabled:existing.coop_enabled,coop_pct:existing.coop_pct||0,coop_includes_accessories:existing.coop_includes_accessories,coop_sellthru_required:existing.coop_sellthru_required,coop_sellthru_pct:existing.coop_sellthru_pct||0,mdf_enabled:existing.mdf_enabled,mdf_annual_budget:existing.mdf_annual_budget||0,mdf_notes:existing.mdf_notes||"",sellthru_target_pct:existing.sellthru_target_pct||0,sellthru_calculation:existing.sellthru_calculation||"units",notes:existing.notes||""});setEditContract(existing);}else{const ey=new Date();ey.setFullYear(ey.getFullYear()+1);setCf({effective_date:new Date().toISOString().split("T")[0],contract_expiry_date:ey.toISOString().split("T")[0],contract_label:"",vr_enabled:true,vr_base_pct:0,vr_includes_accessories:false,vr_tiers:"[]",coop_enabled:true,coop_pct:0,coop_includes_accessories:false,coop_sellthru_required:false,coop_sellthru_pct:0,mdf_enabled:false,mdf_annual_budget:0,mdf_notes:"",sellthru_target_pct:0,sellthru_calculation:"units",notes:""});setEditContract(null);}setShowContract(true);};
+  const saveBrand=async()=>{try{if(!editBrand&&billingStatus?.limits?.max_brands){const current=billingStatus.usage?.brands||activeBrands.length;if(current>=billingStatus.limits.max_brands){showToast(`Brand limit reached (${billingStatus.limits.max_brands}). Upgrade your plan.`,"error");return;}}setSaving(true);if(editBrand){await sb.patch("mdf_brands",editBrand.id,bf,token);await logAction("update","brand",editBrand.id,bf);}else{const r=await sb.post("mdf_brands",bf,token);if(r?.[0])await logAction("create","brand",r[0].id,bf);}showToast(editBrand?"Brand updated":"Brand added");await loadAll();setShowBrand(false);setSaving(false);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+  const saveContract=async()=>{try{if(!cf.contract_expiry_date){showToast("Expiry date is required","error");return;}setSaving(true);let tiers=[];try{tiers=JSON.parse(cf.vr_tiers);}catch{}const data={...cf,brand_id:selectedBrand,vr_base_pct:parseFloat(cf.vr_base_pct),coop_pct:parseFloat(cf.coop_pct),coop_sellthru_pct:parseFloat(cf.coop_sellthru_pct),mdf_annual_budget:parseFloat(cf.mdf_annual_budget),sellthru_target_pct:parseFloat(cf.sellthru_target_pct),vr_tiers:tiers};
+    if(editContract){await sb.patch("mdf_brand_contracts",editContract.id,data,token);await logAction("update","contract",editContract.id,{vr_base_pct:data.vr_base_pct,coop_pct:data.coop_pct});}else{const ex=activeContracts[selectedBrand];if(ex)await sb.patch("mdf_brand_contracts",ex.id,{end_date:cf.effective_date},token);const r=await sb.post("mdf_brand_contracts",data,token);if(r?.[0])await logAction("create","contract",r[0].id,{vr_base_pct:data.vr_base_pct,coop_pct:data.coop_pct});}
+    showToast(editContract?"Contract updated":"Contract created");await loadAll();setShowContract(false);setSaving(false);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+  return <div className="space-y-6">
+    <div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold text-slate-900">Brand Manager</h2><p className="text-xs text-slate-400">Brands & contract terms{billingStatus?.limits?.max_brands?` · ${activeBrands.length}/${billingStatus.limits.max_brands} brands`:""}</p></div>{canEdit&&<Btn onClick={()=>openBrand()}>+ Add Brand</Btn>}</div>
+    {brands.length===0?<EmptyState icon="🏷" title="No brands" sub="Add your first brand" action={canEdit&&<Btn onClick={()=>openBrand()}>Add Brand</Btn>}/>:
+    <div className="space-y-4">{brands.map(b=>{const ac=activeContracts[b.id];return <div key={b.id} className={`bg-white rounded-xl border shadow-sm ${b.is_active?"border-slate-200":"border-slate-100 opacity-60"}`}>
+      <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100">
+        <div className="flex items-center gap-3"><div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-sm font-bold text-slate-600">{b.brand_name.substring(0,2).toUpperCase()}</div><div><h3 className="text-sm font-semibold text-slate-900">{b.brand_name}</h3><p className="text-[10px] text-slate-400">{b.vendor_contact_name&&`${b.vendor_contact_name} · `}{b.vendor_contact_email||"No contact"}</p></div></div>
+        <div className="flex items-center gap-2">{canEditTerms&&<Btn variant="ghost" size="sm" onClick={()=>openContract(b.id,ac)}>{ac?"Edit Terms":"Add Contract"}</Btn>}{canEdit&&<Btn variant="secondary" size="sm" onClick={()=>openBrand(b)}>Edit</Btn>}</div>
+      </div>
+      {ac?<div className="px-5 py-4"><div className="flex items-center justify-between mb-3"><div className="flex items-center gap-2"><span className="text-[10px] text-slate-400 uppercase tracking-wider font-medium">Active</span>{ac.contract_label&&<span className="text-[10px] text-slate-500">— {ac.contract_label}</span>}<span className="text-[10px] text-slate-400">· {fmtDate(ac.effective_date)} → {fmtDate(ac.contract_expiry_date)}</span>{ac.contract_expiry_date&&new Date(ac.contract_expiry_date)<new Date(Date.now()+60*86400000)&&<span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Expiring</span>}</div><Btn variant="secondary" size="sm" onClick={()=>{const bs=sales.filter(s=>s.brand_id===b.id);const bv=vrCalcs.filter(v=>v.brand_id===b.id);const bm=mdfFunds.filter(m=>m.brand_id===b.id);generateBrandReport(b,ac,bs,coopByBrand[b.id]||0,bv,bm);}}>📄 PDF Report</Btn></div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="bg-violet-50 rounded-lg px-3 py-2"><p className="text-[10px] text-violet-500 font-medium">VR%</p><p className="text-lg font-bold text-violet-800">{ac.vr_enabled?fmtPct(ac.vr_base_pct):"Off"}</p></div>
+          <div className="bg-emerald-50 rounded-lg px-3 py-2"><p className="text-[10px] text-emerald-500 font-medium">Co-op%</p><p className="text-lg font-bold text-emerald-800">{ac.coop_enabled?fmtPct(ac.coop_pct):"Off"}</p></div>
+          <div className="bg-blue-50 rounded-lg px-3 py-2"><p className="text-[10px] text-blue-500 font-medium">Sell-Thru</p><p className="text-lg font-bold text-blue-800">{ac.sellthru_target_pct?fmtPct(ac.sellthru_target_pct):"—"}</p></div>
+          <div className="bg-slate-50 rounded-lg px-3 py-2"><p className="text-[10px] text-slate-500 font-medium">VR Accs</p><p className="text-lg font-bold text-slate-700">{ac.vr_includes_accessories?"Yes":"No"}</p></div>
+          <div className="bg-slate-50 rounded-lg px-3 py-2"><p className="text-[10px] text-slate-500 font-medium">Co-op Accs</p><p className="text-lg font-bold text-slate-700">{ac.coop_includes_accessories?"Yes":"No"}</p></div>
+          <div className="bg-amber-50 rounded-lg px-3 py-2"><p className="text-[10px] text-amber-500 font-medium">MDF</p><p className="text-lg font-bold text-amber-800">{ac.mdf_enabled?fmt(ac.mdf_annual_budget):"None"}</p></div>
+          <div className="bg-slate-50 rounded-lg px-3 py-2"><p className="text-[10px] text-slate-500 font-medium">VR Tiers</p><p className="text-lg font-bold text-slate-700">{(ac.vr_tiers||[]).length}</p></div>
+        </div>
+        {(ac.vr_tiers||[]).length>0&&<div className="mt-3 bg-slate-50 rounded-lg p-3"><p className="text-[10px] text-slate-500 font-medium mb-1">Tiers</p><div className="flex flex-wrap gap-2">{ac.vr_tiers.map((t,i)=><span key={i} className="text-[10px] bg-white border border-slate-200 rounded px-2 py-1">{t.label||`T${i+1}`}: {fmt(t.threshold)}→{fmtPct(t.pct)}</span>)}</div></div>}
+      </div>:<div className="px-5 py-6 text-center"><p className="text-xs text-slate-400">No terms{canEditTerms&&<> — <button onClick={()=>openContract(b.id)} className="text-slate-700 underline">add</button></>}</p></div>}
+    </div>})}</div>}
+    <Modal open={showBrand} onClose={()=>setShowBrand(false)} title={editBrand?"Edit Brand":"Add Brand"}><div className="space-y-4"><Input label="Brand Name" value={bf.brand_name} onChange={e=>setBf({...bf,brand_name:e.target.value})}/><div className="grid grid-cols-2 gap-4"><Input label="Contact Name" value={bf.vendor_contact_name} onChange={e=>setBf({...bf,vendor_contact_name:e.target.value})}/><Input label="Email" value={bf.vendor_contact_email} onChange={e=>setBf({...bf,vendor_contact_email:e.target.value})} type="email"/></div><Input label="Phone" value={bf.vendor_contact_phone} onChange={e=>setBf({...bf,vendor_contact_phone:e.target.value})}/><Input label="Notes" value={bf.notes} onChange={e=>setBf({...bf,notes:e.target.value})}/><div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>setShowBrand(false)}>Cancel</Btn><Btn onClick={saveBrand} disabled={!bf.brand_name||saving}>{saving?"Saving...":editBrand?"Update":"Add"}</Btn></div></div></Modal>
+    <Modal open={showContract} onClose={()=>setShowContract(false)} title={editContract?"Edit Terms":"New Contract"} width="max-w-3xl"><div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4"><Input label="Effective Date" type="date" value={cf.effective_date} onChange={e=>setCf({...cf,effective_date:e.target.value})}/><Input label="Expiry Date *" type="date" value={cf.contract_expiry_date} onChange={e=>setCf({...cf,contract_expiry_date:e.target.value})}/><Input label="Label" value={cf.contract_label} onChange={e=>setCf({...cf,contract_label:e.target.value})} placeholder="2026 Annual"/></div>
+      <div className="border border-violet-200 rounded-xl p-4 bg-violet-50/30"><div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-violet-900">Volume Rebate</h3><Toggle label="On" checked={cf.vr_enabled} onChange={v=>setCf({...cf,vr_enabled:v})}/></div>{cf.vr_enabled&&<div className="grid grid-cols-3 gap-4"><Input label="Base %" type="number" step="0.1" value={cf.vr_base_pct} onChange={e=>setCf({...cf,vr_base_pct:e.target.value})}/><div className="flex items-end pb-2"><Toggle label="Incl Accs" checked={cf.vr_includes_accessories} onChange={v=>setCf({...cf,vr_includes_accessories:v})}/></div><div><label className="block text-xs font-medium text-slate-600 mb-1">Tiers JSON</label><textarea value={cf.vr_tiers} onChange={e=>setCf({...cf,vr_tiers:e.target.value})} rows={2} className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono"/></div></div>}</div>
+      <div className="border border-emerald-200 rounded-xl p-4 bg-emerald-50/30"><div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-emerald-900">Co-op</h3><Toggle label="On" checked={cf.coop_enabled} onChange={v=>setCf({...cf,coop_enabled:v})}/></div>{cf.coop_enabled&&<div className="grid grid-cols-3 gap-4"><Input label="Co-op %" type="number" step="0.1" value={cf.coop_pct} onChange={e=>setCf({...cf,coop_pct:e.target.value})}/><div className="flex items-end pb-2"><Toggle label="Incl Accs" checked={cf.coop_includes_accessories} onChange={v=>setCf({...cf,coop_includes_accessories:v})}/></div><div className="flex items-end pb-2"><Toggle label="Sell-Thru Req" checked={cf.coop_sellthru_required} onChange={v=>setCf({...cf,coop_sellthru_required:v})}/></div></div>}</div>
+      <div className="border border-blue-200 rounded-xl p-4 bg-blue-50/30"><h3 className="text-sm font-semibold text-blue-900 mb-3">Sell-Through</h3><div className="grid grid-cols-2 gap-4"><Input label="Target %" type="number" step="0.1" value={cf.sellthru_target_pct} onChange={e=>setCf({...cf,sellthru_target_pct:e.target.value})}/><Select label="By" value={cf.sellthru_calculation} onChange={e=>setCf({...cf,sellthru_calculation:e.target.value})} options={[{value:"units",label:"Units"},{value:"dollars",label:"Dollars"}]}/></div></div>
+      <div className="border border-amber-200 rounded-xl p-4 bg-amber-50/30"><div className="flex items-center justify-between mb-3"><h3 className="text-sm font-semibold text-amber-900">MDF</h3><Toggle label="On" checked={cf.mdf_enabled} onChange={v=>setCf({...cf,mdf_enabled:v})}/></div>{cf.mdf_enabled&&<div className="grid grid-cols-2 gap-4"><Input label="Annual Budget" type="number" value={cf.mdf_annual_budget} onChange={e=>setCf({...cf,mdf_annual_budget:e.target.value})}/><Input label="Notes" value={cf.mdf_notes} onChange={e=>setCf({...cf,mdf_notes:e.target.value})}/></div>}</div>
+      <div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>setShowContract(false)}>Cancel</Btn><Btn onClick={saveContract} disabled={saving}>{saving?"Saving...":editContract?"Update":"Create"}</Btn></div>
+    </div></Modal>
+  </div>;
+}
+
+// ─── DATE RANGE FILTER ─────────────────────────
+const QUICK_RANGES = [
+  { label: "All", from: "", to: "" },
+  { label: "This Month", fn: () => { const d = new Date(); return { from: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`, to: d.toISOString().split('T')[0] }; } },
+  { label: "Last Month", fn: () => { const d = new Date(); d.setMonth(d.getMonth()-1); const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'); return { from: `${y}-${m}-01`, to: `${y}-${m}-${new Date(y,d.getMonth()+1,0).getDate()}` }; } },
+  { label: "This Quarter", fn: () => { const d=new Date(),q=Math.floor(d.getMonth()/3),y=d.getFullYear(); return { from: `${y}-${String(q*3+1).padStart(2,'0')}-01`, to: d.toISOString().split('T')[0] }; } },
+  { label: "YTD", fn: () => ({ from: `${new Date().getFullYear()}-01-01`, to: new Date().toISOString().split('T')[0] }) },
+  { label: "Last Year", fn: () => { const y=new Date().getFullYear()-1; return { from: `${y}-01-01`, to: `${y}-12-31` }; } },
+];
+
+function DateRangeFilter({ from, to, onFromChange, onToChange, onQuick }) {
+  return <div className="flex flex-wrap items-end gap-2">
+    {QUICK_RANGES.map(r => <button key={r.label} onClick={() => { if (r.fn) { const v = r.fn(); onQuick(v.from, v.to); } else { onQuick("", ""); } }} className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">{r.label}</button>)}
+    <Input label="" type="date" value={from} onChange={e => onFromChange(e.target.value)} className="!py-1.5 !text-xs w-32" />
+    <span className="text-slate-400 text-xs pb-1">→</span>
+    <Input label="" type="date" value={to} onChange={e => onToChange(e.target.value)} className="!py-1.5 !text-xs w-32" />
+  </div>;
+}
+
+function exportCSV(data, headers, filename) {
+  const csv = [headers.join(','), ...data.map(r => headers.map(h => {const v=r[h.key]??''; return typeof v==='string'&&v.includes(',')?`"${v}"`:v;}).join(','))].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+}
+
+function CSVImporter({activeBrands,loadAll,token,logAction,showToast,onClose}) {
+  const [step,setStep]=useState(1);const [headers,setHeaders]=useState([]);const [rows,setRows]=useState([]);const [mapping,setMapping]=useState({});const [selectedBrand,setSelectedBrand]=useState("");const [importing,setImporting]=useState(false);const [result,setResult]=useState(null);
+  const FIELDS=[{key:"period_start",label:"Period Start",req:true},{key:"period_end",label:"Period End"},{key:"period_label",label:"Period Label"},{key:"gross_sales",label:"Gross Sales",req:true},{key:"returns_allowances",label:"Returns"},{key:"product_sales",label:"Product Sales"},{key:"accessory_sales",label:"Accessory Sales"},{key:"units_sold",label:"Units Sold"},{key:"units_purchased",label:"Units Purchased"},{key:"store_name",label:"Store"}];
+  const parseCSV=(text)=>{const lines=text.trim().split('\n');if(lines.length<2)return;const d=lines[0].includes('\t')?'\t':',';const h=lines[0].split(d).map(s=>s.trim().replace(/^"|"$/g,''));const data=lines.slice(1).map(l=>{const v=[];let c='',q=false;for(let i=0;i<l.length;i++){if(l[i]==='"')q=!q;else if(l[i]===d[0]&&!q){v.push(c.trim());c='';}else c+=l[i];}v.push(c.trim());return v;}).filter(r=>r.some(v=>v));setHeaders(h);setRows(data);const am={};FIELDS.forEach(f=>{const m=h.findIndex(hh=>{const hl=hh.toLowerCase().replace(/[^a-z0-9]/g,'');const fl=f.label.toLowerCase().replace(/[^a-z0-9]/g,'');return hl.includes(fl)||fl.includes(hl);});if(m>=0)am[f.key]=m;});setMapping(am);setStep(2);};
+  const handleFile=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>parseCSV(ev.target.result);r.readAsText(f);};
+  const getMapped=()=>rows.map((row,i)=>{const o={brand_id:selectedBrand,source:'csv',import_row_num:i+1};FIELDS.forEach(f=>{if(mapping[f.key]!==undefined)o[f.key]=row[mapping[f.key]]||'';});['gross_sales','returns_allowances','product_sales','accessory_sales'].forEach(k=>{if(o[k])o[k]=parseFloat(String(o[k]).replace(/[$,]/g,''))||0;});['units_sold','units_purchased'].forEach(k=>{if(o[k])o[k]=parseInt(String(o[k]).replace(/,/g,''))||0;});['period_start','period_end'].forEach(k=>{if(o[k]){const d=new Date(o[k]);if(!isNaN(d))o[k]=d.toISOString().split('T')[0];else delete o[k];}});return o;}).filter(r=>r.period_start&&r.gross_sales);
+  const doImport=async()=>{try{setImporting(true);const mapped=getMapped();const bid=crypto.randomUUID();let ok=0,fail=0,errs=[];for(let i=0;i<mapped.length;i++){const r=await sb.post("mdf_sales_data",{...mapped[i],import_batch_id:bid},token);if(r)ok++;else{fail++;errs.push(`Row ${i+2}`);}}await logAction("create","sales_import",null,{batch_id:bid,total:mapped.length,success:ok,failed:fail});setResult({ok,fail,errs,total:mapped.length});setStep(4);setImporting(false);if(ok>0){showToast(`Imported ${ok} records`);await loadAll();}}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setImporting(false);}};
+  const reqMapped=FIELDS.filter(f=>f.req).every(f=>mapping[f.key]!==undefined);
+  return <div className="space-y-4">
+    {step===1&&<div><p className="text-xs text-slate-600 mb-4">Upload CSV or paste data. First row = headers.</p><div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-slate-400"><input type="file" accept=".csv,.tsv,.txt" onChange={handleFile} className="hidden" id="csv-up"/><label htmlFor="csv-up" className="cursor-pointer"><p className="text-3xl mb-2">📄</p><p className="text-sm font-medium text-slate-700">Click to upload CSV</p></label></div><p className="text-xs text-slate-400 text-center my-3">— or paste —</p><textarea onBlur={e=>{if(e.target.value.trim().split('\n').length>=2)parseCSV(e.target.value);}} placeholder="Paste CSV here..." rows={3} className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg font-mono"/></div>}
+    {step===2&&<div><p className="text-xs text-slate-600 mb-3">{rows.length} rows, {headers.length} cols. Map fields:</p><Select label="Brand (all rows)" value={selectedBrand} onChange={e=>setSelectedBrand(e.target.value)} options={[{value:"",label:"Select..."},...activeBrands.map(b=>({value:b.id,label:b.brand_name}))]}/><div className="mt-4 space-y-2">{FIELDS.map(f=><div key={f.key} className="flex items-center gap-3"><span className={`text-xs w-32 ${f.req?"font-medium text-slate-900":"text-slate-500"}`}>{f.label}{f.req&&<span className="text-red-500">*</span>}</span><select value={mapping[f.key]??""} onChange={e=>setMapping({...mapping,[f.key]:e.target.value===""?undefined:parseInt(e.target.value)})} className="flex-1 px-3 py-1.5 text-xs border border-slate-300 rounded-lg"><option value="">— skip —</option>{headers.map((h,i)=><option key={i} value={i}>{h}</option>)}</select>{mapping[f.key]!==undefined&&<span className="text-emerald-500 text-xs">✓</span>}</div>)}</div><div className="flex justify-end gap-3 pt-4"><Btn variant="secondary" onClick={()=>setStep(1)}>Back</Btn><Btn onClick={()=>setStep(3)} disabled={!reqMapped||!selectedBrand}>Preview →</Btn></div></div>}
+    {step===3&&<div><p className="text-xs text-slate-600 mb-3">{getMapped().length} rows ready:</p><div className="overflow-x-auto max-h-64 border border-slate-200 rounded-lg"><table className="w-full text-[10px]"><thead><tr className="bg-slate-50 sticky top-0">{FIELDS.filter(f=>mapping[f.key]!==undefined).map(f=><th key={f.key} className="text-left px-2 py-2 font-medium text-slate-500">{f.label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{getMapped().slice(0,20).map((r,i)=><tr key={i}>{FIELDS.filter(f=>mapping[f.key]!==undefined).map(f=><td key={f.key} className="px-2 py-1.5">{typeof r[f.key]==='number'?f.key.includes('unit')?r[f.key]:fmt(r[f.key]):r[f.key]}</td>)}</tr>)}</tbody></table></div><div className="flex justify-end gap-3 pt-4"><Btn variant="secondary" onClick={()=>setStep(2)}>Back</Btn><Btn onClick={doImport} disabled={importing}>{importing?`Importing...`:`Import ${getMapped().length}`}</Btn></div></div>}
+    {step===4&&result&&<div className="text-center py-6"><p className="text-4xl mb-3">{result.fail===0?"✅":"⚠️"}</p><p className="text-sm font-semibold">{result.ok}/{result.total} imported</p>{result.fail>0&&<p className="text-xs text-red-600 mt-2">Failed: {result.errs.join(', ')}</p>}<Btn onClick={onClose} className="mt-4">Done</Btn></div>}
+  </div>;
+}
+
+function SalesTracker({activeBrands,sales,loadAll,role,token,logAction,showToast,brandMap}) {
+  const [showAdd,setShowAdd]=useState(false);const [showCSV,setShowCSV]=useState(false);const [showEdit,setShowEdit]=useState(false);const [saving,setSaving]=useState(false);const [filterBrand,setFilterBrand]=useState("");const [confirmDel,setConfirmDel]=useState(null);
+  const [selected,setSelected]=useState(new Set());const [dateFrom,setDateFrom]=useState("");const [dateTo,setDateTo]=useState("");
+  const [sf,setSf]=useState({brand_id:"",period_start:"",period_end:"",period_label:"",gross_sales:0,returns_allowances:0,product_sales:0,accessory_sales:0,units_sold:0,units_purchased:0,store_name:"",source:"manual",notes:""});
+  const [editId,setEditId]=useState(null);
+  const canEnter=PERMS.canEnterSales(role);
+  const filtered=sales.filter(s=>{if(filterBrand&&s.brand_id!==filterBrand)return false;if(dateFrom&&s.period_start<dateFrom)return false;if(dateTo&&s.period_end>dateTo&&s.period_start>dateTo)return false;return true;});
+  const allSelected=filtered.length>0&&filtered.every(s=>selected.has(s.id));
+  const toggleAll=()=>{if(allSelected)setSelected(new Set());else setSelected(new Set(filtered.map(s=>s.id)));};
+  const toggleOne=(id)=>{const n=new Set(selected);if(n.has(id))n.delete(id);else n.add(id);setSelected(n);};
+
+  const openEdit=(s)=>{setSf({brand_id:s.brand_id,period_start:s.period_start||"",period_end:s.period_end||"",period_label:s.period_label||"",gross_sales:s.gross_sales||0,returns_allowances:s.returns_allowances||0,product_sales:s.product_sales||0,accessory_sales:s.accessory_sales||0,units_sold:s.units_sold||0,units_purchased:s.units_purchased||0,store_name:s.store_name||"",source:s.source||"manual",notes:s.notes||""});setEditId(s.id);setShowEdit(true);};
+  const openAdd=()=>{setSf({brand_id:"",period_start:"",period_end:"",period_label:"",gross_sales:0,returns_allowances:0,product_sales:0,accessory_sales:0,units_sold:0,units_purchased:0,store_name:"",source:"manual",notes:""});setEditId(null);setShowAdd(true);};
+
+  const saveSale=async()=>{try{setSaving(true);const d={...sf,gross_sales:parseFloat(sf.gross_sales),returns_allowances:parseFloat(sf.returns_allowances),product_sales:parseFloat(sf.product_sales),accessory_sales:parseFloat(sf.accessory_sales),units_sold:parseInt(sf.units_sold),units_purchased:parseInt(sf.units_purchased)};
+    if(editId){const r=await sb.patch("mdf_sales_data",editId,d,token);if(r)await logAction("update","sales",editId,{gross_sales:d.gross_sales});else{showToast("Update failed","error");setSaving(false);return;}showToast("Sales updated");setShowEdit(false);}
+    else{const r=await sb.post("mdf_sales_data",d,token);if(r?.[0])await logAction("create","sales",r[0].id,{brand_id:sf.brand_id,gross_sales:d.gross_sales});else{showToast("Failed — possible duplicate","error");setSaving(false);return;}showToast("Sales added (co-op auto-accrued)");setShowAdd(false);}
+    await loadAll();setSaving(false);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+
+  const deleteSale=async(id)=>{await sb.del("mdf_sales_data",id,token);await logAction("delete","sales",id,{});showToast("Deleted");setConfirmDel(null);await loadAll();};
+  const bulkDelete=async()=>{if(!selected.size)return;const ids=[...selected];for(const id of ids)await sb.del("mdf_sales_data",id,token);await logAction("delete","sales",null,{count:ids.length,bulk:true});showToast(`Deleted ${ids.length} records`);setSelected(new Set());await loadAll();};
+  const doExport=()=>{const hdrs=[{key:'brand',label:'Brand'},{key:'period',label:'Period'},{key:'gross',label:'Gross'},{key:'returns',label:'Returns'},{key:'net',label:'Net'},{key:'product',label:'Product'},{key:'accessory',label:'Accessory'},{key:'sold',label:'Sold'},{key:'purchased',label:'Purchased'},{key:'store',label:'Store'},{key:'source',label:'Source'}];const data=filtered.map(s=>({brand:activeBrands.find(b=>b.id===s.brand_id)?.brand_name||'',period:s.period_label||s.period_start,gross:s.gross_sales,returns:s.returns_allowances,net:s.net_sales,product:s.product_sales,accessory:s.accessory_sales,sold:s.units_sold,purchased:s.units_purchased,store:s.store_name||'',source:s.source}));exportCSV(data,hdrs,'sales-export.csv');};
+
+  const salesForm=<div className="space-y-4"><Select label="Brand" value={sf.brand_id} onChange={e=>setSf({...sf,brand_id:e.target.value})} options={[{value:"",label:"Select..."},...activeBrands.map(b=>({value:b.id,label:b.brand_name}))]}/><div className="grid grid-cols-3 gap-4"><Input label="Start" type="date" value={sf.period_start} onChange={e=>setSf({...sf,period_start:e.target.value})}/><Input label="End" type="date" value={sf.period_end} onChange={e=>setSf({...sf,period_end:e.target.value})}/><Input label="Label" value={sf.period_label} onChange={e=>setSf({...sf,period_label:e.target.value})} placeholder="Jul 2026"/></div><div className="grid grid-cols-2 gap-4"><Input label="Gross ($)" type="number" value={sf.gross_sales} onChange={e=>setSf({...sf,gross_sales:e.target.value})}/><Input label="Returns ($)" type="number" value={sf.returns_allowances} onChange={e=>setSf({...sf,returns_allowances:e.target.value})}/></div><div className="grid grid-cols-2 gap-4"><Input label="Product ($)" type="number" value={sf.product_sales} onChange={e=>setSf({...sf,product_sales:e.target.value})}/><Input label="Accessory ($)" type="number" value={sf.accessory_sales} onChange={e=>setSf({...sf,accessory_sales:e.target.value})}/></div><div className="grid grid-cols-3 gap-4"><Input label="Units Sold" type="number" value={sf.units_sold} onChange={e=>setSf({...sf,units_sold:e.target.value})}/><Input label="Units Purch" type="number" value={sf.units_purchased} onChange={e=>setSf({...sf,units_purchased:e.target.value})}/><Input label="Store" value={sf.store_name} onChange={e=>setSf({...sf,store_name:e.target.value})}/></div>{!editId&&<p className="text-[10px] text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">💡 Co-op accrual auto-posts on new entries</p>}<div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>{setShowAdd(false);setShowEdit(false);}}>Cancel</Btn><Btn onClick={saveSale} disabled={!sf.brand_id||!sf.period_start||saving}>{saving?"Saving...":editId?"Update":"Add"}</Btn></div></div>;
+
+  return <div className="space-y-6"><div className="flex items-center justify-between flex-wrap gap-2"><div><h2 className="text-lg font-semibold text-slate-900">Sales Tracker</h2><p className="text-xs text-slate-400">co-op auto-accrues · {filtered.length} records</p></div><div className="flex gap-2">{selected.size>0&&<Btn variant="danger" size="sm" onClick={bulkDelete}>Delete {selected.size}</Btn>}{sales.length>0&&<Btn variant="secondary" size="sm" onClick={doExport}>↓ Export</Btn>}{canEnter&&<Btn variant="secondary" onClick={()=>setShowCSV(true)}>📄 CSV</Btn>}{canEnter&&<Btn onClick={openAdd}>+ Add</Btn>}</div></div>
+    <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onQuick={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
+    {activeBrands.length>1&&<div className="flex flex-wrap gap-1"><button onClick={()=>setFilterBrand("")} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${!filterBrand?"bg-slate-900 text-white":"bg-white text-slate-600 border border-slate-200"}`}>All</button>{activeBrands.map(b=><button key={b.id} onClick={()=>setFilterBrand(b.id)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filterBrand===b.id?"bg-slate-900 text-white":"bg-white text-slate-600 border border-slate-200"}`}>{b.brand_name}</button>)}</div>}
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">{filtered.length===0?<EmptyState icon="💰" title="No sales" sub={dateFrom||filterBrand?"Try adjusting filters":"Add manually or CSV import"}/>:
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase tracking-wider">{canEnter&&<th className="px-3 py-3 w-8"><input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded"/></th>}<th className="text-left px-4 py-3 font-medium">Brand</th><th className="text-left px-4 py-3 font-medium">Period</th><th className="text-right px-4 py-3 font-medium">Gross</th><th className="text-right px-4 py-3 font-medium">Returns</th><th className="text-right px-4 py-3 font-medium">Net</th><th className="text-right px-4 py-3 font-medium">Units</th><th className="text-left px-4 py-3 font-medium">Store</th><th className="text-center px-4 py-3 font-medium">Src</th>{canEnter&&<th className="px-4 py-3 w-20"></th>}</tr></thead>
+        <tbody className="divide-y divide-slate-100">{filtered.map(s=><tr key={s.id} className={`hover:bg-slate-50 ${selected.has(s.id)?"bg-blue-50":""}`}>{canEnter&&<td className="px-3 py-3"><input type="checkbox" checked={selected.has(s.id)} onChange={()=>toggleOne(s.id)} className="rounded"/></td>}<td className="px-4 py-3 font-medium">{activeBrands.find(b=>b.id===s.brand_id)?.brand_name||"—"}</td><td className="px-4 py-3 text-slate-600">{s.period_label||fmtDate(s.period_start)}</td><td className="px-4 py-3 text-right">{fmt(s.gross_sales)}</td><td className="px-4 py-3 text-right text-red-600">{fmt(s.returns_allowances)}</td><td className="px-4 py-3 text-right font-medium">{fmt(s.net_sales)}</td><td className="px-4 py-3 text-right">{s.units_sold}/{s.units_purchased}</td><td className="px-4 py-3 text-slate-600">{s.store_name||"—"}</td><td className="px-4 py-3 text-center"><Badge status={s.source}/></td>{canEnter&&<td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">{confirmDel===s.id?<><Btn size="sm" variant="danger" onClick={()=>deleteSale(s.id)}>Yes</Btn><Btn size="sm" variant="ghost" onClick={()=>setConfirmDel(null)}>×</Btn></>:<><button onClick={()=>openEdit(s)} className="text-slate-400 hover:text-blue-500 text-xs" title="Edit">✏️</button><button onClick={()=>setConfirmDel(s.id)} className="text-slate-400 hover:text-red-500 text-xs" title="Delete">🗑</button></>}</div></td>}</tr>)}</tbody></table></div>}</div>
+    <Modal open={showCSV} onClose={()=>setShowCSV(false)} title="CSV Import" width="max-w-3xl"><CSVImporter activeBrands={activeBrands} loadAll={loadAll} token={token} logAction={logAction} showToast={showToast} onClose={()=>setShowCSV(false)}/></Modal>
+    <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Add Sales" width="max-w-3xl">{salesForm}</Modal>
+    <Modal open={showEdit} onClose={()=>setShowEdit(false)} title="Edit Sales Record" width="max-w-3xl">{salesForm}</Modal>
+  </div>;
+}
+
+function VRCalculator({activeBrands,activeContracts,sales,vrCalcs,loadAll,token,logAction,showToast}) {
+  const [sel,setSel]=useState("");const [df,setDf]=useState("");const [dt,setDt]=useState("");const [res,setRes]=useState(null);const [saving,setSaving]=useState(false);
+  const calc=()=>{if(!sel||!df||!dt)return;const c=activeContracts[sel];if(!c){setRes({error:"No contract"});return;}const ps=sales.filter(s=>s.brand_id===sel&&s.period_start>=df&&s.period_end<=dt);const net=ps.reduce((a,s)=>a+(s.net_sales||s.gross_sales||0),0);const prod=ps.reduce((a,s)=>a+(s.product_sales||0),0);const elig=c.vr_includes_accessories?net:prod;const us=ps.reduce((a,s)=>a+(s.units_sold||0),0);const up=ps.reduce((a,s)=>a+(s.units_purchased||0),0);const st=up>0?(us/up)*100:0;let pct=c.vr_base_pct||0,tier="Base";for(const t of(c.vr_tiers||[]).sort((a,b)=>a.threshold-b.threshold)){if(elig>=t.threshold){pct=t.pct;tier=t.label||`${fmt(t.threshold)}+`;}}setRes({c,n:ps.length,net,elig,us,up,st,pct,tier,amt:elig*(pct/100)});};
+  const save=async()=>{try{if(!res||res.error)return;setSaving(true);const r=await sb.post("mdf_vr_calculations",{brand_id:sel,contract_id:res.c.id,period_start:df,period_end:dt,eligible_sales:res.elig,total_units_sold:res.us,total_units_purchased:res.up,sellthru_pct:res.st,tier_reached:res.tier,rebate_pct:res.pct,rebate_amount:res.amt},token);if(r?.[0])await logAction("create","vr_calculation",r[0].id,{rebate_amount:res.amt,tier:res.tier});showToast(`VR: ${fmt(res.amt)}`);await loadAll();setSaving(false);setRes(null);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+  return <div className="space-y-6"><div><h2 className="text-lg font-semibold text-slate-900">VR Calculator</h2><p className="text-xs text-slate-400">Auto-applies tier schedules</p></div>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5"><div className="grid grid-cols-1 sm:grid-cols-4 gap-4"><Select label="Brand" value={sel} onChange={e=>setSel(e.target.value)} options={[{value:"",label:"Select..."},...activeBrands.map(b=>({value:b.id,label:b.brand_name}))]}/><Input label="From" type="date" value={df} onChange={e=>setDf(e.target.value)}/><Input label="To" type="date" value={dt} onChange={e=>setDt(e.target.value)}/><div className="flex items-end"><Btn onClick={calc} className="w-full">Calculate</Btn></div></div></div>
+    {res&&!res.error&&<div className="bg-white rounded-xl border border-violet-200 shadow-sm overflow-hidden"><div className="bg-violet-50 px-5 py-4 border-b border-violet-100"><h3 className="text-sm font-semibold text-violet-900">Result</h3><p className="text-xs text-violet-600">{res.n} records</p></div><div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4"><div><p className="text-[10px] text-slate-500">Net</p><p className="text-sm font-bold">{fmt(res.net)}</p></div><div><p className="text-[10px] text-slate-500">Eligible</p><p className="text-sm font-bold text-violet-700">{fmt(res.elig)}</p></div><div><p className="text-[10px] text-slate-500">Sell-Thru</p><p className="text-sm font-bold">{fmtPct(res.st)}</p></div><div><p className="text-[10px] text-slate-500">Tier</p><p className="text-sm font-bold text-violet-700">{res.tier}</p></div></div><div className="bg-violet-900 px-5 py-4 flex items-center justify-between"><div><p className="text-xs text-violet-300">Rebate ({fmtPct(res.pct)})</p><p className="text-2xl font-bold text-white">{fmt(res.amt)}</p></div><Btn variant="success" onClick={save} disabled={saving}>{saving?"Saving...":"Save"}</Btn></div></div>}
+    {res?.error&&<div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">{res.error}</div>}
+    {vrCalcs.length>0&&<div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><div className="px-5 py-4 border-b border-slate-100"><h3 className="text-sm font-semibold text-slate-900">Saved</h3></div><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase tracking-wider"><th className="text-left px-4 py-3 font-medium">Brand</th><th className="text-left px-4 py-3 font-medium">Period</th><th className="text-right px-4 py-3 font-medium">Eligible</th><th className="text-right px-4 py-3 font-medium">Rate</th><th className="text-right px-4 py-3 font-medium">Rebate</th><th className="text-center px-4 py-3 font-medium">Status</th></tr></thead><tbody className="divide-y divide-slate-100">{vrCalcs.map(v=><tr key={v.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium">{activeBrands.find(b=>b.id===v.brand_id)?.brand_name}</td><td className="px-4 py-3 text-slate-600">{fmtDate(v.period_start)} – {fmtDate(v.period_end)}</td><td className="px-4 py-3 text-right">{fmt(v.eligible_sales)}</td><td className="px-4 py-3 text-right">{fmtPct(v.rebate_pct)}</td><td className="px-4 py-3 text-right font-medium text-violet-700">{fmt(v.rebate_amount)}</td><td className="px-4 py-3 text-center"><Badge status={v.status}/></td></tr>)}</tbody></table></div></div>}
+  </div>;
+}
+
+function CoopLedger({activeBrands,brandMap,ledger,coopByBrand,loadAll,role,token,logAction,showToast}) {
+  const [showAdd,setShowAdd]=useState(false);const [showEdit,setShowEdit]=useState(false);const [saving,setSaving]=useState(false);const [fb,setFb]=useState("");const [confirmDel,setConfirmDel]=useState(null);
+  const [dateFrom,setDateFrom]=useState("");const [dateTo,setDateTo]=useState("");
+  const [lf,setLf]=useState({brand_id:"",entry_type:"accrual",amount:0,description:"",period_label:"",transaction_date:new Date().toISOString().split("T")[0]});
+  const [editId,setEditId]=useState(null);
+  const canManage=PERMS.canManageLedger(role);
+  const filtered=ledger.filter(l=>{if(fb&&l.brand_id!==fb)return false;if(dateFrom&&l.transaction_date<dateFrom)return false;if(dateTo&&l.transaction_date>dateTo)return false;return true;});
+  const openEdit=(l)=>{setLf({brand_id:l.brand_id,entry_type:l.entry_type,amount:Math.abs(l.amount),description:l.description||"",period_label:l.period_label||"",transaction_date:l.transaction_date?.split("T")[0]||""});setEditId(l.id);setShowEdit(true);};
+  const openAdd=()=>{setLf({brand_id:"",entry_type:"accrual",amount:0,description:"",period_label:"",transaction_date:new Date().toISOString().split("T")[0]});setEditId(null);setShowAdd(true);};
+  const save=async()=>{try{setSaving(true);const a=parseFloat(lf.amount);const data={...lf,amount:["spend","expiry"].includes(lf.entry_type)?-Math.abs(a):Math.abs(a),reference_type:"manual"};
+    if(editId){await sb.patch("mdf_coop_ledger",editId,data,token);await logAction("update","ledger",editId,{entry_type:lf.entry_type,amount:a});showToast("Entry updated");}
+    else{const r=await sb.post("mdf_coop_ledger",data,token);if(r?.[0])await logAction("create","ledger",r[0].id,{entry_type:lf.entry_type,amount:a});showToast("Entry added");}
+    await loadAll();setShowAdd(false);setShowEdit(false);setSaving(false);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+  const deleteEntry=async(id)=>{await sb.del("mdf_coop_ledger",id,token);await logAction("delete","ledger",id,{});showToast("Deleted");setConfirmDel(null);await loadAll();};
+  const doExport=()=>{const hdrs=[{key:'date'},{key:'brand'},{key:'type'},{key:'description'},{key:'amount'},{key:'period'}];const data=filtered.map(l=>({date:l.transaction_date,brand:brandMap[l.brand_id]?.brand_name||'',type:l.entry_type,description:l.description,amount:l.amount,period:l.period_label||''}));exportCSV(data,hdrs,'coop-ledger-export.csv');};
+  return <div className="space-y-6"><div className="flex items-center justify-between flex-wrap gap-2"><div><h2 className="text-lg font-semibold text-slate-900">Co-op Ledger</h2><p className="text-xs text-slate-400">{filtered.length} entries</p></div><div className="flex gap-2">{filtered.length>0&&<Btn variant="secondary" size="sm" onClick={doExport}>↓ Export</Btn>}{canManage&&<Btn onClick={openAdd}>+ Add Entry</Btn>}</div></div>
+    <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onQuick={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
+    {activeBrands.filter(b=>coopByBrand[b.id]!==undefined).length>0&&<div className="grid grid-cols-2 sm:grid-cols-4 gap-3">{activeBrands.filter(b=>coopByBrand[b.id]!==undefined).map(b=><div key={b.id} className={`bg-white rounded-xl border px-4 py-3 cursor-pointer transition-all ${fb===b.id?"border-emerald-400 ring-2 ring-emerald-100":"border-slate-200 hover:border-slate-300"}`} onClick={()=>setFb(fb===b.id?"":b.id)}><p className="text-[10px] text-slate-500 font-medium">{b.brand_name}</p><p className={`text-lg font-bold ${(coopByBrand[b.id]||0)>=0?"text-emerald-700":"text-red-600"}`}>{fmt(coopByBrand[b.id])}</p></div>)}</div>}
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">{filtered.length===0?<EmptyState icon="📒" title="No entries" sub="Adjust filters or add entries"/>:
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase tracking-wider"><th className="text-left px-4 py-3 font-medium">Date</th><th className="text-left px-4 py-3 font-medium">Brand</th><th className="text-center px-4 py-3 font-medium">Type</th><th className="text-left px-4 py-3 font-medium">Description</th><th className="text-right px-4 py-3 font-medium">Amount</th>{canManage&&<th className="px-4 py-3 w-20"></th>}</tr></thead><tbody className="divide-y divide-slate-100">{filtered.map(l=><tr key={l.id} className="hover:bg-slate-50"><td className="px-4 py-3 text-slate-600">{fmtDate(l.transaction_date)}</td><td className="px-4 py-3 font-medium">{brandMap[l.brand_id]?.brand_name||"—"}</td><td className="px-4 py-3 text-center"><Badge status={l.entry_type}/></td><td className="px-4 py-3 text-slate-700 max-w-xs truncate">{l.description}</td><td className={`px-4 py-3 text-right font-medium ${l.amount>=0?"text-emerald-700":"text-red-600"}`}>{l.amount>=0?"+":""}{fmt(l.amount)}</td>{canManage&&<td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1">{l.reference_type!=="sales_auto"&&<>{confirmDel===l.id?<><Btn size="sm" variant="danger" onClick={()=>deleteEntry(l.id)}>Yes</Btn><Btn size="sm" variant="ghost" onClick={()=>setConfirmDel(null)}>×</Btn></>:<><button onClick={()=>openEdit(l)} className="text-slate-400 hover:text-blue-500 text-xs">✏️</button><button onClick={()=>setConfirmDel(l.id)} className="text-slate-400 hover:text-red-500 text-xs">🗑</button></>}</>}{l.reference_type==="sales_auto"&&<span className="text-[10px] text-slate-300">auto</span>}</div></td>}</tr>)}</tbody></table></div>}</div>
+    <Modal open={showAdd||showEdit} onClose={()=>{setShowAdd(false);setShowEdit(false);}} title={editId?"Edit Entry":"Add Entry"}><div className="space-y-4"><Select label="Brand" value={lf.brand_id} onChange={e=>setLf({...lf,brand_id:e.target.value})} options={[{value:"",label:"Select..."},...activeBrands.map(b=>({value:b.id,label:b.brand_name}))]}/><Select label="Type" value={lf.entry_type} onChange={e=>setLf({...lf,entry_type:e.target.value})} options={[{value:"accrual",label:"Accrual"},{value:"spend",label:"Spend"},{value:"mdf_credit",label:"MDF Credit"},{value:"adjustment",label:"Adjustment"},{value:"expiry",label:"Expiry"}]}/><Input label="Amount ($)" type="number" value={lf.amount} onChange={e=>setLf({...lf,amount:e.target.value})}/><Input label="Description" value={lf.description} onChange={e=>setLf({...lf,description:e.target.value})}/><div className="grid grid-cols-2 gap-4"><Input label="Date" type="date" value={lf.transaction_date} onChange={e=>setLf({...lf,transaction_date:e.target.value})}/><Input label="Period" value={lf.period_label} onChange={e=>setLf({...lf,period_label:e.target.value})} placeholder="Q3 2026"/></div><div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>{setShowAdd(false);setShowEdit(false);}}>Cancel</Btn><Btn onClick={save} disabled={!lf.brand_id||!lf.description||saving}>{saving?"Saving...":editId?"Update":"Add"}</Btn></div></div></Modal></div>;
+}
+
+function CoopRequests({activeBrands,brandMap,requests,loadAll,role,currentUser,token,logAction,showToast,org,billingStatus}) {
+  const tierFeatures=billingStatus?.org?.mdf_subscription_tiers?.features||{};
+  const hasApproval=tierFeatures.approval_workflow!==false;
+  const hasEmail=tierFeatures.email_notifications!==false;
+  const [showSubmit,setShowSubmit]=useState(false);const [showEdit,setShowEdit]=useState(false);const [saving,setSaving]=useState(false);const [view,setView]=useState("all");
+  const [dateFrom,setDateFrom]=useState("");const [dateTo,setDateTo]=useState("");const [editId,setEditId]=useState(null);
+  const [rf,setRf]=useState({title:"",request_type:"event",description:"",brand_ids:[],funding_source:"coop",estimated_cost:0,event_date:"",event_location:"",store_name:"",submitted_by:currentUser?.display_name||"",submitted_by_email:currentUser?.email||"",submitted_by_role:role==="marketing"?"marketing":"sales_rep"});
+  const [reviewNote,setReviewNote]=useState("");
+  const canSubmit=PERMS.canSubmitRequests(role);const canMgr=PERMS.canApproveManager(role);const canMkt=PERMS.canApproveMarketing(role);
+  const filtered=requests.filter(r=>{if(view!=="all"&&r.status!==view)return false;if(dateFrom&&r.event_date&&r.event_date<dateFrom)return false;if(dateTo&&r.event_date&&r.event_date>dateTo)return false;return true;});
+
+  const openEdit=(r)=>{setRf({title:r.title||"",request_type:r.request_type||"event",description:r.description||"",brand_ids:r.brand_ids||[],funding_source:r.funding_source||"coop",estimated_cost:r.estimated_cost||0,event_date:r.event_date?.split("T")[0]||"",event_location:r.event_location||"",store_name:r.store_name||"",submitted_by:r.submitted_by||"",submitted_by_email:r.submitted_by_email||"",submitted_by_role:r.submitted_by_role||"sales_rep"});setEditId(r.id);setShowEdit(true);};
+  const openSubmit=()=>{setRf({title:"",request_type:"event",description:"",brand_ids:[],funding_source:"coop",estimated_cost:0,event_date:"",event_location:"",store_name:"",submitted_by:currentUser?.display_name||"",submitted_by_email:currentUser?.email||"",submitted_by_role:role==="marketing"?"marketing":"sales_rep"});setEditId(null);setShowSubmit(true);};
+
+  const submit=async()=>{try{setSaving(true);const data={...rf,estimated_cost:parseFloat(rf.estimated_cost)};
+    if(editId){await sb.patch("mdf_coop_requests",editId,data,token);await logAction("update","request",editId,{title:rf.title});showToast("Request updated");setShowEdit(false);}
+    else{const r=await sb.post("mdf_coop_requests",data,token);if(r?.[0]){await logAction("create","request",r[0].id,{title:rf.title});if(hasEmail){const brandNames=rf.brand_ids.map(id=>activeBrands.find(b=>b.id===id)?.brand_name).filter(Boolean).join(', ');const tmpl=emailTemplates.requestSubmitted({...rf,estimated_cost:parseFloat(rf.estimated_cost)},brandNames);const mgrs=await sb.get("mdf_platform_users","role=in.(super_admin,admin,manager)&is_active=eq.true",token);(mgrs||[]).forEach(m=>sendNotification(token,m.email,tmpl.subject,tmpl.html,"request",r[0].id));}}showToast(hasEmail?"Submitted — managers notified":"Submitted");setShowSubmit(false);}
+    await loadAll();setSaving(false);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+
+  const updateStatus=async(id,status,ar)=>{const u={status};if(ar==="manager"){u.manager_reviewed_by=currentUser?.display_name;u.manager_reviewed_at=new Date().toISOString();u.manager_decision=status==="marketing_review"?"approved":status;if(reviewNote)u.manager_notes=reviewNote;}if(ar==="marketing"){u.marketing_reviewed_by=currentUser?.display_name;u.marketing_reviewed_at=new Date().toISOString();u.marketing_decision=status==="approved"?"approved":status;if(reviewNote)u.marketing_notes=reviewNote;}await sb.patch("mdf_coop_requests",id,u,token);await logAction(status==="denied"?"deny":"approve","request",id,{new_status:status,note:reviewNote||undefined});
+    // Send email notification (if tier allows)
+    if(hasEmail){const req=requests.find(r=>r.id===id);if(req){if(status==="denied"){const tmpl=emailTemplates.requestDenied(req,ar,currentUser?.display_name,reviewNote);if(req.submitted_by_email)sendNotification(token,req.submitted_by_email,tmpl.subject,tmpl.html,"request",id);}else if(status==="approved"){const tmpl=emailTemplates.requestApproved(req,"marketing",currentUser?.display_name);if(req.submitted_by_email)sendNotification(token,req.submitted_by_email,tmpl.subject,tmpl.html,"request",id);}else if(status==="marketing_review"){const tmpl=emailTemplates.requestApproved(req,"manager",currentUser?.display_name);if(req.submitted_by_email)sendNotification(token,req.submitted_by_email,tmpl.subject,tmpl.html,"request",id);const mkts=await sb.get("mdf_platform_users","role=in.(super_admin,admin,marketing)&is_active=eq.true",token);(mkts||[]).forEach(m=>sendNotification(token,m.email,emailTemplates.requestSubmitted(req,req.brand_ids?.join(', ')||'').subject,emailTemplates.requestSubmitted(req,'').html,"request",id));}}}
+    showToast(status==="denied"?"Denied — submitter notified":`${status.replace(/_/g," ")} — notified`);setReviewNote("");await loadAll();};
+
+  const totalEst=filtered.reduce((a,r)=>a+(r.estimated_cost||0),0);
+  const tabs=[{id:"all",l:"All",c:requests.length},{id:"submitted",l:"New",c:requests.filter(r=>r.status==="submitted").length},{id:"manager_review",l:"Manager",c:requests.filter(r=>r.status==="manager_review").length},{id:"marketing_review",l:"Mkt",c:requests.filter(r=>r.status==="marketing_review").length},{id:"approved",l:"Approved",c:requests.filter(r=>r.status==="approved").length},{id:"denied",l:"Denied",c:requests.filter(r=>r.status==="denied").length}];
+
+  const reqForm=<div className="space-y-4"><Input label="Title" value={rf.title} onChange={e=>setRf({...rf,title:e.target.value})} placeholder="Builder Night Q3"/><div className="grid grid-cols-2 gap-4"><Select label="Type" value={rf.request_type} onChange={e=>setRf({...rf,request_type:e.target.value})} options={[{value:"builder_night",label:"Builder Night"},{value:"golf_tournament",label:"Golf"},{value:"trade_show",label:"Trade Show"},{value:"sponsorship",label:"Sponsorship"},{value:"advertising",label:"Ads"},{value:"display",label:"Display"},{value:"digital_campaign",label:"Digital"},{value:"event",label:"Event"},{value:"other",label:"Other"}]}/><Select label="Funding" value={rf.funding_source} onChange={e=>setRf({...rf,funding_source:e.target.value})} options={[{value:"coop",label:"Co-op"},{value:"mdf",label:"MDF"},{value:"mixed",label:"Mixed"}]}/></div><div><label className="block text-xs font-medium text-slate-600 mb-1">Description</label><textarea value={rf.description} onChange={e=>setRf({...rf,description:e.target.value})} rows={3} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg"/></div><div><label className="block text-xs font-medium text-slate-600 mb-1">Brands</label><div className="flex flex-wrap gap-2">{activeBrands.map(b=><button key={b.id} onClick={()=>setRf({...rf,brand_ids:rf.brand_ids.includes(b.id)?rf.brand_ids.filter(id=>id!==b.id):[...rf.brand_ids,b.id]})} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${rf.brand_ids.includes(b.id)?"bg-emerald-100 text-emerald-800 border border-emerald-300":"bg-slate-100 text-slate-600 border border-slate-200"}`}>{b.brand_name}</button>)}</div></div><div className="grid grid-cols-3 gap-4"><Input label="Cost ($)" type="number" value={rf.estimated_cost} onChange={e=>setRf({...rf,estimated_cost:e.target.value})}/><Input label="Date" type="date" value={rf.event_date} onChange={e=>setRf({...rf,event_date:e.target.value})}/><Input label="Location" value={rf.event_location} onChange={e=>setRf({...rf,event_location:e.target.value})}/></div><div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>{setShowSubmit(false);setShowEdit(false);}}>Cancel</Btn><Btn onClick={submit} disabled={!rf.title||rf.brand_ids.length===0||saving}>{saving?"Saving...":editId?"Update":"Submit"}</Btn></div></div>;
+
+  return <div className="space-y-6"><div className="flex items-center justify-between flex-wrap gap-2"><div><h2 className="text-lg font-semibold text-slate-900">Co-op Requests</h2><p className="text-xs text-slate-400">{filtered.length} requests · {fmt(totalEst)} total</p></div>{canSubmit&&<Btn onClick={openSubmit}>+ Submit</Btn>}</div>
+    <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} onQuick={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
+    <div className="flex flex-wrap gap-1">{tabs.map(s=><button key={s.id} onClick={()=>setView(s.id)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${view===s.id?"bg-slate-900 text-white":"bg-white text-slate-600 border border-slate-200"}`}>{s.l}{s.c>0&&<span className="ml-1 opacity-60">({s.c})</span>}</button>)}</div>
+    <div className="space-y-3">{filtered.length===0?<div className="bg-white rounded-xl border border-slate-200 shadow-sm"><EmptyState icon="📋" title="None" sub="Submit a request"/></div>:filtered.map(r=><div key={r.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+      <div className="flex items-start justify-between mb-3"><div><h3 className="text-sm font-semibold text-slate-900">{r.title}</h3><p className="text-[10px] text-slate-400">{r.request_type?.replace(/_/g," ")} · {r.submitted_by}</p></div><div className="flex items-center gap-2">{!["approved","denied"].includes(r.status)&&canSubmit&&r.submitted_by_email===currentUser?.email&&<button onClick={()=>openEdit(r)} className="text-slate-400 hover:text-blue-500 text-xs">✏️</button>}<span className="text-sm font-bold">{fmt(r.estimated_cost)}</span><Badge status={r.status}/></div></div>
+      {r.description&&<p className="text-xs text-slate-600 mb-3">{r.description}</p>}
+      <div className="flex flex-wrap gap-4 text-[10px] text-slate-500 mb-3">{r.event_date&&<span>📅 {fmtDate(r.event_date)}</span>}{r.event_location&&<span>📍 {r.event_location}</span>}<span>💰 {r.funding_source}</span></div>
+      {r.manager_reviewed_by&&<p className="text-[10px] text-slate-400 mb-1">Manager: {r.manager_reviewed_by} — {r.manager_decision} {r.manager_notes?`"${r.manager_notes}"`:""}</p>}
+      {r.marketing_reviewed_by&&<p className="text-[10px] text-slate-400 mb-1">Marketing: {r.marketing_reviewed_by} — {r.marketing_decision} {r.marketing_notes?`"${r.marketing_notes}"`:""}</p>}
+      {(r.status==="submitted"||r.status==="manager_review")&&canMgr&&hasApproval&&<div className="pt-2 border-t border-slate-100 space-y-2"><Input label="Note (optional)" value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Reason or conditions..." className="!text-xs"/><div className="flex items-center gap-2"><span className="text-[10px] text-slate-400 mr-2">Manager:</span><Btn size="sm" variant="success" onClick={()=>updateStatus(r.id,"marketing_review","manager")}>Approve → Mkt</Btn><Btn size="sm" variant="danger" onClick={()=>updateStatus(r.id,"denied","manager")}>Deny</Btn></div></div>}
+      {(r.status==="submitted"||r.status==="manager_review")&&canMgr&&!hasApproval&&<div className="pt-2 border-t border-slate-100"><p className="text-xs text-slate-400 flex items-center gap-2">🔒 Approval workflow requires Professional plan or higher. <a href="#" onClick={(e)=>{e.preventDefault();/* could navigate to billing */}} className="text-violet-600 font-medium">Upgrade</a></p></div>}
+      {r.status==="marketing_review"&&canMkt&&hasApproval&&<div className="pt-2 border-t border-slate-100 space-y-2"><Input label="Note (optional)" value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Reason or conditions..." className="!text-xs"/><div className="flex items-center gap-2"><span className="text-[10px] text-slate-400 mr-2">Marketing:</span><Btn size="sm" variant="success" onClick={()=>updateStatus(r.id,"approved","marketing")}>Final Approve</Btn><Btn size="sm" variant="danger" onClick={()=>updateStatus(r.id,"denied","marketing")}>Deny</Btn></div></div>}
+    </div>)}</div>
+    <Modal open={showSubmit||showEdit} onClose={()=>{setShowSubmit(false);setShowEdit(false);}} title={editId?"Edit Request":"Submit Request"} width="max-w-3xl">{reqForm}</Modal></div>;
+}
+
+function MdfTracker({activeBrands,brandMap,mdfFunds,loadAll,role,token,logAction,showToast}) {
+  const [showAdd,setShowAdd]=useState(false);const [showEdit,setShowEdit]=useState(false);const [saving,setSaving]=useState(false);const canManage=PERMS.canManageMDF(role);const [editId,setEditId]=useState(null);
+  const [mf,setMf]=useState({brand_id:"",fund_label:"",total_amount:0,remaining_amount:0,effective_date:new Date().toISOString().split("T")[0],expiry_date:"",allowed_uses:"",status:"active"});
+  const openEdit=(m)=>{setMf({brand_id:m.brand_id,fund_label:m.fund_label||"",total_amount:m.total_amount||0,remaining_amount:m.remaining_amount||0,effective_date:m.effective_date?.split("T")[0]||"",expiry_date:m.expiry_date?.split("T")[0]||"",allowed_uses:m.allowed_uses||"",status:m.status||"active"});setEditId(m.id);setShowEdit(true);};
+  const openAdd=()=>{setMf({brand_id:"",fund_label:"",total_amount:0,remaining_amount:0,effective_date:new Date().toISOString().split("T")[0],expiry_date:"",allowed_uses:"",status:"active"});setEditId(null);setShowAdd(true);};
+  const save=async()=>{try{setSaving(true);const t=parseFloat(mf.total_amount);const data={...mf,total_amount:t,remaining_amount:mf.remaining_amount?parseFloat(mf.remaining_amount):t};
+    if(editId){await sb.patch("mdf_mdf_funds",editId,data,token);await logAction("update","mdf_fund",editId,{remaining_amount:data.remaining_amount,status:mf.status});showToast("MDF updated");}
+    else{const r=await sb.post("mdf_mdf_funds",data,token);if(r?.[0])await logAction("create","mdf_fund",r[0].id,{fund_label:mf.fund_label,total_amount:t});showToast("MDF added");}
+    await loadAll();setShowAdd(false);setShowEdit(false);setSaving(false);}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+  const mdfForm=<div className="space-y-4"><Select label="Brand" value={mf.brand_id} onChange={e=>setMf({...mf,brand_id:e.target.value})} options={[{value:"",label:"Select..."},...activeBrands.map(b=>({value:b.id,label:b.brand_name}))]}/><Input label="Label" value={mf.fund_label} onChange={e=>setMf({...mf,fund_label:e.target.value})} placeholder="Q3 MDF"/><div className="grid grid-cols-2 gap-4"><Input label="Total ($)" type="number" value={mf.total_amount} onChange={e=>setMf({...mf,total_amount:e.target.value,...(!editId?{remaining_amount:e.target.value}:{})})}/><Input label="Remaining ($)" type="number" value={mf.remaining_amount} onChange={e=>setMf({...mf,remaining_amount:e.target.value})}/></div><div className="grid grid-cols-2 gap-4"><Input label="Effective" type="date" value={mf.effective_date} onChange={e=>setMf({...mf,effective_date:e.target.value})}/><Input label="Expiry" type="date" value={mf.expiry_date} onChange={e=>setMf({...mf,expiry_date:e.target.value})}/></div>{editId&&<Select label="Status" value={mf.status} onChange={e=>setMf({...mf,status:e.target.value})} options={[{value:"active",label:"Active"},{value:"exhausted",label:"Exhausted"},{value:"expired",label:"Expired"}]}/>}<Input label="Allowed Uses" value={mf.allowed_uses} onChange={e=>setMf({...mf,allowed_uses:e.target.value})}/><div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>{setShowAdd(false);setShowEdit(false);}}>Cancel</Btn><Btn onClick={save} disabled={!mf.brand_id||!mf.fund_label||saving}>{saving?"Saving...":editId?"Update":"Add"}</Btn></div></div>;
+  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold text-slate-900">MDF Funds</h2><p className="text-xs text-slate-400">Over & above</p></div>{canManage&&<Btn onClick={openAdd}>+ Add Fund</Btn>}</div>
+    {mdfFunds.length===0?<div className="bg-white rounded-xl border border-slate-200 shadow-sm"><EmptyState icon="💎" title="No MDF" sub="Add vendor allocations"/></div>:
+    <div className="grid gap-4">{mdfFunds.map(m=>{const pct=m.total_amount>0?((m.total_amount-m.remaining_amount)/m.total_amount)*100:0;const dl=m.expiry_date?Math.ceil((new Date(m.expiry_date)-new Date())/86400000):null;return <div key={m.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5"><div className="flex items-start justify-between mb-4"><div><h3 className="text-sm font-semibold text-slate-900">{m.fund_label}</h3><p className="text-[10px] text-slate-400">{brandMap[m.brand_id]?.brand_name} · {fmtDate(m.effective_date)}</p></div><div className="flex items-center gap-2"><Badge status={m.status}/>{dl!==null&&dl<=60&&dl>0&&<span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">{dl}d</span>}{canManage&&<button onClick={()=>openEdit(m)} className="text-slate-400 hover:text-blue-500 text-xs ml-1">✏️</button>}</div></div><div className="grid grid-cols-3 gap-4 mb-4"><div><p className="text-[10px] text-slate-500">Total</p><p className="text-lg font-bold">{fmt(m.total_amount)}</p></div><div><p className="text-[10px] text-slate-500">Remaining</p><p className="text-lg font-bold text-emerald-700">{fmt(m.remaining_amount)}</p></div><div><p className="text-[10px] text-slate-500">Used</p><p className="text-lg font-bold text-slate-600">{fmt(m.total_amount-m.remaining_amount)}</p></div></div><div className="w-full bg-slate-100 rounded-full h-2 mb-3"><div className={`h-2 rounded-full ${pct>80?"bg-red-500":pct>50?"bg-amber-500":"bg-emerald-500"}`} style={{width:`${Math.min(pct,100)}%`}}/></div>{m.expiry_date&&<p className="text-[10px] text-slate-500">Expires: {fmtDate(m.expiry_date)}</p>}</div>})}</div>}
+    <Modal open={showAdd||showEdit} onClose={()=>{setShowAdd(false);setShowEdit(false);}} title={editId?"Edit MDF Fund":"Add MDF Fund"}>{mdfForm}</Modal></div>;
+}
+
+function UserManager({platformUsers,loadAll,token,logAction,showToast,billingStatus}) {
+  const [showAdd,setShowAdd]=useState(false);const [saving,setSaving]=useState(false);
+  const [uf,setUf]=useState({email:"",display_name:"",role:"sales_rep",store_name:""});
+  const add=async()=>{try{if(billingStatus?.limits?.max_users){const current=billingStatus.usage?.users||platformUsers.length;if(current>=billingStatus.limits.max_users){showToast(`User limit reached (${billingStatus.limits.max_users}). Upgrade your plan.`,"error");return;}}setSaving(true);const r=await sb.post("mdf_platform_users",uf,token);if(r?.[0])await logAction("create","user",r[0].id,{email:uf.email,role:uf.role});showToast(`${uf.display_name} added`);await loadAll();setShowAdd(false);setSaving(false);setUf({email:"",display_name:"",role:"sales_rep",store_name:""});}catch(error){showToast(error.message||'The operation failed. Please retry.','error');}finally{setSaving(false);}};
+  const toggle=async u=>{await sb.patch("mdf_platform_users",u.id,{is_active:!u.is_active},token);await logAction("update","user",u.id,{is_active:!u.is_active});showToast(`${u.display_name} ${u.is_active?"deactivated":"activated"}`);await loadAll();};
+  const chRole=async(u,nr)=>{await sb.patch("mdf_platform_users",u.id,{role:nr},token);await logAction("update","user",u.id,{role:nr,prev:u.role});showToast(`${u.display_name} → ${ROLE_LABELS[nr]}`);await loadAll();};
+  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h2 className="text-lg font-semibold text-slate-900">Users</h2><p className="text-xs text-slate-400">Access control</p></div><Btn onClick={()=>setShowAdd(true)}>+ Add User</Btn></div>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4"><h3 className="text-xs font-semibold text-slate-700 mb-3">Permissions</h3><div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-[10px]">{Object.entries(ROLE_LABELS).map(([r,l])=><div key={r} className="border border-slate-100 rounded-lg p-2"><Badge status={r} className="mb-1.5"/><div className="space-y-0.5 text-slate-500">{PERMS.canManageBrands(r)&&<p>✓ Brands</p>}{PERMS.canEditContracts(r)&&<p>✓ Contracts</p>}{PERMS.canEnterSales(r)&&<p>✓ Sales</p>}{PERMS.canCalculateVR(r)&&<p>✓ VR Calc</p>}{PERMS.canManageLedger(r)&&<p>✓ Ledger</p>}{PERMS.canSubmitRequests(r)&&<p>✓ Requests</p>}{PERMS.canApproveManager(r)&&<p>✓ Mgr Approve</p>}{PERMS.canApproveMarketing(r)&&<p>✓ Mkt Approve</p>}{PERMS.canManageMDF(r)&&<p>✓ MDF</p>}{PERMS.canManageUsers(r)&&<p>✓ Users</p>}{r==="viewer"&&<p>✓ View only</p>}</div></div>)}</div></div>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase tracking-wider"><th className="text-left px-4 py-3 font-medium">Name</th><th className="text-left px-4 py-3 font-medium">Email</th><th className="text-center px-4 py-3 font-medium">Role</th><th className="text-left px-4 py-3 font-medium">Store</th><th className="text-left px-4 py-3 font-medium">Last Login</th><th className="text-center px-4 py-3 font-medium">Status</th><th className="text-right px-4 py-3 font-medium">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{platformUsers.map(u=><tr key={u.id} className={`hover:bg-slate-50 ${!u.is_active?"opacity-50":""}`}><td className="px-4 py-3 font-medium">{u.display_name}</td><td className="px-4 py-3 text-slate-600">{u.email}</td><td className="px-4 py-3 text-center"><select value={u.role} onChange={e=>chRole(u,e.target.value)} className="text-xs border border-slate-200 rounded px-2 py-1">{Object.entries(ROLE_LABELS).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></td><td className="px-4 py-3 text-slate-600">{u.store_name||"—"}</td><td className="px-4 py-3 text-slate-500">{u.last_login?fmtTime(u.last_login):"Never"}</td><td className="px-4 py-3 text-center">{u.is_active?<span className="text-emerald-600 text-[10px]">Active</span>:<span className="text-red-500 text-[10px]">Off</span>}</td><td className="px-4 py-3 text-right"><Btn size="sm" variant={u.is_active?"danger":"success"} onClick={()=>toggle(u)}>{u.is_active?"Deactivate":"Activate"}</Btn></td></tr>)}</tbody></table></div>
+    <Modal open={showAdd} onClose={()=>setShowAdd(false)} title="Add User"><div className="space-y-4"><p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3">User needs a Supabase Auth account. Add email here for access.</p><Input label="Name" value={uf.display_name} onChange={e=>setUf({...uf,display_name:e.target.value})}/><Input label="Email" type="email" value={uf.email} onChange={e=>setUf({...uf,email:e.target.value})}/><Select label="Role" value={uf.role} onChange={e=>setUf({...uf,role:e.target.value})} options={Object.entries(ROLE_LABELS).map(([v,l])=>({value:v,label:l}))}/><Input label="Store" value={uf.store_name} onChange={e=>setUf({...uf,store_name:e.target.value})}/><div className="flex justify-end gap-3 pt-2"><Btn variant="secondary" onClick={()=>setShowAdd(false)}>Cancel</Btn><Btn onClick={add} disabled={!uf.email||!uf.display_name||saving}>{saving?"Adding...":"Add"}</Btn></div></div></Modal></div>;
+}
+
+function AuditLogView({auditLog}) {
+  const [f,setF]=useState("");
+  const filtered=f?auditLog.filter(a=>a.action===f):auditLog;
+  return <div className="space-y-6"><div><h2 className="text-lg font-semibold text-slate-900">Audit Log</h2><p className="text-xs text-slate-400">Who did what, when</p></div>
+    <div className="flex flex-wrap gap-1">{["","login","create","update","approve","deny"].map(x=><button key={x} onClick={()=>setF(x)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${f===x?"bg-slate-900 text-white":"bg-white text-slate-600 border border-slate-200"}`}>{x||"All"}</button>)}</div>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">{filtered.length===0?<EmptyState icon="📜" title="No entries" sub="Actions appear here"/>:
+      <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-slate-50 text-slate-500 uppercase tracking-wider"><th className="text-left px-4 py-3 font-medium">Time</th><th className="text-left px-4 py-3 font-medium">User</th><th className="text-center px-4 py-3 font-medium">Role</th><th className="text-center px-4 py-3 font-medium">Action</th><th className="text-left px-4 py-3 font-medium">Entity</th><th className="text-left px-4 py-3 font-medium">Details</th></tr></thead><tbody className="divide-y divide-slate-100">{filtered.map(a=><tr key={a.id} className="hover:bg-slate-50"><td className="px-4 py-3 text-slate-500 whitespace-nowrap">{fmtTime(a.created_at)}</td><td className="px-4 py-3 font-medium text-slate-800">{a.user_email}</td><td className="px-4 py-3 text-center"><Badge status={a.user_role}/></td><td className="px-4 py-3 text-center"><span className={`px-2 py-0.5 rounded text-[10px] font-medium ${a.action==="login"?"bg-blue-50 text-blue-700":a.action==="create"?"bg-green-50 text-green-700":a.action==="approve"?"bg-emerald-50 text-emerald-700":a.action==="deny"?"bg-red-50 text-red-700":"bg-slate-50 text-slate-600"}`}>{a.action}</span></td><td className="px-4 py-3 text-slate-600">{a.entity_type}</td><td className="px-4 py-3 text-slate-500 max-w-xs truncate">{a.details?JSON.stringify(a.details).substring(0,80):"—"}</td></tr>)}</tbody></table></div>}</div></div>;
+}
+
+function BillingPage({org,billingStatus,token,showToast,activeBrands,platformUsers}) {
+  const [loading,setLoading]=useState(false);
+  const [tiers,setTiers]=useState([]);
+
+  useEffect(()=>{(async()=>{const t=await fetch(`${SUPABASE_URL}/rest/v1/mdf_subscription_tiers?is_active=eq.true&order=price_monthly`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${token}`}});if(t.ok)setTiers(await t.json());})();},[token]);
+
+  const startCheckout=async(tierId,cycle)=>{if(!org)return;setLoading(true);try{const r=await fetch(`${SUPABASE_URL}/functions/v1/mdf-billing`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({action:'create_checkout',data:{tier_id:tierId,billing_cycle:cycle,email:org.owner_email,org_id:org.id}})});const d=await r.json();if(d.url)window.open(d.url,'_blank');else showToast(d.error||'Checkout failed','error');}catch(e){showToast('Checkout error','error');}setLoading(false);};
+
+  const openPortal=async()=>{if(!org)return;setLoading(true);try{const r=await fetch(`${SUPABASE_URL}/functions/v1/mdf-billing`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({action:'billing_portal',data:{org_id:org.id}})});const d=await r.json();if(d.url)window.open(d.url,'_blank');else showToast(d.error||'Portal failed','error');}catch(e){showToast('Portal error','error');}setLoading(false);};
+
+  const bs=billingStatus;
+  const currentTier=tiers.find(t=>t.id===org?.tier_id);
+  const STATUS_BADGE={active:"bg-emerald-100 text-emerald-800",trialing:"bg-blue-100 text-blue-800",past_due:"bg-red-100 text-red-800",canceled:"bg-slate-100 text-slate-600",unpaid:"bg-red-100 text-red-800"};
+
+  return <div className="space-y-6">
+    <div><h2 className="text-lg font-semibold text-slate-900">Billing & Subscription</h2><p className="text-xs text-slate-400">Manage your plan, usage, and payment</p></div>
+
+    {org&&<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <div className="flex items-start justify-between mb-6">
+        <div><h3 className="text-sm font-semibold text-slate-900">{org.name}</h3><p className="text-xs text-slate-400">{org.owner_email}</p></div>
+        <div className="flex items-center gap-2">
+          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[org.subscription_status]||"bg-slate-100 text-slate-600"}`}>{org.subscription_status?.replace(/_/g," ")}</span>
+          {org.subscription_status==="trialing"&&bs?.trial_days_left!==null&&<span className="text-xs text-blue-600 font-medium">{bs.trial_days_left} days left</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-violet-50 rounded-xl px-4 py-3"><p className="text-[10px] text-violet-500 font-medium">Current Plan</p><p className="text-lg font-bold text-violet-800">{currentTier?.name||org.tier_id}</p></div>
+        <div className="bg-slate-50 rounded-xl px-4 py-3"><p className="text-[10px] text-slate-500 font-medium">Billing</p><p className="text-lg font-bold text-slate-800">{org.billing_cycle==="annual"?"Annual":"Monthly"}</p></div>
+        <div className="bg-emerald-50 rounded-xl px-4 py-3"><p className="text-[10px] text-emerald-500 font-medium">Brands</p><p className="text-lg font-bold text-emerald-800">{bs?.usage?.brands||activeBrands.length} <span className="text-xs font-normal text-emerald-600">/ {bs?.limits?.max_brands||"∞"}</span></p></div>
+        <div className="bg-blue-50 rounded-xl px-4 py-3"><p className="text-[10px] text-blue-500 font-medium">Users</p><p className="text-lg font-bold text-blue-800">{bs?.usage?.users||platformUsers.length} <span className="text-xs font-normal text-blue-600">/ {bs?.limits?.max_users||"∞"}</span></p></div>
+      </div>
+
+      {org.stripe_customer_id&&<div className="flex gap-3"><Btn variant="secondary" onClick={openPortal} disabled={loading}>{loading?"Opening...":"Manage Billing"}</Btn></div>}
+      {org.current_period_end&&<p className="text-[10px] text-slate-400 mt-3">Current period ends: {new Date(org.current_period_end).toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'})}</p>}
+    </div>}
+
+    {currentTier&&<div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h3 className="text-sm font-semibold text-slate-900 mb-4">Plan Features</h3>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {Object.entries(currentTier.features||{}).map(([k,v])=><div key={k} className="flex items-center gap-2 text-xs"><span className={v?"text-emerald-500":"text-slate-300"}>{v?"✓":"—"}</span><span className={v?"text-slate-700":"text-slate-400"}>{k.replace(/_/g," ")}</span></div>)}
+      </div>
+    </div>}
+
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h3 className="text-sm font-semibold text-slate-900 mb-2">Plans</h3>
+      <p className="text-xs text-slate-400 mb-6">Upgrade or change your plan. All plans include a 14-day free trial.</p>
+      <div className="grid md:grid-cols-3 gap-4">
+        {tiers.map(t=>{const isCurrent=t.id===org?.tier_id;return <div key={t.id} className={`rounded-xl border p-5 ${isCurrent?"border-violet-400 bg-violet-50":"border-slate-200"}`}>
+          <h4 className="font-semibold text-slate-900">{t.name}</h4>
+          <p className="text-2xl font-black mt-2">${(t.price_monthly/100).toFixed(0)}<span className="text-sm font-normal text-slate-400">/mo</span></p>
+          <p className="text-[10px] text-slate-400 mb-4">or ${(t.price_annual/100/12).toFixed(0)}/mo billed annually</p>
+          <div className="space-y-1.5 text-xs text-slate-600 mb-4">
+            <p>{t.max_brands?`${t.max_brands} brands`:"Unlimited brands"}</p>
+            <p>{t.max_users?`${t.max_users} users`:"Unlimited users"}</p>
+          </div>
+          {isCurrent?<span className="block w-full py-2 text-center text-xs font-medium text-violet-700 bg-violet-100 rounded-lg">Current Plan</span>
+          :<div className="flex gap-2"><Btn size="sm" variant="primary" onClick={()=>startCheckout(t.id,'monthly')} disabled={loading} className="flex-1">Monthly</Btn><Btn size="sm" variant="secondary" onClick={()=>startCheckout(t.id,'annual')} disabled={loading} className="flex-1">Annual</Btn></div>}
+        </div>})}
+      </div>
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App /></ErrorBoundary>);
+  </script>
+</body>
+</html>
