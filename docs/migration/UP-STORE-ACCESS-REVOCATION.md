@@ -9,7 +9,7 @@ Updated shared location/context helpers, app entitlement store lists, store-scop
 
 Validated the existing complete UP workflow plus authenticated revoked-store reads, denied clock-in, retained second-store access, restore/retry and audit behavior. All 11 app bundles passed routing checks and generated UP scripts passed syntax checks. Fixtures roll back.
 
-Remaining: signed-in browser walkthrough; SpecIQ project/package readers and SECURITY DEFINER operations currently have organization-level access and need a separate linked-deal store-scope audit before claiming revocation covers every product workflow. Organization-wide records with no store remain organization-wide. Remaining onboarding and labelled historical imports are separate work.
+SpecIQ linked-deal store guards are now applied and verified; see SPECIQ-STORE-ACCESS-GUARDS.md. Remaining: signed-in browser walkthrough, remaining onboarding, labelled historical imports and final migration reconciliation. Organization-wide records with no store remain organization-wide.
 
 Supabase advisor baseline: security ERROR 8/WARN 41; performance WARN 61 unchanged. New private audit-table no-policy and unused-index INFO are expected; private table has RLS and no client grants. Existing advisor remediation: https://supabase.com/docs/guides/database/database-linter
 
