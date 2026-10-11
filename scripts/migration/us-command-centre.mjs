@@ -39,6 +39,8 @@ function periodLabel(){return new Intl.DateTimeFormat('en-CA',{month:'long',year
  }else if(page==='executive.html'){
   s=s.replace('The connected operating systems are reporting without a currently ranked critical risk.','Observed source records are shown below. Missing evidence is not a clean bill of health.');
   requireText('snapshot.health_score??snapshot.score??50');
+  s=s.replace("metric('Store execution',field.average_store_score==null?'—':num(field.average_store_score,1),`${num(field.critical_open_findings)} critical findings open`)","metric('Store execution',field.average_store_score==null?'—':num(field.average_store_score,1),`Latest recorded 0–100 checklist scores · ${field.latest_score_date||'no score date'}`),metric('Field visits',num(field.visits_total),`Latest inspection: ${field.latest_visit_date||'not recorded'}`)");
+  s=s.replace("`${num(field.open_actions)} open actions`", "`${num(field.open_actions)} open · ${num(field.resolved_actions)} recorded resolved/closed; verification not inferred`");
   s=s.replace('Number(snapshot.health_score??snapshot.score??50)','(snapshot.overall_health_score??snapshot.health_score??snapshot.score??null)');
   s=s.replace('Math.max(0,Math.min(100,score))','score==null?0:Math.max(0,Math.min(100,score))');
   s=s.replace('snapshot.evidence_coverage||snapshot.coverage||snapshot.metadata?.evidence_coverage', 'snapshot.coverage_status||snapshot.evidence_coverage||snapshot.coverage||snapshot.metadata?.evidence_coverage');

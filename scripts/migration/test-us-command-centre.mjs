@@ -11,15 +11,18 @@ for(const page of ['index.html','executive.html']){
  }else{
   assert.ok(s.includes('snapshot.overall_health_score'));assert.ok(!s.includes('??50'));assert.ok(!s.includes('||Date.now()'));assert.ok(s.includes('metrics.sources'));
   const elements=new Map();const $=key=>{if(!elements.has(key))elements.set(key,{});return elements.get(key);};
-  const ctx=vm.createContext({$,currentOrg:{name:'Fixture'},unpack:x=>x,esc:String,statusText:x=>x,num:x=>x==null?'—':String(x),pct:x=>x==null?'—':String(x)+'%',money:x=>x==null?'—':String(x),metric:()=>'',insightCard:()=>'',buildSummary:()=>'',Date,Object,Math,Number});
+  const ctx=vm.createContext({$,currentOrg:{name:'Fixture'},unpack:x=>x,esc:String,statusText:x=>x,num:x=>x==null?'—':String(x),pct:x=>x==null?'—':String(x)+'%',money:x=>x==null?'—':String(x),metric:(label,value,note)=>label+'='+value+' '+note,insightCard:()=>'',buildSummary:()=>'',Date,Object,Math,Number});
   const render=s.slice(s.indexOf('function render(raw)'),s.indexOf('function buildSummary'));
   new vm.Script(render).runInContext(ctx);
-  ctx.input={snapshot:{overall_health_score:null,health_status:'unknown',generated_at:'2026-07-30T02:14:54Z',evidence_summary:{confidence_assessed:false},coverage_status:'insufficient',metrics:{sources:{up:{latest_source_at:'2026-07-25T12:00:00Z',scope:'source visits'}}}}};
+  ctx.input={snapshot:{overall_health_score:null,health_status:'unknown',generated_at:'2026-07-30T02:14:54Z',evidence_summary:{confidence_assessed:false},coverage_status:'insufficient',metrics:{field:{visits_total:19,average_store_score:5,latest_score_date:'2026-07-20',latest_visit_date:'2026-07-25',open_actions:6,resolved_actions:2},sources:{up:{latest_source_at:'2026-07-25T12:00:00Z',scope:'source visits'}}}}};
   new vm.Script('render(input)').runInContext(ctx);
   assert.ok(elements.get('#hero').innerHTML.includes('<strong>—</strong>'));
   assert.ok(elements.get('#hero').innerHTML.includes('UP:'));
   assert.ok(elements.get('#hero').innerHTML.includes('Confidence: —'));
   assert.ok(elements.get('#subtitle').textContent.includes('2026'));
+  assert.ok(elements.get('#metrics').innerHTML.includes('Field visits=19'));
+  assert.ok(elements.get('#metrics').innerHTML.includes('Store execution=5'));
+  assert.ok(elements.get('#metrics').innerHTML.includes('verification not inferred'));
  }
 }
 console.log('Command centre: current/historical month control, generated syntax, observed score/source dates and prediction navigation passed');
