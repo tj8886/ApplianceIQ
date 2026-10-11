@@ -11,7 +11,7 @@ for(const table of ['organization_members','org_invites','org_locations'])for(co
  const a=s.indexOf('async function renderSettings(');assert.ok(!s.slice(a).includes("sb.from('"+table+"')."+op),'settings '+table+' '+op);
 }
 assert.ok(s.includes("sb.rpc('accept_org_invite'"));assert.ok(s.includes("sb.rpc('create_org_invite'"));assert.ok(s.includes("sb.rpc('revoke_org_invite'"));
-assert.ok(s.includes('Existing store access is retained.'));assert.ok(s.includes("action:'report_missed'"));assert.ok(s.includes("action:'review_missed'"));assert.ok(s.includes("const id=crypto.randomUUID()"));
+assert.ok(s.includes('Existing store access is retained.'));assert.ok(s.includes("action:'revoke_store'"));assert.ok(s.includes('data-revokestore'));assert.ok(s.includes('access revoked')); assert.ok(s.includes("action:'report_missed'"));assert.ok(s.includes("action:'review_missed'"));assert.ok(s.includes("const id=crypto.randomUUID()"));
 const calls=[];const ctx=vm.createContext({sb:{rpc:async(n,a)=>{calls.push([n,a]);return{data:{ok:true}}}},currentOrg:{id:'org'},currentStore:{id:'store'}});
 vm.runInContext(s.slice(s.indexOf('async function upAdministration('),s.indexOf('async function reloadUpStores(')),ctx);
 await ctx.upAdministration({action:'set_role',member_id:'member',role:'manager'});assert.equal(calls[0][0],'up_administration');assert.equal(calls[0][1].p_body.organization_id,'org');
