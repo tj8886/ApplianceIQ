@@ -45,6 +45,13 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM tj.iq_up_queue_entries WHERE store_id=sid AND user_id=rep2 AND status_code='available') THEN RAISE EXCEPTION 'completed rep not released';END IF;
  payload:=jsonb_build_object('organization_id',org,'store_id',sid);
  r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','greeter_start','rep_profile_id',prof));r2:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','greeter_end','rep_profile_id',prof));IF r->>'ok'<>'true' OR r2->>'ok'<>'true' THEN RAISE EXCEPTION 'greeter: % %',r,r2;END IF;
+ -- A non-sale closes the floor visit while keeping the CRM follow-up and unknown value.
+ wid:=gen_random_uuid();
+ r:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','log','waiting_id',wid,'waiting',jsonb_build_object('store_id',sid,'customer_display_name','Rollback Follow-up Customer'),'products','[]'::jsonb));
+ r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','assign','waiting_id',wid,'rep_profile_id',prof));
+ IF r->>'ok'<>'true' OR r2->>'ok'<>'true' THEN RAISE EXCEPTION 'follow-up fixture failed';END IF;
+ r2:=public.tj_runtime_up_crm_handoff(payload||jsonb_build_object('action','after_sale','waiting_id',wid,'closed',false,'reason','comparing_options','follow_up_date','2026-10-12','no_follow_up',false));
+ IF r2->>'ok'<>'true' OR NOT EXISTS(SELECT 1 FROM tj.crm_deals WHERE id=(r->>'deal_id')::uuid AND closed_at IS NULL AND value_amount IS NULL AND next_action_date='2026-10-12'::date AND follow_up_status='scheduled') OR NOT EXISTS(SELECT 1 FROM tj.iq_customer_interactions WHERE customer_waiting_id=wid AND outcome='no_sale' AND ended_at IS NOT NULL AND follow_up_date='2026-10-12'::date AND sale_amount IS NULL) OR (SELECT closed_sales FROM tj.iq_shift_records WHERE id=sh)<>0 THEN RAISE EXCEPTION 'non-sale follow-up / pricing evidence failed: %',r2;END IF;
  UPDATE tj.organization_members SET role='member',visibility_scope='all' WHERE organization_id=org AND user_id=actor;
  r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','clock_out','rep_profile_id',rep2));IF r->>'error'<>'own_shift_required' THEN RAISE EXCEPTION 'member changed another shift: %',r;END IF;
  r:=public.tj_runtime_up_rotation(payload||jsonb_build_object('action','bump','rep_profile_id',prof));IF r->>'error'<>'manager_required' THEN RAISE EXCEPTION 'member bumped queue';END IF;
