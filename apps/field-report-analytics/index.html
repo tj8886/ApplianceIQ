@@ -275,13 +275,19 @@ select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='ht
 </div>
 
 <script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const sb = createClient(SB_URL, SB_KEY);
 
-let user = null, D = {}, currentView = 'dashboard';
+let user = null, D = {}, currentView = 'dashboard', fieldOrg = null;
+async function fieldRpc(action,id=null,data={}){
+ const r=await sb.rpc('field_report',{p_action:action,p_organization_id:fieldOrg,p_id:id,p_data:data});
+ if(r.error)throw Error(r.error.message||'The operation failed. Please retry.');return r.data;
+}
+function fieldError(e){window.alert(e.message||'The operation failed. Please retry.');}
+window.addEventListener('unhandledrejection',e=>{e.preventDefault();fieldError(e.reason||{});});
 
 // ─── Auth ──────────────────────────────────────
 window.toggleLogin=()=>{const o=document.getElementById('loginOverlay');o.style.display=o.style.display==='flex'?'none':'flex'};
@@ -300,28 +306,24 @@ window.doLogout = async()=>{await sb.auth.signOut();location.reload()};
 async function checkAuth(){const{data:{user:u}}=await sb.auth.getUser();if(u){user=u;boot()}}
 
 async function boot(){
+ try{
+  const ctx=await fieldRpc('context');
+  if(!ctx.organizations.length)throw Error('Field Report workspace access is not configured for this account.');
+  const select=document.createElement('select');select.id='fieldWorkspace';select.setAttribute('aria-label','Workspace');
+  for(const org of ctx.organizations){const opt=document.createElement('option');opt.value=org.id;opt.textContent=org.name;select.append(opt);}
+  document.getElementById('userName').replaceChildren(document.createTextNode(ctx.actor_name+' '),select);
+  fieldOrg=ctx.organizations[0].id;
+  select.onchange=async()=>{fieldOrg=select.value;D={};currentView='dashboard';document.getElementById('content').textContent='Loading workspace…';try{await loadAll();render();}catch(e){document.getElementById('content').textContent='Report could not be loaded.';fieldError(e);}};
+  await loadAll();
   document.getElementById('landing').style.display='none';
   document.getElementById('loginOverlay').style.display='none';
-  document.getElementById('shell').style.display='grid';
-  const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
-  document.getElementById('userName').textContent=p?.full_name||user.email;
-  await loadAll();
-  render();
+  document.getElementById('shell').style.display='grid';render();
+ }catch(e){document.getElementById('loginErr').textContent=e.message;document.getElementById('loginOverlay').style.display='flex';}
 }
-
 async function loadAll(){
-  const[v,a,f,s,t,c,sc,cl,ah]=await Promise.all([
-    sb.from('field_visits').select('*,store:field_stores(store_name,city,province_state,region,country,retailer:field_retailers(name)),client:field_clients(client_name)').order('visit_date',{ascending:false}),
-    sb.from('field_actions').select('*,store:field_stores(store_name,retailer:field_retailers(name)),client:field_clients(client_name),finding:field_findings(model_number,brand_name,issue_category,rep_comments,severity,condition)').order('created_at',{ascending:false}),
-    sb.from('field_findings').select('*').order('created_at',{ascending:false}),
-    sb.from('field_stores').select('*,retailer:field_retailers(name)').order('store_name'),
-    sb.from('field_training_sessions').select('*,store:field_stores(store_name)').order('created_at',{ascending:false}),
-    sb.from('field_competitive_intel').select('*,store:field_stores(store_name)').order('created_at',{ascending:false}),
-    sb.from('field_store_scores').select('*').order('score_date',{ascending:false}),
-    sb.from('field_clients').select('*'),
-    sb.from('field_action_status_history').select('*').order('created_at',{ascending:true})
-  ]);
-  D={visits:v.data||[],actions:a.data||[],findings:f.data||[],stores:s.data||[],training:t.data||[],competitive:c.data||[],scores:sc.data||[],clients:cl.data||[],history:ah.data||[]};
+ const org=fieldOrg;const snapshot=await fieldRpc('snapshot');
+ if(org!==fieldOrg)throw Error('Workspace changed while loading. Please reload.');
+ D=snapshot;
 }
 
 function render(){
@@ -520,7 +522,7 @@ async function renderActionDetail(el,id){
   const history=D.history.filter(h=>h.action_id===id);
 
   // Load comments
-  const{data:comments}=await sb.from('field_action_comments').select('*').or(`action_id.eq.${id}`).order('created_at',{ascending:true});
+  const org=fieldOrg;const comments=await fieldRpc('comments',id);if(org!==fieldOrg||currentView!=='action:'+id)return;
 
   // Time metrics
   const created=new Date(a.created_at);
@@ -610,28 +612,22 @@ async function renderActionDetail(el,id){
     </div>`;
 }
 
+const fieldWrites=new Set();
 window.updateActionStatus=async(actionId)=>{
-  const newStatus=document.getElementById('newStatus').value;
-  if(!newStatus)return;
-  const note=document.getElementById('statusNote').value;
-  const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
-  const action=D.actions.find(a=>a.id===actionId);
-  const updates={status:newStatus};
-  if(newStatus==='resolved')updates.resolved_at=new Date().toISOString();
-  if(newStatus==='closed')updates.closed_at=new Date().toISOString();
-  await sb.from('field_actions').update(updates).eq('id',actionId);
-  await sb.from('field_action_status_history').insert({action_id:actionId,old_status:action?.status,new_status:newStatus,changed_by_user_id:user.id,changed_by_name:p?.full_name||user.email,notes:note||null});
-  await loadAll();
-  goTo('action:'+actionId);
+ if(fieldWrites.has(actionId))return;
+ const newStatus=document.getElementById('newStatus').value;if(!newStatus)return;
+ const action=D.actions.find(a=>a.id===actionId);if(!action)return;
+ fieldWrites.add(actionId);const org=fieldOrg;
+ try{await fieldRpc('status',actionId,{status:newStatus,expected_status:action.status,notes:document.getElementById('statusNote').value});
+  if(org===fieldOrg){await loadAll();goTo('action:'+actionId);}
+ }catch(e){fieldError(e);}finally{fieldWrites.delete(actionId);}
 };
-
 window.postComment=async(actionId)=>{
-  const text=document.getElementById('commentText').value.trim();
-  if(!text)return;
-  const vis=document.getElementById('commentVis').value;
-  const{data:p}=await sb.from('profiles').select('full_name').eq('user_id',user.id).single();
-  await sb.from('field_action_comments').insert({action_id:actionId,author_user_id:user.id,author_name:p?.full_name||user.email,comment_text:text,visibility:vis});
-  goTo('action:'+actionId);
+ if(fieldWrites.has(actionId))return;
+ const text=document.getElementById('commentText').value.trim();if(!text)return;
+ const vis=document.getElementById('commentVis').value;const org=fieldOrg;fieldWrites.add(actionId);
+ try{await fieldRpc('comment',actionId,{comment_text:text,visibility:vis});if(org===fieldOrg)goTo('action:'+actionId);}
+ catch(e){fieldError(e);}finally{fieldWrites.delete(actionId);}
 };
 
 // ─── Stores with Drill-Down ───────────────────
@@ -825,15 +821,19 @@ window.exportCustom=()=>{
   }
 };
 
-function downloadCSV(headers,rows,filename){
+async function downloadCSV(headers,rows,filename){
+  const org=fieldOrg;
+  // Record an explicit client scope before creating the local file.
+  try{for(const client of D.clients)await fieldRpc('export',null,{client_id:client.id,export_type:filename,filters:{organization_id:org,rows:rows.length,scope:'workspace_report'}});}
+  catch(e){fieldError(e);return;}
+  if(org!==fieldOrg){fieldError(Error('Workspace changed. Please export again.'));return;}
   const esc=v=>{const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s};
   const csv=[headers.join(','),...rows.map(r=>r.map(esc).join(','))].join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`iq_brand_marketing_${filename}_${new Date().toISOString().split('T')[0]}.csv`;a.click();
   URL.revokeObjectURL(url);
-  // Log export
-  sb.from('field_exports').insert({export_type:filename,export_format:'csv',generated_by_user_id:user.id});
+
 }
 
 checkAuth();
