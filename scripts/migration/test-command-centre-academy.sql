@@ -1,0 +1,34 @@
+BEGIN; SET LOCAL TIME ZONE 'America/Toronto'; SET LOCAL statement_timeout='45s';
+DO $$
+DECLARE org uuid:=gen_random_uuid(); other uuid:=gen_random_uuid(); native uuid; actor uuid; learner uuid; chapters int[]; tracks text[]; conn uuid:=gen_random_uuid(); provider uuid; r jsonb; m jsonb; snap uuid;
+BEGIN
+ SELECT i.target_user_id,i.source_user_id INTO native,actor FROM tj.source_user_identity_map i WHERE i.activation_status='activated' AND NOT EXISTS(SELECT 1 FROM tj.platform_admins a WHERE a.user_id=i.source_user_id) AND NOT EXISTS(SELECT 1 FROM tj.academy_progress p WHERE p.user_id=i.source_user_id) AND NOT EXISTS(SELECT 1 FROM tj.academy_track_progress p WHERE p.user_id=i.source_user_id) LIMIT 1;
+ SELECT u.id INTO learner FROM tj.source_auth_users u WHERE u.id<>actor AND NOT EXISTS(SELECT 1 FROM tj.academy_progress p WHERE p.user_id=u.id) AND NOT EXISTS(SELECT 1 FROM tj.academy_track_progress p WHERE p.user_id=u.id) AND NOT EXISTS(SELECT 1 FROM tj.academy_quiz_scores p WHERE p.user_id=u.id) LIMIT 1;
+ SELECT array_agg(id) INTO chapters FROM(SELECT id FROM tj.academy_chapters ORDER BY id LIMIT 3) x;
+ SELECT array_agg(track_key) INTO tracks FROM(SELECT track_key FROM tj.academy_tracks ORDER BY track_key LIMIT 2) x;
+ SELECT id INTO provider FROM tj.platform_connectors WHERE key='shopify';
+ IF actor IS NULL OR learner IS NULL OR array_length(chapters,1)<>3 OR array_length(tracks,1)<>2 THEN RAISE EXCEPTION 'Academy fixtures unavailable';END IF;
+ PERFORM set_config('request.jwt.claim.sub',native::text,true);
+ INSERT INTO tj.organizations(id,name,slug) VALUES(org,'Rollback Academy',org::text),(other,'Rollback Foreign Academy',other::text);
+ INSERT INTO tj.organization_members(organization_id,user_id,role,status) VALUES(org,actor,'owner','active'),(org,learner,'member','active');
+ m:=tj_private.command_centre_academy_evidence(org);
+ IF m->>'lesson_completions' IS NOT NULL OR m->>'completed_tracks' IS NOT NULL OR m->>'completion_pct' IS NOT NULL THEN RAISE EXCEPTION 'Missing progress treated as failed/completed';END IF;
+ INSERT INTO tj.academy_progress(user_id,chapter_id,completed_at) VALUES(learner,chapters[1],now()),(learner,chapters[2],date_trunc('month',now())-interval '1 day'),(learner,chapters[3],NULL);
+ INSERT INTO tj.academy_track_progress(user_id,track_key,started_at,completed_at) VALUES(learner,tracks[1],now()-interval '1 day',now()),(learner,tracks[2],now(),NULL);
+ INSERT INTO tj.academy_quiz_scores(user_id,vol,score,total) VALUES(learner,org::text,2,4);
+ INSERT INTO tj.platform_connector_connections(id,organization_id,connector_id,display_name,status,auth_status) VALUES(conn,org,provider,'Rollback connection','active','valid');
+ INSERT INTO tj.platform_sync_jobs(connection_id,job_type,direction,status,completed_at) VALUES(conn,'rollback','inbound','queued',NULL),(conn,'rollback','inbound','success',now()),(conn,'rollback','inbound','success',NULL);
+ m:=tj_private.command_centre_academy_evidence(org);
+ IF m->>'lesson_completions'<>'2' OR m->>'lesson_completions_this_month'<>'1' OR m->>'completed_tracks'<>'1' OR m->>'started_uncompleted_tracks'<>'1' OR m->>'completion_pct' IS NOT NULL OR m#>>'{source,latest_source_at}' IS NULL THEN RAISE EXCEPTION 'Progress/source dates wrong: %',m;END IF;
+ IF tj_private.command_centre_academy_evidence(other)->>'lesson_completions' IS NOT NULL THEN RAISE EXCEPTION 'Foreign learner progress included';END IF;
+ m:=tj_private.command_centre_integration_evidence(org);
+ IF m#>>'{connections,0,completed_successful_jobs}'<>'1' OR m#>>'{connections,0,received_pos_transactions}'<>'0' OR m#>>'{connections,0,job_status_counts,queued}'<>'1' THEN RAISE EXCEPTION 'Dispatch or connection mistaken for import: %',m;END IF;
+ IF jsonb_array_length(tj_private.command_centre_integration_evidence(other)->'connections')<>0 THEN RAISE EXCEPTION 'Foreign connection published';END IF;
+ EXECUTE 'SET LOCAL ROLE authenticated';snap:=public.tj_runtime_executive_refresh_command_centre(org);r:=public.tj_runtime_executive_get_command_centre(org);EXECUTE 'RESET ROLE';
+ IF r#>>'{snapshot,metrics,training,lesson_completions}'<>'2' OR (r#>>'{snapshot,metrics,training,average_knowledge_score}')::numeric<>50 OR r#>>'{snapshot,metrics,integrations,connections,0,completed_successful_jobs}'<>'1' THEN RAISE EXCEPTION 'Native publication failed';END IF;
+ UPDATE tj.organization_members SET status='suspended' WHERE organization_id=org AND user_id=learner;
+ IF NOT EXISTS(SELECT 1 FROM tj_private.command_centre_refresh_queue WHERE organization_id=org AND requested_at>processed_at) OR tj_private.command_centre_academy_evidence(org)->>'lesson_completions' IS NOT NULL THEN RAISE EXCEPTION 'Inactive member progress still published or not queued';END IF;
+ IF has_function_privilege('authenticated','tj_private.command_centre_academy_evidence(uuid)','EXECUTE') OR has_function_privilege('anon','tj_private.command_centre_integration_evidence(uuid)','EXECUTE') THEN RAISE EXCEPTION 'Private helper exposed';END IF;
+END $$;
+SELECT jsonb_build_object('passed',true,'fixtures_persisted',0,'checks',jsonb_build_array('missing progress unknown','active member scope','dated lesson and track progress','month boundary','quiz retained','membership correction queue','configured vs completed job vs POS receipt','foreign organization exclusion','native endpoint publication','private permissions')) verification;
+ROLLBACK;
