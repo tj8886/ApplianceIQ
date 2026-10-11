@@ -1,0 +1,245 @@
+{
+  "checked_at": "2026-10-11T03:08:12.835Z",
+  "project_id": "jdxslqmgjsuzoisuhvlc",
+  "implementation_commit": "99dc1a71649e8da932ebd85d1982aa865a9ed4fd",
+  "migration": {
+    "source_file": "20261011025538_command_centre_live_evidence_refresh.sql",
+    "applied_version": "20261011030619"
+  },
+  "tests": {
+    "isolated_live_refresh_rollback": "passed before and after application",
+    "frontend_render_and_syntax": "passed",
+    "eleven_app_bundle_routing": "passed",
+    "command_centre_batch_rollback": "passed",
+    "management_batch_rollback": "passed",
+    "authenticated_browser_walkthrough": "not performed"
+  },
+  "publication": {
+    "site": "https://applianceiq-command-center.netlify.app",
+    "deploy_id": "6acafd2c5b5dbd00089c4315",
+    "state": "ready",
+    "commit": "99dc1a71649e8da932ebd85d1982aa865a9ed4fd",
+    "published_at": "2026-10-11T03:06:31.176Z",
+    "http_200": [
+      "index.html",
+      "executive.html",
+      "_aiq/us-client.js",
+      "predictions.html"
+    ],
+    "checks": {
+      "us_endpoint": true,
+      "canadian_endpoint_absent": true,
+      "current_month_control": true,
+      "hardcoded_june_query_absent": true,
+      "actual_score_and_source_dates": true,
+      "browser_prediction_writer_removed": true
+    }
+  },
+  "production": {
+    "queue": {
+      "failed": 0,
+      "pending": 0,
+      "organizations": 1,
+      "last_processed_at": "2026-10-11T03:06:27.689889+00:00"
+    },
+    "cron_runs": [],
+    "latest_snapshot": {
+      "sources": {
+        "up": {
+          "scope": "current month; distinct source visits",
+          "latest_source_at": "2026-07-25T22:42:42.576514+00:00"
+        },
+        "crm": {
+          "scope": "current pipeline; recorded closed outcomes",
+          "latest_source_at": "2026-08-14T11:44:41.77376+00:00"
+        },
+        "pim": {
+          "scope": "organization-owned catalog; ingestion date is not manufacturer verification",
+          "records": 43420,
+          "latest_source_at": "2026-10-11T02:31:00.341455+00:00"
+        },
+        "pos": {
+          "scope": "received POS records; no assumed currency or prices",
+          "records": 0,
+          "latest_source_at": null
+        },
+        "academy": {
+          "scope": "current-month quizzes of active members; completion percentage not inferred",
+          "latest_source_at": null
+        }
+      },
+      "period_end": "2026-10-10",
+      "generated_at": "2026-10-11T03:06:27.687778+00:00",
+      "period_start": "2026-10-01",
+      "coverage_status": "partial",
+      "overall_health_score": null
+    }
+  },
+  "worker": {
+    "initial_completed_organizations": 1,
+    "subsequent_no_work_result": {
+      "processed": 0,
+      "failed": 0
+    },
+    "native_schedule": "*/5 * * * *",
+    "limit": 10,
+    "hard_limit": 20,
+    "scheduled_run_observed": false
+  },
+  "advisors": {
+    "security": {
+      "before": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 632
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ],
+      "after": [
+        {
+          "name": "rls_enabled_no_policy",
+          "level": "INFO",
+          "count": 633
+        },
+        {
+          "name": "security_definer_view",
+          "level": "ERROR",
+          "count": 8
+        },
+        {
+          "name": "function_search_path_mutable",
+          "level": "WARN",
+          "count": 27
+        },
+        {
+          "name": "extension_in_public",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "materialized_view_in_api",
+          "level": "WARN",
+          "count": 5
+        },
+        {
+          "name": "anon_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        },
+        {
+          "name": "authenticated_security_definer_function_executable",
+          "level": "WARN",
+          "count": 3
+        }
+      ]
+    },
+    "performance": {
+      "before": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 699
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 913
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ],
+      "after": [
+        {
+          "name": "unindexed_foreign_keys",
+          "level": "INFO",
+          "count": 699
+        },
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN",
+          "count": 53
+        },
+        {
+          "name": "no_primary_key",
+          "level": "INFO",
+          "count": 55
+        },
+        {
+          "name": "unused_index",
+          "level": "INFO",
+          "count": 913
+        },
+        {
+          "name": "duplicate_index",
+          "level": "WARN",
+          "count": 8
+        },
+        {
+          "name": "auth_db_connections_absolute",
+          "level": "INFO",
+          "count": 1
+        }
+      ]
+    }
+  },
+  "advisor_notes": [
+    "No new security ERROR/WARN or performance WARN findings.",
+    "One additional rls_enabled_no_policy INFO is the intentionally inaccessible private refresh queue; all client table/function privileges are revoked.",
+    "Existing 8 security ERROR and 41 security WARN findings are outside this change and remain unresolved; performance WARN count remains 61."
+  ],
+  "limitations": [
+    "Source receipt dates are distinct from snapshot generation; provider completion and PIM shared-catalog publication are not certified by these dashboard dates.",
+    "CRM currency absent: CAD pipeline amount withheld.",
+    "No received POS transactions or active-member Academy quizzes observed.",
+    "Composite health, confidence, field/coaching and assignment-based training completion are not fabricated.",
+    "Only activated native organizations are initially queued; changes enqueue affected active member organizations."
+  ]
+}
