@@ -1,0 +1,15 @@
+BEGIN;
+CREATE TEMP TABLE lg_photo_before ON COMMIT DROP AS
+SELECT t.organization_id,to_jsonb(i) image_before,to_jsonb(p) product_before FROM tj.pim_product_images i JOIN tj.aiq_products t ON t.id=i.product_id JOIN public.products p ON p.id='7a6b7a17-823a-4f16-998f-96c3fd42bead'
+WHERE i.id='75664a7d-cd38-49d8-b47d-dc53a7d49b51' AND i.product_id='c6644df7-fcfd-4a09-a45e-ddea3d591ff1' AND i.approved AND i.cdn_url IS NULL AND i.file_url='https://www.lg.com/ca_en/refrigerators/side-by-side/srsxb2622s/' AND p.status='needs_review' AND p.image_url IS NULL AND tj_private.pim_web_image_appliance(t);
+DO $check$ BEGIN IF (SELECT count(*) FROM lg_photo_before)<>1 THEN RAISE EXCEPTION 'lg_image_preconditions_changed'; END IF; END $check$;
+UPDATE tj.pim_product_images SET cdn_url='https://www.lg.com/content/dam/channel/wcms/ca_en/images/refrigerators/srsxb2622s_astcna1_enci_ca_en_c/gallery/lg-side-by-side-srsxb2622s-canada-2010x1334.jpg' WHERE id='75664a7d-cd38-49d8-b47d-dc53a7d49b51';
+INSERT INTO tj_private.pim_web_completion_log(organization_id,pim_product_id,source_updated_at,action,before_values,after_values,detail)
+SELECT organization_id,'c6644df7-fcfd-4a09-a45e-ddea3d591ff1',(image_before->>'updated_at')::timestamptz,'image_transport_fix',image_before,jsonb_build_object('cdn_url','https://www.lg.com/content/dam/channel/wcms/ca_en/images/refrigerators/srsxb2622s_astcna1_enci_ca_en_c/gallery/lg-side-by-side-srsxb2622s-canada-2010x1334.jpg'),jsonb_build_object('operation','replace_lg_html_image_link_with_actual_manufacturer_photo','source_page','https://www.lg.com/ca_en/refrigerators/side-by-side/lg-studio-srsxb2622s/','checked_on','2026-10-11','http_status',200,'width',2010,'height',1334,'visual_finish_checked',true,'original_source_url_and_dates_retained',true,'manufacturer_attestation',false) FROM lg_photo_before;
+SELECT tj_private.pim_web_complete_images('c6644df7-fcfd-4a09-a45e-ddea3d591ff1');
+UPDATE public.products SET status='active' WHERE id='7a6b7a17-823a-4f16-998f-96c3fd42bead' AND status='needs_review' AND image_url='https://www.lg.com/content/dam/channel/wcms/ca_en/images/refrigerators/srsxb2622s_astcna1_enci_ca_en_c/gallery/lg-side-by-side-srsxb2622s-canada-2010x1334.jpg';
+DO $check$ BEGIN
+ IF EXISTS(SELECT 1 FROM lg_photo_before b JOIN tj.pim_product_images i ON i.id='75664a7d-cd38-49d8-b47d-dc53a7d49b51' WHERE (b.image_before-'cdn_url') IS DISTINCT FROM (to_jsonb(i)-'cdn_url')) THEN RAISE EXCEPTION 'lg_image_source_changed'; END IF;
+ IF EXISTS(SELECT 1 FROM lg_photo_before b JOIN public.products p ON p.id='7a6b7a17-823a-4f16-998f-96c3fd42bead' WHERE (b.product_before-ARRAY['image_url','gallery_urls','source_metadata','status','updated_at']) IS DISTINCT FROM (to_jsonb(p)-ARRAY['image_url','gallery_urls','source_metadata','status','updated_at']) OR p.status<>'active' OR p.image_url<>'https://www.lg.com/content/dam/channel/wcms/ca_en/images/refrigerators/srsxb2622s_astcna1_enci_ca_en_c/gallery/lg-side-by-side-srsxb2622s-canada-2010x1334.jpg') THEN RAISE EXCEPTION 'lg_catalog_source_facts_changed'; END IF;
+END $check$;
+COMMIT;
