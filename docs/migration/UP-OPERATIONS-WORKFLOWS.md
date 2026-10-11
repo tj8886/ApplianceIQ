@@ -1,0 +1,13 @@
+# US UP floor settings, disputes and reports
+
+The `up_operations` runtime API checks activated identity mapping, active organization membership, role and store scope. Its public wrapper is security invoker; private write functions have explicit execution grants. No client table-write privileges are broadened.
+
+Floor settings validate queue name, break/lunch limits, timeout bounds (5–600 seconds), timeout action and supported rules. Changing or disabling a greeter returns the old greeter to rotation; the new greeter must be clocked in and have no active customer visit. These changes and queue recalculation are atomic. Settings preserve the other stored configuration. Organization/team invitations, membership administration and location management remain separate migration work.
+
+Disputes use a stable client-generated ID. Filed-by is always the verified caller, never an arbitrary selected staff ID. The database captures queue snapshots. Only owner/admin/manager members may resolve disputes. Restoring queue priority is an explicit manager option for upheld/partial decisions, requires an available affected rep, and is recorded in the before/after snapshots. Resolution retries do not apply another correction. This does not rewrite historical missed-UP metrics or invent compensation.
+
+Reporting derives daily snapshots from the store's local timezone. Walk-ins and converted visits are distinct waiting records; reassignment cannot double-count a customer. Greeting time uses arrival to the first recorded acceptance, ignoring invalid negative durations. Unknown averages/ratios are omitted from the non-null snapshot table, rather than published as fabricated zeros. Hourly summaries preserve existing manual traffic adjustments. Existing metric targets are preserved, and variance is updated from the new actual value.
+
+A private trigger refreshes reports when a waiting record is created, assigned, completed or linked to CRM. The final handoff update follows interaction writes, ensuring the final report sees the completed transaction. The UI's explicit refresh is also scoped. Hourly staffing suggestions are reproducible calculations (one minimum rep per three groups, one recommended rep per two groups); they are advisory and do not represent measured staffing.
+
+Validation uses rollback-only fixtures: prior rotation regression, valid/invalid settings, greeter release, authenticated filing, stable dispute retry, manager resolution and explicit correction, member denial, local-day distinct-visit conversion, source price preservation and generated-client syntax/routing. No test locations, disputes, customers or shifts are retained. The signed-in browser walkthrough remains postponed until tomorrow.

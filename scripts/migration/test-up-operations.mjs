@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import {migrateUpCrmHandoff} from './us-up-crm-handoff.mjs';
+import {migrateUpRotation} from './us-up-rotation.mjs';
+import {migrateUpOperations} from './us-up-operations.mjs';
+const s=migrateUpOperations(migrateUpRotation(migrateUpCrmHandoff(readFileSync('apps/up-system/index.html','utf8'))));
+for(const m of s.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g))if(m[1].trim())new vm.Script(m[1]);
+for(const table of ['iq_store_settings','iq_up_disputes','iq_up_queue_entries','metric_snapshots','iq_hourly_traffic_summaries'])assert.ok(!s.includes("sb.from('"+table+"').update"),table+' direct update');
+assert.ok(s.includes('const disputeId=crypto.randomUUID()'));assert.ok(s.includes("$('#dp_by').disabled=true"));assert.ok(s.includes("restore_queue_priority:$('#rv_priority').checked"));assert.ok(s.includes('m.user_id===currentUser.source_user_id'));
+let calls=[];const ctx=vm.createContext({sb:{rpc:async(n,a)=>{calls.push([n,a]);return{data:{ok:true}}}},currentOrg:{id:'org'},currentStore:{id:'store'}});
+vm.runInContext(s.slice(s.indexOf('async function upOperations('),s.indexOf('async function upRotation(')),ctx);
+vm.runInContext(s.slice(s.indexOf('async function syncFloorMetricsToCommandCenter('),s.indexOf('function openClockInModal(')),ctx);
+await ctx.syncFloorMetricsToCommandCenter('store');assert.equal(calls[0][0],'up_operations');assert.equal(calls[0][1].p_body.action,'refresh_reports');
+ctx.sb.rpc=async()=>({data:{ok:false,error:'manager_required'}});await assert.rejects(ctx.upOperations({action:'save_settings'}),/manager/);
+console.log('UP operations: generated script syntax, RPC-only settings/disputes/reporting, stable dispute ID, caller identity, explicit queue correction and visible denial passed');
