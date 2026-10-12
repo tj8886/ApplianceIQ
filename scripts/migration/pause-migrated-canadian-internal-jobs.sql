@@ -1,0 +1,2 @@
+-- Run on Canadian source only. Retains commands and all source data for recovery.
+DO $pause$ DECLARE j record; BEGIN FOR j IN SELECT jobid FROM cron.job WHERE jobname IN ('iq-connector-retry-queue','iq-connector-alert-scan','iq-connector-stale-job-recovery','phase4-evaluate-due-interventions','phase7-autonomous-orchestration','phase8-existing-forecast-refresh','move-won-to-vip-365d','floor-nightly-snapshots','floor-hole-task-sync','mdf-daily-expiry-check') LOOP PERFORM cron.alter_job(j.jobid,active:=false); END LOOP; END $pause$;
