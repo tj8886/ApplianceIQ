@@ -9,6 +9,6 @@ INSERT INTO tj_private.migration_delta_before_images(run_id,table_name,row_key,o
 SELECT gen_random_uuid(),'accessory_pim_classification',pim_id::text,organization_id,before_pim,md5(before_pim::text) FROM accessory_fix
 UNION ALL SELECT gen_random_uuid(),'accessory_web_classification',website_id::text,organization_id,before_web,md5(before_web::text) FROM accessory_fix;
 UPDATE tj.aiq_products t SET is_parts_accessory=true,category='Accessories',updated_at=now() FROM accessory_fix f WHERE t.id=f.pim_id;
-UPDATE public.products p SET category='accessories',updated_at=now() FROM accessory_fix f WHERE p.id=f.website_id;
-DO $$ BEGIN IF EXISTS(SELECT 1 FROM accessory_fix f JOIN tj.aiq_products t ON t.id=f.pim_id JOIN public.products p ON p.id=f.website_id WHERE NOT t.is_parts_accessory OR p.category<>'accessories' OR p.image_url IS DISTINCT FROM f.before_web->>'image_url' OR to_jsonb(p.gallery_urls) IS DISTINCT FROM f.before_web->'gallery_urls') THEN RAISE EXCEPTION 'accessory_validation_failed';END IF;END $$;
+UPDATE public.products p SET category='accessories',status='needs_review',updated_at=now() FROM accessory_fix f WHERE p.id=f.website_id;
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM accessory_fix f JOIN tj.aiq_products t ON t.id=f.pim_id JOIN public.products p ON p.id=f.website_id WHERE NOT t.is_parts_accessory OR p.category<>'accessories' OR p.image_url IS DISTINCT FROM f.before_web->>'image_url' OR coalesce(to_jsonb(p.gallery_urls),'null'::jsonb) IS DISTINCT FROM f.before_web->'gallery_urls') THEN RAISE EXCEPTION 'accessory_validation_failed';END IF;END $$;
 COMMIT;
