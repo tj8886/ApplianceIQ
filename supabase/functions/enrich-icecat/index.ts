@@ -8,9 +8,18 @@ const supabase = createClient(
 )
 
 async function fetchIcecat(username: string, brand: string, productCode: string) {
-  const url = `https://live.icecat.biz/api?shopname=${encodeURIComponent(username)}&lang=en&Brand=${encodeURIComponent(brand)}&ProductCode=${encodeURIComponent(productCode)}`
-  const res = await fetch(url, { headers: { "User-Agent": "ApplianceIQ/1.0" } })
-  const text = await res.text()
+  const url = new URL("https://live.icecat.biz/api")
+  url.search = new URLSearchParams({shopname:username, lang:"en", content:"", Brand:brand, ProductCode:productCode}).toString()
+  const appKey = Deno.env.get("ICECAT_APP_KEY")?.trim()
+  const headers: Record<string,string> = { "User-Agent": "ApplianceIQ/1.0" }
+  if (appKey) url.searchParams.set("app_key", appKey)
+  const apiToken = Deno.env.get("ICECAT_API_TOKEN")?.trim()
+  const contentToken = Deno.env.get("ICECAT_CONTENT_TOKEN")?.trim()
+  if (apiToken) headers["api-token"] = apiToken
+  if (contentToken) headers["content-token"] = contentToken
+  const res = await fetch(url, { headers, redirect:"error", signal:AbortSignal.timeout(20000) })
+  const rawText = await res.text()
+  const text = [appKey, apiToken, contentToken].filter(Boolean).reduce((v, secret) => v.replaceAll(secret!, "[redacted]"), rawText)
   let data: Record<string, unknown> | null = null
   try { data = JSON.parse(text) } catch { /* non-JSON */ }
 
@@ -90,7 +99,7 @@ const handler = async (req: Request, inv: Invocation): Promise<Response> => {
   const username = Deno.env.get("ICECAT_USERNAME") ?? ""
   if (body.status_only === true) {
     await finishInvocation(supabase, inv, "completed", { readiness_only: true, configured: !!username })
-    return Response.json({ configured: !!username, pim_first: true })
+    return Response.json({ configured: !!username, pim_first: true, full_content_auth_configured: !!(Deno.env.get("ICECAT_API_TOKEN")?.trim() || Deno.env.get("ICECAT_APP_KEY")?.trim()) })
   }
   if (!username) {
     await finishInvocation(supabase, inv, "failed", { error: "ICECAT_USERNAME not configured" })
@@ -136,7 +145,7 @@ const handler = async (req: Request, inv: Invocation): Promise<Response> => {
   const results = []
   for (const p of pending) {
     try { results.push(await enrichProduct(p, username)) }
-    catch (e) { results.push({ model: p.model_number, status: "error", reason: String(e).slice(0, 200) }) }
+    catch (e) { results.push({ model: p.model_number, status: "error", reason: "provider_request_failed" }) }
     await new Promise(r => setTimeout(r, 400))
   }
 
@@ -160,7 +169,7 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     // Confirmed failure, written before the re-raise so a throwing handler
     // leaves a record rather than an ambiguous absence.
-    await finishInvocation(supabase, inv, "failed", { error: String(e).slice(0, 500) })
+    await finishInvocation(supabase, inv, "failed", { error: "unexpected_handler_failure" })
     throw e
   }
 })
