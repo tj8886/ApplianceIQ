@@ -10,7 +10,7 @@ for (const configured of [false, true]) {
   const logged = [];
   let queries = 0;
   const context = {
-    Request, Response, console,
+    Request, Response, URL, URLSearchParams, AbortSignal, console,
     Deno: { env: { get: key => key === 'ICECAT_USERNAME' && configured ? 'fixture-user' : undefined }, serve: fn => { handler = fn; } },
     createClient: () => ({ from: () => { queries++; throw Error('unexpected query'); } }),
     requireJobAuth: async req => req.headers.get('x-ingest-secret') === 'fixture-secret' ? { ok: true } : Response.json({ error: 'unauthorized' }, { status: 401 }),
@@ -21,7 +21,7 @@ for (const configured of [false, true]) {
   const probe = () => new Request('https://example.test/functions/v1/enrich-icecat', { method: 'POST', headers: { 'x-ingest-secret': 'fixture-secret' }, body: JSON.stringify({ status_only: true }) });
   const response = await handler(probe());
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { configured, pim_first: true });
+  assert.deepEqual(await response.json(), { configured, pim_first: true, full_content_auth_configured: false });
   assert.equal(queries, 0);
   assert.equal(logged.at(-1).detail.readiness_only, true);
   const denied = await handler(new Request('https://example.test', { method: 'POST', body: '{}' }));
