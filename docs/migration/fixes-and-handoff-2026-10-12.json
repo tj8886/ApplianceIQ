@@ -1,0 +1,224 @@
+{
+  "checked_at": "2026-10-12T01:36:50.747Z",
+  "status": "verified_backend_fixes_complete_publication_and_provider_followups_blocked",
+  "source_project": "fumwwhyozeouoqscolke",
+  "destination_project": "jdxslqmgjsuzoisuhvlc",
+  "reconciliation": {
+    "tables_count_audited": 542,
+    "initial_equal_counts": 523,
+    "inserted_records": 24751,
+    "inserted_by_table": {
+      "phase7_action_audit": 12250,
+      "phase7_automation_policies": 12495,
+      "field_floor_snapshots": 4,
+      "decision_cases": 2
+    },
+    "phase7_policies": {
+      "rows": 293459,
+      "full_checksum": "075452254cf0f6ede34f7e567926ddb5"
+    },
+    "phase7_audit": {
+      "rows": 287700,
+      "normalized_checksum": "5f64f84f4ead463e8882dfdb58ae631f",
+      "normalization": "trim_scale on numeric details.priority; source 3.70 equals destination 3.7 without value changes"
+    },
+    "decisions": "Two absent October16/17 staffing cases inserted, retaining source IDs. Existing decision trigger recalculates priority and sets updated_at."
+  },
+  "scheduler": {
+    "us_active": [
+      "iq-connector-retry-queue",
+      "iq-connector-alert-scan",
+      "iq-connector-stale-job-recovery",
+      "phase4-evaluate-due-interventions",
+      "phase7-autonomous-orchestration",
+      "phase8-existing-forecast-refresh",
+      "move-won-to-vip-365d",
+      "floor-nightly-snapshots",
+      "floor-hole-task-sync",
+      "mdf-daily-expiry-check"
+    ],
+    "source_jobs": [
+      {
+        "jobname": "iq-connector-retry-queue",
+        "active": false
+      },
+      {
+        "jobname": "iq-connector-alert-scan",
+        "active": false
+      },
+      {
+        "jobname": "iq-connector-alert-dispatch",
+        "active": true
+      },
+      {
+        "jobname": "iq-connector-stale-job-recovery",
+        "active": false
+      },
+      {
+        "jobname": "iq-connector-recovery-dispatch",
+        "active": true
+      },
+      {
+        "jobname": "phase4-evaluate-due-interventions",
+        "active": false
+      },
+      {
+        "jobname": "phase7-autonomous-orchestration",
+        "active": false
+      },
+      {
+        "jobname": "phase8-existing-forecast-refresh",
+        "active": false
+      },
+      {
+        "jobname": "archive-intelligence-events",
+        "active": false
+      },
+      {
+        "jobname": "prune-product-versions",
+        "active": false
+      },
+      {
+        "jobname": "prune-old-notifications",
+        "active": false
+      },
+      {
+        "jobname": "move-won-to-vip-365d",
+        "active": false
+      },
+      {
+        "jobname": "floor-nightly-snapshots",
+        "active": false
+      },
+      {
+        "jobname": "floor-hole-task-sync",
+        "active": false
+      },
+      {
+        "jobname": "chq-hourly-reminders",
+        "active": true
+      },
+      {
+        "jobname": "chq-process-payouts",
+        "active": true
+      },
+      {
+        "jobname": "mdf-daily-expiry-check",
+        "active": false
+      },
+      {
+        "jobname": "mdf-process-email-queue",
+        "active": false
+      },
+      {
+        "jobname": "mdf-audit-cleanup",
+        "active": false
+      },
+      {
+        "jobname": "mdf-email-cleanup",
+        "active": false
+      }
+    ],
+    "retention": "Five source retention jobs paused to preserve recovery copy; US retention activation pending stabilization.",
+    "provider_jobs": "Four existing source provider jobs remain active; verify US credentials/configuration before moving. Broken null-URL MDF email job paused."
+  },
+  "fixes": {
+    "idempotent_nullable_policy_seed": "applied and tested",
+    "null_manager_forecast": "applied and rollback tested",
+    "icecat": {
+      "deployed_version": 33,
+      "auth_support": "ICECAT_API_TOKEN and ICECAT_CONTENT_TOKEN headers, legacy ICECAT_APP_KEY query parameter; no tokens in logs",
+      "live_readiness": {
+        "configured": true,
+        "full_content_auth_configured": false
+      },
+      "provider_failures": "Both recent model retries returned Full Icecat credentials required"
+    }
+  },
+  "validation": {
+    "authenticated_backend_tests": [
+      {
+        "name": "test-field-report.sql",
+        "passed": true
+      },
+      {
+        "name": "test-mdf-tracker.sql",
+        "passed": true
+      },
+      {
+        "name": "test-academy-learning.sql",
+        "passed": true
+      },
+      {
+        "name": "test-us-speciq-projects.sql",
+        "passed": true
+      },
+      {
+        "name": "test-owned-roleplay-runtime.sql",
+        "passed": true
+      },
+      {
+        "name": "test-crm-native-write-batch.sql",
+        "passed": true
+      },
+      {
+        "name": "test-iqbuild-us.sql",
+        "passed": true
+      },
+      {
+        "name": "test-up-operations.sql",
+        "passed": true
+      },
+      {
+        "name": "test-pim-web-owner-images.sql",
+        "passed": true
+      }
+    ],
+    "web_bundles": 14,
+    "web_bundle_tests": "passed",
+    "pim_intake_queue": 0,
+    "pim_intake_errors": 0,
+    "pim_publication_queue": 0,
+    "pim_publication_errors": 0,
+    "images": 73729,
+    "regression_photos": {
+      "Bosch": "HTTP200 image/webp",
+      "Cafe": "HTTP200 image/jpeg",
+      "LG": "HTTP200 image/jpeg"
+    },
+    "storage_metadata": "All11 Canadian objects represented in US bucket counts and byte totals; fresh file-byte validation still pending"
+  },
+  "remaining": {
+    "publication": {
+      "Field_Report": "Current live page still references Canada",
+      "MDF": "Current live page still references Canada",
+      "cause": "GitHub CI & Deploy workflow316376339 disabled_manually; connector provides no enable/publish action; no local NETLIFY_AUTH_TOKEN",
+      "prepared": "14 reviewed US bundles rebuilt and verified"
+    },
+    "icecat": "Configure licensed Full Icecat token securely before claiming provider errors fixed",
+    "photos": "7 exhausted audit claims; broader genuine photo sourcing incomplete. Raw active category filter finds11022 no-primary-image rows and may include accessories. Two unmatched PIM model IDs are refurbished Thor variants HRE3001-R/HRE3601-R; do not conflate with base models.",
+    "hosted_signed_in": "Actual hosted walkthroughs pending; role-based SQL integration tests passed",
+    "final_cutover": "Full source-delta reconciliation and fresh file-byte verification pending publication/provider cutover. Canada retained."
+  },
+  "advisors": {
+    "security": {
+      "rls_enabled_no_policy:INFO": 1,
+      "security_definer_view:ERROR": 1,
+      "function_search_path_mutable:WARN": 1,
+      "extension_in_public:WARN": 1,
+      "materialized_view_in_api:WARN": 1,
+      "anon_security_definer_function_executable:WARN": 1,
+      "authenticated_security_definer_function_executable:WARN": 1
+    },
+    "performance": {
+      "unindexed_foreign_keys:INFO": 1,
+      "auth_rls_initplan:WARN": 1,
+      "no_primary_key:INFO": 1,
+      "unused_index:INFO": 1,
+      "duplicate_index:WARN": 1,
+      "auth_db_connections_absolute:INFO": 1
+    },
+    "note": "Category summaries only; pre-existing advisory findings remain, not claimed resolved."
+  },
+  "next_action": "Enable existing CI & Deploy workflow through an authorized publishing path, deploy FieldReport/MDF, verify live US routing, then finish remaining provider jobs and source freeze."
+}
