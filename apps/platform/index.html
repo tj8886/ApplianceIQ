@@ -1141,6 +1141,7 @@ const bridge = createAIQContextBridge({supabase:sb,moduleKey:'applianceiq-platfo
 let state = {
   user: null,
   context: {},
+  platformAdmin: false,
   organizations: [],
   locations: [],
   loading: false,
@@ -1227,7 +1228,7 @@ document.getElementById('auth-password').addEventListener('keydown', e => {
 
 function resetPlatform() {
   state.epoch++;
-  state.user = null; state.context = {}; state.entitledApps = null;
+  state.user = null; state.context = {}; state.platformAdmin = false; state.entitledApps = null;
   state.subscription = null; state.aiCredits = null; state.modules = [];
   state.organizations = []; state.locations = [];
   document.getElementById('platform').style.display = 'none';
@@ -1248,7 +1249,11 @@ async function initPlatform() {
   try {
     const [ctx, orgs] = await Promise.all([bridge.init(), bridge.organizations()]);
     if (epoch !== state.epoch) return;
-    state.context = ctx; state.organizations = orgs;
+    const {data:adminInfo,error:adminError} = await sb.rpc('company_admin',{p_action:'bootstrap'});
+    if (epoch !== state.epoch) return;
+    if (adminError) throw Error('Company administration access could not be verified. Please retry sign in.');
+    state.platformAdmin = adminInfo?.platform_admin === true;
+    state.context = {...ctx,platform_admin:state.platformAdmin}; state.organizations = orgs;
     if (!ctx.organization_id) throw Error('Your account has no active company access. Ask your administrator for an invitation.');
     state.locations = await bridge.locations(ctx.organization_id);
     const [modRes, planRes, pmRes, tierRes, packRes, entRes, subRes, creditRes] = await Promise.all([
@@ -1312,7 +1317,7 @@ function renderCompanyContext() {
   document.getElementById('user-role').textContent = state.context.organization_role || 'Member';
   document.getElementById('company-select').innerHTML = state.organizations.map(o => `<option value="${esc(o.organization_id)}" ${o.organization_id === state.context.organization_id ? 'selected' : ''}>${esc(o.organization_name)}</option>`).join('');
   document.getElementById('location-select').innerHTML = '<option value="">All locations</option>' + state.locations.map(l => `<option value="${esc(l.location_id)}" ${l.location_id === state.context.location_id ? 'selected' : ''}>${esc(l.location_name)}</option>`).join('');
-  document.getElementById('company-admin').style.display = ['owner','admin'].includes(state.context.organization_role) ? '' : 'none';
+  document.getElementById('company-admin').style.display = (state.platformAdmin || ['owner','admin'].includes(state.context.organization_role)) ? '' : 'none';
 }
 window.changeCompany = async function(orgId) {
   state.entitledApps = null; state.subscription = null; state.aiCredits = null;
@@ -1321,7 +1326,7 @@ window.changeCompany = async function(orgId) {
   catch { document.getElementById('auth-screen').style.display = 'flex'; showError('Unable to switch companies. Please retry sign in.'); }
 };
 window.changeLocation = async function(locationId) {
-  try { state.context = await bridge.setContext({location_id:locationId || null,entity_type:null,entity_id:null,entity_label:null,context:{}}); renderCompanyContext(); }
+  try { state.context = {...await bridge.setContext({location_id:locationId || null,entity_type:null,entity_id:null,entity_label:null,context:{}}),platform_admin:state.platformAdmin}; renderCompanyContext(); }
   catch { renderCompanyContext(); alert('Unable to switch locations. Please try again.'); }
 };
 window.openCompanyAdmin = () => window.loadModule('intelligence_group', '/admin.html');

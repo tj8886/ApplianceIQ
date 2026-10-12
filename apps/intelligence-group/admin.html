@@ -170,7 +170,7 @@ const APP_URLS={
   platform:"https://appliance-iq-platform.netlify.app",
   pim_scraper:"https://applianceiq-pim-scraper.netlify.app",
   analytics:"https://ai-iq-coach.netlify.app/analytics.html",
-  command_center:"/admin.html"
+  command_center:"https://applianceiq-command-center.netlify.app"
 };
 const TENANTS={retail_company:"Retailer",manufacturer:"Manufacturer",buying_group:"Buying Group",builder_designer:"Builder / Designer",developer:"Developer (API)",demo:"Demo",appliance_iq_internal:"Internal"};
 const HIERARCHY=[
@@ -186,19 +186,29 @@ const SCOPES=[["own","Own data"],["team","Their team"],["store","Their store(s)"
 
 let S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
 
-function esc(s){const d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML}
-function tok(){return localStorage.getItem("igcc_token")}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function tok(){return S.sharedSession?.access_token||localStorage.getItem("igcc_token")}
 
 async function api(path,opts={},_retried){
+  if(opts.method && opts.method !== 'GET' && !path.startsWith('/rest/v1/rpc/')) return companyMutation(path,opts);
+  if(S.sharedSession && window.ApplianceIQ?.supabase){
+    const {data,error}=await window.ApplianceIQ.supabase.auth.getSession();
+    if(error||!data.session)throw Error('Your session expired. Sign in again.');
+    S.sharedSession=data.session;
+  }
   const h={apikey:SB_KEY,"Content-Type":"application/json"};
   const t=tok();if(t)h.Authorization="Bearer "+t;
   Object.assign(h,opts.headers||{});
   const r=await fetch(SB_URL+path,{...opts,headers:h});
-  if(r.status===401&&!_retried&&localStorage.getItem("igcc_refresh")){
+  if(r.status===401&&!_retried&&!S.sharedSession&&localStorage.getItem("igcc_refresh")){
     const ok=await refreshSession();
     if(ok)return api(path,opts,true);
   }
-  if(!r.ok){const e=await r.text();throw new Error(e)}
+  if(!r.ok){
+    const raw=await r.text();let message='The request could not be completed.';
+    try{const error=JSON.parse(raw);const messages={last_owner_required:'Keep at least one active owner for this company.',last_admin_required:'Keep at least one active company administrator.',owner_required:'Only an owner can change owner access.',company_admin_required:'You do not have administration access to this company.',platform_admin_required:'This change requires a platform administrator.',role_in_use:'Reassign members before archiving this role.',manager_cycle:'That reporting line would create a loop.',location_cycle:'That location parent would create a loop.',location_has_active_children:'Move or archive child locations first.',invalid_member_role:'Choose an active position in this company that matches the system role.',primary_location_not_selected:'Select the primary store checkbox as well.',invalid_location_parent:'Choose an active parent location in this company.',invalid_manager:'Choose an active manager in this company.',recorded_price_required:'Enter the recorded monthly total before assigning this app.',authentication_required:'Your account needs an active verified company identity.',invalid_company_name:'Enter a company name of up to 160 characters.',record_not_found:'This record is no longer available. Reload the company.',invalid_entitlement:'Check the seat allocation and recorded monthly total.'};message=messages[error.message]||message;
+    }catch{}throw new Error(message);
+  }
   const txt=await r.text();
   return txt?JSON.parse(txt):null;
 }
@@ -222,7 +232,7 @@ async function refreshSession(){
 }
 
 // Proactive refresh every 50 minutes while the tab is open
-setInterval(()=>{if(localStorage.getItem("igcc_refresh"))refreshSession()},50*60*1000);
+setInterval(()=>{if(!S.sharedSession&&localStorage.getItem("igcc_refresh"))refreshSession()},50*60*1000);
 
 async function login(email,pass){
   const r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{
@@ -242,6 +252,7 @@ async function signup(email,pass,name){
 }
 
 async function rpc(fn,args){
+  if(fn==='provision_standard_roles')return companyAction('provision_roles',{},args.p_org);
   return api("/rest/v1/rpc/"+fn,{method:"POST",body:JSON.stringify(args)});
 }
 
@@ -259,7 +270,8 @@ async function sendInviteEmail(inv){
   }catch(e){return {ok:false,sent:false}}
 }
 
-function signOut(){
+async function signOut(){
+  if(window.ApplianceIQ?.supabase){const {error}=await window.ApplianceIQ.supabase.auth.signOut();if(error){alert('Sign out could not be completed. Please try again.');return}}
   localStorage.removeItem("igcc_token");localStorage.removeItem("igcc_user");localStorage.removeItem("igcc_refresh");
   S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:"orgs",tab:"members"};
   render();
@@ -376,6 +388,7 @@ async function finishAccept(authData){
   if(authData.refresh_token)localStorage.setItem("igcc_refresh",authData.refresh_token);
   localStorage.setItem("igcc_user",JSON.stringify(authData.user));
   S.token=authData.access_token;S.user=authData.user;
+  await adoptAdminSession(authData);
   document.getElementById("app").innerHTML='<div class="loading-screen"><div class="logo-mark">IQ</div>Joining organization…</div>';
   try{
     const res=await rpc("accept_org_invite",{p_code:S.inviteCode});
@@ -434,41 +447,55 @@ async function bootAfterAccept(){
 }
 
 async function postLogin(){
-  try{
-    const admins=await api("/rest/v1/platform_admins?select=user_id");
-    S.super=admins.some(a=>a.user_id===S.user.id);
-  }catch{S.super=false}
-  S.orgs=await api("/rest/v1/organizations?status=eq.active&order=name.asc");
-  if(!S.super){
-    // Org admins only see orgs they belong to as owner/admin
-    try{
-      const mems=await api("/rest/v1/organization_members?user_id=eq."+S.user.id+"&role=in.(owner,admin)&status=eq.active&select=organization_id");
-      const ids=new Set(mems.map(m=>m.organization_id));
-      S.orgs=S.orgs.filter(o=>ids.has(o.id));
-    }catch{S.orgs=[]}
-  }
+  const userId=S.user?.id;
+  const result=await rpc('company_admin',{p_action:'bootstrap'});
+  if(!userId||S.user?.id!==userId)throw Error('Your session changed. Sign in again.');
+  S.super=result.platform_admin===true;S.sourceUserId=result.source_user_id;S.orgs=result.organizations||[];
 }
-
 async function loadOrg(orgId){
-  const safe=(p)=>p.catch(e=>{console.error("loadOrg query failed:",e);return []});
-  const [mems,roles,ents,invs,locs,locmems]=await Promise.all([
-    safe(api("/rest/v1/organization_members?organization_id=eq."+orgId+"&select=*")),
-    safe(api("/rest/v1/org_roles?organization_id=eq."+orgId+"&order=role_level.asc")),
-    safe(api("/rest/v1/org_app_entitlements?organization_id=eq."+orgId)),
-    safe(api("/rest/v1/org_invites?organization_id=eq."+orgId+"&order=created_at.desc")),
-    safe(api("/rest/v1/org_locations?organization_id=eq."+orgId+"&order=location_type.desc,name.asc")),
-    safe(api("/rest/v1/org_location_members?organization_id=eq."+orgId))
-  ]);
-  const ids=[...new Set(mems.map(m=>m.user_id))].filter(Boolean);
-  let profMap={};
-  if(ids.length){
-    try{
-      const profs=await api("/rest/v1/profiles?id=in.("+ids.join(",")+")");
-      profs.forEach(p=>profMap[p.id]=p);
-    }catch{}
+  const userId=S.user?.id;const snapshot=await rpc('company_admin',{p_organization_id:orgId,p_action:'snapshot'});
+  if(!userId||S.user?.id!==userId)throw Error('Your session changed. Sign in again.');
+  S.orgData=snapshot;
+}
+async function companyAction(action,payload={},orgId=S.org?.id||null){
+  const result=await rpc('company_admin',{p_organization_id:orgId,p_action:action,p_payload:payload});
+  if(result?.ok!==true)throw Error('The company change could not be saved.');return result;
+}
+async function companyMutation(path,opts){
+  const url=new URL(path,location.origin),resource=url.pathname.split('/').pop();
+  const data=opts.body?JSON.parse(opts.body):{};
+  const orgId=data.organization_id||S.org?.id||null;delete data.organization_id;
+  const id=url.searchParams.get('id');if(id){if(!/^eq\.[a-f0-9-]{36}$/i.test(id))throw Error('Invalid record selection.');data.id=id.slice(3)}
+  const routes={organizations:opts.method==='POST'?'company_create':'company_save',org_locations:opts.method==='DELETE'?'location_archive':'location_save',org_roles:opts.method==='DELETE'?'role_archive':'role_save',organization_members:'member_save',org_app_entitlements:'entitlement_save'};
+  if(!routes[resource])throw Error('This administrative operation is not available.');
+  const result=await companyAction(routes[resource],data,routes[resource]==='company_create'?null:orgId);
+  return opts.method==='POST'?[result.record]:result.record;
+}
+let sharedAuthSubscription=null;
+function watchSharedAdminAuth(){
+ if(sharedAuthSubscription||!window.ApplianceIQ?.supabase)return;
+ const {data}=window.ApplianceIQ.supabase.auth.onAuthStateChange((event,session)=>{
+  if(session&&S.sharedSession)S.sharedSession=session;
+  if(event==='SIGNED_OUT'){
+   localStorage.removeItem('igcc_token');localStorage.removeItem('igcc_refresh');localStorage.removeItem('igcc_user');
+   S={user:null,token:null,super:false,orgs:[],org:null,orgData:null,view:'orgs',tab:'members'};render();
   }
-  mems.forEach(m=>{m._name=profMap[m.user_id]?.full_name||null;m._email=profMap[m.user_id]?.email||null});
-  S.orgData={mems,roles,ents,invs,locs,locmems};
+ });sharedAuthSubscription=data.subscription;
+}
+async function adoptAdminSession(authData){
+ if(!window.ApplianceIQ?.supabase)return;
+ watchSharedAdminAuth();
+ const {data,error}=await window.ApplianceIQ.supabase.auth.setSession({access_token:authData.access_token,refresh_token:authData.refresh_token});
+ if(error||!data.session)throw Error('Unable to establish the shared workspace session.');S.sharedSession=data.session;
+}
+async function restoreSharedAdmin(){
+  watchSharedAdminAuth();
+  if(location.hash.startsWith('#invite='))return;
+  const {data,error}=await window.ApplianceIQ.supabase.auth.getSession();if(error||!data.session)return;
+  S.user=data.session.user;S.token=data.session.access_token;S.sharedSession=data.session;
+  await postLogin();render();
+  const companyId=window.AIQ_CONTEXT?.organization_id;
+  if(companyId&&S.orgs.some(o=>o.id===companyId))await openOrg(companyId);
 }
 
 /* ─── RENDER ─── */
@@ -505,10 +532,11 @@ async function doLogin(){
     if(d.refresh_token)localStorage.setItem("igcc_refresh",d.refresh_token);
     localStorage.setItem("igcc_user",JSON.stringify(d.user));
     S.token=d.access_token;S.user=d.user;
+    await adoptAdminSession(d);
     await postLogin();
     render();
   }catch(e){
-    err.textContent="Invalid email or password";
+    err.textContent="Sign in or company access could not be verified. Check your account and try again.";
     btn.disabled=false;btn.textContent="Sign In";
   }
 }
@@ -627,8 +655,9 @@ function orgDetailView(){
       <span class="badge ${o.status==='active'?'bg-green':'bg-red'}">${esc(o.status)}</span>
     </div>
   </div>
-  <button class="btn btn-green" onclick="openInvite()">+ Invite Members</button>
+  <div><button class="btn btn-ghost" onclick="openCompanyDetails()">Company Details</button> <button class="btn btn-green" onclick="openInvite()">+ Invite Members</button></div>
 </div>
+<div class="note" style="margin-bottom:16px"><b>Company setup</b><br>${d.locs.some(l=>l.is_active)?'✓':'○'} Locations · ${d.roles.length?'✓':'○'} Role hierarchy · ${active.length>1?'✓':'○'} Team members · ${activeEnts.length?'✓':'○'} App access<br><small>Use the tabs below to finish setup. Invitation links work independently of email delivery. Billing checkout remains pending.</small></div>
 <div class="stats">
   <div class="stat"><div class="lb">Active Members</div><div class="vl" style="color:var(--blue)">${active.length}</div></div>
   <div class="stat"><div class="lb">Stores</div><div class="vl" style="color:#7c3aed">${d.locs.length}</div></div>
@@ -659,7 +688,7 @@ function membersTab(d){
   const stores=d.locs.filter(l=>l.location_type==="store"&&l.is_active);
   const myLocs=uid=>d.locmems.filter(x=>x.user_id===uid).map(x=>x.location_id);
   return `<div style="overflow-x:auto"><table>
-<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Stores</th><th>Sees</th><th>Status</th><th style="text-align:right"></th></tr></thead>
+<thead><tr><th>Member</th><th>System Role</th><th>Position</th><th>Reports to</th><th>Stores</th><th>Sees</th><th>Status</th><th style="text-align:right"></th></tr></thead>
 <tbody>${d.mems.map(m=>{
   const assigned=myLocs(m.user_id);
   const storeLabel=assigned.length===0?"— No store —":assigned.length===1?(stores.find(s=>s.id===assigned[0])?.name||d.locs.find(s=>s.id===assigned[0])?.name||"1 store"):assigned.length+" stores";
@@ -672,7 +701,8 @@ function membersTab(d){
   <td><select onchange="patchMember('${m.id}',{org_role_id:this.value||null})">
     <option value="">— Unassigned —</option>
     ${d.roles.map(r=>`<option value="${r.id}" ${m.org_role_id===r.id?"selected":""}>${esc(r.role_name)}</option>`).join("")}</select></td>
-  <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap" onclick="openStorePicker('${m.user_id}','${esc(m._name||m._email||"")}')">${esc(storeLabel)} ▾</button></td>
+  <td><select aria-label="Manager" onchange="patchMember('${m.id}',{manager_id:this.value||null})"><option value="">— No manager —</option>${d.mems.filter(x=>x.id!==m.id&&x.status==='active').map(x=>`<option value="${x.id}" ${m.manager_id===x.id?'selected':''}>${esc(x._name||x._email||x.user_id)}</option>`).join('')}</select></td>
+  <td><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap" onclick="openStorePicker('${m.user_id}')">${esc(storeLabel)} ▾</button></td>
   <td><select onchange="patchMember('${m.id}',{visibility_scope:this.value})" title="What data this person can see">
     ${SCOPES.map(([v,lb])=>`<option value="${v}" ${(m.visibility_scope||"own")===v?"selected":""}>${lb}</option>`).join("")}</select></td>
   <td><span class="badge ${m.status==='active'?'bg-green':'bg-red'}">${esc(m.status)}</span></td>
@@ -683,6 +713,7 @@ function membersTab(d){
 <div id="modal-slot-mem"></div>`}
 
 function openStorePicker(userId,name){
+  name=S.orgData.mems.find(m=>m.user_id===userId)?._name||S.orgData.mems.find(m=>m.user_id===userId)?._email||'Member';
   const d=S.orgData;
   const stores=d.locs.filter(l=>l.location_type==="store"&&l.is_active);
   if(!stores.length){alert("No active stores yet — add them on the Stores tab.");return}
@@ -710,11 +741,8 @@ async function saveStorePicker(userId){
   const checked=stores.filter(s=>document.getElementById("sp-"+s.id).checked).map(s=>s.id);
   const primary=document.querySelector('input[name="sp-primary"]:checked')?.value||checked[0]||null;
   try{
-    await api("/rest/v1/org_location_members?organization_id=eq."+S.org.id+"&user_id=eq."+userId,{method:"DELETE"});
-    for(const locId of checked){
-      await api("/rest/v1/org_location_members",{method:"POST",body:JSON.stringify({
-        organization_id:S.org.id,location_id:locId,user_id:userId,is_primary:locId===primary})});
-    }
+    if(primary&&!checked.includes(primary))throw Error('Select the primary store checkbox as well.');
+    await companyAction('member_locations',{user_id:userId,location_ids:checked,primary_location_id:primary});
     document.getElementById("modal-slot-mem").innerHTML="";
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
@@ -729,8 +757,8 @@ async function patchMember(id,body){
   }catch(e){alert("Update failed: "+e.message)}
 }
 async function removeMember(id){
-  if(!confirm("Remove this member? Their seat will be freed."))return;
-  patchMember(id,{status:"inactive"});
+  if(!confirm("Remove this member’s company access?"))return;
+  patchMember(id,{status:"removed"});
 }
 
 function invitesTab(d){
@@ -843,7 +871,7 @@ async function patchLoc(id,body){
 }
 
 async function deleteLoc(id){
-  if(!confirm("Delete this location?"))return;
+  if(!confirm("Archive this location? Its active assignments will be removed."))return;
   try{
     await api("/rest/v1/org_locations?id=eq."+id,{method:"DELETE"});
     await loadOrg(S.org.id);
@@ -853,12 +881,7 @@ async function deleteLoc(id){
 
 async function assignStore(memberUserId,locationId){
   try{
-    // one primary store per member: clear then set
-    await api("/rest/v1/org_location_members?organization_id=eq."+S.org.id+"&user_id=eq."+memberUserId,{method:"DELETE"});
-    if(locationId){
-      await api("/rest/v1/org_location_members",{method:"POST",body:JSON.stringify({
-        organization_id:S.org.id,location_id:locationId,user_id:memberUserId,is_primary:true})});
-    }
+    await companyAction('member_locations',{user_id:memberUserId,location_ids:locationId?[locationId]:[],primary_location_id:locationId||null});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
   }catch(e){alert("Failed: "+e.message.slice(0,160))}
@@ -874,7 +897,7 @@ function appsTab(d){
   <div style="display:flex;gap:8px">
     <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" disabled>Billing portal pending</button>
     <button class="btn btn-primary" style="padding:8px 14px;font-size:12px" onclick="openBilling('preview')">Preview recorded billing</button>
-    ${avail.length?'<button class="btn btn-green" style="padding:8px 14px;font-size:12px" onclick="openAddApp()">+ Add App</button>':""}
+    ${S.super&&avail.length?'<button class="btn btn-green" style="padding:8px 14px;font-size:12px" onclick="openAddApp()">+ Add App</button>':""}
   </div>
 </div>
 ${d.ents.length?d.ents.map(e=>{
@@ -886,12 +909,12 @@ ${d.ents.length?d.ents.map(e=>{
   <span class="app-icon">${a.icon}</span>
   <div class="fx"><div class="nm">${esc(a.name)}${e.metadata&&e.metadata.tier_display?` <span style="font-weight:400;color:#94a3b8;font-size:11px">${esc(e.metadata.tier_display)}</span>`:""}</div>
   <div class="sb">${e.seats_used}/${e.seats_included} ${bu==="store"?"stores":"seats"}${unit} = <b>$${((e.price_cents_monthly||0)/100).toLocaleString()}/mo</b></div></div>
-  <select style="width:auto;padding:5px 8px;font-size:12px" onchange="patchEnt('${e.id}',{tier:this.value})">
+  <select ${S.super?'':'disabled'} style="width:auto;padding:5px 8px;font-size:12px" onchange="patchEnt('${e.id}',{tier:this.value})">
     ${TIERS.map(t=>`<option value="${t}" ${e.tier===t?"selected":""}>${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select>
-  <input type="number" min="0" value="${e.seats_included}" style="width:70px;padding:5px 8px;font-size:12px" title="Seats included"
+  <input ${S.super?'':'disabled'} type="number" min="1" value="${e.seats_included}" style="width:70px;padding:5px 8px;font-size:12px" title="Seats included"
     onchange="patchEnt('${e.id}',{seats_included:+this.value})"/>
   <span class="badge ${e.status==='active'?'bg-green':'bg-red'}">${esc(e.status)}</span>
-  <button class="link-muted" onclick="patchEnt('${e.id}',{status:'${e.status==="active"?"suspended":"active"}'})">${e.status==="active"?"Suspend":"Activate"}</button>
+  <button ${S.super?'':'disabled'} class="link-muted" onclick="patchEnt('${e.id}',{status:'${e.status==="active"?"suspended":"active"}'})">${e.status==="active"?"Suspend":"Activate"}</button>
 </div>`}).join(""):'<div class="empty">No apps assigned yet.</div>'}
 <div id="addapp-slot"></div>`}
 
@@ -906,7 +929,7 @@ async function patchEnt(id,body){
 
 async function syncStripe(){
   const tb=document.getElementById("tab-body");
-  if(tb)tb.insertAdjacentHTML("afterbegin",'<div class="note" style="margin-bottom:12px">Entitlements updated. Stripe billing changes remain disabled pending verification.</div>');
+  if(tb)tb.insertAdjacentHTML("afterbegin",'<div class="note" style="margin-bottom:12px">App access saved. The recorded monthly total is for review; no payment or subscription change was initiated.</div>');
 }
 
 async function openBilling(kind){
@@ -920,6 +943,7 @@ async function openBilling(kind){
 }
 
 function openAddApp(){
+  if(!S.super)return alert('App access changes require a platform administrator.');
   const used=S.orgData.ents.map(e=>e.app_key);
   const avail=Object.keys(APPS).filter(k=>!used.includes(k));
   document.getElementById("addapp-slot").innerHTML=`
@@ -928,6 +952,7 @@ function openAddApp(){
     <div><label>App</label><select id="na-app">${avail.map(k=>`<option value="${k}">${APPS[k].name}</option>`).join("")}</select></div>
     <div><label>Tier</label><select id="na-tier">${TIERS.map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select></div>
     <div><label>Seats</label><input id="na-seats" type="number" min="1" value="5"/></div>
+    <div><label>Recorded monthly total before tax</label><input id="na-monthly" type="number" min="0" step="0.01" placeholder="Enter amount, including 0 for free access"/></div>
   </div>
   <div style="display:flex;gap:8px">
     <button class="btn btn-green" style="padding:8px 16px;font-size:13px" onclick="addApp()">Add</button>
@@ -936,6 +961,7 @@ function openAddApp(){
 </div>`;
 }
 
+function recordedPrice(id){const value=document.getElementById(id).value.trim();if(value===''||!/^\d+(\.\d{1,2})?$/.test(value))throw Error('Enter the recorded monthly total, or 0 for approved free access.');const cents=Math.round(Number(value)*100);if(!Number.isSafeInteger(cents)||cents>2147483647)throw Error('The recorded amount is too large.');return cents;}
 async function addApp(){
   try{
     await api("/rest/v1/org_app_entitlements",{method:"POST",body:JSON.stringify({
@@ -943,6 +969,7 @@ async function addApp(){
       app_key:document.getElementById("na-app").value,
       tier:document.getElementById("na-tier").value,
       seats_included:+document.getElementById("na-seats").value||1,
+      price_cents_monthly:recordedPrice("na-monthly"),
       status:"active"})});
     await loadOrg(S.org.id);
     document.getElementById("tab-body").innerHTML=tabBody();
@@ -997,7 +1024,7 @@ async function patchRole(id,body){
 }
 
 async function deleteRole(id){
-  if(!confirm("Delete this role?"))return;
+  if(!confirm("Archive this unused role?"))return;
   try{
     await api("/rest/v1/org_roles?id=eq."+id,{method:"DELETE"});
     await loadOrg(S.org.id);
@@ -1148,7 +1175,7 @@ async function createOrg(){
         tier:document.getElementById("co-tier").value,
         billing_email:document.getElementById("co-bill").value.trim()||null,
         billing_currency:document.getElementById("co-curr").value,status:"active"})});
-    S.orgs=await api("/rest/v1/organizations?status=eq.active&order=name.asc");
+    await postLogin();
     closeModal();
     const created=Array.isArray(rows)?rows[0]:rows;
     if(created&&created.id){openOrg(created.id)}else{render()}
@@ -1159,6 +1186,14 @@ async function createOrg(){
     document.getElementById("co-err").textContent=msg;
     btn.disabled=false;btn.textContent="Create Organization";
   }
+}
+
+function openCompanyDetails(){
+ document.getElementById('modal-slot').innerHTML=`<div class="overlay"><div class="modal"><div class="modal-head"><h3>Company Details</h3><button class="modal-x" onclick="closeModal()">×</button></div><div class="modal-body"><label>Name</label><input id="cd-name" value="${esc(S.org.name)}"><label>Billing email</label><input id="cd-email" type="email" value="${esc(S.org.billing_email||'')}"><label>Currency</label><select id="cd-currency"><option value="cad" ${S.org.billing_currency==='cad'?'selected':''}>CAD</option><option value="usd" ${S.org.billing_currency==='usd'?'selected':''}>USD</option></select><p class="err" id="cd-error"></p><button class="btn btn-green" onclick="saveCompanyDetails()">Save</button></div></div></div>`;
+}
+async function saveCompanyDetails(){
+ try{const r=await companyAction('company_save',{name:document.getElementById('cd-name').value.trim(),billing_email:document.getElementById('cd-email').value.trim()||null,billing_currency:document.getElementById('cd-currency').value});S.org=r.record;await postLogin();closeModal();render()}
+ catch(e){document.getElementById('cd-error').textContent='Could not save company details. '+e.message}
 }
 
 /* ─── HIERARCHY VIEW ─── */
@@ -1243,12 +1278,13 @@ ${ents.length?ents.map(e=>{
     ${o?`<button class="link-muted" onclick="openOrg('${o.id}');S.tab='apps'">Manage →</button>`:""}
   </div>`}).join(""):'<div class="empty" style="padding:16px 0">No organizations have this app yet.</div>'}
 
-${assignable.length?`
+${S.super&&assignable.length?`
 <div style="margin-top:18px;border:2px dashed var(--line);border-radius:12px;padding:16px;background:#f8fafc">
   <div class="frm-grid" style="grid-template-columns:2fr 1fr 90px auto;align-items:end;margin-bottom:0">
     <div><label>Add to organization</label><select id="ap-org">${assignable.map(o=>`<option value="${o.id}">${esc(o.name)}</option>`).join("")}</select></div>
     <div><label>Tier</label><select id="ap-tier">${(pricing.length?pricing.map(p=>p.tier):TIERS).map(t=>`<option value="${t}">${t[0].toUpperCase()+t.slice(1)}</option>`).join("")}</select></div>
     <div><label>Seats</label><input id="ap-seats" type="number" min="1" value="5"/></div>
+    <div><label>Recorded monthly total before tax</label><input id="ap-monthly" type="number" min="0" step="0.01" placeholder="Enter amount"/></div>
     <div><button class="btn btn-green" style="padding:10px 18px" onclick="assignApp('${key}')">Add</button></div>
   </div>
 </div>`:""}`;
@@ -1261,6 +1297,7 @@ async function assignApp(key){
       app_key:key,
       tier:document.getElementById("ap-tier").value,
       seats_included:+document.getElementById("ap-seats").value||1,
+      price_cents_monthly:recordedPrice("ap-monthly"),
       status:"active"})});
     openApp(key);
   }catch(e){alert("Failed: "+e.message.slice(0,160))}
@@ -1285,7 +1322,7 @@ async function loadAdmins(){
   <div class="avatar" style="background:var(--green)">${esc((a.full_name||a.email)[0].toUpperCase())}</div>
   <div class="fx"><div class="nm">${esc(a.full_name||"—")}</div><div class="sb">${esc(a.email)}</div></div>
   <span class="badge bg-green">⚡ ${esc(a.role)}</span>
-  ${a.user_id!==S.user.id?`<button class="link-danger" onclick="removeAdmin('${a.id}')">Remove</button>`:'<span style="font-size:11px;color:#cbd5e1">you</span>'}
+  ${a.user_id!==S.sourceUserId?`<button class="link-danger" onclick="removeAdmin('${a.id}')">Remove</button>`:'<span style="font-size:11px;color:#cbd5e1">you</span>'}
 </div>`).join("");
   }catch(e){
     const el=document.getElementById("admin-list");
@@ -1294,6 +1331,7 @@ async function loadAdmins(){
 }
 
 function openAddAdmin(){
+  return alert('Platform administrator provisioning requires a separate verified setup.');
   document.getElementById("modal-slot").innerHTML=`
 <div class="overlay" onclick="if(event.target===this)closeModal()">
 <div class="modal">
@@ -1345,6 +1383,7 @@ async function addAdmin(){
 }
 
 async function removeAdmin(id){
+  return alert('Platform administrator changes require a separate verified setup.');
   if(!confirm("Remove this platform admin? They will lose access to all organizations."))return;
   try{
     await api("/rest/v1/platform_admins?id=eq."+id,{method:"DELETE"});
@@ -1379,7 +1418,9 @@ function initParticles(){
   tick();
 }
 
-boot();
+window.addEventListener('aiq:intelligence-ready',()=>restoreSharedAdmin().catch(()=>{document.getElementById('app').textContent='Company administration could not be loaded. Reload or sign in again.'}));
+window.addEventListener('aiq:auth-missing',()=>boot());
+if(!new URLSearchParams(location.hash.slice(1)).has('aiq_ticket'))boot();
 </script>
 </body>
 </html>

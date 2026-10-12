@@ -10,7 +10,7 @@ const APP_KEYS = {'crm':'crm','academy':'iq_academy','field':'iq_field','iq-fiel
  'brand_marketing':'field-report-analytics','platform':'platform'};
 export function moduleAllowed(module, entitlements, context = {}) {
   if (!context.organization_id || !Array.isArray(entitlements)) return false;
-  const admin = ['owner','admin'].includes(context.organization_role);
+  const admin = context.platform_admin === true || ['owner','admin'].includes(context.organization_role);
   if (module.key === 'intelligence_group') return admin;
   if (module.visibility === 'internal') return admin && !!APP_KEYS[module.key] && entitlements.includes(APP_KEYS[module.key]);
   if (module.manifest?.registry_key === 'applianceiq-platform' || module.key === 'platform') return true;

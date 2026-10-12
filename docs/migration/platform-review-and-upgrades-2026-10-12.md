@@ -1,5 +1,7 @@
 # ApplianceIQ Platform review — October 12, 2026
 
+Follow-up: `company-administration-verification-2026-10-12.md` records the now-applied company-admin backend and prepared portal fixes, resolving priority 1 below subject to frontend publication.
+
 The live platform root and workspace both connect to the US Supabase project
 `jdxslqmgjsuzoisuhvlc`. Netlify publication remains paused. Frontend changes below
 are committed source and tested deployment bundles, not newly published pages.
