@@ -1,0 +1,2 @@
+-- Activate only after source pause and row-level runtime tests pass.
+DO $activate$ DECLARE j record; BEGIN FOR j IN SELECT jobid FROM cron.job WHERE jobname IN ('tj-iq-connector-retry-queue','tj-iq-connector-alert-scan','tj-iq-connector-stale-job-recovery','tj-phase4-evaluate-due-interventions','tj-phase7-autonomous-orchestration','tj-phase8-existing-forecast-refresh','tj-move-won-to-vip-365d','tj-floor-nightly-snapshots','tj-floor-hole-task-sync','tj-mdf-daily-expiry-check') LOOP PERFORM cron.alter_job(j.jobid,active:=true); END LOOP; END $activate$;
