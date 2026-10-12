@@ -912,6 +912,9 @@ input, select { font-family: inherit; }
   }
   .sidebar.open { left: 0; }
   .hamburger { display: block; }
+  .topbar { height:auto; min-height:var(--topbar-h); flex-wrap:wrap; padding:12px; gap:10px; }
+  .topbar-right { flex-wrap:wrap; gap:8px; width:100%; }
+  .topbar-right select { flex:1; min-width:120px; }
   .auth-left { display: none; }
   .auth-right { width: 100%; padding: 24px; }
   .modal { padding: 24px; }
@@ -939,9 +942,9 @@ input, select { font-family: inherit; }
       <h1>Appliance<span>IQ</span></h1>
       <p>The intelligence platform built for appliance retail professionals. One login, every tool.</p>
       <div class="auth-stats">
-        <div class="auth-stat"><div class="num">156</div><div class="label">Brands</div></div>
-        <div class="auth-stat"><div class="num">10</div><div class="label">Modules</div></div>
-        <div class="auth-stat"><div class="num">412</div><div class="label">Locations</div></div>
+        <div class="auth-stat"><div class="num">Accounts</div><div class="label">One login</div></div>
+        <div class="auth-stat"><div class="num">Companies</div><div class="label">Teams & locations</div></div>
+        <div class="auth-stat"><div class="num">Apps</div><div class="label">Connected workspace</div></div>
       </div>
     </div>
   </div>
@@ -949,19 +952,20 @@ input, select { font-family: inherit; }
     <div class="auth-card">
       <h2 id="auth-title">Welcome back</h2>
       <p class="subtitle" id="auth-subtitle">Sign in to your platform</p>
-      <div class="auth-error" id="auth-error"></div>
+      <div class="auth-error" id="auth-error" role="alert"></div>
+      <p id="auth-notice" role="status" style="display:none;color:var(--teal-700)"></p>
       <div id="auth-form">
         <div class="form-group" id="name-group" style="display:none">
-          <label>Full Name</label>
+          <label for="auth-name">Full Name</label>
           <input type="text" id="auth-name" placeholder="Your name">
         </div>
         <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="auth-email" placeholder="you@company.com">
+          <label for="auth-email">Email</label>
+          <input type="email" autocomplete="email" id="auth-email" placeholder="you@company.com">
         </div>
         <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="auth-password" placeholder="••••••••">
+          <label for="auth-password">Password</label>
+          <input type="password" autocomplete="current-password" id="auth-password" placeholder="••••••••">
         </div>
         <button class="btn-primary" id="auth-submit" onclick="handleAuth()">Sign In</button>
         <a href="/password-reset.html" style="display:block;margin-top:1rem;text-align:center">Forgot password?</a>
@@ -994,6 +998,7 @@ input, select { font-family: inherit; }
         <div class="sidebar-section-label">Modules</div>
         <div id="module-nav"></div>
         <div class="sidebar-section-label">System</div>
+        <button id="company-admin" class="nav-item" onclick="openCompanyAdmin()"><span class="icon">🏢</span> Company & Team Setup</button>
         <button class="nav-item" onclick="showSettings()" data-module="settings">
           <span class="icon">⚙️</span> Settings & Billing
         </button>
@@ -1002,7 +1007,7 @@ input, select { font-family: inherit; }
         <div class="avatar" id="user-avatar">TJ</div>
         <div class="info">
           <div class="name" id="user-name">Loading...</div>
-          <div class="role" id="user-role">Admin</div>
+          <div class="role" id="user-role">Member</div>
         </div>
         <button class="logout-btn" onclick="handleLogout()" title="Sign out">⏻</button>
       </div>
@@ -1016,6 +1021,8 @@ input, select { font-family: inherit; }
           <span class="topbar-title" id="topbar-title">Dashboard</span>
         </div>
         <div class="topbar-right">
+          <select id="company-select" aria-label="Company" onchange="changeCompany(this.value)" style="max-width:180px;padding:6px"></select>
+          <select id="location-select" aria-label="Location" onchange="changeLocation(this.value)" style="max-width:150px;padding:6px"></select>
           <div class="credits-badge" id="credits-badge" onclick="showSettings()">
             <span class="dot"></span>
             <span id="credits-count">5,000 AI credits</span>
@@ -1062,7 +1069,7 @@ input, select { font-family: inherit; }
                 <div class="seat-bar" id="seat-bar" style="width:100%"></div>
               </div>
               <div class="seat-labels">
-                <span>Solo plan</span>
+                <span>Company seats</span>
                 <span><a href="#" style="color:var(--teal-600);font-weight:600;text-decoration:none" onclick="openUpgradeModal()">Add seats</a></span>
               </div>
             </div>
@@ -1070,14 +1077,14 @@ input, select { font-family: inherit; }
 
           <div class="settings-section">
             <h3>AI Credits</h3>
-            <p class="desc">Credits are used for AI coaching, email composition, roleplay, and data scraping</p>
+            <p class="desc">Credits are used for AI coaching, email composition, roleplay, and data scraping. Online credit purchases are not available yet.</p>
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
               <div>
                 <div style="font-size:32px;font-weight:800;color:var(--navy-900)" id="settings-credits">5,000</div>
                 <div style="font-size:13px;color:var(--navy-500)">credits remaining this period</div>
               </div>
             </div>
-            <div style="font-size:13px;font-weight:600;color:var(--navy-700);margin-bottom:8px">Buy additional credits</div>
+            <div style="font-size:13px;font-weight:600;color:var(--navy-700);margin-bottom:8px">Credit pack pricing</div>
             <div class="credit-cards" id="credit-packs"></div>
           </div>
 
@@ -1101,14 +1108,14 @@ input, select { font-family: inherit; }
 <div class="modal-overlay" id="upgrade-modal">
   <div class="modal" style="position:relative">
     <button class="modal-close" onclick="closeUpgradeModal()">✕</button>
-    <h2>Choose Your Plan</h2>
-    <p class="modal-sub">All plans include a 14-day free trial. Scale as you grow.</p>
+    <h2>Compare Plans</h2>
+    <p class="modal-sub">Compare catalog prices. Online checkout is not available yet; contact your company administrator to arrange a plan.</p>
 
     <div class="billing-toggle">
       <span class="active" id="lbl-monthly">Monthly</span>
       <div class="toggle-switch" id="billing-toggle" onclick="toggleBilling()"></div>
       <span id="lbl-annual">Annual</span>
-      <span class="save-pill">Save 20%</span>
+      <span class="save-pill">Annual pricing</span>
     </div>
 
     <div class="seat-tiers" id="seat-tier-pills"></div>
@@ -1126,10 +1133,18 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SB_URL = 'https://fumwwhyozeouoqscolke.supabase.co';
 const SB_KEY = 'sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
 const sb = createClient(SB_URL, SB_KEY);
+import { createAIQContextBridge } from './aiq-context-bridge.js';
+import { escapeHtml as esc, moduleAllowed, creditsRemaining, safeAppUrl, handoffUrl } from './platform-core.mjs';
+const bridge = createAIQContextBridge({supabase:sb,moduleKey:'applianceiq-platform'});
 
 // ── State ──────────────────────────────────────────────────
 let state = {
   user: null,
+  context: {},
+  organizations: [],
+  locations: [],
+  loading: false,
+  epoch: 0,
   modules: [],
   plans: [],
   planModules: [],
@@ -1150,11 +1165,12 @@ let isSignup = false;
 window.toggleAuthMode = function() {
   isSignup = !isSignup;
   document.getElementById('auth-title').textContent = isSignup ? 'Create account' : 'Welcome back';
-  document.getElementById('auth-subtitle').textContent = isSignup ? 'Start your 14-day free trial' : 'Sign in to your platform';
+  document.getElementById('auth-subtitle').textContent = isSignup ? 'Create your platform login' : 'Sign in to your platform';
   document.getElementById('auth-submit').textContent = isSignup ? 'Create Account' : 'Sign In';
   document.getElementById('name-group').style.display = isSignup ? 'block' : 'none';
   document.getElementById('auth-toggle-text').textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
   document.getElementById('auth-toggle-link').textContent = isSignup ? 'Sign in' : 'Create one';
+  document.getElementById('auth-password').autocomplete = isSignup ? 'new-password' : 'current-password';
   hideError();
 };
 
@@ -1171,7 +1187,9 @@ window.handleAuth = async function() {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const btn = document.getElementById('auth-submit');
+  if (btn.disabled) return;
   if (!email || !password) return showError('Enter email and password');
+  document.getElementById('auth-notice').style.display = 'none';
   btn.disabled = true;
   btn.textContent = isSignup ? 'Creating...' : 'Signing in...';
   hideError();
@@ -1180,18 +1198,26 @@ window.handleAuth = async function() {
     let result;
     if (isSignup) {
       const name = document.getElementById('auth-name').value.trim();
-      result = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+      result = await sb.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: location.origin + '/' } });
     } else {
       result = await sb.auth.signInWithPassword({ email, password });
     }
     if (result.error) throw result.error;
-    state.user = result.data.user;
+    if (!result.data.session) {
+      const notice = document.getElementById('auth-notice');
+      notice.textContent = 'Check your email to confirm your account, then sign in. Company access requires an invitation or administrator setup.';
+      notice.style.display = 'block';
+      return;
+    }
+    state.user = result.data.session.user;
     await initPlatform();
   } catch (e) {
     showError(e.message || 'Authentication failed');
   }
-  btn.disabled = false;
-  btn.textContent = isSignup ? 'Create Account' : 'Sign In';
+  finally {
+    btn.disabled = false;
+    btn.textContent = isSignup ? 'Create Account' : 'Sign In';
+  }
 };
 
 // Enter key
@@ -1199,50 +1225,66 @@ document.getElementById('auth-password').addEventListener('keydown', e => {
   if (e.key === 'Enter') window.handleAuth();
 });
 
-window.handleLogout = async function() {
-  await sb.auth.signOut();
+function resetPlatform() {
+  state.epoch++;
+  state.user = null; state.context = {}; state.entitledApps = null;
+  state.subscription = null; state.aiCredits = null; state.modules = [];
+  state.organizations = []; state.locations = [];
   document.getElementById('platform').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'flex';
-  state.user = null;
+  document.getElementById('module-frame').src = '';
+  window.closeUpgradeModal();
+}
+window.handleLogout = async function() {
+  const {error} = await sb.auth.signOut();
+  if (error) { alert('Sign out failed. Please try again.'); return; }
+  resetPlatform();
 };
 
 // ── Init ───────────────────────────────────────────────────
 async function initPlatform() {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('platform').style.display = 'block';
-
-  // Load catalog data in parallel
-  const [modRes, planRes, pmRes, tierRes, packRes] = await Promise.all([
-    sb.from('platform_modules').select('*').eq('is_active', true).order('display_order'),
-    sb.from('platform_plans').select('*').eq('is_active', true).order('display_order'),
-    sb.from('platform_plan_modules').select('*'),
-    sb.from('platform_seat_tiers').select('*').order('display_order'),
-    sb.from('platform_ai_credit_packs').select('*').eq('is_active', true).order('display_order'),
-  ]);
-
-  state.modules = modRes.data || [];
-  state.plans = planRes.data || [];
-  state.planModules = pmRes.data || [];
-  state.seatTiers = tierRes.data || [];
-  state.creditPacks = packRes.data || [];
-
-  // Load org subscription (if exists)
-  const { data: subs } = await sb.from('platform_subscriptions').select('*').limit(1);
+  const epoch = ++state.epoch;
+  state.entitledApps = null; state.subscription = null; state.aiCredits = null;
   try {
-    const { data: entApps } = await sb.rpc('my_entitled_apps');
-    if (Array.isArray(entApps) && entApps.length) state.entitledApps = entApps;
-  } catch (e) { /* fail open to legacy plan logic */ }
-  state.subscription = subs?.[0] || null;
-
-  // Load AI credits
-  const { data: credits } = await sb.from('platform_ai_credits').select('*').limit(1);
-  state.aiCredits = credits?.[0] || null;
-
-  renderUI();
+    const [ctx, orgs] = await Promise.all([bridge.init(), bridge.organizations()]);
+    if (epoch !== state.epoch) return;
+    state.context = ctx; state.organizations = orgs;
+    if (!ctx.organization_id) throw Error('Your account has no active company access. Ask your administrator for an invitation.');
+    state.locations = await bridge.locations(ctx.organization_id);
+    const [modRes, planRes, pmRes, tierRes, packRes, entRes, subRes, creditRes] = await Promise.all([
+      sb.from('platform_modules').select('*').eq('is_active', true).order('display_order'),
+      sb.from('platform_plans').select('*').eq('is_active', true).order('display_order'),
+      sb.from('platform_plan_modules').select('*'),
+      sb.from('platform_seat_tiers').select('*').order('display_order'),
+      sb.from('platform_ai_credit_packs').select('*').eq('is_active', true).order('display_order'),
+      sb.from('org_app_entitlements').select('app_key').eq('organization_id',ctx.organization_id).in('status',['active','trial']),
+      sb.from('platform_subscriptions').select('*').eq('org_id',ctx.organization_id).order('created_at',{ascending:false}).limit(1),
+      sb.from('platform_ai_credits').select('*').eq('org_id',ctx.organization_id).order('updated_at',{ascending:false}).limit(1),
+    ]);
+    if (epoch !== state.epoch) return;
+    for (const result of [modRes, planRes, pmRes, tierRes, packRes, entRes, subRes, creditRes]) {
+      if (result.error) throw Error('Company data could not be loaded. Please retry sign in.');
+    }
+    state.modules = (modRes.data || []).filter(m => /^[a-z0-9_-]+$/.test(m.key)); state.plans = planRes.data || [];
+    state.planModules = pmRes.data || []; state.seatTiers = (tierRes.data || []).filter(t => /^[a-z0-9_-]+$/.test(t.key));
+    state.creditPacks = packRes.data || [];
+    state.entitledApps = (entRes.data || []).map(e => e.app_key);
+    state.subscription = subRes.data?.[0] || null; state.aiCredits = creditRes.data?.[0] || null;
+    renderUI();
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('platform').style.display = 'block';
+  } catch (error) {
+    if (epoch !== state.epoch) return;
+    state.entitledApps = null;
+    document.getElementById('platform').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    showError(error.message === 'authentication_required' ? 'Your company access is not ready. Ask your administrator to activate your account.' : error.message);
+  }
 }
 
 // ── Rendering ──────────────────────────────────────────────
 function renderUI() {
+  renderCompanyContext();
   renderUserInfo();
   renderSidebar();
   renderDashboard();
@@ -1262,24 +1304,27 @@ function renderUserInfo() {
   document.getElementById('dash-greeting').textContent = `${greeting}, ${name.split(' ')[0]}`;
 }
 
-const MODULE_TO_APP = { crm:'crm', spec_iq:'spec_iq', academy:'iq_academy', up_system:'iq_up_system',
-  command_center:'command_center', field:'iq_field', product_iq:'product_iq', scraper:'pim_scraper', ai_coach:'ai_coach' };
-
 function getActiveModules() {
-  // Source of truth: org entitlements from the Admin Dashboard
-  if (Array.isArray(state.entitledApps)) {
-    return state.modules.filter(m => {
-      const appKey = MODULE_TO_APP[m.key];
-      return !appKey || state.entitledApps.includes(appKey); // unmapped modules stay visible
-    });
-  }
-  // Legacy fallback: platform_plans (pre-entitlement accounts)
-  const sub = state.subscription;
-  if (!sub || sub.status === 'trial') return state.modules; // trial = all modules
-  const planId = sub.plan_id;
-  const planModuleIds = state.planModules.filter(pm => pm.plan_id === planId).map(pm => pm.module_id);
-  return state.modules.filter(m => planModuleIds.includes(m.id));
+  return state.modules.filter(m => moduleAllowed(m, state.entitledApps, state.context));
 }
+function renderCompanyContext() {
+  document.getElementById('sidebar-org').textContent = state.context.organization_name || 'Company';
+  document.getElementById('user-role').textContent = state.context.organization_role || 'Member';
+  document.getElementById('company-select').innerHTML = state.organizations.map(o => `<option value="${esc(o.organization_id)}" ${o.organization_id === state.context.organization_id ? 'selected' : ''}>${esc(o.organization_name)}</option>`).join('');
+  document.getElementById('location-select').innerHTML = '<option value="">All locations</option>' + state.locations.map(l => `<option value="${esc(l.location_id)}" ${l.location_id === state.context.location_id ? 'selected' : ''}>${esc(l.location_name)}</option>`).join('');
+  document.getElementById('company-admin').style.display = ['owner','admin'].includes(state.context.organization_role) ? '' : 'none';
+}
+window.changeCompany = async function(orgId) {
+  state.entitledApps = null; state.subscription = null; state.aiCredits = null;
+  document.getElementById('platform').style.display = 'none';
+  try { await bridge.setContext({organization_id:orgId,location_id:null,entity_type:null,entity_id:null,entity_label:null,context:{}}); await initPlatform(); }
+  catch { document.getElementById('auth-screen').style.display = 'flex'; showError('Unable to switch companies. Please retry sign in.'); }
+};
+window.changeLocation = async function(locationId) {
+  try { state.context = await bridge.setContext({location_id:locationId || null,entity_type:null,entity_id:null,entity_label:null,context:{}}); renderCompanyContext(); }
+  catch { renderCompanyContext(); alert('Unable to switch locations. Please try again.'); }
+};
+window.openCompanyAdmin = () => window.loadModule('intelligence_group', '/admin.html');
 
 function isModuleLocked(mod) {
   const active = getActiveModules();
@@ -1292,7 +1337,7 @@ function renderSidebar() {
     const locked = isModuleLocked(m);
     return `<button class="nav-item ${locked ? 'locked' : ''}" data-module="${m.key}"
               onclick="${locked ? '' : `window.loadModule('${m.key}')`}">
-      <span class="icon">${m.icon}</span> ${m.name}
+      <span class="icon">${esc(m.icon)}</span> ${esc(m.name)}
     </button>`;
   }).join('');
 }
@@ -1302,14 +1347,14 @@ function renderDashboard() {
   const plan = sub ? state.plans.find(p => p.id === sub.plan_id) : null;
   const activeModules = getActiveModules();
   const credits = state.aiCredits;
-  const creditsRemaining = credits ? (credits.credits_included + credits.credits_bonus - credits.credits_used_this_period) : 5000;
+  const balance = creditsRemaining(credits);
 
   // Stats
   document.getElementById('dash-stats').innerHTML = `
     <div class="stat-card">
       <div class="label">Plan</div>
-      <div class="value">${plan?.name || 'Trial'}</div>
-      <div class="sub">${sub?.status === 'trial' ? '14-day free trial' : (sub?.billing_cycle || 'monthly')}</div>
+      <div class="value">${esc(plan?.name || 'Not configured')}</div>
+      <div class="sub">${sub?.status === 'trial' ? '14-day free trial' : (sub?.billing_cycle || 'Not configured')}</div>
     </div>
     <div class="stat-card">
       <div class="label">Active Modules</div>
@@ -1318,12 +1363,12 @@ function renderDashboard() {
     </div>
     <div class="stat-card">
       <div class="label">Seats</div>
-      <div class="value">${sub?.used_seats || 1} / ${sub?.total_seats || 1}</div>
-      <div class="sub">${sub?.seat_tier_key || 'solo'} tier</div>
+      <div class="value">${sub ? (sub.used_seats + ' / ' + sub.total_seats) : '—'}</div>
+      <div class="sub">${sub ? esc(sub.seat_tier_key) + ' tier' : 'Seat allocation not configured'}</div>
     </div>
     <div class="stat-card">
       <div class="label">AI Credits</div>
-      <div class="value">${creditsRemaining.toLocaleString()}</div>
+      <div class="value">${balance === null ? '—' : balance.toLocaleString()}</div>
       <div class="sub">remaining this period</div>
     </div>
   `;
@@ -1333,9 +1378,9 @@ function renderDashboard() {
     const locked = isModuleLocked(m);
     const included = !locked;
     return `<div class="module-card ${locked ? 'locked' : ''}" onclick="${locked ? 'window.openUpgradeModal()' : `window.loadModule('${m.key}')`}">
-      <div class="mc-icon">${m.icon}</div>
-      <h3>${m.name}</h3>
-      <p>${m.description || ''}</p>
+      <div class="mc-icon">${esc(m.icon)}</div>
+      <h3>${esc(m.name)}</h3>
+      <p>${esc(m.description || '')}</p>
       <div class="mc-price">${locked ? '$' + (m.monthly_price_cents / 100) + '/seat/mo a la carte' : ''}</div>
       ${locked ? '<div class="mc-lock">🔒</div>' : '<div class="mc-included">Included</div>'}
     </div>`;
@@ -1346,39 +1391,39 @@ function renderTopbar() {
   const sub = state.subscription;
   const plan = sub ? state.plans.find(p => p.id === sub.plan_id) : null;
   const credits = state.aiCredits;
-  const remaining = credits ? (credits.credits_included + credits.credits_bonus - credits.credits_used_this_period) : 5000;
+  const remaining = creditsRemaining(credits);
 
-  document.getElementById('plan-badge').textContent = plan?.name || 'Trial';
-  document.getElementById('credits-count').textContent = remaining.toLocaleString() + ' AI credits';
+  document.getElementById('plan-badge').textContent = plan?.name || 'Not configured';
+  document.getElementById('credits-count').textContent = remaining === null ? 'Credits not configured' : remaining.toLocaleString() + ' AI credits';
 
   const badge = document.getElementById('credits-badge');
   badge.classList.remove('low', 'empty');
-  if (remaining <= 0) badge.classList.add('empty');
-  else if (remaining < 500) badge.classList.add('low');
+  if (remaining !== null && remaining <= 0) badge.classList.add('empty');
+  else if (remaining !== null && remaining < 500) badge.classList.add('low');
 }
 
 function renderSettings() {
   const sub = state.subscription;
   const plan = sub ? state.plans.find(p => p.id === sub.plan_id) : null;
   const credits = state.aiCredits;
-  const remaining = credits ? (credits.credits_included + credits.credits_bonus - credits.credits_used_this_period) : 5000;
+  const remaining = creditsRemaining(credits);
 
-  document.getElementById('settings-plan-name').textContent = plan?.name || 'Trial';
+  document.getElementById('settings-plan-name').textContent = plan?.name || 'Not configured';
   document.getElementById('settings-plan-detail').textContent = sub?.status === 'trial'
     ? '14-day free trial • All modules'
-    : `${(sub?.billing_cycle || 'monthly')} billing • ${getActiveModules().length} modules`;
+    : (sub ? `${sub.billing_cycle} billing • ${getActiveModules().length} enabled apps` : 'No subscription configured. Contact your company administrator.');
 
-  const used = sub?.used_seats || 1;
-  const total = sub?.total_seats || 1;
-  document.getElementById('seat-count').textContent = `${used} / ${total} seats used`;
-  document.getElementById('seat-bar').style.width = `${(used / total) * 100}%`;
-  document.getElementById('settings-credits').textContent = remaining.toLocaleString();
+  const used = sub?.used_seats ?? 0;
+  const total = sub?.total_seats ?? 0;
+  document.getElementById('seat-count').textContent = sub ? `${used} / ${total} seats used` : 'Seat allocation not configured';
+  document.getElementById('seat-bar').style.width = `${total > 0 ? Math.min(100, (used / total) * 100) : 0}%`;
+  document.getElementById('settings-credits').textContent = remaining === null ? 'Not configured' : remaining.toLocaleString();
 
   // Credit packs
   document.getElementById('credit-packs').innerHTML = state.creditPacks.map(p => `
-    <div class="credit-pack" onclick="alert('Stripe integration coming soon — pack: ${p.name}')">
+    <div class="credit-pack">
       <div class="cp-credits">${p.credits.toLocaleString()}</div>
-      <div class="cp-price">$${(p.price_cents / 100).toFixed(0)}</div>
+      <div class="cp-price">$${(p.price_cents / 100).toFixed(2)}</div>
       <div class="cp-unit">$${((p.price_cents / 100) / p.credits * 1000).toFixed(1)} per 1K credits</div>
     </div>
   `).join('');
@@ -1390,7 +1435,7 @@ function renderSettings() {
       <div style="background:var(--navy-100);padding:10px 14px;font-size:12px;font-weight:700;color:var(--navy-600)">Seats</div>
       <div style="background:var(--navy-100);padding:10px 14px;font-size:12px;font-weight:700;color:var(--navy-600)">Discount</div>
       ${state.seatTiers.map(t => `
-        <div style="background:#fff;padding:10px 14px;font-size:13px;font-weight:600;color:var(--navy-800)">${t.name}</div>
+        <div style="background:#fff;padding:10px 14px;font-size:13px;font-weight:600;color:var(--navy-800)">${esc(t.name)}</div>
         <div style="background:#fff;padding:10px 14px;font-size:13px;color:var(--navy-600)">${t.min_seats}${t.max_seats ? '–' + t.max_seats : '+'}</div>
         <div style="background:#fff;padding:10px 14px;font-size:13px;color:${parseFloat(t.discount_pct) > 0 ? 'var(--green-500)' : 'var(--navy-600)'};font-weight:600">${parseFloat(t.discount_pct) > 0 ? t.discount_pct + '% off' : 'Full price'}</div>
       `).join('')}
@@ -1399,27 +1444,29 @@ function renderSettings() {
 }
 
 // ── Module Loading ─────────────────────────────────────────
-window.loadModule = async function(key) {
+window.loadModule = async function(key, path = null) {
   const mod = state.modules.find(m => m.key === key);
   if (!mod || isModuleLocked(mod)) return;
-  if (!mod.app_url) {
-    alert(`${mod.name} is embedded in other modules and doesn't have a standalone URL yet.`);
-    return;
-  }
-
-  // Get current session for token relay
-  const { data: { session } } = await sb.auth.getSession();
-  let url = mod.app_url;
-  if (session?.access_token && session?.refresh_token) {
-    const payload = btoa(JSON.stringify({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-      expires_at: session.expires_at
-    }));
-    url += '#aiq_relay=' + payload;
-  }
-  window.open(url, '_blank');
-  closeSidebar();
+  let popup = null;
+  try {
+    const url = safeAppUrl(mod.app_url, location.origin);
+    if (path === '/admin.html' && key === 'intelligence_group') url.pathname = path;
+    if (url.origin === location.origin) { location.href = url.href; return; }
+    // Open during the click so mobile browsers do not block the async handoff.
+    popup = window.open('about:blank', '_blank');
+    if (!popup) throw Error('Allow popups to open this app.');
+    popup.opener = null;
+    const { data: { session }, error } = await sb.auth.getSession();
+    if (error || !session?.access_token) throw Error('Your session expired. Please sign in again.');
+    const handoff = await fetch(SB_URL + '/functions/v1/platform-handoff', {
+      method:'POST', headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer ' + session.access_token},
+      body:JSON.stringify({action:'issue', ...state.context, source_module_key:'applianceiq-platform',target_module_key:mod.manifest?.registry_key || key})
+    });
+    if (!handoff.ok) throw Error('Unable to create secure app handoff.');
+    const { ticket } = await handoff.json();
+    popup.location.replace(handoffUrl(url.href, ticket, location.origin));
+    closeSidebar();
+  } catch (error) { popup?.close(); alert(error.message || 'Unable to open this app.'); }
 };
 
 // ── Dashboard / Settings nav ──────────────────────────────
@@ -1471,7 +1518,7 @@ function renderUpgradeModal() {
   // Seat tier pills
   document.getElementById('seat-tier-pills').innerHTML = state.seatTiers.filter(t => t.key !== 'enterprise').map(t => `
     <button class="seat-tier ${state.selectedTier === t.key ? 'active' : ''}" onclick="window.selectTier('${t.key}')">
-      ${t.name} (${t.min_seats}${t.max_seats ? '–' + t.max_seats : '+'})
+      ${esc(t.name)} (${t.min_seats}${t.max_seats ? '–' + t.max_seats : '+'})
       ${parseFloat(t.discount_pct) > 0 ? `<span class="discount">-${t.discount_pct}%</span>` : ''}
     </button>
   `).join('');
@@ -1491,18 +1538,18 @@ function renderUpgradeModal() {
     }).filter(Boolean);
 
     return `<div class="plan-card ${p.is_popular ? 'popular' : ''}">
-      <h4>${p.name}</h4>
-      <div class="plan-tagline">${p.tagline || ''}</div>
+      <h4>${esc(p.name)}</h4>
+      <div class="plan-tagline">${esc(p.tagline || '')}</div>
       <div class="plan-price">
-        <span class="currency">$</span>${(price / 100).toFixed(0)}<span class="period"> /seat/mo</span>
+        <span class="currency">$</span>${(price / 100).toFixed(2)}<span class="period"> /seat/mo</span>
       </div>
       <div class="plan-seat-note">${state.billingAnnual ? 'billed annually' : 'billed monthly'} • ${p.ai_credits_per_seat.toLocaleString()} AI credits/seat</div>
       <ul class="plan-features">
-        ${modNames.map(n => `<li>${n}</li>`).join('')}
+        ${modNames.map(n => `<li>${esc(n)}</li>`).join('')}
         <li>${p.ai_credits_per_seat.toLocaleString()} AI credits/seat/mo</li>
       </ul>
-      <button class="btn-select" onclick="alert('Stripe checkout coming soon — plan: ${p.name}')">
-        Select ${p.name}
+      <button class="btn-select" disabled title="Online checkout is not available yet">
+        Checkout unavailable
       </button>
     </div>`;
   }).join('');
@@ -1525,12 +1572,19 @@ function closeSidebar() {
 window.closeSidebar = closeSidebar;
 
 // ── Boot ───────────────────────────────────────────────────
-(async function boot() {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) {
+sb.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT') resetPlatform();
+  else if (event === 'SIGNED_IN' && session?.user && !state.user) {
     state.user = session.user;
-    await initPlatform();
+    setTimeout(() => initPlatform(), 0);
   }
+});
+(async function boot() {
+  try {
+    const { data: { session }, error } = await sb.auth.getSession();
+    if (error) throw error;
+    if (session?.user && !state.user) { state.user = session.user; await initPlatform(); }
+  } catch { showError('Unable to restore your session. Please sign in again.'); }
 })();
 </script>
 <script src="https://ai-iq-coach.netlify.app/widget.js" data-app="platform"></script>

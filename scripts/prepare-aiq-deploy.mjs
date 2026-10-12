@@ -14,22 +14,8 @@ cpSync(sourcePath,target,{recursive:true});
 function hardenPlatformLaunchers(text, filePath) {
   if (moduleKey !== 'applianceiq-platform') return text;
 
-  if (basename(filePath) === 'workspace.html') {
-    const oldTarget = "target_module_key:key";
-    const newTarget = "target_module_key:(m.manifest?.registry_key||key)";
-    if (!text.includes(oldTarget)) {
-      throw new Error(`Workspace handoff target contract changed unexpectedly in ${filePath}`);
-    }
-    text = text.replace(oldTarget,newTarget);
-  }
-
-  if (basename(filePath) === 'index.html') {
-    const oldLauncher = `// Get current session for token relay\n  const { data: { session } } = await sb.auth.getSession();\n  let url = mod.app_url;\n  if (session?.access_token && session?.refresh_token) {\n    const payload = btoa(JSON.stringify({\n      access_token: session.access_token,\n      refresh_token: session.refresh_token,\n      expires_at: session.expires_at\n    }));\n    url += '#aiq_relay=' + payload;\n  }\n  window.open(url, '_blank');`;
-    const secureLauncher = `// Phase 2 secure one-time handoff. Never place refresh tokens in URLs.\n  const { data: { session } } = await sb.auth.getSession();\n  if (!session?.access_token) { alert('Your session expired. Please sign in again.'); return; }\n  const { data: ctx } = await sb.rpc('my_platform_context');\n  const targetModuleKey = mod.manifest?.registry_key || key;\n  const handoff = await fetch(SB_URL + '/functions/v1/platform-handoff', {\n    method:'POST',\n    headers:{'Content-Type':'application/json',apikey:SB_KEY,Authorization:'Bearer ' + session.access_token},\n    body:JSON.stringify({\n      action:'issue',\n      organization_id:ctx?.organization_id||null,\n      location_id:ctx?.location_id||null,\n      entity_type:ctx?.entity_type||null,\n      entity_id:ctx?.entity_id||null,\n      entity_label:ctx?.entity_label||null,\n      source_module_key:'applianceiq-platform',\n      target_module_key:targetModuleKey\n    })\n  });\n  if(!handoff.ok){ alert('Unable to create secure app handoff.'); return; }\n  const { ticket } = await handoff.json();\n  window.open(mod.app_url + '#aiq_ticket=' + encodeURIComponent(ticket), '_blank');`;
-    if (!text.includes(oldLauncher)) {
-      throw new Error(`Legacy Platform module launcher changed unexpectedly in ${filePath}; refusing automatic cleanup`);
-    }
-    text = text.replace(oldLauncher,secureLauncher);
+  if (basename(filePath) === 'index.html' && (!text.includes('handoffUrl(') || text.includes('#aiq_relay='))) {
+    throw new Error('Platform must use the secure source launcher');
   }
 
   return text;
@@ -76,7 +62,7 @@ if (moduleKey === 'applianceiq-platform') {
   const platformIndex=readFileSync(join(resolve(target),'index.html'),'utf8');
   const workspace=readFileSync(join(resolve(target),'workspace.html'),'utf8');
   if(platformIndex.includes('#aiq_relay=')) throw new Error('Legacy token relay remains in built Platform shell');
-  if(!platformIndex.includes('#aiq_ticket=')) throw new Error('Secure ticket launcher missing from built Platform shell');
+  if(!platformIndex.includes('handoffUrl(')) throw new Error('Secure ticket launcher missing from built Platform shell');
   if(!workspace.includes('manifest?.registry_key||key')) throw new Error('Workspace is not using registry_key for secure handoff targets');
 } else {
   const adapter = `<script type="module" src="https://appliance-iq-platform.netlify.app/aiq-module-adapter.js" data-aiq-module="${moduleKey}"></script>`;

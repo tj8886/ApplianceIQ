@@ -19,6 +19,11 @@ jobs:
       - name: Validate canonical app registry
         run: node scripts/validate-app-registry.mjs
 
+      - name: Check platform login, company access and workspace
+        run: |
+          node scripts/migration/test-platform-shell.mjs
+          node scripts/migration/test-platform-workspace.mjs
+
       - name: Check CRM inline JS syntax
         run: |
           node --input-type=module -e "
