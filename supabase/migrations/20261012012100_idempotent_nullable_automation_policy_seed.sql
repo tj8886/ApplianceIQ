@@ -26,6 +26,6 @@ begin
   on conflict(organization_id,action_type,action_module) do nothing;
   get diagnostics v_count=row_count;
   return v_count;
-end $function$
+end $function$;
 
 REVOKE ALL ON FUNCTION tj_private.phase7_seed_default_policies(uuid) FROM PUBLIC, anon;
