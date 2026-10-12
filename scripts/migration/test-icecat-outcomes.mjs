@@ -18,7 +18,7 @@ for (const scenario of ['not_found','provider_error','write_error','target_missi
     return query;
   }};
   vm.runInNewContext(code, {
-    Request, Response, console, setTimeout: fn => { fn(); },
+    Request, Response, URL, URLSearchParams, AbortSignal, console, setTimeout: fn => { fn(); },
     Deno:{env:{get: () => 'fixture'},serve: fn => {handler=fn;}},
     createClient: () => client,
     requireJobAuth: async () => ({ok:true}),
