@@ -2,7 +2,7 @@
 export const PIM_PRODUCT_COLUMNS = 'id,brand_name,model,category,short_description,long_description,specs_json,finish,width_inches,height_inches,depth_inches,capacity_cu_ft,fuel_type,market,source_extracted_at,updated_at,source_review_status';
 export function applianceRecord(p: any): boolean {
   const category=String(p.category??'').toLowerCase().replace(/[\s_-]+/g,'');
-  return /^(refrigerators?|freezers?|dishwashers?|ranges?|cooktops?|wallovens?|ovens?|hoods?|rangehoods?|ventilation|microwaves?|washers?|dryers?|laundry|winestorage|winecoolers?|beveragecenters?|compactappliances)$/.test(category)
+  return /^(refrigerators?|bottommount|topmount|frenchdoor|sidebyside|freezers?|dishwashers?|ranges?|cooktops?|wallovens?|ovens?|hoods?|rangehoods?|ventilation|microwaves?|washers?|dryers?|laundry|winestorage|winecoolers?|beveragecenters?|compactappliances)$/.test(category)
     && !/^\s*(this\s+|replacement\s+|genuine\s+|universal\s+|the\s+)?(water filter|filter cartridge|trim kit|stacking kit|pedestal|hose|accessory)\b/i.test(String(p.short_description??''));
 }
 export function publicSpecs(value: any): any {
