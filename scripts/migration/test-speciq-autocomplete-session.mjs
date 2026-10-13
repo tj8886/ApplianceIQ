@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+import {migratePimConsumers} from './us-pim-consumers.mjs';
+const html=migratePimConsumers(readFileSync(new URL('../../apps/spec-iq/index.html',import.meta.url),'utf8'),'spec-iq');
+const code=html.slice(html.indexOf('async function productSearch(){'),html.indexOf('\nasync function selectSearchResult'));
+let token=null,calls=[],sessionError=null;
+const box={style:{},innerHTML:'',textContent:''};
+const ctx=vm.createContext({window:{sb:{auth:{async getSession(){return {data:{session:token?{access_token:token}:null},error:sessionError};}}}},el:id=>id==='ap-search'?{value:'RS3684WRUVE1'}:box,console,Date,fetch:async(url,opts)=>{calls.push({url,opts});return {ok:true,json:async()=>[]};},_searchResults:[],_searchIdx:-1});
+new vm.Script(code+';this.search=productSearch').runInContext(ctx);
+await ctx.search();assert.equal(calls.length,0);assert.equal(box.textContent,'Sign in to search your product catalog.');
+token='first-session';await ctx.search();assert.equal(calls.at(-1).opts.headers.Authorization,'Bearer first-session');assert.ok(calls.at(-1).url.includes('is_parts_accessory=eq.false'));
+token='refreshed-session';await ctx.search();assert.equal(calls.at(-1).opts.headers.Authorization,'Bearer refreshed-session');
+sessionError={message:'expired'};await ctx.search();assert.equal(calls.length,2);
+console.log('Spec IQ autocomplete passed: no anonymous request, fresh caller token on each query, failed session rejected.');
