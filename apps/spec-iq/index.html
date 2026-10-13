@@ -876,7 +876,9 @@ async function productSearch(){
       params+='&or=(brand_name.ilike.*'+encodeURIComponent(t)+'*,model.ilike.*'+encodeURIComponent(t)+'*,short_description.ilike.*'+encodeURIComponent(t)+'*)';
     });
     var apiKey='sb_publishable_wiP3ouBdS_Qub9EMIYJK7w_eiltZHKV';
-    var resp=await fetch(baseUrl+'?'+params,{headers:{'apikey':apiKey,'Authorization':'Bearer '+apiKey}});
+    var sessionResult=await window.sb.auth.getSession();
+    if(sessionResult.error||!sessionResult.data.session?.access_token){box.textContent='Sign in to search your product catalog.';box.style.display='block';_searchResults=[];_searchIdx=-1;return}
+    var resp=await fetch(baseUrl+'?'+params,{headers:{'apikey':apiKey,'Authorization':'Bearer '+sessionResult.data.session.access_token}});
     if(!resp.ok){console.error('Search HTTP error:',resp.status);box.innerHTML='<div style="padding:14px 16px;color:var(--steel);font-size:13px">Search error ('+resp.status+'). Enter details manually.</div>';box.style.display='block';return}
     var data=await resp.json();
     _searchResults=data||[];_searchIdx=-1;
