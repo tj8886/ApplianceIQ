@@ -121,6 +121,31 @@ jobs:
       - name: Validate Edge entrypoints and local modules
         run: node scripts/check-edge-entrypoints.mjs
 
+      - name: Check IQ Academy AI limits (server-picked model, no CRM data, limits before model)
+        run: |
+          node scripts/migration/test-academy-ai-limits.mjs
+          node scripts/migration/test-roleplay-handlers.mjs
+          node scripts/migration/test-ai-proxy.mjs
+
+  academy-ai-limits-sql:
+    name: Academy AI limits (database)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migration to an empty database and run limit checks
+        env:
+          ACADEMY_AI_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: bash scripts/migration/run-academy-ai-limits-sql.sh
+
   prepare-deploy:
     name: Build deployment matrix
     needs: validate

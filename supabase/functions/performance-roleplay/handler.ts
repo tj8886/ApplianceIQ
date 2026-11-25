@@ -1,4 +1,5 @@
-import {roleplayDatabase,governedRoleplayModel} from '../_shared/roleplay-runtime.ts';
+import {roleplayDatabase,governedRoleplayModel,type RoleplayCall} from '../_shared/roleplay-runtime.ts';
+import {AcademyLimitError,limitResponseBody} from '../_shared/academy-ai.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,7 +50,6 @@ try{
   const anonKey = env("SUPABASE_ANON_KEY") ?? "";
   const serviceKey = env("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-  const model = "standard";
 
   if (!supabaseUrl || !anonKey || !serviceKey) return json({ error: "server_not_configured" }, 503);
 
@@ -74,6 +74,12 @@ try{
   if (loaded.error) return json({ error: loaded.error }, loaded.status ?? 400);
   const session = loaded.session!;
   const scenario = loaded.scenario!;
+  // Beat the Bot role-plays are graded: the first AI call counts one graded role-play,
+  // each learner message is a turn, and "End & score" is the single grading call.
+  const rpKey = "perf:" + session.id;
+  const openCall: RoleplayCall = { feature: "beat_the_bot", sessionKey: rpKey };
+  const turnCall: RoleplayCall = { feature: "beat_the_bot", sessionKey: rpKey, newTurn: true };
+  const gradeCall: RoleplayCall = { feature: "grading", sessionKey: rpKey };
 
   if (action === "opening") {
     if (session.status !== "active") return json({ error: "session_not_active" }, 400);
@@ -84,9 +90,9 @@ try{
     let opening = scenario.opening_line?.trim() || "Hi, I need some help today.";
     if (mode === "bot_sells") {
       const prompt = botSellerSystem(scenario);
-      opening = await callAnthropic(anthropicKey, model, prompt, [{ role: "user", content: "Begin the interaction as the expert salesperson. Keep the first turn concise." }]);
+      opening = await callAnthropic(anthropicKey, openCall, prompt, [{ role: "user", content: "Begin the interaction as the expert salesperson. Keep the first turn concise." }]);
     } else if (!scenario.opening_line) {
-      opening = await callAnthropic(anthropicKey, model, customerSystem(scenario), [{ role: "user", content: "Open the roleplay naturally as the customer. Do not reveal hidden facts." }]);
+      opening = await callAnthropic(anthropicKey, openCall, customerSystem(scenario), [{ role: "user", content: "Open the roleplay naturally as the customer. Do not reveal hidden facts." }]);
     }
 
     const role = mode === "bot_sells" ? "ai_rep" : "customer";
@@ -107,7 +113,7 @@ try{
 
     const aiMessages = transcriptToAnthropic(transcript, mode);
     const system = mode === "bot_sells" ? botSellerSystem(scenario) : customerSystem(scenario);
-    const responseText = await callAnthropic(anthropicKey, model, system, aiMessages);
+    const responseText = await callAnthropic(anthropicKey, turnCall, system, aiMessages);
     transcript.push({ role: mode === "bot_sells" ? "ai_rep" : "customer", content: responseText, timestamp: new Date().toISOString() });
 
     await admin.from("ai_roleplay_sessions").update({
@@ -130,7 +136,7 @@ try{
     const mode = session.mode ?? "you_sell";
 
     if (mode === "bot_sells") {
-      const learning = await scoreBotSells(anthropicKey, model, scenario, transcript);
+      const learning = await scoreBotSells(anthropicKey, gradeCall, scenario, transcript);
       await admin.from("ai_roleplay_sessions").update({
         status: "completed",
         completed_at: new Date().toISOString(),
@@ -142,7 +148,7 @@ try{
       return json({ ok: true, mode, learning_summary: learning, scenario: revealScenario(scenario) });
     }
 
-    const result = await scoreRep(anthropicKey, model, scenario, transcript, mode === "beat_the_expert");
+    const result = await scoreRep(anthropicKey, gradeCall, scenario, transcript, mode === "beat_the_expert");
     const keys=["discovery","product_knowledge","recommendation","value_building","objection_handling","closing","attachment","communication","trust","process_discipline"];
     const scores=Object.fromEntries(Object.entries(result.scores??{}).filter(([k,v])=>keys.includes(k)&&typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=100));
     const numeric = Object.values(scores).filter((v): v is number => typeof v === "number" && Number.isFinite(v));
@@ -206,7 +212,7 @@ try{
   }
 
   return json({ error: "invalid_action" }, 400);
-}catch(e){return json({error:'roleplay_failed'},(e as any)?.code==='40001'?409:(e as any)?.code==='42501'?403:(e as any)?.code==='54000'?429:503);}
+}catch(e){if(e instanceof AcademyLimitError)return json(limitResponseBody(e),429);return json({error:'roleplay_failed'},(e as any)?.code==='40001'?409:(e as any)?.code==='42501'?403:(e as any)?.code==='54000'?429:503);}
 };}
 
 async function loadSessionAndScenario(admin: SB, sessionId: string, userId: string) {
@@ -299,7 +305,7 @@ function transcriptToAnthropic(transcript: Array<{ role: string; content: string
   }));
 }
 
-async function scoreRep(apiKey: any, model: string, s: Scenario, transcript: Array<{ role: string; content: string }>, compareExpert: boolean) {
+async function scoreRep(apiKey: any, call: RoleplayCall, s: Scenario, transcript: Array<{ role: string; content: string }>, compareExpert: boolean) {
   const system = `You are ApplianceIQ Performance Brain, a rigorous appliance-retail sales evaluator.
 Score observable behaviour, not personality. Evidence before claims.
 Use exactly these competency keys and 0-100 integer scores:
@@ -329,16 +335,16 @@ Return JSON only with this shape:
 }`;
 
   const user = `Transcript:\n${transcript.map((t) => `${t.role.toUpperCase()}: ${t.content}`).join("\n")}`;
-  const raw = await callAnthropic(apiKey, model, system, [{ role: "user", content: user }], 1800);
+  const raw = await callAnthropic(apiKey, call, system, [{ role: "user", content: user }]);
   return parseJson(raw, { scores: {}, feedback: raw.slice(0, 400) });
 }
 
-async function scoreBotSells(apiKey: any, model: string, s: Scenario, transcript: Array<{ role: string; content: string }>) {
+async function scoreBotSells(apiKey: any, call: RoleplayCall, s: Scenario, transcript: Array<{ role: string; content: string }>) {
   const system = `You are ApplianceIQ Performance Brain. Review an expert-salesperson demonstration and explain what a trainee should copy.
 Scenario: ${s.title}
 Return JSON only: {"summary":"2-4 sentences","techniques":["..."],"turning_points":["..."],"questions_to_copy":["..."]}`;
   const user = transcript.map((t) => `${t.role.toUpperCase()}: ${t.content}`).join("\n");
-  const raw = await callAnthropic(apiKey, model, system, [{ role: "user", content: user }], 1200);
+  const raw = await callAnthropic(apiKey, call, system, [{ role: "user", content: user }]);
   return parseJson(raw, { summary: raw.slice(0, 500), techniques: [], turning_points: [], questions_to_copy: [] });
 }
 
@@ -387,8 +393,9 @@ async function getNextScenario(admin: SB, organizationId: string, userId: string
   } : null;
 }
 
-async function callAnthropic(apiKey: any, model: string, system: string, messages: Array<{ role: string; content: string }>, maxTokens = 900): Promise<string> {
-  return apiKey.run(system,messages,maxTokens);
+// The Academy policy picks the model and answer length for each call.
+async function callAnthropic(apiKey: any, call: RoleplayCall, system: string, messages: Array<{ role: string; content: string }>): Promise<string> {
+  return apiKey.run(system,messages,call);
 }
 
 function parseJson(raw: string, fallback: Json) {

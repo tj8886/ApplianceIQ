@@ -6,9 +6,9 @@
 //     Service scenarios auto-suggest Katrina as coach. All 13 Service IQ
 //     chapters (125-137) now loadable as knowledge context.
 
-import {roleplayDatabase,governedRoleplayModel} from '../_shared/roleplay-runtime.ts';
+import {roleplayDatabase,governedRoleplayModel,type RoleplayCall} from '../_shared/roleplay-runtime.ts';
+import {AcademyLimitError,academyLimitMessage,limitResponseBody} from '../_shared/academy-ai.ts';
 
-const MODEL = 'standard';
 const MAX_MATCHED_BRANDS = 3;
 
 // deno-lint-ignore no-explicit-any
@@ -66,7 +66,9 @@ try{
 
     const combinedKnowledge = [knowledge, serviceKnowledge].filter(Boolean).join("\n\n");
     const openingSystem = buildCustomerSystem(scenario_type, combinedKnowledge, livePimData.text);
-    const openingResp = await callClaude(anthropicKey, MODEL, openingSystem, `Start a ${scenario_type.replace(/_/g, " ")} scenario. Say your opening line as the customer. 1-3 sentences, conversational, realistic.`);
+    // KPI role-plays are graded: the first call counts one graded role-play.
+    const pendingKey = "kpi:" + crypto.randomUUID();
+    const openingResp = await callClaude(anthropicKey, { feature: "showroom", sessionKey: pendingKey }, openingSystem, `Start a ${scenario_type.replace(/_/g, " ")} scenario. Say your opening line as the customer. 1-3 sentences, conversational, realistic.`);
     const customerOpening = typeof openingResp === "string" ? openingResp : "Hi, I need some help.";
 
     const transcript = [{ role: "customer", content: customerOpening, timestamp: new Date().toISOString() }];
@@ -80,6 +82,7 @@ try{
       status: "active",
     }).select("id").single();
     if (sessErr || !sess) return json({ error: "session_creation_failed", detail: sessErr?.message }, 500);
+    await service.rpc("aiq_academy_ai_link_roleplay", { p_native_user: nativeUser, p_from_key: pendingKey, p_to_key: "kpi:" + sess.id });
 
     return json({
       ok: true,
@@ -125,12 +128,13 @@ try{
 
     const combinedKnowledge = [knowledge, serviceKnowledge].filter(Boolean).join("\n\n");
     const customerSystem = buildCustomerSystem(sess.scenario_type, combinedKnowledge, livePimData.text);
-    const customerResp = await callClaude(anthropicKey, MODEL, customerSystem, null, convMessages);
+    const turnKey = "kpi:" + sess.id;
+    const customerResp = await callClaude(anthropicKey, { feature: "showroom", sessionKey: turnKey, newTurn: true }, customerSystem, null, convMessages);
     const customerText = typeof customerResp === "string" ? customerResp : "That's interesting, tell me more.";
     transcript.push({ role: "customer", content: customerText, timestamp: new Date().toISOString() });
 
     const coachingResult = await getPersonaCoaching(
-      anthropicKey, rep_message, customerText, persona, allPersonas, protocols, kpis, transcript, combinedKnowledge, livePimData.text, sess.scenario_type
+      anthropicKey, rep_message, customerText, persona, allPersonas, protocols, kpis, transcript, combinedKnowledge, livePimData.text, sess.scenario_type, { feature: "showroom", sessionKey: turnKey }
     );
 
     const mergedKpis = { ...(sess.kpi_scores || {}), ...(coachingResult.kpi_scores || {}) };
@@ -167,8 +171,15 @@ try{
     if (anthropicKey && persona) {
       const isService = SERVICE_SCENARIOS.has(sess.scenario_type);
       const fbSystem = `${persona.prompt_prefix}\n\nGive a 2-3 sentence final coaching summary for a ${isService ? 'customer service' : 'sales'} roleplay that just ended. Scenario: ${sess.scenario_type.replace(/_/g, ' ')}. Overall score: ${avgScore===null?"unknown":avgScore.toFixed(1)}/10. KPI scores: ${JSON.stringify(kpiScores)}. Be encouraging but honest. Use your persona voice (${persona.tone}).${isService ? ' Focus feedback on empathy, de-escalation technique, accuracy of information given, and resolution quality.' : ''}`;
-      const fbResp = await callClaude(anthropicKey, MODEL, fbSystem, "Give me the final coaching summary.");
-      finalFeedback = typeof fbResp === "string" ? fbResp : "";
+      // The final summary is the grading call. If a limit applies, the session
+      // still completes with its KPI average and a plain message.
+      try {
+        const fbResp = await callClaude(anthropicKey, { feature: "grading", sessionKey: "kpi:" + sess.id }, fbSystem, "Give me the final coaching summary.");
+        finalFeedback = typeof fbResp === "string" ? fbResp : "";
+      } catch (e) {
+        if (!(e instanceof AcademyLimitError)) throw e;
+        finalFeedback = academyLimitMessage(e.reason, e.limit);
+      }
     }
 
     await admin.from("ai_roleplay_sessions").update({
@@ -188,7 +199,7 @@ try{
   }
 
   return json({ error: "invalid_action" }, 400);
-}catch(e){return json({error:'roleplay_failed'},(e as any)?.code==='40001'?409:(e as any)?.code==='42501'?403:(e as any)?.code==='54000'?429:503);}
+}catch(e){if(e instanceof AcademyLimitError)return json(limitResponseBody(e),429);return json({error:'roleplay_failed'},(e as any)?.code==='40001'?409:(e as any)?.code==='42501'?403:(e as any)?.code==='54000'?429:503);}
 };}
 
 // ---- Scenario Definitions ----
@@ -281,7 +292,7 @@ async function getPersonaCoaching(
   // deno-lint-ignore no-explicit-any
   primaryPersona: any, allPersonas: any[], protocols: any[],
   // deno-lint-ignore no-explicit-any
-  kpis: string[], transcript: any[], knowledge: string, livePimData: string, scenarioType?: string
+  kpis: string[], transcript: any[], knowledge: string, livePimData: string, scenarioType: string | undefined, coachCall: RoleplayCall
 ): Promise<{ kpi_scores: Record<string, number>; coaching_tip: string; primary_coach: unknown; handoff_insight: string | null }> {
   if (!primaryPersona) {
     return { kpi_scores: {}, coaching_tip: "Keep going!", primary_coach: null, handoff_insight: null };
@@ -332,7 +343,7 @@ async function getPersonaCoaching(
   // deno-lint-ignore no-explicit-any
   const coachInput = `Recent transcript (last 4 turns):\n${transcript.slice(-4).map((t: any) => `${t.role}: ${t.content}`).join("\n")}\n\nRep just said: "${repMsg}"\nCustomer responded: "${customerMsg}"`;
 
-  const resp = await callClaude(apiKey, MODEL, coachSystem, coachInput);
+  const resp = await callClaude(apiKey, coachCall, coachSystem, coachInput);
   if (typeof resp === "string") {
     try {
       const parsed = JSON.parse(resp.replace(/```json|```/g, "").trim());
@@ -454,9 +465,9 @@ async function fetchLivePimContext(admin: SB, textToScan: string): Promise<LiveP
   return { matchedBrands: matched, text: sections.join("\n\n") };
 }
 
-async function callClaude(apiKey: any, model: string, system: string, userContent: string | null, messages?: Array<{ role: string; content: string }>): Promise<string> {
+async function callClaude(apiKey: any, call: RoleplayCall, system: string, userContent: string | null, messages?: Array<{ role: string; content: string }>): Promise<string> {
   const msgs = messages ?? [{role:'user',content:userContent||'Go.'}];
-  return apiKey.run(system,msgs,800);
+  return apiKey.run(system,msgs,call);
 }
 
 function json(body: unknown, status = 200): Response {
