@@ -614,7 +614,7 @@ var coaches = {
   asher: { name:'Asher', avatar:'🔧', role:'Installation Expert', desc:'Codes, delivery, measurements, hookups. By the book, every time.', color:'#d97706' },
   leah: { name:'Leah', avatar:'🎨', role:'Design Consultant', desc:'Kitchen design, aesthetics, finishes, panel-ready, color matching.', color:'#e11d48' }
 };
-var rpState = { coach: null, messages: [], loading: false, context: null, mode: null };
+var rpState = { coach: null, messages: [], loading: false, context: null, mode: null, sessionId: null };
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AUTH
@@ -1527,7 +1527,28 @@ async function toggleChapterComplete(chId, slug) {
 }
 window.toggleChapterComplete = toggleChapterComplete;
 
-// ── AI TRAINER (Netlify function) ──
+// ── ACADEMY AI ──
+// The page names a feature and sends the learner's own text. The server picks the
+// model, prompt and answer length and applies the monthly limits; when a limit is
+// hit it returns a plain message and the rest of the Academy keeps working.
+async function academyAI(payload) {
+  var token = (await sb.auth.getSession()).data.session?.access_token;
+  var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+token },
+    body: JSON.stringify(payload)
+  });
+  var data = {};
+  try { data = await resp.json(); } catch(e) {}
+  var text = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : '';
+  return { ok: resp.ok && !!text, text: text, limited: data.error === 'ai_limit_reached', message: data.message || '', data: data };
+}
+function lastTurns(history, max) {
+  var msgs = history.slice(-max);
+  while (msgs.length && msgs[0].role !== 'user') msgs.shift();
+  return msgs;
+}
+
+// ── AI TRAINER ──
 var TRAINER = { open:false, sessionId:null, slug:null, ctx:null, lessonText:'', history:[] };
 
 function openTrainer() {
@@ -1576,21 +1597,15 @@ async function sendTrainer() {
   TRAINER.history.push(userMsg); trainerRender(userMsg);
   var thinking = trainerRender({ msg_role:'assistant', content:'Thinking…' });
   thinking.classList.add('thinking');
-  var sysPrompt = 'You are the ApplianceIQ AI Trainer — an expert appliance sales training coach.\n\n'
-    + 'CONTEXT:\n' + (TRAINER.ctx.volume||'') + '\nChapter: ' + (TRAINER.ctx.chapter||'') + '\n\n'
-    + 'LESSON CONTENT (grounding — answer from this):\n' + (TRAINER.lessonText||'No lesson loaded.').substring(0,16000) + '\n\n'
-    + 'RULES:\n- Answer based on the lesson content above\n- Keep responses concise (2-3 paragraphs)\n- Use real examples from the appliance sales floor\n- If asked to quiz, create questions from the lesson\n- Canadian context (CAD pricing, building codes, EnerGuide)\n- Be encouraging but direct';
-  var apiMessages = TRAINER.history.filter(function(m){ return m.content !== 'Thinking…'; }).map(function(m){ return { role: m.msg_role === 'user' ? 'user' : 'assistant', content: m.content }; });
+  var lesson = ('Lesson: ' + (TRAINER.ctx.volume||'') + '\nChapter: ' + (TRAINER.ctx.chapter||'') + '\n\n' + (TRAINER.lessonText||'No lesson loaded.')).substring(0,16000);
+  var apiMessages = lastTurns(TRAINER.history.filter(function(m){ return m.content !== 'Thinking…'; }).map(function(m){ return { role: m.msg_role === 'user' ? 'user' : 'assistant', content: m.content }; }), 19);
   try {
-    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sysPrompt, messages: apiMessages })
-    });
-    var data = await resp.json();
+    var r = await academyAI({ feature: 'trainer', reference: lesson, messages: apiMessages });
     thinking.remove();
-    var replyText = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : 'Sorry — could not generate a response.';
+    var replyText = r.ok ? r.text : (r.message || 'Sorry — could not generate a response.');
     var aiMsg = { msg_role:'assistant', content:replyText };
-    TRAINER.history.push(aiMsg); trainerRender(aiMsg);
+    if (r.ok) TRAINER.history.push(aiMsg); else TRAINER.history.pop();
+    trainerRender(aiMsg);
   } catch(e) { thinking.remove(); trainerRender({ msg_role:'assistant', content:'Connection problem — please try again.' }); }
 }
 window.sendTrainer = sendTrainer;
@@ -1664,7 +1679,7 @@ async function showEdgeRoleplayPicker(scenario) {
       body: JSON.stringify({ action: 'start', scenario_type: scenario, organization_id: S.currentOrg.id, persona_name: coachName })
     });
     var data = await res.json();
-    if (!data.ok) { showToast('Failed: ' + (data.error||'Unknown')); return; }
+    if (!data.ok) { showToast(data.message || ('Failed: ' + (data.error||'Unknown'))); return; }
     window._edgeRpSession = data.session_id;
     window._edgeRpCoach = coachName;
     // Open modal
@@ -1705,6 +1720,8 @@ async function sendEdgeRp() {
   if (thinking) thinking.remove();
   if (data.customer_response) {
     chat.innerHTML += '<div style="background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;max-width:80%;border-bottom-left-radius:4px"><div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px">🧑 Customer</div><div style="font-size:14px;line-height:1.5;color:var(--text)">' + esc(data.customer_response) + '</div></div>';
+  } else if (data.message) {
+    chat.innerHTML += '<div role="status" style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;font-size:13px;color:var(--text2)">' + esc(data.message) + '</div>';
   }
   if (data.kpi_scores || data.coaching_tip) {
     var fbHtml = '<div style="background:rgba(13,148,136,.06);border:1px solid var(--accent);border-radius:14px;padding:14px;margin-bottom:10px;font-size:13px">';
@@ -1765,6 +1782,7 @@ async function startChat(coachKey, initialMsg, mode) {
   rpState.messages = [];
   rpState.loading = false;
   rpState.mode = mode || null;
+  rpState.sessionId = null;
   // Load cross-app context for AI
   try {
     rpState.context = await loadCrossAppContext();
@@ -1789,28 +1807,23 @@ window.sendMsg = sendMsg;
 
 async function callCoach() {
   rpState.loading = true; renderView();
-  var c = coaches[rpState.coach];
-  var sysPrompt = '';
-  if (rpState.mode === 'ai_customer') {
-    sysPrompt = 'You are a CUSTOMER in an appliance store. Stay in character as a realistic Canadian customer. Keep responses SHORT (2-4 sentences). Reference real products from data below.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
-  } else if (rpState.mode === 'ai_rep') {
-    sysPrompt = 'You are an EXPERT APPLIANCE SALES REP demonstrating the 11-step sales process. Show techniques with [coaching notes]. Use real specs and prices.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
-  } else {
-    sysPrompt = 'You are ' + c.name + ', ' + c.role + ' at ApplianceIQ.\nPERSONA: ' + c.desc + '\nKeep responses concise (2-4 paragraphs). Use real product data. Give actionable scripts. Canadian context.\n\nLIVE DATA:\n' + (rpState.context||'No data.');
-  }
+  // AI-coach request: the server owns the prompt for each role-play mode and coach.
+  var history = rpState.messages.filter(function(m){ return !m.notice; }).map(function(m){ return { role: m.role, content: m.content }; });
+  var payload = rpState.mode
+    ? { feature: 'showroom', mode: rpState.mode, messages: history, reference: (rpState.context||'').substring(0,16000) }
+    : { feature: 'trainer', coach: coaches[rpState.coach] ? rpState.coach : 'tj', messages: lastTurns(history, 19), reference: (rpState.context||'').substring(0,16000) };
+  if (rpState.mode && rpState.sessionId) payload.session_id = rpState.sessionId;
+  if (!payload.reference) delete payload.reference;
   try {
-    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system: sysPrompt, messages: rpState.messages.map(function(m){ return { role: m.role, content: m.content }; }) })
-    });
-    var data = await resp.json();
-    var reply = data.content ? data.content.map(function(b){ return b.text || ''; }).join('') : 'Sorry, could not generate a response.';
-    rpState.messages.push({ role: 'assistant', content: reply });
-  } catch(e) { rpState.messages.push({ role: 'assistant', content: 'Connection error — please try again.' }); }
+    var r = await academyAI(payload);
+    if (r.ok && r.data.session_id) rpState.sessionId = r.data.session_id;
+    if (r.ok) rpState.messages.push({ role: 'assistant', content: r.text });
+    else { rpState.messages.pop(); rpState.messages.push({ role: 'assistant', content: r.message || 'Sorry, could not generate a response.', notice: true }); }
+  } catch(e) { rpState.messages.pop(); rpState.messages.push({ role: 'assistant', content: 'Connection error — please try again.', notice: true }); }
   rpState.loading = false; renderView();
 }
 
-function endChat() { rpState.coach = null; rpState.messages = []; rpState.loading = false; rpState.context = null; rpState.mode = null; renderView(); }
+function endChat() { rpState.coach = null; rpState.messages = []; rpState.loading = false; rpState.context = null; rpState.mode = null; rpState.sessionId = null; renderView(); }
 window.endChat = endChat;
 
 // Human to Human recorder (from IQ Training)
@@ -1841,16 +1854,11 @@ async function scoreSession() {
   if (!recState || !recState.transcript || recState.transcript.trim().length < 20) return;
   var mc = document.getElementById('main-content');
   mc.innerHTML = '<div style="text-align:center;padding:60px 20px"><div class="loading-spinner"></div><p style="margin-top:16px;color:var(--text2)">Analyzing ' + formatTime(recState.timer) + ' of practice...</p></div>';
-  var scorePrompt = 'You are the ApplianceIQ Sales Scoring AI. Analyze this recorded sales practice session for appliance retail.\n\nIdentify who is the sales rep and who is the customer. Score across 12 categories (1-10): Greeting/Rapport, Needs Discovery, Product Knowledge, Feature-Benefit Selling, Objection Handling, Cross-Selling, Closing Technique, Follow-Up Setup, Product Demo, Value Building, Customer Engagement, Professionalism.\n\nRespond in JSON only: {"scores":{"Greeting":8,...},"total":85,"feedback":"...","rep_identified":"...","customer_identified":"..."}\n\nTranscript:\n' + recState.transcript;
+  // Scoring is a graded role-play: the server uses its grading model and prompt.
   try {
-    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: scorePrompt }] })
-    });
-    var data = await resp.json();
-    var text = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : '{}';
-    var clean = text.replace(/```json|```/g, '').trim();
-    window._scorecard = JSON.parse(clean);
+    var r = await academyAI({ feature: 'grading', messages: [{ role: 'user', content: 'Transcript:\n' + recState.transcript.substring(0,39000) }] });
+    if (!r.ok) { window._scorecard = { scores: {}, total: 0, feedback: r.message || 'Could not score this session. Please try again.' }; }
+    else window._scorecard = JSON.parse(r.text.replace(/```json|```/g, '').trim());
   } catch(e) { window._scorecard = { scores: {}, total: 0, feedback: 'Could not parse results.' }; }
   renderView();
 }
@@ -2087,8 +2095,55 @@ function renderTools(el) {
     + '<div class="brand-card" style="border-top:3px solid #d946ef" onclick="navTo(\'serviceiq\')"><h4 style="font-size:16px">❤️ Service IQ</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Communication templates and brand service lookup</p></div>'
     + '<div class="brand-card" style="border-top:3px solid var(--green)" onclick="navTo(\'scorecard\')"><h4 style="font-size:16px">📊 Daily Five</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Track your daily selling activities</p></div>'
     + (isAdmin ? '<div class="brand-card" style="border-top:3px solid var(--navy)" onclick="navTo(\'intelligence\')"><h4 style="font-size:16px">🧠 Intelligence Hub</h4><p style="color:var(--text2);font-size:13px;margin-top:6px">Learning analytics, cross-app insights, content development</p></div>' : '')
-    + '</div>';
+    + '</div><div id="ai-limits-panel" style="margin-top:20px"></div>';
+  renderAiLimitsPanel();
 }
+
+// AI limits: company admins see spend and set the monthly budget and company off
+// switch; learners see their own monthly usage. The server enforces all limits.
+async function renderAiLimitsPanel() {
+  var box = document.getElementById('ai-limits-panel');
+  if (!box || !S.currentOrg) return;
+  var org = S.currentOrg.id;
+  var n = function(v){ return String(Math.max(0, Math.floor(Number(v) || 0))); };
+  var st = await sb.rpc('academy_ai_admin', { p_organization_id: org, p_action: 'status', p_payload: {} });
+  if (st.error || !st.data) {
+    var mine = await sb.rpc('academy_ai_admin', { p_organization_id: org, p_action: 'my_usage', p_payload: {} });
+    if (mine.error || !mine.data) return;
+    var u = mine.data;
+    box.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px"><h4 style="font-size:15px;color:var(--navy);margin-bottom:6px">Your AI coaching this month</h4>'
+      + '<p style="font-size:13px;color:var(--text2)">' + n(u.trainer_questions_used) + ' of ' + n(u.trainer_questions_limit) + ' AI Trainer questions · ' + n(u.graded_roleplays_used) + ' of ' + n(u.graded_roleplays_limit) + ' graded role-plays · role-plays stop at ' + n(u.roleplay_max_turns) + ' turns or ' + n(u.roleplay_max_minutes) + ' minutes</p>'
+      + (u.ai_available ? '' : '<p style="font-size:13px;color:var(--gold);margin-top:6px">AI coaching is paused for your company right now. Lessons, quizzes and progress still work.</p>') + '</div>';
+    return;
+  }
+  var d = st.data, budget = d.monthly_budget_usd;
+  var money = function(v){ return '$' + Number(v||0).toFixed(2); };
+  var feat = Object.entries(d.cost_by_feature||{}).map(function(kv){ return esc(kv[0].replace(/_/g,' ')) + ' ' + money(kv[1]); }).join(' · ') || 'No AI use yet';
+  box.innerHTML = '<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:18px;border-top:3px solid var(--accent)">'
+    + '<h4 style="font-size:16px;color:var(--navy);margin-bottom:8px">AI limits & spending · ' + esc(d.month) + '</h4>'
+    + '<p style="font-size:14px;margin-bottom:6px"><b>' + money(d.spent_usd) + '</b> spent of ' + (budget === null ? '<b>no budget set</b> — AI coaching is paused until you set one' : '<b>' + money(budget) + '</b> monthly budget') + '</p>'
+    + '<p style="font-size:13px;color:var(--text2);margin-bottom:6px">' + n(d.seats) + ' Academy seats · ' + n(d.trainer_questions_used) + ' of ' + n(d.trainer_questions_pool) + ' Trainer questions · ' + n(d.graded_roleplays_used) + ' of ' + n(d.graded_roleplays_pool) + ' graded role-plays</p>'
+    + '<p style="font-size:12px;color:var(--text3);margin-bottom:12px">By feature: ' + feat + (d.platform_ai_enabled ? '' : ' · AI is paused for everyone by ApplianceIQ') + '</p>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    + '<label for="ai-budget-input" style="font-size:13px;color:var(--text2)">Monthly budget (USD)</label>'
+    + '<input id="ai-budget-input" type="number" min="0" max="100000" step="0.01" value="' + (budget === null ? '' : String(Number(budget))) + '" style="width:120px;padding:8px;border:1px solid var(--border);border-radius:8px">'
+    + '<button onclick="saveAiBudget()" style="padding:8px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Save budget</button>'
+    + '<button onclick="toggleCompanyAi(' + (d.company_ai_enabled ? 'false' : 'true') + ')" style="padding:8px 14px;background:#fff;border:1px solid var(--border);border-radius:8px;font-weight:700;cursor:pointer;color:' + (d.company_ai_enabled ? 'var(--red)' : 'var(--green)') + '">' + (d.company_ai_enabled ? 'Pause AI for my company' : 'Resume AI for my company') + '</button>'
+    + '</div></div>';
+}
+window.saveAiBudget = async function() {
+  var raw = document.getElementById('ai-budget-input').value.trim();
+  var value = raw === '' ? null : Math.round(Number(raw) * 100) / 100;
+  if (value !== null && (!isFinite(value) || value < 0 || value > 100000)) { showToast('Enter a budget between $0 and $100,000'); return; }
+  var r = await sb.rpc('academy_ai_admin', { p_organization_id: S.currentOrg.id, p_action: 'set_budget', p_payload: { monthly_budget_usd: value } });
+  showToast(r.error ? 'Budget was not saved. Please try again.' : (value === null ? 'Budget cleared — AI coaching is paused' : 'Monthly AI budget saved'));
+  renderAiLimitsPanel();
+};
+window.toggleCompanyAi = async function(enabled) {
+  var r = await sb.rpc('academy_ai_admin', { p_organization_id: S.currentOrg.id, p_action: 'set_enabled', p_payload: { enabled: enabled } });
+  showToast(r.error ? 'Change was not saved. Please try again.' : (enabled ? 'AI coaching resumed' : 'AI coaching paused for your company'));
+  renderAiLimitsPanel();
+};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // EVENT TRACKING — Captures learning interactions across the academy
@@ -2108,7 +2163,9 @@ function trackEvent(type, data) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CROSS-APP CONTEXT — Feeds live data from all apps into AI coach
+// CROSS-APP CONTEXT — Catalog reference data for the AI coach
+// Only product, competitive and recall data. CRM deals, coaching reviews, floor
+// interactions and field findings are customer/staff records and never go to AI.
 // ══════════════════════════════════════════════════════════════════════════════
 async function loadCrossAppContext() {
   var ctx = [];
@@ -2119,18 +2176,6 @@ async function loadCrossAppContext() {
     // CCR — competitive intel
     var { data: ccr } = await sb.from('competitive_cross_reference').select('category,tier,comparison_notes').limit(25);
     if (ccr && ccr.length) ctx.push('COMPETITIVE INTEL (' + ccr.length + '):\n' + ccr.map(function(c){ return '- [' + (c.tier||'') + ' ' + (c.category||'') + '] ' + (c.comparison_notes||'').substring(0,120); }).join('\n'));
-    // CRM — recent deals/pipeline
-    var { data: deals } = await sb.from('crm_deals').select('title,stage,value,brand').order('updated_at', { ascending: false }).limit(15);
-    if (deals && deals.length) ctx.push('CRM PIPELINE (' + deals.length + ' recent):\n' + deals.map(function(d){ return '- ' + (d.title||'Deal') + ' | ' + (d.stage||'') + ' | $' + (d.value||0) + (d.brand ? ' | ' + d.brand : ''); }).join('\n'));
-    // CRM — coaching reviews
-    var { data: reviews } = await sb.from('ai_coaching_reviews').select('coaching_focus,score,summary').order('created_at', { ascending: false }).limit(10);
-    if (reviews && reviews.length) ctx.push('COACHING REVIEWS (' + reviews.length + '):\n' + reviews.map(function(r){ return '- [' + (r.coaching_focus||'') + '] Score: ' + (r.score||'-') + ' — ' + (r.summary||'').substring(0,100); }).join('\n'));
-    // Up System — recent interactions
-    var { data: interactions } = await sb.from('iq_customer_interactions').select('interaction_type,product_interest,outcome,notes').order('created_at', { ascending: false }).limit(10);
-    if (interactions && interactions.length) ctx.push('FLOOR INTERACTIONS (' + interactions.length + '):\n' + interactions.map(function(i){ return '- ' + (i.interaction_type||'') + ' | ' + (i.product_interest||'') + ' | ' + (i.outcome||'') + ' ' + (i.notes||'').substring(0,80); }).join('\n'));
-    // Field — recent findings
-    var { data: findings } = await sb.from('field_findings').select('category,severity,description').order('created_at', { ascending: false }).limit(10);
-    if (findings && findings.length) ctx.push('FIELD FINDINGS (' + findings.length + '):\n' + findings.map(function(f){ return '- [' + (f.severity||'') + '] ' + (f.category||'') + ': ' + (f.description||'').substring(0,100); }).join('\n'));
     // Warranty & Recalls
     var { data: recalls } = await sb.from('aiq_recalls').select('brand_name,model,reason').order('recall_date', { ascending: false }).limit(10);
     if (recalls && recalls.length) ctx.push('ACTIVE RECALLS (' + recalls.length + '):\n' + recalls.map(function(r){ return '- ' + (r.brand_name||'') + ' ' + (r.model||'') + ': ' + (r.reason||''); }).join('\n'));
@@ -2184,10 +2229,6 @@ async function renderIntelligenceHub(el) {
   var sources = [
     { name:'PIM Products', icon:'📦', table:'aiq_products', desc:'Product specs → brand courses' },
     { name:'Brand Catalog', icon:'🏷️', table:'brand_catalog', desc:'156 brands → Brand IQ' },
-    { name:'CRM Pipeline', icon:'💰', table:'crm_deals', desc:'Deal patterns → training gaps' },
-    { name:'Coaching Reviews', icon:'🎯', table:'ai_coaching_reviews', desc:'AI scoring → skill gaps' },
-    { name:'Up System', icon:'🔄', table:'iq_customer_interactions', desc:'Floor interactions → insights' },
-    { name:'Field Audits', icon:'📋', table:'field_findings', desc:'Store issues → compliance training' },
     { name:'Competitive Intel', icon:'⚔️', table:'competitive_cross_reference', desc:'214 matchups → Between Brands' },
     { name:'Warranties', icon:'📜', table:'aiq_warranty_policies', desc:'159 policies → Service IQ' },
     { name:'Recalls', icon:'⚠️', table:'aiq_recalls', desc:'103 recalls → Service IQ alerts' }
@@ -2241,19 +2282,12 @@ async function generateContentSuggestions() {
     if (evtSummary[k].samples.length < 3 && e.content) evtSummary[k].samples.push(e.content.substring(0,100));
   });
   var courseList = (courses||[]).filter(function(c){ return c.pillar !== 'brand_iq'; }).map(function(c){ return c.pillar + ' | ' + c.name + ' (' + (c.chapter_slugs||[]).length + ' chapters)'; }).join('\n');
-  var prompt = 'You are the ApplianceIQ Training Content Strategist. Analyze this data and suggest 5 new training modules or content improvements.\n\n'
-    + 'EXISTING COURSES:\n' + courseList + '\n\n'
-    + 'LEARNING EVENT PATTERNS:\n' + JSON.stringify(evtSummary) + '\n\n'
-    + 'CROSS-APP INTELLIGENCE:\n' + crossAppCtx.substring(0,8000) + '\n\n'
-    + 'Respond in JSON only, no markdown. Array of objects: [{"type":"new_module|update_existing|new_cards|gap_alert","pillar":"sales_iq|product_iq|brand_iq|service_iq|leadership_iq","title":"...","rationale":"...","priority":"critical|high|medium|low"}]';
+  var trainingData = ('EXISTING COURSES:\n' + courseList + '\n\n'
+    + 'LEARNING EVENT PATTERNS:\n' + JSON.stringify(evtSummary)).substring(0,15000);
   try {
-    var resp = await fetch(SB_URL+'/functions/v1/ai-proxy', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer '+(await sb.auth.getSession()).data.session?.access_token },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
-    });
-    var data = await resp.json();
-    var text = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : '[]';
-    var clean = text.replace(/```json|```/g, '').trim();
+    var r = await academyAI({ feature: 'content_ideas', reference: crossAppCtx.substring(0,8000), messages: [{ role: 'user', content: trainingData }] });
+    if (!r.ok) { showToast(r.message || 'Could not generate suggestions. Please try again.'); return; }
+    var clean = r.text.replace(/```json|```/g, '').trim();
     var ideas = JSON.parse(clean);
     // Insert suggestions
     for (var i = 0; i < ideas.length; i++) {

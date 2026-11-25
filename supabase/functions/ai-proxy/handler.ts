@@ -1,5 +1,6 @@
 import {fetchLivePimContext} from '../ai-request-processor/prompt.ts';
 import {configuredModel,configuredUtilityModels,callConfiguredModel, type Message} from '../_shared/configured-model.ts';
+import {handleAcademyRequest} from './academy.ts';
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'POST, OPTIONS','Content-Type':'application/json'};
 export function createHandler({createClient,env,fetchImpl=fetch}:{createClient:any;env:(name:string)=>string|undefined;fetchImpl?:typeof fetch}){
  const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
@@ -12,6 +13,9 @@ export function createHandler({createClient,env,fetchImpl=fetch}:{createClient:a
    const context=await user.rpc('tj_runtime_my_platform_context');if(context.error||!context.data?.organization_id)return reply({error:'active_mapped_organization_required'},403);
    const raw=await req.text();if(raw.length>2*1024*1024)return reply({error:'request_too_large'},413);
    let body;try{body=JSON.parse(raw);}catch{return reply({error:'invalid_json'},400);}
+   // IQ Academy: the server picks the model, prompt, answer length and limits.
+   if(body&&typeof body==='object'&&!Array.isArray(body)&&'feature' in body)return await handleAcademyRequest({body,user,admin:createClient(env('SUPABASE_URL'),env('SUPABASE_SERVICE_ROLE_KEY'),{auth:{persistSession:false,autoRefreshToken:false}}),nativeUser:identity.data.user.id,context:context.data,env,fetchImpl,reply});
+   // Other apps (CRM, Command Center, Up System, PIM Scraper) keep the configured-model path below.
    if(!body||typeof body!=='object'||Array.isArray(body)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>20||body.stream===true||body.tools)return reply({error:'invalid_request'},400);
    const messages:Message[]=[];let prompt='';let textLength=0;
    for(const m of body.messages){

@@ -29,7 +29,10 @@ export function migratePimConsumers(source,app){
   const from=source.indexOf('    // PIM — latest products'),to=source.indexOf('    // CCR',from);
   if(from<0||to<0)throw Error('Academy cached PIM context contract changed');
   source=source.slice(0,from)+"    ctx.push('Appliance model facts must come from the live server PIM lookup for this turn. Static lessons and old chat are not current evidence.');\n"+source.slice(to);
-  source=source.replace("  var c = coaches[rpState.coach];\n  var sysPrompt = '';", "  var c = coaches[rpState.coach];\n  try{rpState.context=await loadCrossAppContext();}catch{rpState.context='Context unavailable; do not guess.';}\n  var sysPrompt = '';");
+  // Refresh the (catalog-only) reference before every coach turn.
+  const coachTurn="  // AI-coach request: the server owns the prompt for each role-play mode and coach.\n";
+  if(!source.includes(coachTurn))throw Error('Academy coach request contract changed');
+  source=source.replace(coachTurn, coachTurn+"  try{rpState.context=await loadCrossAppContext();}catch{rpState.context='Context unavailable; do not guess.';}\n");
  }
  return source;
 }
